@@ -35,8 +35,9 @@ export default function WorldMap() {
 
     // Buscador de países en inglés
     const geocoder = new MapboxGeocoder({
-      accessToken: mapboxgl.accessToken,
-      mapboxgl,
+      accessToken: mapboxgl.accessToken as string,
+      // Type cast mapboxgl to any to avoid TS mismatch with the geocoder library
+      mapboxgl: mapboxgl as any,
       types: 'country',
       language: 'en',
       placeholder: 'Search country'
