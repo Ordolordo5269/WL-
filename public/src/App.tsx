@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import WorldMap from '../components/WorldMap';
 import CountryCard from '../components/CountryCard';
 import './index.css';
@@ -12,25 +12,37 @@ interface Country {
 function App() {
   const [countries, setCountries] = useState<Country[]>([]);
   const [selected, setSelected] = useState<Country | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Cargar países
     fetch('/api/countries')
       .then((res) => res.json())
-      .then(setCountries)
-      .catch(console.error);
+      .then((data) => {
+        setCountries(data);
+        setIsLoading(false);
+      })
+      .catch((error) => {
+        console.error(error);
+        setIsLoading(false);
+      });
   }, []);
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="relative w-full h-full overflow-hidden">
       <WorldMap />
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {countries.map((c) => (
-          <div key={c.name} onClick={() => setSelected(c)} className="cursor-pointer">
-            <CountryCard country={c} />
-          </div>
-        ))}
-      </div>
-      <CountryCard country={selected} />
+      {/* Pantalla de carga opcional */}
+      {isLoading && (
+        <div className="absolute inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="text-white text-lg">Cargando...</div>
+        </div>
+      )}
+      {/* Panel flotante para información de países */}
+      {selected && (
+        <div className="absolute top-4 left-4 z-10 max-w-sm">
+          <CountryCard country={selected} />
+        </div>
+      )}
     </div>
   );
 }

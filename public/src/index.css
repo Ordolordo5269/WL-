@@ -1,3 +1,36 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Eliminar márgenes y padding por defecto */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Hacer que html y body ocupen toda la pantalla */
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: #0b0b19; /* Color del espacio para evitar flash blanco */
+}
+
+/* Hacer que el contenedor root ocupe toda la pantalla */
+#root {
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+
+/* Prevenir el flash de contenido sin estilo */
+body {
+  visibility: hidden;
+}
+
+body.loaded {
+  visibility: visible;
+}
