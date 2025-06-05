@@ -21,7 +21,7 @@ export default function WorldMap() {
     // Habilitar controles de navegación
     map.addControl(new mapboxgl.NavigationControl());
     
-    // Configurar el globo cuando el mapa esté cargado
+    // Configurar el globo y capas cuando el mapa esté cargado
     map.on('load', () => {
       // Configurar la atmósfera del globo
       map.setFog({
@@ -31,16 +31,69 @@ export default function WorldMap() {
         'space-color': 'rgb(11, 11, 25)', // Color del espacio
         'star-intensity': 0.6 // Intensidad de las estrellas
       });
+
+      // Fuente y capa para resaltar países al pasar el ratón
+      map.addSource('country-boundaries', {
+        type: 'vector',
+        url: 'mapbox://mapbox.country-boundaries-v1'
+      });
+
+      map.addLayer({
+        id: 'country-highlight',
+        type: 'fill',
+        source: 'country-boundaries',
+        'source-layer': 'country_boundaries',
+        paint: {
+          'fill-color': '#00BCD4',
+          'fill-opacity': [
+            'case',
+            ['boolean', ['feature-state', 'hover'], false],
+            0.5,
+            0
+          ]
+        }
+      });
+
+      let hoveredId: number | string | null = null;
+
+      map.on('mousemove', 'country-highlight', (e) => {
+        if (e.features && e.features.length > 0) {
+          const id = e.features[0].id;
+          if (hoveredId !== null) {
+            map.setFeatureState(
+              { source: 'country-boundaries', sourceLayer: 'country_boundaries', id: hoveredId },
+              { hover: false }
+            );
+          }
+          hoveredId = id as number | string | null;
+          if (hoveredId !== null) {
+            map.setFeatureState(
+              { source: 'country-boundaries', sourceLayer: 'country_boundaries', id: hoveredId },
+              { hover: true }
+            );
+          }
+        }
+      });
+
+      map.on('mouseleave', 'country-highlight', () => {
+        if (hoveredId !== null) {
+          map.setFeatureState(
+            { source: 'country-boundaries', sourceLayer: 'country_boundaries', id: hoveredId },
+            { hover: false }
+          );
+        }
+        hoveredId = null;
+      });
     });
 
     // Animación de rotación automática (opcional)
     let userInteracting = false;
-    let spinEnabled = true;
+    const spinEnabled = true;
 
     function spinGlobe() {
       const zoom = map.getZoom();
       if (spinEnabled && !userInteracting && zoom < 5) {
-        let distancePerSecond = 360 / 120; // Una rotación completa cada 2 minutos
+        const distancePerSecond = 360 / 120; // Una rotación completa cada 2 minutos
         const center = map.getCenter();
         center.lng -= distancePerSecond;
         map.easeTo({ center, duration: 1000, easing: (n) => n });
