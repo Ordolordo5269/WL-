@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import WorldMap from '../components/WorldMap';
 import CountryCard from '../components/CountryCard';
+import CountrySidebar from '../components/CountrySidebar';
 import './index.css';
 
 interface Country {
@@ -31,6 +32,7 @@ function App() {
   return (
     <div className="relative w-full h-full overflow-hidden">
       <WorldMap />
+      <CountrySidebar />
       {/* Pantalla de carga opcional */}
       {isLoading && (
         <div className="absolute inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
