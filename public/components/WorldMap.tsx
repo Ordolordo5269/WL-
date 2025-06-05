@@ -15,8 +15,13 @@ export default function WorldMap() {
       center: [0, 20],
       zoom: 2,
       projection: 'globe', // Proyección de globo 3D
-      antialias: true
+      antialias: true,
+      maxZoom: 22,
+      scrollZoom: { around: 'center' }
     });
+
+    // Ajustar la velocidad de zoom para que sea más suave
+    map.scrollZoom.setWheelZoomRate(1 / 600);
 
     // Habilitar controles de navegación
     map.addControl(new mapboxgl.NavigationControl());
