@@ -2,6 +2,7 @@ import mapboxgl from 'mapbox-gl';
 import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import { useEffect, useRef } from 'react';
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
+import '../src/styles/geocoder.css';
 
 mapboxgl.accessToken = (import.meta as any).env.VITE_MAPBOX_TOKEN;
 
@@ -22,7 +23,7 @@ export default function WorldMap() {
       maxZoom: 20,
       projection: 'globe',
       antialias: true,
-      scrollZoom: true, // Habilitar zoom simple con scroll
+      scrollZoom: true,
       doubleClickZoom: true,
       touchZoomRotate: true,
       boxZoom: true,
@@ -40,6 +41,7 @@ export default function WorldMap() {
       language: 'en',
       placeholder: 'Search country'
     });
+    
     if (geocoderContainer.current) {
       geocoderContainer.current.innerHTML = '';
       geocoderContainer.current.appendChild(geocoder.onAdd(map));
@@ -49,18 +51,18 @@ export default function WorldMap() {
     map.addControl(new mapboxgl.NavigationControl());
     
     // Configurar zoom fluido sin presionar rueda
-    map.scrollZoom.setWheelZoomRate(1/300); // Sensibilidad reducida (era 1/100)
-    map.scrollZoom.setZoomRate(1/100); // Velocidad más lenta (era 1/30)
+    map.scrollZoom.setWheelZoomRate(1/300);
+    map.scrollZoom.setZoomRate(1/100);
     
     // Configurar el globo y capas cuando el mapa esté cargado
     map.on('load', () => {
       // Configurar la atmósfera del globo
       map.setFog({
-        'color': 'rgb(186, 210, 235)', // Color azul claro
-        'high-color': 'rgb(36, 92, 223)', // Color azul más oscuro en el horizonte
-        'horizon-blend': 0.02, // Suavidad del horizonte
-        'space-color': 'rgb(11, 11, 25)', // Color del espacio
-        'star-intensity': 0.6 // Intensidad de las estrellas
+        'color': 'rgb(186, 210, 235)',
+        'high-color': 'rgb(36, 92, 223)',
+        'horizon-blend': 0.02,
+        'space-color': 'rgb(11, 11, 25)',
+        'star-intensity': 0.6
       });
 
       // Fuente y capa para resaltar países al pasar el ratón
@@ -75,11 +77,11 @@ export default function WorldMap() {
         source: 'country-boundaries',
         'source-layer': 'country_boundaries',
         paint: {
-          'fill-color': '#87CEEB', // Color azul cielo más suave
+          'fill-color': '#87CEEB',
           'fill-opacity': [
             'case',
             ['boolean', ['feature-state', 'hover'], false],
-            0.2, // Opacidad mucho más suave (era 0.5)
+            0.2,
             0
           ]
         }
@@ -117,9 +119,9 @@ export default function WorldMap() {
       });
     });
 
-    // Animación de rotación automática (comentado temporalmente)
+    // Animación de rotación automática
     let userInteracting = false;
-    const spinEnabled = false; // Deshabilitado para probar zoom
+    const spinEnabled = false;
 
     function spinGlobe() {
       const zoom = map.getZoom();
@@ -177,7 +179,12 @@ export default function WorldMap() {
         className="fixed inset-0 w-full h-full"
         style={{ cursor: 'grab' }}
       />
-      <div ref={geocoderContainer} className="absolute top-4 right-4 z-10 w-64" />
+      {/* Buscador estilizado posicionado con más espacio desde arriba pero cerca del globo */}
+      <div 
+        ref={geocoderContainer} 
+        className="geocoder-container absolute left-1/2 transform -translate-x-1/2 z-20 w-80"
+        style={{ top: '40px' }}
+      />
     </>
   );
 }
