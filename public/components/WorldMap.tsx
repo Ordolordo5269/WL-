@@ -1,28 +1,14 @@
 import mapboxgl from 'mapbox-gl';
-import { useEffect, useRef, useState } from 'react';
+import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
+import { useEffect, useRef } from 'react';
+import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
 export default function WorldMap() {
   const mapContainer = useRef<HTMLDivElement>(null);
+  const geocoderContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
-  const [query, setQuery] = useState('');
-
-  const handleSearch = async () => {
-    if (!mapRef.current || !query.trim()) return;
-    const encoded = encodeURIComponent(query.trim());
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?types=country&language=en&access_token=${mapboxgl.accessToken}`;
-    try {
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.features && data.features.length > 0) {
-        const [lng, lat] = data.features[0].center;
-        mapRef.current.flyTo({ center: [lng, lat], zoom: 4 });
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
   useEffect(() => {
     if (!mapContainer.current) return;
@@ -37,6 +23,19 @@ export default function WorldMap() {
     });
 
     mapRef.current = map;
+
+    // Buscador de países en inglés
+    const geocoder = new MapboxGeocoder({
+      accessToken: mapboxgl.accessToken,
+      mapboxgl,
+      types: 'country',
+      language: 'en',
+      placeholder: 'Search country'
+    });
+    if (geocoderContainer.current) {
+      geocoderContainer.current.innerHTML = '';
+      geocoderContainer.current.appendChild(geocoder.onAdd(map));
+    }
 
     // Habilitar controles de navegación
     map.addControl(new mapboxgl.NavigationControl());
@@ -153,7 +152,10 @@ export default function WorldMap() {
     spinGlobe();
 
     // Cleanup
-    return () => map.remove();
+    return () => {
+      geocoder.onRemove();
+      map.remove();
+    };
   }, []);
 
   return (
@@ -163,18 +165,7 @@ export default function WorldMap() {
         className="fixed inset-0 w-full h-full"
         style={{ cursor: 'grab' }}
       />
-      <div className="absolute top-4 right-4 z-10">
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') handleSearch();
-          }}
-          placeholder="Search country"
-          className="p-2 rounded bg-white text-black"
-        />
-      </div>
+      <div ref={geocoderContainer} className="absolute top-4 right-4 z-10 w-64" />
     </>
   );
 }

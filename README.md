@@ -33,4 +33,4 @@ The Mapbox token is stored in `.env` and `public/.env` for the frontend. The map
 
 ## Features
 - Interactive 3D globe built with Mapbox GL JS.
-- Search bar to locate countries in English using the Mapbox Geocoding API.
+- Country search powered by the Mapbox Geocoder plugin (English only).
