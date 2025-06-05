@@ -10,8 +10,8 @@ interface Country {
 }
 
 function App() {
-  const [countries, setCountries] = useState<Country[]>([]);
-  const [selected, setSelected] = useState<Country | null>(null);
+  const [, setCountries] = useState<Country[]>([]);
+  const [selected] = useState<Country | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
