@@ -14,12 +14,24 @@ export default function WorldMap() {
       style: 'mapbox://styles/mapbox/navigation-night-v1',
       center: [0, 20],
       zoom: 2,
-      projection: 'globe', // Proyección de globo 3D
-      antialias: true
+      minZoom: 0.5,
+      maxZoom: 20,
+      projection: 'globe',
+      antialias: true,
+      scrollZoom: true, // Habilitar zoom simple con scroll
+      doubleClickZoom: true,
+      touchZoomRotate: true,
+      boxZoom: true,
+      keyboard: true,
+      renderWorldCopies: false
     });
 
     // Habilitar controles de navegación
     map.addControl(new mapboxgl.NavigationControl());
+    
+    // Configurar zoom fluido sin presionar rueda
+    map.scrollZoom.setWheelZoomRate(1/300); // Sensibilidad reducida (era 1/100)
+    map.scrollZoom.setZoomRate(1/100); // Velocidad más lenta (era 1/30)
     
     // Configurar el globo y capas cuando el mapa esté cargado
     map.on('load', () => {
@@ -44,11 +56,11 @@ export default function WorldMap() {
         source: 'country-boundaries',
         'source-layer': 'country_boundaries',
         paint: {
-          'fill-color': '#00BCD4',
+          'fill-color': '#87CEEB', // Color azul cielo más suave
           'fill-opacity': [
             'case',
             ['boolean', ['feature-state', 'hover'], false],
-            0.5,
+            0.2, // Opacidad mucho más suave (era 0.5)
             0
           ]
         }
@@ -86,14 +98,14 @@ export default function WorldMap() {
       });
     });
 
-    // Animación de rotación automática (opcional)
+    // Animación de rotación automática (comentado temporalmente)
     let userInteracting = false;
-    const spinEnabled = true;
+    const spinEnabled = false; // Deshabilitado para probar zoom
 
     function spinGlobe() {
       const zoom = map.getZoom();
       if (spinEnabled && !userInteracting && zoom < 5) {
-        const distancePerSecond = 360 / 120; // Una rotación completa cada 2 minutos
+        const distancePerSecond = 360 / 120;
         const center = map.getCenter();
         center.lng -= distancePerSecond;
         map.easeTo({ center, duration: 1000, easing: (n) => n });
