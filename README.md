@@ -30,3 +30,7 @@ Then open [http://localhost:5173](http://localhost:5173).
 
 ## Mapbox
 The Mapbox token is stored in `.env` and `public/.env` for the frontend. The map style uses `mapbox://styles/mapbox/navigation-night-v1`.
+
+## Features
+- Interactive 3D globe built with Mapbox GL JS.
+- Search bar to locate countries in English using the Mapbox Geocoding API.
