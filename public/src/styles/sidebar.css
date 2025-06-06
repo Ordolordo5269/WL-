@@ -1,0 +1,394 @@
+/* Estilos para el sidebar de países */
+.country-sidebar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 25vw;
+  min-width: 320px;
+  max-width: 450px;
+  height: 100vh;
+  background: rgba(15, 15, 30, 0.95);
+  backdrop-filter: blur(25px);
+  border-left: 1px solid rgba(135, 206, 235, 0.2);
+  color: #ffffff;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.6);
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+}
+
+/* Header del sidebar */
+.sidebar-header {
+  padding: 24px 20px 16px;
+  border-bottom: 1px solid rgba(135, 206, 235, 0.1);
+  background: rgba(15, 15, 30, 0.8);
+}
+
+.sidebar-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sidebar-title::before {
+  content: "🌍";
+  font-size: 18px;
+}
+
+/* Campo de búsqueda */
+.sidebar-header input {
+  width: 100%;
+  background: rgba(30, 30, 50, 0.8);
+  border: 1px solid rgba(135, 206, 235, 0.3);
+  border-radius: 12px;
+  color: #ffffff;
+  padding: 12px 16px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.sidebar-header input:focus {
+  border-color: rgba(59, 130, 246, 0.6);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background: rgba(30, 30, 50, 0.9);
+}
+
+.sidebar-header input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Contenido del sidebar */
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+/* Scrollbar personalizado */
+.sidebar-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-content::-webkit-scrollbar-track {
+  background: rgba(30, 30, 50, 0.3);
+  border-radius: 3px;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb {
+  background: rgba(135, 206, 235, 0.4);
+  border-radius: 3px;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(135, 206, 235, 0.6);
+}
+
+/* Grupos de categorías */
+.mb-2 {
+  margin-bottom: 8px;
+}
+
+/* Botones de categoría con iconos más coloridos */
+.sidebar-content button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(30, 30, 50, 0.6);
+  border: 1px solid rgba(135, 206, 235, 0.15);
+  border-radius: 10px;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+  margin-bottom: 2px;
+}
+
+.sidebar-content button:hover {
+  background: rgba(30, 30, 50, 0.8);
+  border-color: rgba(135, 206, 235, 0.3);
+  transform: translateX(2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.sidebar-content button:active {
+  transform: translateX(1px);
+}
+
+/* Iconos más coloridos y brillantes */
+.sidebar-content button svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  filter: brightness(1.3) saturate(1.5);
+  transition: all 0.3s ease;
+}
+
+.sidebar-content button:hover svg {
+  filter: brightness(1.5) saturate(2) drop-shadow(0 0 8px currentColor);
+  transform: scale(1.1);
+}
+
+/* Colores específicos para cada icono */
+.text-blue-400 {
+  color: #60a5fa !important;
+}
+
+.text-green-400 {
+  color: #4ade80 !important;
+}
+
+.text-purple-400 {
+  color: #c084fc !important;
+}
+
+.text-red-400 {
+  color: #f87171 !important;
+}
+
+.text-yellow-400 {
+  color: #facc15 !important;
+}
+
+.text-cyan-400 {
+  color: #22d3ee !important;
+}
+
+.text-indigo-400 {
+  color: #818cf8 !important;
+}
+
+.text-pink-400 {
+  color: #f472b6 !important;
+}
+
+/* Flecha de expansión */
+.sidebar-content button svg:last-child {
+  margin-left: auto;
+  transition: transform 0.3s ease;
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Contenido expandido */
+.ml-6 {
+  margin-left: 24px;
+  margin-top: 4px;
+}
+
+/* Enlaces de items */
+.sidebar-content a {
+  display: block;
+  padding: 8px 12px;
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+  font-size: 13px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  margin-bottom: 2px;
+}
+
+.sidebar-content a:hover {
+  color: #ffffff;
+  background: rgba(59, 130, 246, 0.2);
+  transform: translateX(4px);
+}
+
+/* Números de items con colores más vibrantes */
+.sidebar-content button .text-xs {
+  background: rgba(135, 206, 235, 0.3) !important;
+  color: rgba(135, 206, 235, 1) !important;
+  font-weight: 600;
+  border: 1px solid rgba(135, 206, 235, 0.4);
+  box-shadow: 0 0 8px rgba(135, 206, 235, 0.2);
+}
+
+/* Footer del sidebar */
+.sidebar-footer {
+  padding: 16px 20px;
+  border-top: 1px solid rgba(135, 206, 235, 0.1);
+  background: rgba(15, 15, 30, 0.8);
+}
+
+.sidebar-counter {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+}
+
+/* Animaciones mejoradas */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.country-sidebar {
+  will-change: transform, opacity;
+  transform: translateZ(0); /* Forzar aceleración por hardware */
+}
+
+/* Responsividad */
+@media (max-width: 1200px) {
+  .country-sidebar {
+    width: 30vw;
+  }
+}
+
+@media (max-width: 768px) {
+  .country-sidebar {
+    width: 50vw;
+    min-width: 300px;
+  }
+}
+
+@media (max-width: 480px) {
+  .country-sidebar {
+    width: 100vw;
+  }
+  
+  .sidebar-header {
+    padding: 20px 16px 12px;
+  }
+  
+  .sidebar-content {
+    padding: 4px;
+  }
+}
+
+/* Estados especiales */
+.category-open {
+  background: rgba(59, 130, 246, 0.15) !important;
+  border-color: rgba(59, 130, 246, 0.4) !important;
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+}
+
+.category-open svg:last-child {
+  transform: rotate(180deg);
+}
+
+/* Efectos de glassmorphism */
+.country-sidebar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(135, 206, 235, 0.1) 0%,
+    rgba(59, 130, 246, 0.05) 50%,
+    rgba(30, 30, 50, 0.1) 100%
+  );
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Elementos ocultos por búsqueda */
+.hidden {
+  display: none !important;
+}
+
+/* Resaltado de búsqueda */
+.search-highlight {
+  background-color: rgba(255, 255, 0, 0.3);
+  padding: 1px 2px;
+  border-radius: 2px;
+}
+
+/* Responsividad mejorada */
+@media (max-width: 1200px) {
+  .country-sidebar {
+    width: 30vw;
+  }
+}
+
+@media (max-width: 768px) {
+  .country-sidebar {
+    width: 50vw;
+    min-width: 300px;
+  }
+}
+
+@media (max-width: 480px) {
+  .country-sidebar {
+    width: 100vw;
+  }
+  
+  .sidebar-header {
+    padding: 20px 16px 12px;
+  }
+  
+  .sidebar-content {
+    padding: 4px;
+  }
+}
+
+/* Estados especiales */
+.category-open {
+  background: rgba(59, 130, 246, 0.15) !important;
+  border-color: rgba(59, 130, 246, 0.4) !important;
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+}
+
+.category-open svg:last-child {
+  transform: rotate(180deg);
+}
+
+/* Efectos de glassmorphism */
+.country-sidebar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(135, 206, 235, 0.1) 0%,
+    rgba(59, 130, 246, 0.05) 50%,
+    rgba(30, 30, 50, 0.1) 100%
+  );
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Elementos ocultos por búsqueda */
+.hidden {
+  display: none !important;
+}
+
+/* Resaltado de búsqueda */
+.search-highlight {
+  background-color: rgba(255, 255, 0, 0.3);
+  padding: 1px 2px;
+  border-radius: 2px;
+}
