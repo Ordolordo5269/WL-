@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import WorldMap from '../components/WorldMap';
 import CountryCard from '../components/CountryCard';
 import CountrySidebar from '../components/CountrySidebar';
+import LeftSidebar from '../components/LeftSidebar';
+import MenuToggleButton from '../components/MenuToggleButton';
 import './index.css';
 import './styles/sidebar.css';
 
@@ -15,6 +17,7 @@ function App() {
   const [countries, setCountries] = useState<Country[]>([]);
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -49,12 +52,40 @@ function App() {
     // Esta función se pasa al WorldMap para exponer resetMapView
   };
 
+  const handleToggleLeftSidebar = () => {
+    setIsLeftSidebarOpen(!isLeftSidebarOpen);
+  };
+
+  const handleCloseLeftSidebar = () => {
+    setIsLeftSidebarOpen(false);
+  };
+
   const selectedCountryData = countries.find(country => 
     country.name.toLowerCase() === selectedCountry?.toLowerCase()
   );
 
   return (
     <div className="relative w-full h-full overflow-hidden">
+      {/* Botón para abrir/cerrar el menú izquierdo */}
+      <MenuToggleButton 
+        isOpen={isLeftSidebarOpen}
+        onClick={handleToggleLeftSidebar}
+      />
+      
+      {/* Sidebar izquierda */}
+      <LeftSidebar 
+        isOpen={isLeftSidebarOpen}
+        onClose={handleCloseLeftSidebar}
+      />
+      
+      {/* Overlay para la sidebar izquierda */}
+      {isLeftSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-30 z-40 transition-opacity duration-300"
+          onClick={handleCloseLeftSidebar}
+        />
+      )}
+      
       <WorldMap 
         onCountrySelect={handleCountrySelect}
         selectedCountry={selectedCountry}

@@ -281,7 +281,7 @@ export default function WorldMap({ onCountrySelect, selectedCountry, onResetView
               }, new mapboxgl.LngLatBounds());
               
               map.fitBounds(bounds, {
-                padding: { top: 100, bottom: 100, left: 100, right: 450 }, // Espacio para el sidebar
+                padding: { top: 50, bottom: 50, left: 200, right: 200 }, // Padding equilibrado para centrar correctamente
                 duration: 1200,
                 maxZoom: 6,
                 easing: (t: number) => {
@@ -387,12 +387,17 @@ export default function WorldMap({ onCountrySelect, selectedCountry, onResetView
       selectedCountryId.current = null;
     }
     
-    // Regresar a la vista principal del globo
+    // Detener cualquier animación en curso
+    mapRef.current.stop();
+    
+    // Regresar a la vista principal del globo con coordenadas exactas
     mapRef.current.easeTo({
-      center: [0, 20],
+      center: [0, 20], // Coordenadas exactas de inicialización
       zoom: 2,
-      duration: 1500,
-      easing: (t: number) => 1 - Math.pow(1 - t, 3)
+      pitch: 0, // Asegurar que no hay inclinación
+      bearing: 0, // Asegurar que no hay rotación
+      duration: 1200,
+      easing: (t: number) => 1 - Math.pow(1 - t, 3) // Mismo easing que la inicialización
     });
   };
 
@@ -400,8 +405,13 @@ export default function WorldMap({ onCountrySelect, selectedCountry, onResetView
   useEffect(() => {
     if (!mapRef.current) return;
     
+    // Solo resetear si selectedCountry cambió de un valor a null
+    // y hay una selección actual en el mapa
     if (!selectedCountry && selectedCountryId.current) {
-      resetMapView();
+      // Pequeño delay para evitar conflictos con otras animaciones
+      setTimeout(() => {
+        resetMapView();
+      }, 100);
     }
   }, [selectedCountry]);
   
