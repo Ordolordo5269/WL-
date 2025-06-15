@@ -1,7 +1,6 @@
-import React from 'react';
+import React, { useRef, useEffect, useMemo, useCallback, useImperativeHandle, forwardRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
-import { useEffect, useRef } from 'react';
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
 import '../src/styles/geocoder.css';
 
@@ -11,13 +10,60 @@ interface WorldMapProps {
   onCountrySelect: (countryName: string) => void;
   selectedCountry: string | null;
   onResetView?: () => void;
+  conflicts?: Array<{
+    id: string;
+    country: string;
+    status: 'War' | 'Warm' | 'Improving';
+    coordinates: { lat: number; lng: number };
+    description: string;
+    casualties: number;
+  }>;
+  onConflictClick?: (conflictId: string) => void;
+  selectedConflictId?: string | null;
 }
 
-export default function WorldMap({ onCountrySelect, selectedCountry, onResetView }: WorldMapProps) {
+const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCountry, onResetView, conflicts = [], onConflictClick, selectedConflictId }, ref) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const geocoderContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const selectedCountryId = useRef<string | number | null>(null);
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const animationFrameRef = useRef<number>();
+
+  // Memoized conflict data for better performance
+  const conflictGeoJSON = useMemo(() => ({
+    type: 'FeatureCollection' as const,
+    features: conflicts.map(conflict => ({
+      type: 'Feature' as const,
+      properties: {
+        id: conflict.id,
+        country: conflict.country,
+        status: conflict.status,
+        description: conflict.description,
+        casualties: conflict.casualties
+      },
+      geometry: {
+        type: 'Point' as const,
+        coordinates: [conflict.coordinates.lng, conflict.coordinates.lat]
+      }
+    }))
+  }), [conflicts]);
+
+  // Optimized map methods
+  const easeTo = useCallback((options: any) => {
+    if (mapRef.current) {
+      mapRef.current.easeTo({
+        ...options,
+        easing: (t: number) => 1 - Math.pow(1 - t, 3) // Smooth easing
+      });
+    }
+  }, []);
+
+  // Exponer métodos del mapa al componente padre
+  useImperativeHandle(ref, () => ({
+    easeTo,
+    getMap: () => mapRef.current
+  }), [easeTo]);
 
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
@@ -37,7 +83,11 @@ export default function WorldMap({ onCountrySelect, selectedCountry, onResetView
       boxZoom: true,
       keyboard: true,
       renderWorldCopies: false,
-      performanceMetricsCollection: false // Mejorar rendimiento
+      performanceMetricsCollection: false, // Mejorar rendimiento
+      optimizeForTerrain: true,
+      fadeDuration: 300, // Smooth transitions
+      crossSourceCollisions: false, // Better performance
+      attributionControl: false // Eliminar marca de agua de Mapbox
     });
 
     mapRef.current = map;
@@ -125,9 +175,25 @@ export default function WorldMap({ onCountrySelect, selectedCountry, onResetView
     // Habilitar controles de navegación
     map.addControl(new mapboxgl.NavigationControl());
     
-    // Configurar zoom fluido sin presionar rueda
-    map.scrollZoom.setWheelZoomRate(1/300);
-    map.scrollZoom.setZoomRate(1/100);
+    // Configurar zoom fluido y suave
+    map.scrollZoom.setWheelZoomRate(1/450); // Más suave
+    map.scrollZoom.setZoomRate(1/150); // Más controlado
+    
+    // Configurar transiciones suaves para el mapa
+    map.on('movestart', () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    });
+    
+    map.on('moveend', () => {
+      // Optimizar renderizado después del movimiento
+      animationFrameRef.current = requestAnimationFrame(() => {
+        if (mapRef.current) {
+          mapRef.current.triggerRepaint();
+        }
+      });
+    });
     
     // Configurar el globo y capas cuando el mapa esté cargado
     map.on('load', () => {
@@ -138,6 +204,194 @@ export default function WorldMap({ onCountrySelect, selectedCountry, onResetView
         'horizon-blend': 0.02,
         'space-color': 'rgb(11, 11, 25)',
         'star-intensity': 0.6
+      });
+
+      // Agregar fuente de datos para conflictos con datos memoizados
+
+      map.addSource('conflicts', {
+        type: 'geojson',
+        data: conflictGeoJSON,
+        cluster: false, // Disable clustering for better performance
+        buffer: 64, // Reduce buffer for better performance
+        maxzoom: 14 // Limit detail at high zoom levels
+      });
+
+      // Estilo futurista avanzado con efectos de cristal y neón
+      // Capa base - núcleo cristalino con gradiente
+      map.addLayer({
+        id: 'conflicts-base',
+        type: 'circle',
+        source: 'conflicts',
+        paint: {
+          'circle-radius': [
+            'case',
+            ['==', ['get', 'status'], 'War'], 8,
+            ['==', ['get', 'status'], 'Warm'], 7,
+            6 // Improving
+          ],
+          'circle-color': [
+            'case',
+            ['==', ['get', 'status'], 'War'], '#8B0000', // Rojo oscuro militar
+            ['==', ['get', 'status'], 'Warm'], '#B8860B', // Amarillo militar oscuro
+            '#32CD32' // Verde lima más visible
+          ],
+          'circle-opacity': 1.0
+        }
+      });
+
+      // Capa de halo interior - efecto cristal mejorado
+      map.addLayer({
+        id: 'conflicts-inner-glow',
+        type: 'circle',
+        source: 'conflicts',
+        paint: {
+          'circle-radius': [
+            'case',
+            ['==', ['get', 'status'], 'War'], 16,
+            ['==', ['get', 'status'], 'Warm'], 14,
+            12 // Improving
+          ],
+          'circle-color': [
+            'case',
+            ['==', ['get', 'status'], 'War'], '#8B0000',
+            ['==', ['get', 'status'], 'Warm'], '#B8860B',
+            '#32CD32'
+          ],
+          'circle-opacity': 0.6,
+          'circle-blur': 1.5
+        }
+      });
+
+      // Capa de aura exterior - efecto neón intensificado
+      map.addLayer({
+        id: 'conflicts-outer-aura',
+        type: 'circle',
+        source: 'conflicts',
+        paint: {
+          'circle-radius': [
+            'case',
+            ['==', ['get', 'status'], 'War'], 24,
+            ['==', ['get', 'status'], 'Warm'], 20,
+            16 // Improving
+          ],
+          'circle-color': [
+            'case',
+            ['==', ['get', 'status'], 'War'], '#8B0000',
+            ['==', ['get', 'status'], 'Warm'], '#B8860B',
+            '#32CD32'
+          ],
+          'circle-opacity': 0.4,
+          'circle-blur': 2.5
+        }
+      });
+
+      // Capa de ondas energéticas - pulso dinámico
+      map.addLayer({
+        id: 'conflicts-energy-wave',
+        type: 'circle',
+        source: 'conflicts',
+        paint: {
+          'circle-radius': [
+            'case',
+            ['==', ['get', 'status'], 'War'], 30,
+            ['==', ['get', 'status'], 'Warm'], 26,
+            22 // Improving
+          ],
+          'circle-color': [
+            'case',
+            ['==', ['get', 'status'], 'War'], '#8B0000',
+            ['==', ['get', 'status'], 'Warm'], '#B8860B',
+            '#32CD32'
+          ],
+          'circle-opacity': 0.5,
+          'circle-blur': 3.5
+        }
+      });
+
+      // Capa de resonancia cristalina - efecto etéreo
+      map.addLayer({
+        id: 'conflicts-crystal-resonance',
+        type: 'circle',
+        source: 'conflicts',
+        paint: {
+          'circle-radius': [
+            'case',
+            ['==', ['get', 'status'], 'War'], 36,
+            ['==', ['get', 'status'], 'Warm'], 32,
+            28 // Improving
+          ],
+          'circle-color': [
+            'case',
+            ['==', ['get', 'status'], 'War'], '#8B0000',
+            ['==', ['get', 'status'], 'Warm'], '#B8860B',
+            '#32CD32'
+          ],
+          'circle-opacity': 0.3,
+          'circle-blur': 4.5
+        }
+      });
+
+      // Animación avanzada y dinámica
+      let energyWave = 0;
+      let crystalResonance = 0;
+      let pulsePhase = 0;
+      let glowIntensity = 0;
+      
+      const animateAdvanced = () => {
+        energyWave = (energyWave + 0.3) % 240;
+        crystalResonance = (crystalResonance + 0.2) % 360;
+        pulsePhase = (pulsePhase + 0.4) % 200;
+        glowIntensity = (glowIntensity + 0.25) % 400;
+        
+        // Onda energética lenta y grave
+        const waveOpacity = (Math.sin(energyWave * 0.02) + Math.sin(energyWave * 0.03) * 0.3 + 1.3) * 0.15;
+        
+        // Resonancia cristalina con respiración profunda
+        const resonanceOpacity = (Math.sin(crystalResonance * 0.01) + Math.cos(crystalResonance * 0.008) + 2) * 0.08;
+        
+        // Pulso lento y dramático para el halo interior
+        const innerGlowOpacity = (Math.sin(pulsePhase * 0.03) + 1) * 0.25 + 0.15;
+        
+        // Aura exterior con ondulación lenta y pesada
+        const outerAuraOpacity = (Math.cos(glowIntensity * 0.015) + Math.sin(glowIntensity * 0.02) + 2) * 0.1;
+        
+        // Efecto de escala lenta y dramática para el núcleo
+        const baseScale = 1 + Math.sin(pulsePhase * 0.025) * 0.2;
+        
+        // Aplicar animaciones
+        map.setPaintProperty('conflicts-energy-wave', 'circle-opacity', Math.max(0, Math.min(1, waveOpacity)));
+        map.setPaintProperty('conflicts-crystal-resonance', 'circle-opacity', Math.max(0, Math.min(1, resonanceOpacity)));
+        map.setPaintProperty('conflicts-inner-glow', 'circle-opacity', Math.max(0, Math.min(1, innerGlowOpacity)));
+        map.setPaintProperty('conflicts-outer-aura', 'circle-opacity', Math.max(0, Math.min(1, outerAuraOpacity)));
+        
+        // Escala dinámica del núcleo
+         map.setPaintProperty('conflicts-base', 'circle-radius', [
+           'case',
+           ['==', ['get', 'status'], 'War'], 6 * baseScale,
+           ['==', ['get', 'status'], 'Warm'], 5 * baseScale,
+           4 * baseScale
+         ]);
+        
+        requestAnimationFrame(animateAdvanced);
+      };
+      animateAdvanced();
+
+      // Eventos para conflictos
+      map.on('click', 'conflicts-base', (e) => {
+        if (e.features && e.features.length > 0 && onConflictClick) {
+          const conflictId = e.features[0].properties?.id;
+          if (conflictId) {
+            onConflictClick(conflictId);
+          }
+        }
+      });
+
+      map.on('mouseenter', 'conflicts-base', () => {
+        map.getCanvas().style.cursor = 'pointer';
+      });
+
+      map.on('mouseleave', 'conflicts-base', () => {
+        map.getCanvas().style.cursor = 'grab';
       });
 
       // Fuente y capa para resaltar países al pasar el ratón
@@ -174,6 +428,46 @@ export default function WorldMap({ onCountrySelect, selectedCountry, onResetView
             'case',
             ['boolean', ['feature-state', 'selected'], false],
             0.5,
+            0
+          ]
+        }
+      });
+
+      // Capa para países involucrados en conflictos (resaltado en rojo)
+      map.addLayer({
+        id: 'country-conflict-highlight',
+        type: 'fill',
+        source: 'country-boundaries',
+        'source-layer': 'country_boundaries',
+        paint: {
+          'fill-color': '#ff6b6b',
+          'fill-opacity': [
+            'case',
+            ['boolean', ['feature-state', 'conflicted'], false],
+            0.4,
+            0
+          ]
+        }
+      });
+
+      // Capa de borde para países en conflicto
+      map.addLayer({
+        id: 'country-conflict-border',
+        type: 'line',
+        source: 'country-boundaries',
+        'source-layer': 'country_boundaries',
+        paint: {
+          'line-color': '#ff6b6b',
+          'line-width': [
+            'case',
+            ['boolean', ['feature-state', 'conflicted'], false],
+            2,
+            0
+          ],
+          'line-opacity': [
+            'case',
+            ['boolean', ['feature-state', 'conflicted'], false],
+            0.6,
             0
           ]
         }
@@ -374,6 +668,112 @@ export default function WorldMap({ onCountrySelect, selectedCountry, onResetView
     };
   }, []); // Solo ejecutar una vez
 
+  // Efecto para actualizar conflictos cuando cambien
+  useEffect(() => {
+    if (!mapRef.current || !mapRef.current.getSource('conflicts')) return;
+
+    const conflictGeoJSON = {
+      type: 'FeatureCollection' as const,
+      features: conflicts.map(conflict => ({
+        type: 'Feature' as const,
+        properties: {
+          id: conflict.id,
+          country: conflict.country,
+          status: conflict.status,
+          description: conflict.description,
+          casualties: conflict.casualties
+        },
+        geometry: {
+          type: 'Point' as const,
+          coordinates: [conflict.coordinates.lng, conflict.coordinates.lat]
+        }
+      }))
+    };
+
+    (mapRef.current.getSource('conflicts') as mapboxgl.GeoJSONSource).setData(conflictGeoJSON);
+  }, [conflicts]);
+
+  // Función para obtener países involucrados en un conflicto
+  const getCountriesInConflict = (conflictId: string): string[] => {
+    const conflict = conflicts.find(c => c.id === conflictId);
+    if (!conflict) return [];
+    
+    // Mapear países basado en el ID del conflicto
+    const countryMappings: { [key: string]: string[] } = {
+      // Conflictos existentes
+      'ukr-001': ['Ukraine', 'Russia'],
+      'syr-001': ['Syria'],
+      'eth-001': ['Ethiopia'],
+      'mmr-001': ['Myanmar'],
+      'afg-001': ['Afghanistan'],
+      'yem-001': ['Yemen', 'Saudi Arabia'],
+      'som-001': ['Somalia'],
+      'col-001': ['Colombia'],
+      'mli-001': ['Mali'],
+      'irq-001': ['Iraq'],
+      'israel-iran-war': ['Israel', 'Iran'],
+      'mexico-drug-war': ['Mexico'],
+      'haiti-gang-violence': ['Haiti'],
+      'post-isis-stabilization-iraq': ['Iraq'],
+      // Nuevos conflictos agregados
+      'myanmar-civil-war': ['Myanmar'],
+      'russia-ukraine-war': ['Ukraine', 'Russia'],
+      'syrian-civil-war': ['Syria'],
+      'yemen-civil-war': ['Yemen', 'Saudi Arabia'],
+      'israel-hamas-war': ['Israel', 'Palestine'],
+      'libya-civil-war': ['Libya'],
+      'sudan-civil-war': ['Sudan'],
+      'somalia-insurgency': ['Somalia'],
+      'nigeria-insurgency': ['Nigeria'],
+      'mozambique-insurgency': ['Mozambique']
+    };
+    
+    return countryMappings[conflictId] || [conflict.country];
+  };
+
+  // Efecto para manejar el resaltado de países en conflicto
+  useEffect(() => {
+    if (!mapRef.current || !mapRef.current.getSource('country-boundaries')) return;
+    
+    const map = mapRef.current;
+    
+    // Limpiar todos los estados de conflicto anteriores
+    const features = map.querySourceFeatures('country-boundaries', {
+      sourceLayer: 'country_boundaries'
+    });
+    
+    features.forEach((feature: any) => {
+      if (feature.id) {
+        map.setFeatureState(
+          { source: 'country-boundaries', sourceLayer: 'country_boundaries', id: feature.id },
+          { conflicted: false }
+        );
+      }
+    });
+    
+    // Si hay un conflicto seleccionado, resaltar los países involucrados
+    if (selectedConflictId) {
+      const countriesInConflict = getCountriesInConflict(selectedConflictId);
+      
+      features.forEach((feature: any) => {
+        if (feature.id && feature.properties) {
+          const countryName = feature.properties.name_en || feature.properties.name || '';
+          const isInConflict = countriesInConflict.some(conflictCountry => 
+            countryName.toLowerCase().includes(conflictCountry.toLowerCase()) ||
+            conflictCountry.toLowerCase().includes(countryName.toLowerCase())
+          );
+          
+          if (isInConflict) {
+            map.setFeatureState(
+              { source: 'country-boundaries', sourceLayer: 'country_boundaries', id: feature.id },
+              { conflicted: true }
+            );
+          }
+        }
+      });
+    }
+  }, [selectedConflictId, conflicts]);
+
   // Función para resetear la vista del mapa
   const resetMapView = () => {
     if (!mapRef.current) return;
@@ -442,4 +842,8 @@ export default function WorldMap({ onCountrySelect, selectedCountry, onResetView
       />
     </>
   );
-}
+});
+
+WorldMap.displayName = 'WorldMap';
+
+export default WorldMap;

@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, Home, Search, Settings, Info, Globe, Users, BarChart3, Map } from 'lucide-react';
-import ConflictTracker from './ConflictTracker';
 
 interface LeftSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   onCenterMap?: (coordinates: { lat: number; lng: number }) => void;
+  onOpenConflictTracker?: () => void;
 }
 
 interface MenuItem {
@@ -16,11 +16,10 @@ interface MenuItem {
   onClick?: () => void;
 }
 
-export default function LeftSidebar({ isOpen, onClose, onCenterMap }: LeftSidebarProps) {
+export default function LeftSidebar({ isOpen, onClose, onCenterMap, onOpenConflictTracker }: LeftSidebarProps) {
   const [activeItem, setActiveItem] = useState<string>('home');
-  const [showConflictTracker, setShowConflictTracker] = useState<boolean>(false);
 
-  const menuItems: MenuItem[] = [
+  const menuItems: MenuItem[] = useMemo(() => [
     {
       icon: <Home className="h-5 w-5" />,
       label: 'Conflict Tracker',
@@ -61,14 +60,14 @@ export default function LeftSidebar({ isOpen, onClose, onCenterMap }: LeftSideba
       label: 'Acerca de',
       href: '#about'
     }
-  ];
+  ], []);
 
-  const handleItemClick = (item: MenuItem, index: number) => {
+  const handleItemClick = useCallback((item: MenuItem, index: number) => {
     setActiveItem(item.label.toLowerCase());
     
     // Handle Conflict Tracker specifically
-    if (item.label === 'Conflict Tracker') {
-      setShowConflictTracker(true);
+    if (item.label === 'Conflict Tracker' && onOpenConflictTracker) {
+      onOpenConflictTracker();
       return;
     }
     
@@ -77,20 +76,13 @@ export default function LeftSidebar({ isOpen, onClose, onCenterMap }: LeftSideba
     }
     // Opcional: cerrar sidebar en móvil después de hacer clic
     // onClose();
-  };
+  }, [onOpenConflictTracker]);
 
-  const handleBackFromConflictTracker = () => {
-    setShowConflictTracker(false);
-    setActiveItem('home');
-  };
+
 
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait">
       {isOpen && (
-        <>
-          {showConflictTracker ? (
-            <ConflictTracker onBack={handleBackFromConflictTracker} onCenterMap={onCenterMap} />
-          ) : (
             <motion.div 
               className="left-sidebar"
               initial={{ x: '-100%', opacity: 0 }}
@@ -98,9 +90,9 @@ export default function LeftSidebar({ isOpen, onClose, onCenterMap }: LeftSideba
               exit={{ x: '-100%', opacity: 0 }}
               transition={{ 
                 type: 'spring',
-                stiffness: 300,
-                damping: 30,
-                duration: 0.3
+                stiffness: 400,
+                damping: 25,
+                mass: 0.8
               }}
             >
               {/* Header */}
@@ -126,8 +118,14 @@ export default function LeftSidebar({ isOpen, onClose, onCenterMap }: LeftSideba
                       className={`left-sidebar-item ${
                         activeItem === item.label.toLowerCase() ? 'active' : ''
                       }`}
-                      whileHover={{ x: 4 }}
-                      whileTap={{ scale: 0.98 }}
+                      whileHover={{ 
+                        x: 8,
+                        transition: { type: 'spring', stiffness: 500, damping: 20 }
+                      }}
+                      whileTap={{ 
+                        scale: 0.98,
+                        transition: { duration: 0.1 }
+                      }}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.05 }}
@@ -159,9 +157,7 @@ export default function LeftSidebar({ isOpen, onClose, onCenterMap }: LeftSideba
                 </div>
               </div>
             </motion.div>
-          )}
-        </>
-      )}
-    </AnimatePresence>
-  );
-}
+        )}
+      </AnimatePresence>
+    );
+  }

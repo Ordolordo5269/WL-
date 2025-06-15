@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Globe, Banknote, Landmark, Shield, Users, Globe2, Cpu, Palette, X } from 'lucide-react';
 
@@ -13,8 +13,10 @@ interface CategoryGroupProps {
 
 function CategoryGroup({ icon, title, items, isOpen, onToggle, searchTerm }: CategoryGroupProps) {
   // Filtrar items basado en el término de búsqueda
-  const filteredItems = items.filter(item => 
-    item.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredItems = useMemo(() => 
+    items.filter(item => 
+      item.toLowerCase().includes(searchTerm.toLowerCase())
+    ), [items, searchTerm]
   );
   
   // Verificar si la categoría coincide con la búsqueda
@@ -24,7 +26,7 @@ function CategoryGroup({ icon, title, items, isOpen, onToggle, searchTerm }: Cat
   const shouldShow = !searchTerm || categoryMatches || filteredItems.length > 0;
   
   // Función para resaltar texto
-  const highlightText = (text: string, highlight: string) => {
+  const highlightText = useCallback((text: string, highlight: string) => {
     if (!highlight) return text;
     
     const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
@@ -32,7 +34,7 @@ function CategoryGroup({ icon, title, items, isOpen, onToggle, searchTerm }: Cat
       part.toLowerCase() === highlight.toLowerCase() ? 
         <span key={index} className="search-highlight">{part}</span> : part
     );
-  };
+  }, []);
   
   if (!shouldShow) return null;
   
@@ -91,15 +93,21 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
   const [searchTerm, setSearchTerm] = useState('');
   const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
 
-  const toggleCategory = (title: string) => {
-    const newOpenCategories = new Set(openCategories);
-    if (newOpenCategories.has(title)) {
-      newOpenCategories.delete(title);
-    } else {
-      newOpenCategories.add(title);
-    }
-    setOpenCategories(newOpenCategories);
-  };
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  }, []);
+
+  const toggleCategory = useCallback((title: string) => {
+    setOpenCategories(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(title)) {
+        newSet.delete(title);
+      } else {
+        newSet.add(title);
+      }
+      return newSet;
+    });
+  }, []);
 
   const categories = [
     {
@@ -212,7 +220,7 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
                 type="text"
                 placeholder="Search country data..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={handleSearchChange}
               />
             </div>
           </div>

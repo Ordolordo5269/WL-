@@ -3,15 +3,13 @@
 
 import {
   Conflict,
-  NewsArticle,
   conflictsDatabase,
-  newsDatabase,
   getConflictsByRegion,
   getConflictsByStatus,
-  getNewsForConflict,
   getAllRegions,
   getConflictById
 } from '../data/conflicts-data';
+import NewsAPIService, { NewsArticle } from './news-api';
 
 export class ConflictService {
   // Get all conflicts
@@ -19,9 +17,26 @@ export class ConflictService {
     return conflictsDatabase;
   }
 
-  // Get all news articles
-  static getAllNews(): NewsArticle[] {
-    return newsDatabase;
+  // Get all news articles from NewsAPI
+  static async getAllNews(): Promise<NewsArticle[]> {
+    return await NewsAPIService.getConflictNews(20);
+  }
+
+  // Get news for specific conflict
+  static async getNewsForConflict(conflictId: string): Promise<NewsArticle[]> {
+    const conflict = getConflictById(conflictId);
+    if (!conflict) return [];
+    
+    return await NewsAPIService.getNewsForConflict(
+      conflictId, 
+      conflict.country, 
+      conflict.conflictType
+    );
+  }
+
+  // Get top conflict headlines
+  static async getTopConflictHeadlines(): Promise<NewsArticle[]> {
+    return await NewsAPIService.getTopConflictHeadlines(10);
   }
 
   // Get conflicts filtered by region and status
@@ -84,6 +99,11 @@ export class ConflictService {
     return getNewsForConflict(conflictId);
   }
 
+  // Get news for a specific country
+  static async getNewsForCountry(country: string): Promise<NewsArticle[]> {
+    return await NewsAPIService.getNewsForCountry(country, 15);
+  }
+
   // Get recent conflicts (last 2 years)
   static getRecentConflicts(): Conflict[] {
     const twoYearsAgo = new Date();
@@ -119,12 +139,12 @@ export class ConflictService {
   }
 
   // Get conflict details with related news
-  static getConflictDetails(conflictId: string): {
+  static async getConflictDetails(conflictId: string): Promise<{
     conflict: Conflict | undefined;
     relatedNews: NewsArticle[];
-  } {
+  }> {
     const conflict = getConflictById(conflictId);
-    const relatedNews = getNewsForConflict(conflictId);
+    const relatedNews = await this.getNewsForConflict(conflictId);
 
     return {
       conflict,
@@ -132,20 +152,24 @@ export class ConflictService {
     };
   }
 
-  // Simulate API call for real-time updates
+  // Fetch latest conflict data with real news from NewsAPI
   static async fetchLatestConflictData(): Promise<{
     conflicts: Conflict[];
     news: NewsArticle[];
   }> {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // In a real implementation, this would fetch from external APIs
-    // like ACLED, Crisis Group, or NewsAPI
-    return {
-      conflicts: conflictsDatabase,
-      news: newsDatabase
-    };
+    try {
+      const news = await NewsAPIService.getConflictNews(15);
+      return {
+        conflicts: conflictsDatabase,
+        news
+      };
+    } catch (error) {
+      console.error('Error fetching latest data:', error);
+      return {
+        conflicts: conflictsDatabase,
+        news: []
+      };
+    }
   }
 
   // Format casualty numbers for display

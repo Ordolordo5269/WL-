@@ -28,114 +28,171 @@ export interface NewsArticle {
 // Mock conflict data based on real-world conflicts
 export const conflictsDatabase: Conflict[] = [
   {
-    id: 'ukr-001',
+    id: 'myanmar-civil-war',
+    country: 'Myanmar',
+    region: 'Asia',
+    conflictType: 'Civil War',
+    description: 'Long-running civil war in Myanmar involving ethnic armed groups (e.g. the Rohingya and Karen) since 1948:contentReference[oaicite:0]{index=0}.',
+    date: '1948-01-04',
+    casualties: 130000,
+    status: 'War',
+    coordinates: { lat: 16.8713, lng: 96.1994 }
+  },
+  {
+    id: 'russia-ukraine-war',
     country: 'Ukraine',
     region: 'Europe',
     conflictType: 'Interstate War',
-    description: 'Ongoing conflict following Russian invasion',
-    date: '2022-02-24',
-    casualties: 500000,
+    description: 'Ongoing war initiated by Russia’s 2014 annexation of Crimea and full-scale invasion in 2022, with intense fighting and heavy casualties:contentReference[oaicite:1]{index=1}.',
+    date: '2014-04-06',
+    casualties: 170521,
     status: 'War',
-    coordinates: { lat: 49.8397, lng: 24.0297 }
+    coordinates: { lat: 50.4500, lng: 30.5233 }
   },
   {
-    id: 'syr-001',
+    id: 'syrian-civil-war',
     country: 'Syria',
     region: 'Middle East',
     conflictType: 'Civil War',
-    description: 'Multi-sided civil war with international involvement',
+    description: 'Civil war between Bashar al-Assad’s government and rebel groups (including jihadists) since 2011, resulting in hundreds of thousands of deaths:contentReference[oaicite:2]{index=2}.',
     date: '2011-03-15',
-    casualties: 350000,
-    status: 'Warm',
-    coordinates: { lat: 34.8021, lng: 38.9968 }
-  },
-  {
-    id: 'eth-001',
-    country: 'Ethiopia',
-    region: 'Africa',
-    conflictType: 'Internal Conflict',
-    description: 'Tigray conflict and ethnic tensions',
-    date: '2020-11-04',
-    casualties: 600000,
-    status: 'Improving',
-    coordinates: { lat: 9.1450, lng: 40.4897 }
-  },
-  {
-    id: 'mmr-001',
-    country: 'Myanmar',
-    region: 'Asia',
-    conflictType: 'Civil Unrest',
-    description: 'Military coup and civilian resistance',
-    date: '2021-02-01',
-    casualties: 4500,
+    casualties: 580000,
     status: 'War',
-    coordinates: { lat: 21.9162, lng: 95.9560 }
+    coordinates: { lat: 33.5131, lng: 36.3094 }
   },
   {
-    id: 'afg-001',
-    country: 'Afghanistan',
-    region: 'Asia',
-    conflictType: 'Political Violence',
-    description: 'Taliban governance and resistance movements',
-    date: '2021-08-15',
-    casualties: 176000,
-    status: 'Warm',
-    coordinates: { lat: 33.9391, lng: 67.7100 }
-  },
-  {
-    id: 'yem-001',
+    id: 'yemen-civil-war',
     country: 'Yemen',
     region: 'Middle East',
     conflictType: 'Civil War',
-    description: 'Saudi-led coalition vs Houthi rebels',
-    date: '2014-09-21',
+    description: 'Civil war between Houthi rebels and the internationally recognized government (backed by a Saudi-led coalition) since 2014:contentReference[oaicite:3]{index=3}.',
+    date: '2014-03-26',
     casualties: 377000,
     status: 'War',
-    coordinates: { lat: 15.5527, lng: 48.5164 }
+    coordinates: { lat: 15.3500, lng: 44.2000 }
   },
   {
-    id: 'som-001',
+    id: 'israel-hamas-war',
+    country: 'Israel/Palestine',
+    region: 'Middle East',
+    conflictType: 'Interstate War',
+    description: 'War began in October 2023 with Hamas attacks on Israel and a subsequent Israeli offensive in Gaza, resulting in tens of thousands of casualties:contentReference[oaicite:4]{index=4}.',
+    date: '2023-10-07',
+    casualties: 57000,
+    status: 'War',
+    coordinates: { lat: 31.5170, lng: 34.4500 }
+  },
+  {
+    id: 'libya-civil-war',
+    country: 'Libya',
+    region: 'Middle East',
+    conflictType: 'Civil War',
+    description: 'Second Libyan Civil War (2014–2020) between rival governments and militias for control of Libya:contentReference[oaicite:5]{index=5}.',
+    date: '2014-07-13',
+    casualties: 14882,
+    status: 'Improving',
+    coordinates: { lat: 32.8854, lng: 13.1802 }
+  },
+  {
+    id: 'sudan-civil-war',
+    country: 'Sudan',
+    region: 'Africa',
+    conflictType: 'Civil War',
+    description: 'Conflict between Sudanese Armed Forces and Rapid Support Forces (a paramilitary group) since April 2023, with widespread fighting and civilian harm:contentReference[oaicite:6]{index=6}.',
+    date: '2023-04-15',
+    casualties: 150000,
+    status: 'War',
+    coordinates: { lat: 15.6000, lng: 32.5000 }
+  },
+  {
+    id: 'somalia-insurgency',
     country: 'Somalia',
     region: 'Africa',
-    conflictType: 'Terrorism',
-    description: 'Al-Shabaab insurgency and clan conflicts',
-    date: '2006-12-20',
-    casualties: 500000,
-    status: 'Warm',
-    coordinates: { lat: 5.1521, lng: 46.1996 }
+    conflictType: 'Insurgency',
+    description: 'Ongoing Islamist insurgency by al-Shabaab against the Somali government and peacekeepers since the early 2000s:contentReference[oaicite:7]{index=7}.',
+    date: '2006-12-28',
+    casualties: 10000,
+    status: 'War',
+    coordinates: { lat: 2.0469, lng: 45.3182 }
   },
   {
-    id: 'col-001',
-    country: 'Colombia',
-    region: 'Americas',
-    conflictType: 'Post-Conflict Violence',
-    description: 'FARC disarmament aftermath and new armed groups',
-    date: '2016-11-24',
-    casualties: 3000,
-    status: 'Improving',
-    coordinates: { lat: 4.5709, lng: -74.2973 }
-  },
-  {
-    id: 'mli-001',
-    country: 'Mali',
+    id: 'nigeria-insurgency',
+    country: 'Nigeria',
     region: 'Africa',
     conflictType: 'Insurgency',
-    description: 'Jihadist groups and French intervention aftermath',
-    date: '2012-01-16',
-    casualties: 15000,
-    status: 'Warm',
-    coordinates: { lat: 17.5707, lng: -3.9962 }
+    description: 'Insurgency by Boko Haram/ISWAP in northeast Nigeria (since 2009) and violence by armed bandits elsewhere, causing tens of thousands of deaths:contentReference[oaicite:8]{index=8}.',
+    date: '2009-07-01',
+    casualties: 20000,
+    status: 'War',
+    coordinates: { lat: 11.8333, lng: 13.1500 }
   },
   {
-    id: 'irq-001',
+    id: 'mozambique-insurgency',
+    country: 'Mozambique',
+    region: 'Africa',
+    conflictType: 'Insurgency',
+    description: 'Insurgent violence in Cabo Delgado (northern Mozambique) since 2017 involving IS-linked militant groups (locally known as al-Shabab), causing widespread displacement:contentReference[oaicite:9]{index=9}.',
+    date: '2017-10-05',
+    casualties: 3000,
+    status: 'Improving',
+    coordinates: { lat: -12.9732, lng: 40.5178 }
+  },
+  {
+    id: 'mexico-drug-war',
+    country: 'Mexico',
+    region: 'Americas',
+    conflictType: 'Internal Conflict',
+    description: 'Ongoing conflict between Mexican security forces and powerful drug cartels since 2006 (the “Drug War”), with tens of thousands killed:contentReference[oaicite:10]{index=10}.',
+    date: '2006-12-11',
+    casualties: 41034,
+    status: 'War',
+    coordinates: { lat: 19.4326, lng: -99.1332 }
+  },
+  {
+    id: 'israel-iran-war',
+    country: 'Israel/Iran',
+    region: 'Middle East',
+    conflictType: 'Interstate War',
+    description: 'Guerra declarada el 13 de junio de 2025 tras ataques aéreos israelíes («Operation Rising Lion») contra instalaciones nucleares y militares en Irán, seguidos de intensos contraataques iraníes con misiles y drones («Operation True Promise III»).',
+    date: '2025-06-13',
+    casualties:  (104 + 14), // Estimado de víctimas combinadas hasta el 15 de junio de 2025
+    status: 'War',
+    coordinates: { lat: 32.0000, lng: 35.0000 }
+  },
+  
+  {
+    id: 'haiti-gang-violence',
+    country: 'Haiti',
+    region: 'Americas',
+    conflictType: 'Civil Unrest',
+    description: 'Intense gang violence and political instability in Haiti (especially Port-au-Prince) since 2017, marked by kidnappings and deadly clashes.',
+    date: '2017-02-07',
+    casualties: 3000,
+    status: 'War',
+    coordinates: { lat: 18.5333, lng: -72.3333 }
+  },
+  
+  {
+    id: 'post-isis-stabilization-iraq',
     country: 'Iraq',
     region: 'Middle East',
     conflictType: 'Post-ISIS Stabilization',
-    description: 'Reconstruction and remaining ISIS cells',
-    date: '2017-12-09',
-    casualties: 7500,
+    description: 'Low-level insurgent violence by Islamic State remnants after ISIS lost control of territory (officially declared defeated in 2017):contentReference[oaicite:11]{index=11}.',
+    date: '2017-12-10',
+    casualties: 16000,
     status: 'Improving',
-    coordinates: { lat: 33.2232, lng: 43.6793 }
+    coordinates: { lat: 33.3153, lng: 44.3661 }
+  },
+  {
+    id: 'drc-ituri-conflict',
+    country: 'Democratic Republic of the Congo',
+    region: 'Africa',
+    conflictType: 'Internal Conflict',
+    description: 'Low‑intensity, ongoing conflict between ethnic Lendu and Hema militias in Ituri province, with periodic outbreaks of violence and high civilian displacement. Ha habido repuntes importantes desde 2017, aunque en niveles menores que en picos anteriores.',
+    date: '2003-01-01',
+    casualties: 13000, // ~527 entre 2007‑2017 y 3243 entre 2017‑2020, más violencia posterior hasta 2024
+    status: 'Warm',
+    coordinates: { lat: 1.5000, lng: 30.0000 }
   }
 ];
 
