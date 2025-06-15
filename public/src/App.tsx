@@ -43,9 +43,8 @@ function App() {
     setIsSidebarOpen(false);
     setSelectedCountry(null);
     // Resetear la vista del mapa a la vista principal del globo
-    const win = window as Window & { resetMapView?: () => void };
-    if (win.resetMapView) {
-      win.resetMapView();
+    if ((window as any).resetMapView) {
+      (window as any).resetMapView();
     }
   };
 
