@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Conflict, NewsArticle } from '../data/conflicts-data';
 import ConflictService from '../services/conflict-service';
-import { ArrowLeft, AlertTriangle, TrendingUp, TrendingDown, Calendar, Users, MapPin, ExternalLink } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Calendar, Users, MapPin, ExternalLink } from 'lucide-react';
 
 interface ConflictTrackerProps {
   onBack: () => void;
@@ -10,11 +10,9 @@ interface ConflictTrackerProps {
 }
 
 export default function ConflictTracker({ onBack, onCenterMap }: ConflictTrackerProps) {
-  const [conflicts, setConflicts] = useState<Conflict[]>([]);
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<string>('All');
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
-  const [selectedConflict, setSelectedConflict] = useState<Conflict | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   // Load data on component mount
@@ -23,12 +21,10 @@ export default function ConflictTracker({ onBack, onCenterMap }: ConflictTracker
       try {
         setLoading(true);
         const data = await ConflictService.fetchLatestConflictData();
-        setConflicts(data.conflicts);
         setNews(data.news);
       } catch (error) {
         console.error('Error loading conflict data:', error);
         // Fallback to static data
-        setConflicts(ConflictService.getAllConflicts());
         setNews(ConflictService.getAllNews());
       } finally {
         setLoading(false);
@@ -54,7 +50,6 @@ export default function ConflictTracker({ onBack, onCenterMap }: ConflictTracker
     if (onCenterMap) {
       onCenterMap(conflict.coordinates);
     }
-    setSelectedConflict(conflict);
   };
 
   if (loading) {
