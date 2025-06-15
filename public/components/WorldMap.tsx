@@ -5,7 +5,13 @@ import { useEffect, useRef } from 'react';
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
 import '../src/styles/geocoder.css';
 
-mapboxgl.accessToken = (import.meta as any).env.VITE_MAPBOX_TOKEN;
+interface EnvMeta {
+  VITE_MAPBOX_TOKEN: string;
+}
+
+mapboxgl.accessToken = (
+  import.meta as unknown as { env: EnvMeta }
+).env.VITE_MAPBOX_TOKEN;
 
 interface WorldMapProps {
   onCountrySelect: (countryName: string) => void;
@@ -19,6 +25,7 @@ export default function WorldMap({ onCountrySelect, selectedCountry, onResetView
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const selectedCountryId = useRef<string | number | null>(null);
 
+  // Este efecto inicializa el mapa y depende de onCountrySelect
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
     
@@ -45,7 +52,7 @@ export default function WorldMap({ onCountrySelect, selectedCountry, onResetView
     // Buscador de países en inglés
     const geocoder = new MapboxGeocoder({
       accessToken: mapboxgl.accessToken as string,
-      mapboxgl: mapboxgl as any,
+      mapboxgl,
       types: 'country',
       language: 'en',
       placeholder: 'Search country',
@@ -372,7 +379,7 @@ export default function WorldMap({ onCountrySelect, selectedCountry, onResetView
         mapRef.current = null;
       }
     };
-  }, []); // Solo ejecutar una vez
+  }, [onCountrySelect]);
 
   // Función para resetear la vista del mapa
   const resetMapView = () => {
@@ -419,13 +426,14 @@ export default function WorldMap({ onCountrySelect, selectedCountry, onResetView
   useEffect(() => {
     if (onResetView) {
       // Asignar la función de reset al callback
-      (window as any).resetMapView = resetMapView;
+      (window as { resetMapView?: () => void }).resetMapView = resetMapView;
     }
   }, [onResetView]);
   
   // Efecto separado para manejar la función de selección
+  // Este efecto se ejecuta cuando cambia onCountrySelect pero no recrea el mapa
   useEffect(() => {
-    // Este efecto se ejecuta cuando cambia onCountrySelect pero no recrea el mapa
+    // Intentionally left blank
   }, [onCountrySelect]);
 
   return (
