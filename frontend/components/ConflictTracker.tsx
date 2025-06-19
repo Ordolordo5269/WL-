@@ -4,7 +4,6 @@ import { Conflict } from '../data/conflicts-data';
 import ConflictService from '../services/conflict-service';
 import { NewsArticle } from '../services/news-api';
 import { ArrowLeft, AlertTriangle, TrendingUp, TrendingDown, Calendar, Users, MapPin, ExternalLink } from 'lucide-react';
-
 interface ConflictTrackerProps {
   onBack: () => void;
   onCenterMap?: (coordinates: { lat: number; lng: number }) => void;
@@ -185,20 +184,21 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect 
       {/* Header */}
       <div className="conflict-tracker-header">
         <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
+          {/* Back Button - More prominent */}
+          <div className="flex items-center justify-between mb-6">
             <motion.button
               onClick={handleBack}
-              className="relative p-3 rounded-xl bg-gradient-to-br from-slate-800/60 to-slate-900/80 border border-slate-700/50 hover:border-blue-400/50 backdrop-blur-sm shadow-lg hover:shadow-blue-500/20 transition-all duration-500 group overflow-hidden"
-              whileHover={{ scale: 1.05, rotateY: 5 }}
+              className="relative p-4 rounded-xl bg-gradient-to-br from-red-500/20 to-red-600/30 border border-red-400/50 hover:border-red-300/70 backdrop-blur-sm shadow-lg hover:shadow-red-500/30 transition-all duration-500 group overflow-hidden"
+              whileHover={{ scale: 1.08, rotateY: 5 }}
               whileTap={{ scale: 0.95 }}
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/10 to-purple-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <ArrowLeft className="relative h-5 w-5 text-slate-300 group-hover:text-blue-400 transition-all duration-300 group-hover:drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+              <div className="absolute inset-0 bg-gradient-to-r from-red-500/0 via-red-500/20 to-red-600/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <ArrowLeft className="relative h-6 w-6 text-red-300 group-hover:text-red-200 transition-all duration-300 group-hover:drop-shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
             </motion.button>
-            <h2 className="text-xl font-bold text-white bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+            <h2 className="text-2xl font-bold text-white bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
               🌍 Conflict Tracker
             </h2>
-            <div className="w-10"></div>
+            <div className="w-16"></div>
           </div>
           
           {/* Tab Navigation */}
