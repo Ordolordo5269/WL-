@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, AlertTriangle, TrendingUp, TrendingDown, Calendar, Users, MapPin, ExternalLink, X, Globe, Filter, ChevronDown } from 'lucide-react';
 import { Conflict } from '../data/conflicts-data';
 import ConflictService from '../services/conflict-service';
 import { NewsArticle } from '../services/news-api';
-import { ArrowLeft, AlertTriangle, TrendingUp, TrendingDown, Calendar, Users, MapPin, ExternalLink } from 'lucide-react';
+import { useConflictActions, ConflictActionHandlers } from '../services/conflict-actions';
 interface ConflictTrackerProps {
   onBack: () => void;
   onCenterMap?: (coordinates: { lat: number; lng: number }) => void;
@@ -16,15 +17,16 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect 
   const [selectedRegion, setSelectedRegion] = useState<string>('All');
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
   const [selectedNewsRegion, setSelectedNewsRegion] = useState<string>('All');
-  const [selectedConflict, setSelectedConflict] = useState<Conflict | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [newsLoading, setNewsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'conflicts' | 'news'>('conflicts');
 
   // Load data on component mount
   useEffect(() => {
     const loadData = async () => {
       try {
+        setError(null);
         setLoading(true);
         setNewsLoading(true);
         
@@ -38,6 +40,7 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect 
         setNews(newsData);
       } catch (error) {
         console.error('Error loading conflict data:', error);
+        setError('Failed to load conflict data. Please try again later.');
         // Fallback to static data
         setConflicts(ConflictService.getAllConflicts());
       } finally {
@@ -120,24 +123,14 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect 
     ), [selectedRegion, selectedStatus]
   );
 
-  // Optimized handlers with useCallback
-  const handleConflictClick = useCallback((conflict: Conflict) => {
-    if (onCenterMap) {
-      onCenterMap(conflict.coordinates);
-    }
-    setSelectedConflict(conflict);
-    if (onConflictSelect) {
-      onConflictSelect(conflict.id);
-    }
-  }, [onCenterMap, onConflictSelect]);
-
-  // Limpiar selección cuando se cierra el tracker
-  const handleBack = useCallback(() => {
-    if (onConflictSelect) {
-      onConflictSelect(null);
-    }
-    onBack();
-  }, [onConflictSelect, onBack]);
+  // Use conflict actions service
+  const conflictActionHandlers: ConflictActionHandlers = {
+    onCenterMap,
+    onConflictSelect,
+    onBack
+  };
+  
+  const { handleConflictClick, handleBack } = useConflictActions(conflictActionHandlers);
 
   // Optimized tab change handler
   const handleTabChange = useCallback((tab: 'conflicts' | 'news') => {
@@ -183,60 +176,66 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect 
     >
       {/* Header */}
       <div style={{
-        padding: '16px',
+        padding: '16px 16px 16px 16px',
         backgroundColor: 'rgba(15, 23, 42, 0.5)',
         backdropFilter: 'blur(8px)',
         borderBottom: '1px solid rgba(51, 65, 85, 0.5)',
         background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.6) 100%)'
       }}>
-        {/* Header Row */}
-        <div className="flex items-center justify-between mb-3">
-          {/* Back Button */}
+        {/* Main Title */}
+        <div style={{ 
+          textAlign: 'center', 
+          marginBottom: '16px', 
+          paddingTop: '8px',
+          marginLeft: '40px', // Espacio para evitar el botón del menú
+          marginRight: '40px' // Espacio para evitar el botón de cerrar
+        }}>
+          <h1 style={{
+            fontSize: '22px',
+            fontWeight: 'bold',
+            color: '#ffffff',
+            letterSpacing: '0.1em',
+            textShadow: '0 2px 8px rgba(0, 0, 0, 0.5)',
+            margin: '0'
+          }}>
+            CONFLICT TRACKER
+          </h1>
+        </div>
+        
+        {/* Close Button - Top Right */}
+        <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 10 }}>
           <motion.button
             onClick={handleBack}
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              padding: '6px 10px',
-              background: 'linear-gradient(to right, rgba(30, 41, 59, 0.6), rgba(51, 65, 85, 0.6))',
-              border: '1px solid rgba(71, 85, 105, 0.4)',
+              justifyContent: 'center',
+              width: '32px',
+              height: '32px',
+              background: 'linear-gradient(to right, rgba(239, 68, 68, 0.6), rgba(220, 38, 38, 0.6))',
+              border: '1px solid rgba(239, 68, 68, 0.4)',
               borderRadius: '8px',
-              color: '#cbd5e1',
-              fontSize: '12px',
-              fontWeight: '500',
-              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+              color: '#ffffff',
+              fontSize: '16px',
+              fontWeight: '600',
+              boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
               backdropFilter: 'blur(8px)',
               cursor: 'pointer',
               transition: 'all 0.3s ease'
             }}
-            whileHover={{ scale: 1.05, y: -1 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.1, rotate: 90 }}
+            whileTap={{ scale: 0.9 }}
             onMouseEnter={(e) => {
-              e.target.style.background = 'linear-gradient(to right, rgba(51, 65, 85, 0.8), rgba(71, 85, 105, 0.8))';
-              e.target.style.color = '#ffffff';
+              e.target.style.background = 'linear-gradient(to right, rgba(239, 68, 68, 0.8), rgba(220, 38, 38, 0.8))';
+              e.target.style.boxShadow = '0 6px 16px rgba(239, 68, 68, 0.4)';
             }}
             onMouseLeave={(e) => {
-              e.target.style.background = 'linear-gradient(to right, rgba(30, 41, 59, 0.6), rgba(51, 65, 85, 0.6))';
-              e.target.style.color = '#cbd5e1';
+              e.target.style.background = 'linear-gradient(to right, rgba(239, 68, 68, 0.6), rgba(220, 38, 38, 0.6))';
+              e.target.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.3)';
             }}
           >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            <span>Back</span>
+            <X className="h-4 w-4" />
           </motion.button>
-          
-          {/* Compact Title */}
-          <div style={{ textAlign: 'center', flex: '1', margin: '0 16px' }}>
-            <h1 style={{
-              fontSize: '18px',
-              fontWeight: 'bold',
-              color: '#ffffff',
-              letterSpacing: '0.05em',
-              textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)'
-            }}>
-               CONFLICT TRACKER
-            </h1>
-          </div>
         </div>
         
         {/* Tab Navigation */}
@@ -343,6 +342,18 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect 
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto"></div>
                 <p className="text-slate-400 mt-2">Loading conflicts...</p>
               </div>
+            ) : error ? (
+              <div className="p-6 bg-red-900/20 rounded-xl border border-red-500/20 text-center">
+                <AlertTriangle className="h-8 w-8 text-red-400 mx-auto mb-2" />
+                <p className="text-red-300 text-sm mb-1">Error Loading Data</p>
+                <p className="text-red-400 text-xs">{error}</p>
+              </div>
+            ) : filteredConflicts.length === 0 ? (
+              <div className="p-6 bg-slate-800/20 rounded-xl border border-orange-500/10 text-center">
+                <AlertTriangle className="h-8 w-8 text-orange-400 mx-auto mb-2" />
+                <p className="text-slate-300 text-sm mb-1">No conflicts found</p>
+                <p className="text-slate-400 text-xs">Try adjusting your filters</p>
+              </div>
             ) : (
               <div className="grid gap-4">
                 {filteredConflicts.map((conflict, index) => (
@@ -374,11 +385,15 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect 
                     <div className="relative flex items-center justify-between text-xs text-slate-400">
                       <div className="flex items-center">
                         <Users className="h-3 w-3 mr-1" />
-                        <span>{formatCasualties(conflict.casualties)} casualties</span>
+                        <span className="font-medium">{formatCasualties(conflict.casualties)} casualties</span>
                       </div>
                       <div className="flex items-center">
                         <Calendar className="h-3 w-3 mr-1" />
-                        <span>{new Date(conflict.date).toLocaleDateString()}</span>
+                        <span>{new Date(conflict.date).toLocaleDateString('en-US', { 
+                          year: 'numeric', 
+                          month: 'short', 
+                          day: 'numeric' 
+                        })}</span>
                       </div>
                     </div>
                   </motion.div>
@@ -420,7 +435,11 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect 
                       {article.title}
                     </h4>
                     <p className="relative text-xs text-slate-400 mb-2">
-                      {article.source} • {new Date(article.date).toLocaleDateString()}
+                      {article.source} • {new Date(article.date).toLocaleDateString('en-US', { 
+                        year: 'numeric', 
+                        month: 'short', 
+                        day: 'numeric' 
+                      })}
                     </p>
                     {article.description && (
                       <p className="relative text-xs text-slate-300 line-clamp-2">
