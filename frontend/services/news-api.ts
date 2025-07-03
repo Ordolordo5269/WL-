@@ -1,35 +1,6 @@
-// NewsAPI integration service
-
-export interface NewsAPIArticle {
-  source: {
-    id: string | null;
-    name: string;
-  };
-  author: string | null;
-  title: string;
-  description: string | null;
-  url: string;
-  urlToImage: string | null;
-  publishedAt: string;
-  content: string | null;
-}
-
-export interface NewsAPIResponse {
-  status: string;
-  totalResults: number;
-  articles: NewsAPIArticle[];
-}
-
-export interface NewsArticle {
-  id: string;
-  title: string;
-  source: string;
-  date: string;
-  url: string;
-  conflictId?: string;
-  description?: string;
-  imageUrl?: string;
-}
+// News API integration service
+import type { NewsAPIArticle, NewsAPIResponse, NewsArticle } from '../src/types/index';
+import { ErrorHandler } from '../src/utils/errorHandler.js';
 
 class NewsAPIService {
   private static readonly API_KEY = '293aef4458c249c29d718a7664779a30';
@@ -71,7 +42,7 @@ class NewsAPIService {
       
       return filteredArticles.map(article => this.convertToNewsArticle(article));
     } catch (error) {
-      console.error('Error fetching conflict news:', error);
+      ErrorHandler.logAPIError('NewsAPI', 'fetchConflictNews', error);
       return [];
     }
   }
@@ -90,7 +61,7 @@ class NewsAPIService {
       const data: NewsAPIResponse = await response.json();
       return data.articles.map(article => this.convertToNewsArticle(article));
     } catch (error) {
-      console.error(`Error fetching news for ${country}:`, error);
+      ErrorHandler.logAPIError('NewsAPI', `fetchNewsForCountry(${country})`, error);
       return [];
     }
   }
@@ -124,7 +95,7 @@ class NewsAPIService {
       const data: NewsAPIResponse = await response.json();
       return data.articles.map(article => this.convertToNewsArticle(article, conflictId));
     } catch (error) {
-      console.error(`Error fetching news for conflict ${conflictId}:`, error);
+      ErrorHandler.logAPIError('NewsAPI', `fetchNewsForConflict(${conflictId})`, error);
       return [];
     }
   }
@@ -153,7 +124,7 @@ class NewsAPIService {
       
       return conflictArticles.slice(0, 10).map(article => this.convertToNewsArticle(article));
     } catch (error) {
-      console.error('Error fetching top conflict headlines:', error);
+      ErrorHandler.logAPIError('NewsAPI', 'fetchTopConflictHeadlines', error);
       return [];
     }
   }

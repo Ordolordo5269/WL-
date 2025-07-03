@@ -1,8 +1,10 @@
-import React, { useRef, useEffect, useMemo, useCallback, useImperativeHandle, forwardRef } from 'react';
+import React, { useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
 import '../src/styles/geocoder.css';
+import { ConflictVisualization } from '../services/conflict-tracker/conflict-visualization';
+import { ConflictDataManager, type ConflictData } from '../services/conflict-tracker/conflict-data-manager';
 
 mapboxgl.accessToken = (import.meta as any).env.VITE_MAPBOX_TOKEN;
 
@@ -10,14 +12,7 @@ interface WorldMapProps {
   onCountrySelect: (countryName: string) => void;
   selectedCountry: string | null;
   onResetView?: () => void;
-  conflicts?: Array<{
-    id: string;
-    country: string;
-    status: 'War' | 'Warm' | 'Improving';
-    coordinates: { lat: number; lng: number };
-    description: string;
-    casualties: number;
-  }>;
+  conflicts?: ConflictData[];
   onConflictClick?: (conflictId: string) => void;
   selectedConflictId?: string | null;
 }
@@ -29,25 +24,7 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
   const selectedCountryId = useRef<string | number | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const animationFrameRef = useRef<number>();
-
-  // Memoized conflict data for better performance
-  const conflictGeoJSON = useMemo(() => ({
-    type: 'FeatureCollection' as const,
-    features: conflicts.map(conflict => ({
-      type: 'Feature' as const,
-      properties: {
-        id: conflict.id,
-        country: conflict.country,
-        status: conflict.status,
-        description: conflict.description,
-        casualties: conflict.casualties
-      },
-      geometry: {
-        type: 'Point' as const,
-        coordinates: [conflict.coordinates.lng, conflict.coordinates.lat]
-      }
-    }))
-  }), [conflicts]);
+  const conflictDataManager = useRef<ConflictDataManager>(new ConflictDataManager());
 
   // Optimized map methods
   const easeTo = useCallback((options: any) => {
@@ -84,7 +61,7 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
       keyboard: true,
       renderWorldCopies: false,
       performanceMetricsCollection: false, // Mejorar rendimiento
-      optimizeForTerrain: true,
+      
       fadeDuration: 300, // Smooth transitions
       crossSourceCollisions: false, // Better performance
       attributionControl: false // Eliminar marca de agua de Mapbox
@@ -206,118 +183,11 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
         'star-intensity': 0.6
       });
 
-      // Agregar fuente de datos para conflictos optimizada
-      map.addSource('conflicts', {
-        type: 'geojson',
-        data: conflictGeoJSON,
-        cluster: false,
-        buffer: 32, // Reduced buffer for better performance
-        maxzoom: 12, // Lower maxzoom to reduce detail at high zoom
-        tolerance: 0.375 // Simplify geometries for better performance
-      });
+      // Initialize conflict data manager and add conflict source
+      conflictDataManager.current.initialize(map);
+      conflictDataManager.current.addConflictSource(conflicts);
 
-      // Optimized conflict visualization - only 2 layers instead of 5
-      // Main conflict marker
-      map.addLayer({
-        id: 'conflicts-base',
-        type: 'circle',
-        source: 'conflicts',
-        paint: {
-          'circle-radius': [
-            'case',
-            ['==', ['get', 'status'], 'War'], 7,
-            ['==', ['get', 'status'], 'Warm'], 6,
-            5 // Improving
-          ],
-          'circle-color': [
-            'case',
-            ['==', ['get', 'status'], 'War'], '#DC2626', // Bright red
-            ['==', ['get', 'status'], 'Warm'], '#F59E0B', // Amber
-            '#10B981' // Emerald
-          ],
-          'circle-opacity': 0.9,
-          'circle-stroke-width': 2,
-          'circle-stroke-color': [
-            'case',
-            ['==', ['get', 'status'], 'War'], '#FCA5A5',
-            ['==', ['get', 'status'], 'Warm'], '#FDE68A',
-            '#A7F3D0'
-          ],
-          'circle-stroke-opacity': 0.8
-        }
-      });
-
-      // Simple glow effect - single layer without blur
-      map.addLayer({
-        id: 'conflicts-glow',
-        type: 'circle',
-        source: 'conflicts',
-        paint: {
-          'circle-radius': [
-            'case',
-            ['==', ['get', 'status'], 'War'], 14,
-            ['==', ['get', 'status'], 'Warm'], 12,
-            10 // Improving
-          ],
-          'circle-color': [
-            'case',
-            ['==', ['get', 'status'], 'War'], '#DC2626',
-            ['==', ['get', 'status'], 'Warm'], '#F59E0B',
-            '#10B981'
-          ],
-          'circle-opacity': 0.3
-        }
-      });
-
-      // Simplified animation - less CPU intensive
-      let pulsePhase = 0;
-      let animationId: number;
-      
-      const animateConflicts = () => {
-        pulsePhase = (pulsePhase + 0.02) % (Math.PI * 2); // Slower animation
-        
-        // Simple pulse effect for glow layer only
-        const glowOpacity = 0.2 + Math.sin(pulsePhase) * 0.1;
-        
-        try {
-          map.setPaintProperty('conflicts-glow', 'circle-opacity', glowOpacity);
-        } catch (error) {
-          // Silently handle errors if layer doesn't exist
-        }
-        
-        animationId = requestAnimationFrame(animateConflicts);
-      };
-      
-      // Start animation
-      animateConflicts();
-      
-      // Cleanup function for animation
-      const cleanupAnimation = () => {
-        if (animationId) {
-          cancelAnimationFrame(animationId);
-        }
-      };
-      
-      // Store cleanup function for later use
-      (map as any)._conflictAnimationCleanup = cleanupAnimation;
-
-      // Eventos para conflictos
-      map.on('click', 'conflicts-base', (e) => {
-        if (e.features && e.features.length > 0 && onConflictClick) {
-          const conflictId = e.features[0].properties?.id;
-          if (conflictId) {
-            onConflictClick(conflictId);
-          }
-        }
-      });
-
-      map.on('mouseenter', 'conflicts-base', () => {
-        map.getCanvas().style.cursor = 'pointer';
-      });
-
-      map.on('mouseleave', 'conflicts-base', () => {
-        map.getCanvas().style.cursor = 'grab';
-      });
+      // Conflict visualization is now handled by CountryConflictVisualization
 
       // Fuente y capa para resaltar países al pasar el ratón
       map.addSource('country-boundaries', {
@@ -358,45 +228,9 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
         }
       });
 
-      // Capa para países involucrados en conflictos (resaltado en rojo)
-      map.addLayer({
-        id: 'country-conflict-highlight',
-        type: 'fill',
-        source: 'country-boundaries',
-        'source-layer': 'country_boundaries',
-        paint: {
-          'fill-color': '#ff6b6b',
-          'fill-opacity': [
-            'case',
-            ['boolean', ['feature-state', 'conflicted'], false],
-            0.4,
-            0
-          ]
-        }
-      });
-
-      // Capa de borde para países en conflicto
-      map.addLayer({
-        id: 'country-conflict-border',
-        type: 'line',
-        source: 'country-boundaries',
-        'source-layer': 'country_boundaries',
-        paint: {
-          'line-color': '#ff6b6b',
-          'line-width': [
-            'case',
-            ['boolean', ['feature-state', 'conflicted'], false],
-            2,
-            0
-          ],
-          'line-opacity': [
-            'case',
-            ['boolean', ['feature-state', 'conflicted'], false],
-            0.6,
-            0
-          ]
-        }
-      });
+      // Agregar capas de visualización de conflictos (relleno, borde, marcadores)
+      const conflictGeoJSON = conflictsToGeoJSON(conflicts);
+      ConflictVisualization.addLayers(map, 'country-boundaries', conflictGeoJSON);
 
       let hoveredId: number | string | null = null;
       let hoverTimeout: NodeJS.Timeout | null = null;
@@ -586,6 +420,9 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
       if (geocoder) {
         geocoder.onRemove();
       }
+      if (conflictDataManager.current) {
+        conflictDataManager.current.cleanup();
+      }
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
@@ -595,109 +432,19 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
 
   // Efecto para actualizar conflictos cuando cambien
   useEffect(() => {
-    if (!mapRef.current || !mapRef.current.getSource('conflicts')) return;
-
-    const conflictGeoJSON = {
-      type: 'FeatureCollection' as const,
-      features: conflicts.map(conflict => ({
-        type: 'Feature' as const,
-        properties: {
-          id: conflict.id,
-          country: conflict.country,
-          status: conflict.status,
-          description: conflict.description,
-          casualties: conflict.casualties
-        },
-        geometry: {
-          type: 'Point' as const,
-          coordinates: [conflict.coordinates.lng, conflict.coordinates.lat]
-        }
-      }))
-    };
-
-    (mapRef.current.getSource('conflicts') as mapboxgl.GeoJSONSource).setData(conflictGeoJSON);
+    if (conflictDataManager.current.hasConflictSource()) {
+      conflictDataManager.current.updateConflictData(conflicts);
+    }
   }, [conflicts]);
 
-  // Función para obtener países involucrados en un conflicto
-  const getCountriesInConflict = (conflictId: string): string[] => {
-    const conflict = conflicts.find(c => c.id === conflictId);
-    if (!conflict) return [];
-    
-    // Mapear países basado en el ID del conflicto
-    const countryMappings: { [key: string]: string[] } = {
-      // Conflictos existentes
-      'ukr-001': ['Ukraine', 'Russia'],
-      'syr-001': ['Syria'],
-      'eth-001': ['Ethiopia'],
-      'mmr-001': ['Myanmar'],
-      'afg-001': ['Afghanistan'],
-      'yem-001': ['Yemen', 'Saudi Arabia'],
-      'som-001': ['Somalia'],
-      'col-001': ['Colombia'],
-      'mli-001': ['Mali'],
-      'irq-001': ['Iraq'],
-      'israel-iran-war': ['Israel', 'Iran'],
-      'mexico-drug-war': ['Mexico'],
-      'haiti-gang-violence': ['Haiti'],
-      'post-isis-stabilization-iraq': ['Iraq'],
-      // Nuevos conflictos agregados
-      'myanmar-civil-war': ['Myanmar'],
-      'russia-ukraine-war': ['Ukraine', 'Russia'],
-      'syrian-civil-war': ['Syria'],
-      'yemen-civil-war': ['Yemen', 'Saudi Arabia'],
-      'israel-hamas-war': ['Israel', 'Palestine'],
-      'libya-civil-war': ['Libya'],
-      'sudan-civil-war': ['Sudan'],
-      'somalia-insurgency': ['Somalia'],
-      'nigeria-insurgency': ['Nigeria'],
-      'mozambique-insurgency': ['Mozambique']
-    };
-    
-    return countryMappings[conflictId] || [conflict.country];
-  };
-
-  // Efecto para manejar el resaltado de países en conflicto
+  // Actualizar marcadores y países en conflicto cuando cambian los datos o la selección
   useEffect(() => {
-    if (!mapRef.current || !mapRef.current.getSource('country-boundaries')) return;
-    
-    const map = mapRef.current;
-    
-    // Limpiar todos los estados de conflicto anteriores
-    const features = map.querySourceFeatures('country-boundaries', {
-      sourceLayer: 'country_boundaries'
-    });
-    
-    features.forEach((feature: any) => {
-      if (feature.id) {
-        map.setFeatureState(
-          { source: 'country-boundaries', sourceLayer: 'country_boundaries', id: feature.id },
-          { conflicted: false }
-        );
-      }
-    });
-    
-    // Si hay un conflicto seleccionado, resaltar los países involucrados
-    if (selectedConflictId) {
-      const countriesInConflict = getCountriesInConflict(selectedConflictId);
-      
-      features.forEach((feature: any) => {
-        if (feature.id && feature.properties) {
-          const countryName = feature.properties.name_en || feature.properties.name || '';
-          const isInConflict = countriesInConflict.some(conflictCountry => 
-            countryName.toLowerCase().includes(conflictCountry.toLowerCase()) ||
-            conflictCountry.toLowerCase().includes(countryName.toLowerCase())
-          );
-          
-          if (isInConflict) {
-            map.setFeatureState(
-              { source: 'country-boundaries', sourceLayer: 'country_boundaries', id: feature.id },
-              { conflicted: true }
-            );
-          }
-        }
-      });
+    if (mapRef.current) {
+      const conflictGeoJSON = conflictsToGeoJSON(conflicts);
+      ConflictVisualization.updateConflictMarkers(mapRef.current, conflictGeoJSON);
+      ConflictVisualization.updateCountryStates(mapRef.current, selectedConflictId ?? null, conflicts);
     }
-  }, [selectedConflictId, conflicts]);
+  }, [conflicts, selectedConflictId]);
 
   // Función para resetear la vista del mapa
   const resetMapView = () => {
@@ -770,5 +517,25 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
 });
 
 WorldMap.displayName = 'WorldMap';
+
+// Helper: Convert conflicts to GeoJSON FeatureCollection
+function conflictsToGeoJSON(conflicts: any[]): any {
+  return {
+    type: 'FeatureCollection',
+    features: conflicts.map(conflict => ({
+      type: 'Feature',
+      geometry: {
+        type: 'Point',
+        coordinates: [conflict.coordinates.lng, conflict.coordinates.lat]
+      },
+      properties: {
+        id: conflict.id,
+        country: conflict.country,
+        status: conflict.status,
+        ...conflict
+      }
+    }))
+  };
+}
 
 export default WorldMap;

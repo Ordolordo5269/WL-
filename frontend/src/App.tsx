@@ -9,6 +9,7 @@ import MenuToggleButton from '../components/MenuToggleButton';
 import { conflictsDatabase } from '../data/conflicts-data';
 import './index.css';
 import './styles/sidebar.css';
+import "./styles/conflict-tracker.css";
 
 interface Country {
   name: string;
@@ -87,7 +88,7 @@ function App() {
     if (mapRef.current) {
       mapRef.current.easeTo({
         center: [coordinates.lng, coordinates.lat],
-        zoom: 6,
+        zoom: 4,
         duration: 1200
       });
     }
@@ -96,8 +97,9 @@ function App() {
   const handleConflictClick = (conflictId: string) => {
     const conflict = conflictsDatabase.find(c => c.id === conflictId);
     if (conflict) {
-      handleCenterMapOnConflict(conflict.coordinates);
+      setSelectedCountry(null);
       setSelectedConflictId(conflictId);
+      handleCenterMapOnConflict(conflict.coordinates);
       setIsConflictTrackerOpen(true);
     }
   };

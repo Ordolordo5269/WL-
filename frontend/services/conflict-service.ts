@@ -9,6 +9,7 @@ import {
   getAllRegions,
   getConflictById
 } from '../data/conflicts-data';
+import { ErrorHandler } from '../src/utils/errorHandler.js';
 import NewsAPIService, { NewsArticle } from './news-api';
 
 export class ConflictService {
@@ -164,7 +165,7 @@ export class ConflictService {
         news
       };
     } catch (error) {
-      console.error('Error fetching latest data:', error);
+      ErrorHandler.logServiceError('ConflictService', 'fetchLatestData', error);
       return {
         conflicts: conflictsDatabase,
         news: []
@@ -186,11 +187,11 @@ export class ConflictService {
   static getStatusColor(status: 'War' | 'Warm' | 'Improving'): string {
     switch (status) {
       case 'War':
-        return '#ef4444'; // red-500
+        return '#8B0000'; // dark red
       case 'Warm':
-        return '#f59e0b'; // amber-500
+        return '#B8860B'; // dark goldenrod
       case 'Improving':
-        return '#10b981'; // emerald-500
+        return '#556B2F'; // dark olive green
       default:
         return '#6b7280'; // gray-500
     }

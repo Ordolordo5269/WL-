@@ -1,29 +1,6 @@
 // Conflict Tracker Database
 // This file contains all the conflict data separated from the component logic
-
-export interface Conflict {
-  id: string;
-  country: string;
-  region: string;
-  conflictType: string;
-  description: string;
-  date: string;
-  casualties: number;
-  status: 'War' | 'Warm' | 'Improving';
-  coordinates: {
-    lat: number;
-    lng: number;
-  };
-}
-
-export interface NewsArticle {
-  id: string;
-  title: string;
-  source: string;
-  date: string;
-  url: string;
-  conflictId?: string;
-}
+import type { Conflict, NewsArticle } from '../src/types/index';
 
 // Mock conflict data based on real-world conflicts
 export const conflictsDatabase: Conflict[] = [
