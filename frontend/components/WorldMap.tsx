@@ -5,6 +5,7 @@ import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
 import '../src/styles/geocoder.css';
 import { ConflictVisualization } from '../services/conflict-tracker/conflict-visualization';
 import { ConflictDataManager, type ConflictData } from '../services/conflict-tracker/conflict-data-manager';
+import { findCapitalByCountry } from '../data/world-capitals';
 
 mapboxgl.accessToken = (import.meta as any).env.VITE_MAPBOX_TOKEN;
 
@@ -23,7 +24,7 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const selectedCountryId = useRef<string | number | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
-  const animationFrameRef = useRef<number>();
+  const animationFrameRef = useRef<number | undefined>(undefined);
   const conflictDataManager = useRef<ConflictDataManager>(new ConflictDataManager());
 
   // Optimized map methods
@@ -114,17 +115,32 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
           { selected: true }
         );
         
-        // Centrar el mapa en las coordenadas del geocoder (capital/centro del país)
-        map.easeTo({
-          center: coordinates,
-          zoom: 5, // Zoom fijo para mostrar la capital con contexto
-          duration: 1200,
-          easing: (t: number) => 1 - Math.pow(1 - t, 3)
-        });
-        
         // Llamar a la función de selección de país
-         const finalCountryName = matchingFeature.properties?.name_en || matchingFeature.properties?.name || countryName;
-         onCountrySelect(finalCountryName);
+        const finalCountryName = matchingFeature.properties?.name_en || matchingFeature.properties?.name || countryName;
+        
+        // Buscar la capital del país seleccionado
+        const capitalData = findCapitalByCountry(finalCountryName);
+        
+        if (capitalData) {
+          // Zoom a la capital del país con zoom dinámico basado en el tamaño del país
+          const zoomLevel = capitalData.zoomLevel || 6; // Usar zoom personalizado o 6 por defecto
+          map.easeTo({
+            center: capitalData.coordinates,
+            zoom: zoomLevel,
+            duration: 1200,
+            easing: (t: number) => 1 - Math.pow(1 - t, 3)
+          });
+        } else {
+          // Fallback: usar las coordenadas del geocoder
+          map.easeTo({
+            center: coordinates,
+            zoom: 5,
+            duration: 1200,
+            easing: (t: number) => 1 - Math.pow(1 - t, 3)
+          });
+        }
+        
+        onCountrySelect(finalCountryName);
        } else {
          // Si no se encuentra el feature, al menos centrar en las coordenadas
          map.easeTo({
@@ -315,53 +331,66 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
             { selected: true }
           );
           
-          // Centrar el mapa en el país seleccionado con animación suave
-          if (feature.geometry) {
-            try {
-              let coordinates: number[][];
-              
-              if (feature.geometry.type === 'Polygon') {
-                coordinates = feature.geometry.coordinates[0];
-              } else if (feature.geometry.type === 'MultiPolygon') {
-                // Para MultiPolygon, usar el primer polígono
-                coordinates = feature.geometry.coordinates[0][0];
-              } else {
-                throw new Error('Unsupported geometry type');
-              }
-              
-              const bounds = coordinates.reduce((bounds: mapboxgl.LngLatBounds, coord: number[]) => {
-                return bounds.extend(coord as [number, number]);
-              }, new mapboxgl.LngLatBounds());
-              
-              map.fitBounds(bounds, {
-                padding: { top: 50, bottom: 50, left: 200, right: 200 }, // Padding equilibrado para centrar correctamente
-                duration: 1200,
-                maxZoom: 6,
-                easing: (t: number) => {
-                  // Easing más suave: ease-out-cubic
-                  return 1 - Math.pow(1 - t, 3);
-                }
-              });
-            } catch (error) {
-              console.warn('Error processing country geometry:', error);
-              // Fallback: centrar en el punto de clic
-              if (e.lngLat) {
-                map.easeTo({
-                  center: [e.lngLat.lng, e.lngLat.lat],
-                  zoom: Math.min(Math.max(map.getZoom(), 3), 5),
-                  duration: 1200,
-                  easing: (t: number) => 1 - Math.pow(1 - t, 3)
-                });
-              }
-            }
-          } else if (e.lngLat) {
-            // Fallback: centrar en el punto de clic
+          // Buscar la capital del país seleccionado
+          const capitalData = findCapitalByCountry(countryName);
+          
+          if (capitalData) {
+            // Zoom a la capital del país con zoom dinámico basado en el tamaño del país
+            const zoomLevel = capitalData.zoomLevel || 6; // Usar zoom personalizado o 6 por defecto
             map.easeTo({
-              center: [e.lngLat.lng, e.lngLat.lat],
-              zoom: Math.min(Math.max(map.getZoom(), 3), 5),
+              center: capitalData.coordinates,
+              zoom: zoomLevel,
               duration: 1200,
               easing: (t: number) => 1 - Math.pow(1 - t, 3)
             });
+          } else {
+            // Fallback: centrar en el país usando bounds si no se encuentra la capital
+            if (feature.geometry) {
+              try {
+                let coordinates: number[][];
+                
+                if (feature.geometry.type === 'Polygon') {
+                  coordinates = feature.geometry.coordinates[0];
+                } else if (feature.geometry.type === 'MultiPolygon') {
+                  // Para MultiPolygon, usar el primer polígono
+                  coordinates = feature.geometry.coordinates[0][0];
+                } else {
+                  throw new Error('Unsupported geometry type');
+                }
+                
+                const bounds = coordinates.reduce((bounds: mapboxgl.LngLatBounds, coord: number[]) => {
+                  return bounds.extend(coord as [number, number]);
+                }, new mapboxgl.LngLatBounds());
+                
+                map.fitBounds(bounds, {
+                  padding: { top: 50, bottom: 50, left: 200, right: 200 },
+                  duration: 1200,
+                  maxZoom: 6,
+                  easing: (t: number) => {
+                    return 1 - Math.pow(1 - t, 3);
+                  }
+                });
+              } catch (error) {
+                console.warn('Error processing country geometry:', error);
+                // Fallback: centrar en el punto de clic
+                if (e.lngLat) {
+                  map.easeTo({
+                    center: [e.lngLat.lng, e.lngLat.lat],
+                    zoom: Math.min(Math.max(map.getZoom(), 3), 5),
+                    duration: 1200,
+                    easing: (t: number) => 1 - Math.pow(1 - t, 3)
+                  });
+                }
+              }
+            } else if (e.lngLat) {
+              // Fallback: centrar en el punto de clic
+              map.easeTo({
+                center: [e.lngLat.lng, e.lngLat.lat],
+                zoom: Math.min(Math.max(map.getZoom(), 3), 5),
+                duration: 1200,
+                easing: (t: number) => 1 - Math.pow(1 - t, 3)
+              });
+            }
           }
           
           onCountrySelect(countryName);

@@ -30,6 +30,12 @@
   transition: background-color 0.2s ease;
 }
 
+.left-sidebar-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 /* Títulos consolidados */
 .sidebar-title, .left-sidebar-title {
   font-size: 20px;
@@ -37,7 +43,7 @@
   margin: 0 0 16px 0;
   color: #ffffff;
   display: flex;
-  align-items: center;
+  align-items: right;
   gap: 8px;
   transition: color 0.2s ease;
 }
@@ -142,6 +148,9 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  padding-right: 0;
+  margin-left: 0;
+  transform: translateX(20px);
 }
 
 .left-sidebar-title::before {
@@ -286,14 +295,14 @@
 /* MENU TOGGLE BUTTON STYLES */
 .menu-toggle-button {
   position: fixed;
-  top: 20px;
-  left: 20px;
+  top: 16px;
+  left: 16px;
   z-index: 60;
-  width: 52px;
-  height: 52px;
+  width: 44px;
+  height: 44px;
   background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%);
   border: 1px solid rgba(59, 130, 246, 0.3);
-  border-radius: 18px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -315,7 +324,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  border-radius: 14px;
+  border-radius: 12px;
   background: linear-gradient(135deg, 
     rgba(59, 130, 246, 0.1) 0%, 
     rgba(147, 51, 234, 0.05) 50%, 
@@ -400,15 +409,15 @@
 /* Responsive para el botón */
 @media (max-width: 768px) {
   .menu-toggle-button {
-    width: 52px;
-    height: 52px;
-    top: 16px;
-    left: 16px;
-    border-radius: 14px;
+    width: 44px;
+    height: 44px;
+    top: 12px;
+    left: 12px;
+    border-radius: 12px;
   }
   
   .menu-toggle-button::before {
-    border-radius: 12px;
+    border-radius: 10px;
   }
   
   .menu-toggle-tooltip {
@@ -418,15 +427,15 @@
 
 @media (max-width: 480px) {
   .menu-toggle-button {
-    width: 48px;
-    height: 48px;
-    top: 12px;
-    left: 12px;
-    border-radius: 12px;
+    width: 40px;
+    height: 40px;
+    top: 10px;
+    left: 10px;
+    border-radius: 10px;
   }
   
   .menu-toggle-button::before {
-    border-radius: 10px;
+    border-radius: 8px;
   }
 }
 
