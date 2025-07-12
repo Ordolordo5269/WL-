@@ -70,7 +70,7 @@ const MenuToggleButton: React.FC<MenuToggleButtonProps> = ({ isOpen, onClick }) 
           stiffness: 300
         }}
       >
-        {isOpen ? <X size={24} strokeWidth={2.5} /> : <Menu size={24} strokeWidth={2.5} />}
+        {isOpen ? <X size={20} strokeWidth={2.5} /> : <Menu size={20} strokeWidth={2.5} />}
       </motion.div>
       
       {/* Ripple effect on click */}

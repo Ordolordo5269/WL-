@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "express": "^4.19.2",
-    "morgan": "^1.10.0"
+    "morgan": "^1.10.0",
+    "react-chrono": "^2.9.1"
   },
   "devDependencies": {
     "@types/express": "^5.0.2",

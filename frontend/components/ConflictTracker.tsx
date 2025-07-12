@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, AlertTriangle, TrendingUp, TrendingDown, Calendar, Users, MapPin, ExternalLink, X, Globe, Filter, ChevronDown } from 'lucide-react';
-import { Conflict } from '../data/conflicts-data';
+import { motion } from 'framer-motion';
+import { ArrowLeft, AlertTriangle, TrendingUp, Calendar, Users, MapPin, ExternalLink, X } from 'lucide-react';
+import type { Conflict } from '../src/types';
 import ConflictService from '../services/conflict-service';
-import { NewsArticle } from '../services/news-api';
-import { useConflictActions, ConflictActionHandlers } from '../services/conflict-actions';
+import type { NewsArticle } from '../src/types';
+import { useConflictActions, type ConflictActionHandlers } from '../services/conflict-actions';
+import ConflictDetailCard from './ConflictDetailCard';
+
 interface ConflictTrackerProps {
   onBack: () => void;
   onCenterMap?: (coordinates: { lat: number; lng: number }) => void;
@@ -21,96 +23,77 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect 
   const [newsLoading, setNewsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'conflicts' | 'news'>('conflicts');
+  const [selectedConflict, setSelectedConflict] = useState<Conflict | null>(null);
 
-  // Load data on component mount
+  // Helper function to load news
+  const loadNews = useCallback(async (region?: string) => {
+    try {
+      setNewsLoading(true);
+      let newsData: NewsArticle[];
+
+      if (region && region !== 'All') {
+        // Get countries from the selected region
+        const regionConflicts = ConflictService.getFilteredConflicts(region);
+        const regionCountries = [...new Set(regionConflicts.map(c => c.country))];
+        
+        // Fetch news for all countries in the region
+        const regionNewsPromises = regionCountries.map(country => 
+          ConflictService.getNewsForCountry(country)
+        );
+        
+        const regionNewsArrays = await Promise.all(regionNewsPromises);
+        const regionNews = regionNewsArrays.flat();
+        
+        // Remove duplicates and sort by date
+        newsData = regionNews.filter((news, index, self) => 
+          index === self.findIndex(n => n.title === news.title)
+        ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      } else {
+        // Load general news
+        newsData = await ConflictService.getAllNews();
+      }
+      
+      setNews(newsData);
+    } catch (error) {
+      console.error('Error loading news:', error);
+    } finally {
+      setNewsLoading(false);
+    }
+  }, []);
+
+  // Load initial data
   useEffect(() => {
     const loadData = async () => {
       try {
         setError(null);
         setLoading(true);
-        setNewsLoading(true);
         
         // Load conflicts immediately
         const conflictsData = ConflictService.getAllConflicts();
         setConflicts(conflictsData);
         setLoading(false);
         
-        // Load news from NewsAPI
-        const newsData = await ConflictService.getAllNews();
-        setNews(newsData);
+        // Load initial news
+        await loadNews();
       } catch (error) {
         console.error('Error loading conflict data:', error);
         setError('Failed to load conflict data. Please try again later.');
         // Fallback to static data
         setConflicts(ConflictService.getAllConflicts());
-      } finally {
-        setNewsLoading(false);
       }
     };
 
     loadData();
-  }, []);
+  }, [loadNews]);
 
   // Load region-specific news when news region filter changes
   useEffect(() => {
-    const loadRegionNews = async () => {
-      if (activeTab === 'news' && selectedNewsRegion !== 'All') {
-        try {
-          setNewsLoading(true);
-          // Get countries from the selected region
-          const regionConflicts = ConflictService.getFilteredConflicts(selectedNewsRegion);
-          const regionCountries = [...new Set(regionConflicts.map(c => c.country))];
-          
-          // Fetch news for all countries in the region
-          const regionNewsPromises = regionCountries.map(country => 
-            ConflictService.getNewsForCountry(country)
-          );
-          
-          const regionNewsArrays = await Promise.all(regionNewsPromises);
-          const regionNews = regionNewsArrays.flat();
-          
-          // Remove duplicates and sort by date
-          const uniqueNews = regionNews.filter((news, index, self) => 
-            index === self.findIndex(n => n.title === news.title)
-          ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-          
-          setNews(uniqueNews);
-        } catch (error) {
-          console.error('Error loading region news:', error);
-        } finally {
-          setNewsLoading(false);
-        }
-      } else if (activeTab === 'news' && selectedNewsRegion === 'All') {
-        // Load general news when 'All' is selected
-        const loadAllNews = async () => {
-          try {
-            setNewsLoading(true);
-            const newsData = await ConflictService.getAllNews();
-            setNews(newsData);
-          } catch (error) {
-            console.error('Error loading all news:', error);
-          } finally {
-            setNewsLoading(false);
-          }
-        };
-        loadAllNews();
-      }
-    };
+    if (activeTab === 'news') {
+      loadNews(selectedNewsRegion);
+    }
+  }, [selectedNewsRegion, activeTab, loadNews]);
 
-    loadRegionNews();
-  }, [selectedNewsRegion, activeTab]);
 
-  const getStatusColor = (status: 'War' | 'Warm' | 'Improving') => {
-    return ConflictService.getStatusColor(status);
-  };
-
-  const getStatusIcon = (status: 'War' | 'Warm' | 'Improving') => {
-    return ConflictService.getStatusIcon(status);
-  };
-
-  const formatCasualties = (casualties: number) => {
-    return ConflictService.formatCasualties(casualties);
-  };
 
   // Memoized data to prevent unnecessary recalculations
   const regions = useMemo(() => ConflictService.getAvailableRegions(), []);
@@ -131,6 +114,33 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect 
   };
   
   const { handleConflictClick, handleBack } = useConflictActions(conflictActionHandlers);
+
+  // Enhanced conflict click handler for detailed view
+  const handleConflictClickEnhanced = (conflict: Conflict) => {
+    // For Ukraine conflict, show detailed view AND center map
+    if (conflict.id === 'russia-ukraine-war') {
+      setSelectedConflict(conflict);
+      // Also center the map on Ukraine and show the marker
+      if (onCenterMap) {
+        onCenterMap(conflict.coordinates);
+      }
+      // Show the conflict marker on the map
+      if (onConflictSelect) {
+        onConflictSelect(conflict.id);
+      }
+    } else {
+      // For other conflicts, use the original handler
+      handleConflictClick(conflict);
+    }
+  };
+
+  const handleBackToConflicts = () => {
+    setSelectedConflict(null);
+    // Clear the map selection when going back
+    if (onConflictSelect) {
+      onConflictSelect(null);
+    }
+  };
 
   // Optimized tab change handler
   const handleTabChange = useCallback((tab: 'conflicts' | 'news') => {
@@ -238,46 +248,56 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect 
       <div className="conflict-tracker-content">
         {activeTab === 'conflicts' ? (
           <div>
-            <div className="conflict-tracker-section-header">
-              <AlertTriangle className="icon" />
-              <h3>Active Conflicts ({filteredConflicts.length})</h3>
-            </div>
-            {loading ? (
-              <div className="conflict-tracker-loading">
-                <div className="spinner"></div>
-                <p>Loading conflicts...</p>
-              </div>
-            ) : error ? (
-              <div className="conflict-tracker-empty">
-                <AlertTriangle className="icon" style={{color: 'rgb(248, 113, 113)'}} />
-                <p style={{color: 'rgb(252, 165, 165)'}}>Error Loading Data</p>
-                <p style={{color: 'rgb(248, 113, 113)'}}>{error}</p>
-              </div>
-            ) : filteredConflicts.length === 0 ? (
-              <div className="conflict-tracker-empty">
-                <AlertTriangle className="icon" />
-                <p>No conflicts found</p>
-                <p>Try adjusting your filters</p>
+            {selectedConflict ? (
+              // Detailed view for selected conflict
+              <div className="conflict-detail-view">
+                <ConflictDetailCard conflict={selectedConflict} onBack={handleBackToConflicts} />
               </div>
             ) : (
+              // Regular conflicts list
               <div>
-                {filteredConflicts.map((conflict, index) => (
-                  <div
-                    key={conflict.id}
-                    className="conflict-card"
-                    onClick={() => handleConflictClick(conflict)}
-                  >
-                    <div className="conflict-card-header">
-                      <MapPin size={16} /> {conflict.country}
-                      <span className="conflict-card-status">{conflict.status}</span>
-                    </div>
-                    <div className="conflict-card-description">{conflict.description}</div>
-                    <div className="conflict-card-meta">
-                      <span><Users size={14} /> {formatCasualties(conflict.casualties)} casualties</span>
-                      <span><Calendar size={14} /> {new Date(conflict.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-                    </div>
+                <div className="conflict-tracker-section-header">
+                  <AlertTriangle className="icon" />
+                  <h3>Active Conflicts ({filteredConflicts.length})</h3>
+                </div>
+                {loading ? (
+                  <div className="conflict-tracker-loading">
+                    <div className="spinner"></div>
+                    <p>Loading conflicts...</p>
                   </div>
-                ))}
+                ) : error ? (
+                  <div className="conflict-tracker-empty">
+                    <AlertTriangle className="icon" style={{color: 'rgb(248, 113, 113)'}} />
+                    <p style={{color: 'rgb(252, 165, 165)'}}>Error Loading Data</p>
+                    <p style={{color: 'rgb(248, 113, 113)'}}>{error}</p>
+                  </div>
+                ) : filteredConflicts.length === 0 ? (
+                  <div className="conflict-tracker-empty">
+                    <AlertTriangle className="icon" />
+                    <p>No conflicts found</p>
+                    <p>Try adjusting your filters</p>
+                  </div>
+                ) : (
+                  <div>
+                    {filteredConflicts.map((conflict, index) => (
+                      <div
+                        key={conflict.id}
+                        className="conflict-card"
+                        onClick={() => handleConflictClickEnhanced(conflict)}
+                      >
+                        <div className="conflict-card-header">
+                          <MapPin size={16} /> {conflict.country}
+                          <span className="conflict-card-status">{conflict.status}</span>
+                        </div>
+                        <div className="conflict-card-description">{conflict.description}</div>
+                        <div className="conflict-card-meta">
+                          <span><Users size={14} /> {ConflictService.formatCasualties(conflict.casualties)} casualties</span>
+                          <span><Calendar size={14} /> {new Date(conflict.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

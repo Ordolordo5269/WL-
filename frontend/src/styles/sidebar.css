@@ -411,8 +411,8 @@
   .menu-toggle-button {
     width: 44px;
     height: 44px;
-    top: 12px;
-    left: 12px;
+    top: 16px;
+    left: 16px;
     border-radius: 12px;
   }
   
@@ -429,8 +429,8 @@
   .menu-toggle-button {
     width: 40px;
     height: 40px;
-    top: 10px;
-    left: 10px;
+    top: 12px;
+    left: 12px;
     border-radius: 10px;
   }
   

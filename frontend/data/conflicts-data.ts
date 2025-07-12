@@ -20,11 +20,69 @@ export const conflictsDatabase: Conflict[] = [
     country: 'Ukraine',
     region: 'Europe',
     conflictType: 'Interstate War',
-    description: 'Ongoing war initiated by Russia\'s 2014 annexation of Crimea and full-scale invasion in 2022, with intense fighting and heavy casualties.',
+    description: 'A major interstate war initiated by Russia with the 2014 annexation of Crimea, followed by a full-scale invasion of Ukraine in February 2022. The conflict has resulted in massive military and civilian casualties, displacement, and global geopolitical consequences.',
     date: '2014-04-06',
     casualties: 170521,
     status: 'War',
-    coordinates: { lat: 50.4500, lng: 30.5233 }
+    coordinates: { lat: 50.4500, lng: 30.5233 },
+    startDate: '2014-04-06',
+    escalationDate: '2022-02-24',
+    casualtiesDetailed: {
+      military: { ukraine: 30000, russia: 50000 },
+      civilian: { total: 90000 }
+    },
+    displacedPersons: 6000000,
+    factions: {
+      ukraine: {
+        allies: ['United States', 'European Union', 'United Kingdom', 'NATO (support, not direct)'],
+        militarySupport: {
+          weapons: ['Javelins', 'HIMARS', 'Drones'],
+          aidValue: '>$100 billion USD'
+        },
+        goals: [
+          'Restore territorial integrity',
+          'Defend sovereignty',
+          'Join NATO and EU (long-term strategic)'
+        ]
+      },
+      russia: {
+        allies: ['Belarus', 'Iran (drone supply)', 'North Korea (ammunition)', 'China (diplomatic support)'],
+        militarySupport: {
+          weapons: ['Tanks', 'Missiles', 'Drones'],
+          strategicAssets: ['Wagner Group', 'Cyberwarfare units']
+        },
+        goals: [
+          'Prevent NATO expansion',
+          'Control of eastern Ukraine and Crimea',
+          'Weaken Ukrainian statehood'
+        ]
+      }
+    },
+    internationalResponse: {
+      sanctions: {
+        imposedBy: ['EU', 'USA', 'UK', 'Canada', 'Japan'],
+        targets: ['Russian banks', 'oligarchs', 'oil & gas sector']
+      },
+      peaceEfforts: [
+        'Minsk Agreements (failed)',
+        'UN Resolutions condemning the invasion',
+        'Istanbul peace talks (March 2022)'
+      ]
+    },
+    notableEvents: [
+      { title: 'Annexation of Crimea', date: '2014-03-18' },
+      { title: 'Full-scale invasion', date: '2022-02-24' },
+      { title: 'Siege of Mariupol', date: '2022-02-24 to 2022-05-20' },
+      { title: 'Battle of Kyiv', date: '2022-02-25 to 2022-04-02' },
+      { title: 'Bucha massacre', date: '2022-03-27 to 2022-04-02' },
+      { title: 'Sinking of the Moskva', date: '2022-04-14' },
+      { title: 'Battle of Severodonetsk', date: '2022-05 to 2022-06' },
+      { title: 'Explosion on Crimean Bridge', date: '2022-10-08' },
+      { title: 'Battle of Bakhmut', date: '2022-10 to 2023-05' },
+      { title: 'Ukrainian counteroffensives', date: '2022–2023' }
+      
+    ],
+    sources: ['ACLED', 'GDELT', 'UNHCR', 'Amnesty International']
   },
   {
     id: 'syrian-civil-war',

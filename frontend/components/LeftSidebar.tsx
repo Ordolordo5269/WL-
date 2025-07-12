@@ -96,12 +96,10 @@ export default function LeftSidebar({ isOpen, onClose, onCenterMap, onOpenConfli
               }}
             >
               {/* Header */}
-              <div className="left-sidebar-header">
-                <div className="mb-6 text-center">
-                  <h2 className="left-sidebar-title">
-                    WorldLore
-                  </h2>
-                </div>
+              <div className="left-sidebar-header flex items-center justify-center mb-6" style={{ minHeight: '80px' }}>
+                <h1 className="left-sidebar-title">
+                  WorldLore
+                </h1>
               </div>
 
               {/* Menu Items */}

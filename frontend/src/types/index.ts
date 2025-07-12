@@ -9,6 +9,38 @@ export interface Conflict {
   casualties: number;
   status: 'War' | 'Warm' | 'Improving';
   coordinates: { lat: number; lng: number };
+  
+  // New optional fields for expanded conflicts
+  startDate?: string;
+  escalationDate?: string;
+  casualtiesDetailed?: {
+    military?: { [key: string]: number };
+    civilian?: { total: number };
+  };
+  displacedPersons?: number;
+  factions?: {
+    [factionName: string]: {
+      allies?: string[];
+      militarySupport?: {
+        weapons?: string[];
+        aidValue?: string;
+        strategicAssets?: string[];
+      };
+      goals?: string[];
+    };
+  };
+  internationalResponse?: {
+    sanctions?: {
+      imposedBy?: string[];
+      targets?: string[];
+    };
+    peaceEfforts?: string[];
+  };
+  notableEvents?: Array<{
+    title: string;
+    date: string;
+  }>;
+  sources?: string[];
 }
 
 // NewsArticle type

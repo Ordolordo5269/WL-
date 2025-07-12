@@ -25,7 +25,14 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
   const selectedCountryId = useRef<string | number | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const animationFrameRef = useRef<number | undefined>(undefined);
-  const conflictDataManager = useRef<ConflictDataManager>(new ConflictDataManager());
+  const conflictDataManager = useRef<ConflictDataManager | null>(null);
+
+  // Inicializar el conflict data manager
+  useEffect(() => {
+    if (!conflictDataManager.current) {
+      conflictDataManager.current = new ConflictDataManager('conflicts');
+    }
+  }, []);
 
   // Optimized map methods
   const easeTo = useCallback((options: any) => {
@@ -200,8 +207,10 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
       });
 
       // Initialize conflict data manager and add conflict source
-      conflictDataManager.current.initialize(map);
-      conflictDataManager.current.addConflictSource(conflicts);
+      if (conflictDataManager.current) {
+        conflictDataManager.current.initialize(map);
+        conflictDataManager.current.addConflictSource(conflicts);
+      }
 
       // Conflict visualization is now handled by CountryConflictVisualization
 
@@ -244,7 +253,7 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
         }
       });
 
-      // Agregar capas de visualización de conflictos (relleno, borde, marcadores)
+      // Agregar capas de visualización de conflictos con animación de pulso
       const conflictGeoJSON = conflictsToGeoJSON(conflicts);
       ConflictVisualization.addLayers(map, 'country-boundaries', conflictGeoJSON);
 
@@ -452,6 +461,10 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
       if (conflictDataManager.current) {
         conflictDataManager.current.cleanup();
       }
+      // Limpiar capas de visualización de conflictos
+      if (mapRef.current) {
+        ConflictVisualization.cleanup(mapRef.current);
+      }
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
@@ -461,7 +474,7 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
 
   // Efecto para actualizar conflictos cuando cambien
   useEffect(() => {
-    if (conflictDataManager.current.hasConflictSource()) {
+    if (conflictDataManager.current?.hasConflictSource()) {
       conflictDataManager.current.updateConflictData(conflicts);
     }
   }, [conflicts]);
@@ -471,7 +484,8 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
     if (mapRef.current) {
       const conflictGeoJSON = conflictsToGeoJSON(conflicts);
       ConflictVisualization.updateConflictMarkers(mapRef.current, conflictGeoJSON);
-      ConflictVisualization.updateCountryStates(mapRef.current, selectedConflictId ?? null, conflicts);
+      // Usar la función updateVisualization que maneja tanto estados como visibilidad
+      ConflictVisualization.updateVisualization(mapRef.current, selectedConflictId ?? null, conflicts);
     }
   }, [conflicts, selectedConflictId]);
 

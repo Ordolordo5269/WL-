@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Globe, Banknote, Landmark, Shield, Users, Globe2, Cpu, Palette, X } from 'lucide-react';
+import '../src/styles/conflict-tracker.css';
 
 interface CategoryGroupProps {
   icon: React.ReactNode;
@@ -206,11 +207,10 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
               </h2>
               <button
                 onClick={onClose}
-                className="group relative p-2 hover:bg-red-500/20 rounded-xl transition-all duration-300 border border-transparent hover:border-red-400/30 backdrop-blur-sm"
+                className="conflict-tracker-close-btn"
                 aria-label="Close sidebar"
               >
-                <X className="h-6 w-6 text-slate-400 group-hover:text-red-400 group-hover:rotate-90 transition-all duration-300 group-hover:scale-110" />
-                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-red-500/10 to-pink-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <X className="h-5 w-5" />
               </button>
             </div>
             
