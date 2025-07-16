@@ -9,6 +9,8 @@ export interface Conflict {
   casualties: number;
   status: 'War' | 'Warm' | 'Improving';
   coordinates: { lat: number; lng: number };
+  involvedISO?: string[]; // ISO 3166-1 alpha-3 codes for involved countries
+  alliesByFaction?: { [faction: string]: { isoCodes: string[]; color: string } };
   
   // New optional fields for expanded conflicts
   startDate?: string;

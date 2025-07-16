@@ -1,5 +1,5 @@
 import mapboxgl from 'mapbox-gl';
-import { getCountriesInConflict } from './country-conflict-mapper';
+import { getInvolvedISO, getAlliesByFaction } from './country-conflict-mapper';
 
 // ===== CONSTANTES DE CONFIGURACIÓN =====
 
@@ -39,6 +39,8 @@ const LAYERS = {
   COUNTRY_BORDER: 'country-conflict-border',
   CONFLICT_SOURCE: 'conflict-points',
   CONFLICT_MARKER: 'conflict-marker',
+  ALLY_FILL: (faction: string) => `ally-fill-${faction}`,
+  ALLY_BORDER: (faction: string) => `ally-border-${faction}`,
 } as const;
 
 // Variables de animación (estado global)
@@ -46,68 +48,76 @@ let animationId: number | null = null;
 let ripplePhase = 0;
 let pulsePhase = 0;
 
-// --- Helpers de normalización ---
-function normalizeCountryName(name: string): string {
-  return name
-    .toLowerCase()
-    .normalize('NFD').replace(/\p{Diacritic}/gu, '')
-    .replace(/\s+/g, ' ')
-    .replace(/[()\[\]{}.,;:!?'-]/g, '')
-    .trim();
-}
-
-function splitCountryVariants(name: string): string[] {
-  return name.split(/[\/()|,;]+/).map(s => normalizeCountryName(s));
-}
-
 export const ConflictVisualization = {
   /**
    * Agrega capas de visualización de conflictos con animación de ondas minimalista
    */
   addLayers(map: mapboxgl.Map, countrySource = 'country-boundaries', conflictGeoJSON: any = null) {
-    // Países en conflicto (relleno)
+    // Países en conflicto (relleno) - usando filter en lugar de feature-state
     if (!map.getLayer(LAYERS.COUNTRY_FILL)) {
       map.addLayer({
         id: LAYERS.COUNTRY_FILL,
         type: 'fill',
         source: countrySource,
         'source-layer': 'country_boundaries',
+        filter: ['boolean', false], // Inicialmente oculto
         paint: {
           'fill-color': COLORS.COUNTRY_FILL,
-          'fill-opacity': [
-            'case',
-            ['boolean', ['feature-state', 'conflicted'], false],
-            OPACITIES.COUNTRY_FILL,
-            0
-          ]
+          'fill-opacity': OPACITIES.COUNTRY_FILL
         }
       });
     }
 
-    // Países en conflicto (borde)
+    // Países en conflicto (borde) - usando filter
     if (!map.getLayer(LAYERS.COUNTRY_BORDER)) {
       map.addLayer({
         id: LAYERS.COUNTRY_BORDER,
         type: 'line',
         source: countrySource,
         'source-layer': 'country_boundaries',
+        filter: ['boolean', false], // Inicialmente oculto
         paint: {
           'line-color': COLORS.COUNTRY_BORDER,
-          'line-width': [
-            'case',
-            ['boolean', ['feature-state', 'conflicted'], false],
-            SIZES.COUNTRY_BORDER_WIDTH,
-            0
-          ],
-          'line-opacity': [
-            'case',
-            ['boolean', ['feature-state', 'conflicted'], false],
-            OPACITIES.COUNTRY_BORDER,
-            0
-          ]
+          'line-width': SIZES.COUNTRY_BORDER_WIDTH,
+          'line-opacity': OPACITIES.COUNTRY_BORDER
         }
       });
     }
+
+    // Capas para aliados - crear para posibles facciones (e.g., faction1, faction2)
+    ['faction1', 'faction2'].forEach((faction, index) => {
+      const fillId = LAYERS.ALLY_FILL(faction);
+      const borderId = LAYERS.ALLY_BORDER(faction);
+
+      if (!map.getLayer(fillId)) {
+        map.addLayer({
+          id: fillId,
+          type: 'fill',
+          source: countrySource,
+          'source-layer': 'country_boundaries',
+          filter: ['==', ['string', ['get', 'iso_3166_1_alpha_3']], 'NON_EXISTENT'],
+          paint: {
+            'fill-color': '#000000', // Placeholder
+            'fill-opacity': OPACITIES.COUNTRY_FILL
+          }
+        });
+      }
+
+      if (!map.getLayer(borderId)) {
+        map.addLayer({
+          id: borderId,
+          type: 'line',
+          source: countrySource,
+          'source-layer': 'country_boundaries',
+          filter: ['==', ['string', ['get', 'iso_3166_1_alpha_3']], 'NON_EXISTENT'],
+          paint: {
+            'line-color': '#000000', // Placeholder
+            'line-width': SIZES.COUNTRY_BORDER_WIDTH,
+            'line-opacity': OPACITIES.COUNTRY_BORDER
+          }
+        });
+      }
+    });
 
     // Asegurar orden de capas
     try {
@@ -171,60 +181,29 @@ export const ConflictVisualization = {
   },
 
   /**
-   * Actualiza el estado de los países en conflicto
+   * Nueva función para actualizar el resaltado de países usando filtros basados en ISO codes
    */
-  updateCountryStates(map: mapboxgl.Map, selectedConflictId: string | null, conflicts: any[]) {
+  updateCountryHighlights(map: mapboxgl.Map, isoCodes: string[]) {
     if (!map.isStyleLoaded()) {
-      setTimeout(() => this.updateCountryStates(map, selectedConflictId, conflicts), 100);
+      setTimeout(() => this.updateCountryHighlights(map, isoCodes), 100);
       return;
     }
 
     try {
-      const features = map.querySourceFeatures('country-boundaries', { sourceLayer: 'country_boundaries' });
-      
-      // Limpiar todos los estados de conflicto
-      features.forEach((feature: any) => {
-        if (feature.id) {
-          map.setFeatureState(
-            { source: 'country-boundaries', sourceLayer: 'country_boundaries', id: feature.id }, 
-            { conflicted: false }
-          );
-        }
-      });
+      const filter = isoCodes.length > 0 
+        ? ['in', ['get', 'iso_3166_1_alpha_3'], ['literal', isoCodes]]
+        : ['==', ['string', ['get', 'iso_3166_1_alpha_3']], 'NON_EXISTENT'];
 
-      // Si hay un conflicto seleccionado, marcar los países correspondientes
-      if (selectedConflictId && conflicts.length > 0) {
-        const countries = getCountriesInConflict(selectedConflictId, conflicts);
-        const normalizedCountries = countries.flatMap(splitCountryVariants);
-        
-        console.log('[DEBUG] Conflicted countries for', selectedConflictId, ':', normalizedCountries);
-        
-        features.forEach((feature: any) => {
-          const possibleNames = [
-            feature.properties?.name_en, 
-            feature.properties?.name, 
-            feature.properties?.NAME, 
-            feature.properties?.NAME_EN, 
-            feature.properties?.admin, 
-            feature.properties?.ADMIN
-          ].filter(Boolean);
-          
-          const normalizedFeatureNames = possibleNames.flatMap(splitCountryVariants);
-          const match = normalizedFeatureNames.some(fn => 
-            normalizedCountries.some(cn => fn === cn)
-          );
-          
-          if (match) {
-            console.log('[DEBUG] Setting conflicted for feature', feature.id, possibleNames);
-            map.setFeatureState(
-              { source: 'country-boundaries', sourceLayer: 'country_boundaries', id: feature.id }, 
-              { conflicted: true }
-            );
-          }
-        });
+      if (map.getLayer(LAYERS.COUNTRY_FILL)) {
+        map.setFilter(LAYERS.COUNTRY_FILL, filter);
       }
+      if (map.getLayer(LAYERS.COUNTRY_BORDER)) {
+        map.setFilter(LAYERS.COUNTRY_BORDER, filter);
+      }
+
+      console.log('[DEBUG] Updated country highlights with ISO:', isoCodes);
     } catch (error) {
-      console.error('[ERROR] Failed to update country states:', error);
+      console.error('[ERROR] Failed to update country highlights:', error);
     }
   },
 
@@ -263,15 +242,50 @@ export const ConflictVisualization = {
    * Actualiza la visualización completa basada en el conflicto seleccionado
    */
   updateVisualization(map: mapboxgl.Map, selectedConflictId: string | null, conflicts: any[]) {
-    // Actualizar estados de países
-    this.updateCountryStates(map, selectedConflictId, conflicts);
-    
+    const isoCodes = selectedConflictId ? getInvolvedISO(selectedConflictId, conflicts) : [];
+    this.updateCountryHighlights(map, isoCodes);
+
+    // Actualizar aliados
+    let factions: string[] = [];
+    if (selectedConflictId) {
+      const allies = getAlliesByFaction(selectedConflictId, conflicts);
+      factions = Object.keys(allies);
+      factions.forEach((faction, index) => {
+        if (index >= 2) return;
+        const { isoCodes: allyISO, color } = allies[faction];
+        const fillId = LAYERS.ALLY_FILL(`faction${index + 1}`);
+        const borderId = LAYERS.ALLY_BORDER(`faction${index + 1}`);
+
+        const filter = allyISO?.length > 0 
+          ? ['in', ['get', 'iso_3166_1_alpha_3'], ['literal', allyISO]]
+          : ['==', ['string', ['get', 'iso_3166_1_alpha_3']], 'NON_EXISTENT'];
+
+        if (map.getLayer(fillId)) {
+          map.setFilter(fillId, filter);
+          map.setPaintProperty(fillId, 'fill-color', color);
+        }
+        if (map.getLayer(borderId)) {
+          map.setFilter(borderId, filter);
+          map.setPaintProperty(borderId, 'line-color', color);
+        }
+      });
+    }
+
+    // Hide all ally layers if no selection or unused
+    for (let i = 0; i < 2; i++) {
+      const fillId = LAYERS.ALLY_FILL(`faction${i + 1}`);
+      const borderId = LAYERS.ALLY_BORDER(`faction${i + 1}`);
+      if (i >= factions.length) {
+        if (map.getLayer(fillId)) map.setFilter(fillId, ['==', ['string', ['get', 'iso_3166_1_alpha_3']], 'NON_EXISTENT']);
+        if (map.getLayer(borderId)) map.setFilter(borderId, ['==', ['string', ['get', 'iso_3166_1_alpha_3']], 'NON_EXISTENT']);
+      }
+    }
+
     // Controlar visibilidad de marcadores
-    // Si hay un conflicto seleccionado, ocultar marcadores para enfocar en el país
     const shouldShowMarkers = !selectedConflictId;
     this.setConflictMarkersVisibility(map, shouldShowMarkers);
     
-    console.log('[DEBUG] Updated visualization - selectedConflictId:', selectedConflictId, 'showMarkers:', shouldShowMarkers);
+    console.log('[DEBUG] Updated visualization - selectedConflictId:', selectedConflictId, 'showMarkers:', shouldShowMarkers, 'isoCodes:', isoCodes);
   },
 
   /**
@@ -293,6 +307,13 @@ export const ConflictVisualization = {
       const rippleLayerId = `conflict-ripple-${i}`;
       if (map.getLayer(rippleLayerId)) map.removeLayer(rippleLayerId);
     }
+
+    // Limpiar capas de aliados
+    ['faction1', 'faction2'].forEach(faction => {
+      [LAYERS.ALLY_FILL(faction), LAYERS.ALLY_BORDER(faction)].forEach(layer => {
+        if (map.getLayer(layer)) map.removeLayer(layer);
+      });
+    });
     
     if (map.getSource(LAYERS.CONFLICT_SOURCE)) map.removeSource(LAYERS.CONFLICT_SOURCE);
   },

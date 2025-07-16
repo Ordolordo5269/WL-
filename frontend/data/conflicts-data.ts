@@ -13,7 +13,8 @@ export const conflictsDatabase: Conflict[] = [
     date: '1948-01-04',
     casualties: 130000,
     status: 'War',
-    coordinates: { lat: 16.8713, lng: 96.1994 }
+    coordinates: { lat: 16.8713, lng: 96.1994 },
+    involvedISO: ['MMR']
   },
   {
     id: 'russia-ukraine-war',
@@ -82,7 +83,18 @@ export const conflictsDatabase: Conflict[] = [
       { title: 'Ukrainian counteroffensives', date: '2022–2023' }
       
     ],
-    sources: ['ACLED', 'GDELT', 'UNHCR', 'Amnesty International']
+    sources: ['ACLED', 'GDELT', 'UNHCR', 'Amnesty International'],
+    involvedISO: ['UKR', 'RUS'],
+    alliesByFaction: {
+      ukraine: {
+        isoCodes: ['USA', 'GBR', 'DEU', 'FRA', 'POL'], // US, UK, Germany, France, Poland
+        color: '#0000FF' // Blue
+      },
+      russia: {
+        isoCodes: ['BLR', 'IRN', 'PRK', 'CHN'], // Belarus, Iran, North Korea, China
+        color: '#008000' // Green
+      }
+    }
   },
   {
     id: 'syrian-civil-war',
@@ -93,7 +105,8 @@ export const conflictsDatabase: Conflict[] = [
     date: '2011-03-15',
     casualties: 580000,
     status: 'War',
-    coordinates: { lat: 33.5131, lng: 36.3094 }
+    coordinates: { lat: 33.5131, lng: 36.3094 },
+    involvedISO: ['SYR']
   },
   {
     id: 'yemen-civil-war',
@@ -104,7 +117,8 @@ export const conflictsDatabase: Conflict[] = [
     date: '2014-03-26',
     casualties: 377000,
     status: 'War',
-    coordinates: { lat: 15.3500, lng: 44.2000 }
+    coordinates: { lat: 15.3500, lng: 44.2000 },
+    involvedISO: ['YEM']
   },
   {
     id: 'israel-hamas-war',
@@ -115,7 +129,18 @@ export const conflictsDatabase: Conflict[] = [
     date: '2023-10-07',
     casualties: 57000,
     status: 'War',
-    coordinates: { lat: 31.5170, lng: 34.4500 }
+    coordinates: { lat: 31.5170, lng: 34.4500 },
+    involvedISO: ['ISR', 'PSE'],
+    alliesByFaction: {
+      israel: {
+        isoCodes: ['USA', 'GBR'], // Example
+        color: '#0000FF'
+      },
+      hamas: {
+        isoCodes: ['IRN'], // Example
+        color: '#008000'
+      }
+    }
   },
   {
     id: 'libya-civil-war',
@@ -126,7 +151,8 @@ export const conflictsDatabase: Conflict[] = [
     date: '2014-07-13',
     casualties: 14882,
     status: 'Improving',
-    coordinates: { lat: 32.8854, lng: 13.1802 }
+    coordinates: { lat: 32.8854, lng: 13.1802 },
+    involvedISO: ['LBY']
   },
   {
     id: 'sudan-civil-war',
@@ -137,7 +163,8 @@ export const conflictsDatabase: Conflict[] = [
     date: '2023-04-15',
     casualties: 150000,
     status: 'War',
-    coordinates: { lat: 15.6000, lng: 32.5000 }
+    coordinates: { lat: 15.6000, lng: 32.5000 },
+    involvedISO: ['SDN']
   },
   {
     id: 'somalia-insurgency',
@@ -148,7 +175,8 @@ export const conflictsDatabase: Conflict[] = [
     date: '2006-12-28',
     casualties: 10000,
     status: 'War',
-    coordinates: { lat: 2.0469, lng: 45.3182 }
+    coordinates: { lat: 2.0469, lng: 45.3182 },
+    involvedISO: ['SOM']
   },
   {
     id: 'nigeria-insurgency',
@@ -159,7 +187,8 @@ export const conflictsDatabase: Conflict[] = [
     date: '2009-07-01',
     casualties: 20000,
     status: 'War',
-    coordinates: { lat: 11.8333, lng: 13.1500 }
+    coordinates: { lat: 11.8333, lng: 13.1500 },
+    involvedISO: ['NGA']
   },
   {
     id: 'mozambique-insurgency',
@@ -170,7 +199,8 @@ export const conflictsDatabase: Conflict[] = [
     date: '2017-10-05',
     casualties: 3000,
     status: 'Improving',
-    coordinates: { lat: -12.9732, lng: 40.5178 }
+    coordinates: { lat: -12.9732, lng: 40.5178 },
+    involvedISO: ['MOZ']
   },
   {
     id: 'mexico-drug-war',
@@ -181,7 +211,8 @@ export const conflictsDatabase: Conflict[] = [
     date: '2006-12-11',
     casualties: 41034,
     status: 'War',
-    coordinates: { lat: 19.4326, lng: -99.1332 }
+    coordinates: { lat: 19.4326, lng: -99.1332 },
+    involvedISO: ['MEX']
   },
   {
     id: 'israel-iran-war',
@@ -192,7 +223,8 @@ export const conflictsDatabase: Conflict[] = [
     date: '2025-06-13',
     casualties: 118, // Estimado de víctimas combinadas hasta el 15 de junio de 2025
     status: 'War',
-    coordinates: { lat: 32.0000, lng: 35.0000 }
+    coordinates: { lat: 32.0000, lng: 35.0000 },
+    involvedISO: ['ISR', 'IRN']
   },
   
   {
@@ -204,7 +236,8 @@ export const conflictsDatabase: Conflict[] = [
     date: '2017-02-07',
     casualties: 3000,
     status: 'War',
-    coordinates: { lat: 18.5333, lng: -72.3333 }
+    coordinates: { lat: 18.5333, lng: -72.3333 },
+    involvedISO: ['HTI']
   },
   
   {
@@ -216,7 +249,8 @@ export const conflictsDatabase: Conflict[] = [
     date: '2017-12-10',
     casualties: 16000,
     status: 'Improving',
-    coordinates: { lat: 33.3153, lng: 44.3661 }
+    coordinates: { lat: 33.3153, lng: 44.3661 },
+    involvedISO: ['IRQ']
   },
   {
     id: 'drc-ituri-conflict',
@@ -227,7 +261,8 @@ export const conflictsDatabase: Conflict[] = [
     date: '2003-01-01',
     casualties: 13000, // ~527 entre 2007‑2017 y 3243 entre 2017‑2020, más violencia posterior hasta 2024
     status: 'Warm',
-    coordinates: { lat: 1.5000, lng: 30.0000 }
+    coordinates: { lat: 1.5000, lng: 30.0000 },
+    involvedISO: ['COD']
   }
 ];
 

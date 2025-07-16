@@ -1,51 +1,51 @@
 /* CONFLICT TRACKER STYLES - UNIFICADOS */
 
 .conflict-tracker {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 22vw !important;
-  min-width: 280px !important;
-  max-width: 370px !important;
-  height: 100vh !important;
-  background: linear-gradient(135deg, #101828 0%, #1e293b 100%) !important;
-  color: #fff !important;
-  z-index: 1000 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  font-family: 'Inter', 'Segoe UI', Arial, sans-serif !important;
-  box-shadow: 10px 0 40px rgba(0,0,0,0.6) !important;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 22vw;
+  min-width: 280px;
+  max-width: 370px;
+  height: 100vh;
+  background: linear-gradient(135deg, #101828 0%, #1e293b 100%);
+  color: #fff;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+  box-shadow: 10px 0 40px rgba(0,0,0,0.6);
   overflow: hidden;
 }
 @media (max-width: 900px) {
   .conflict-tracker {
-    width: 100vw !important;
-    min-width: unset !important;
-    max-width: unset !important;
+    width: 100vw;
+    min-width: unset;
+    max-width: unset;
   }
 }
 
 .conflict-tracker-content {
-  flex: 1 !important;
-  overflow-y: auto !important;
-  padding: 0 !important;
-  scroll-behavior: smooth !important;
-  overscroll-behavior: contain !important;
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: #2563eb #101828;
 }
 .conflict-tracker-content::-webkit-scrollbar {
-  width: 7px !important;
+  width: 7px;
 }
 .conflict-tracker-content::-webkit-scrollbar-thumb {
-  background: #2563eb !important;
-  border-radius: 4px !important;
+  background: #2563eb;
+  border-radius: 4px;
 }
 
 .conflict-tracker-footer {
-  padding: 10px 10px 8px 10px !important;
-  border-top: 1px solid rgba(59, 130, 246, 0.1) !important;
-  background: rgba(15, 23, 42, 0.8) !important;
+  padding: 10px 10px 8px 10px;
+  border-top: 1px solid rgba(59, 130, 246, 0.1);
+  background: rgba(15, 23, 42, 0.8);
 }
 
 .conflict-tracker-tab-button {
@@ -433,9 +433,9 @@
 /* RESPONSIVE */
 @media (max-width: 600px) {
   .conflict-tracker {
-    width: 100vw !important;
-    min-width: unset !important;
-    max-width: unset !important;
+    width: 100vw;
+    min-width: unset;
+    max-width: unset;
   }
   .conflict-detail-view .detail-block,
   .conflict-detail-view .detail-header {

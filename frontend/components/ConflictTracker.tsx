@@ -191,59 +191,66 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect 
           <X className="h-5 w-5" />
         </button>
       </div>
-      {/* Tab Navigation */}
-      <div className="conflict-tracker-tabs">
-        <button
-          className={`conflict-tracker-tab${activeTab === 'conflicts' ? ' active' : ''}`}
-          onClick={() => handleTabChange('conflicts')}
-        >
-          <AlertTriangle size={16} />
-          Conflicts <span className="conflict-tracker-tab-count">({filteredConflicts.length})</span>
-        </button>
-        <button
-          className={`conflict-tracker-tab${activeTab === 'news' ? ' active' : ''}`}
-          onClick={() => handleTabChange('news')}
-        >
-          <TrendingUp size={16} />
-          News <span className="conflict-tracker-tab-count">({news.length})</span>
-        </button>
-      </div>
-      {/* Filters */}
-      {activeTab === 'conflicts' && (
-        <div className="conflict-tracker-selects">
-          <select
-            value={selectedRegion}
-            onChange={(e) => setSelectedRegion(e.target.value)}
-          >
-            <option value="All">All Regions</option>
-            {regions.map(region => (
-              <option key={region} value={region}>{region}</option>
-            ))}
-          </select>
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-          >
-            <option value="All">All Statuses</option>
-            {statuses.map(status => (
-              <option key={status} value={status}>{status}</option>
-            ))}
-          </select>
-        </div>
+
+      {!selectedConflict && (
+        <>
+          {/* Tab Navigation */}
+          <div className="conflict-tracker-tabs">
+            <button
+              className={`conflict-tracker-tab${activeTab === 'conflicts' ? ' active' : ''}`}
+              onClick={() => handleTabChange('conflicts')}
+            >
+              <AlertTriangle size={16} />
+              Conflicts <span className="conflict-tracker-tab-count">({filteredConflicts.length})</span>
+            </button>
+            <button
+              className={`conflict-tracker-tab${activeTab === 'news' ? ' active' : ''}`}
+              onClick={() => handleTabChange('news')}
+            >
+              <TrendingUp size={16} />
+              News <span className="conflict-tracker-tab-count">({news.length})</span>
+            </button>
+          </div>
+
+          {/* Filters */}
+          {activeTab === 'conflicts' && (
+            <div className="conflict-tracker-selects">
+              <select
+                value={selectedRegion}
+                onChange={(e) => setSelectedRegion(e.target.value)}
+              >
+                <option value="All">All Regions</option>
+                {regions.map(region => (
+                  <option key={region} value={region}>{region}</option>
+                ))}
+              </select>
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+              >
+                <option value="All">All Statuses</option>
+                {statuses.map(status => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          {activeTab === 'news' && (
+            <div className="conflict-tracker-selects">
+              <select
+                value={selectedNewsRegion}
+                onChange={(e) => setSelectedNewsRegion(e.target.value)}
+              >
+                <option value="All">All Regions</option>
+                {regions.map(region => (
+                  <option key={region} value={region}>{region}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </>
       )}
-      {activeTab === 'news' && (
-        <div className="conflict-tracker-selects">
-          <select
-            value={selectedNewsRegion}
-            onChange={(e) => setSelectedNewsRegion(e.target.value)}
-          >
-            <option value="All">All Regions</option>
-            {regions.map(region => (
-              <option key={region} value={region}>{region}</option>
-            ))}
-          </select>
-        </div>
-      )}
+
       {/* Content */}
       <div className="conflict-tracker-content">
         {activeTab === 'conflicts' ? (

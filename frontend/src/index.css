@@ -61,16 +61,16 @@ body.loaded {
 .country-sidebar,
 .left-sidebar,
 .menu-toggle-button {
-  transform: translateZ(0) !important;
-  will-change: transform !important;
-  contain: layout style paint !important;
+  transform: translateZ(0);
+  will-change: transform;
+  contain: layout style paint;
 }
 
 @media (max-width: 768px) {
   .conflict-tracker {
-    width: 85vw !important;
-    min-width: unset !important;
-    max-width: unset !important;
+    width: 85vw;
+    min-width: unset;
+    max-width: unset;
   }
 }
 

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
+import React, { useRef, useEffect, useCallback, useImperativeHandle, forwardRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
@@ -26,6 +26,7 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const animationFrameRef = useRef<number | undefined>(undefined);
   const conflictDataManager = useRef<ConflictDataManager | null>(null);
+  const [isMapLoaded, setIsMapLoaded] = useState(false);
 
   // Inicializar el conflict data manager
   useEffect(() => {
@@ -197,6 +198,7 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
     
     // Configurar el globo y capas cuando el mapa esté cargado
     map.on('load', () => {
+      setIsMapLoaded(true);
       // Configurar la atmósfera del globo
       map.setFog({
         'color': 'rgb(186, 210, 235)',
@@ -481,13 +483,17 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
 
   // Actualizar marcadores y países en conflicto cuando cambian los datos o la selección
   useEffect(() => {
-    if (mapRef.current) {
-      const conflictGeoJSON = conflictsToGeoJSON(conflicts);
-      ConflictVisualization.updateConflictMarkers(mapRef.current, conflictGeoJSON);
-      // Usar la función updateVisualization que maneja tanto estados como visibilidad
-      ConflictVisualization.updateVisualization(mapRef.current, selectedConflictId ?? null, conflicts);
-    }
-  }, [conflicts, selectedConflictId]);
+    const update = () => {
+      if (mapRef.current && isMapLoaded) {
+        const conflictGeoJSON = conflictsToGeoJSON(conflicts);
+        ConflictVisualization.updateConflictMarkers(mapRef.current, conflictGeoJSON);
+        ConflictVisualization.updateVisualization(mapRef.current, selectedConflictId ?? null, conflicts);
+      } else {
+        setTimeout(update, 100);
+      }
+    };
+    update();
+  }, [conflicts, selectedConflictId, isMapLoaded]);
 
   // Función para resetear la vista del mapa
   const resetMapView = () => {
