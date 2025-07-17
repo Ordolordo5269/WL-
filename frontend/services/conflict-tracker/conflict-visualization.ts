@@ -242,7 +242,12 @@ export const ConflictVisualization = {
    * Actualiza la visualización completa basada en el conflicto seleccionado
    */
   updateVisualization(map: mapboxgl.Map, selectedConflictId: string | null, conflicts: any[]) {
-    const isoCodes = selectedConflictId ? getInvolvedISO(selectedConflictId, conflicts) : [];
+    let isoCodes = selectedConflictId ? getInvolvedISO(selectedConflictId, conflicts) : [];
+
+    if (selectedConflictId === 'russia-ukraine-war') {
+      isoCodes = isoCodes.filter(iso => iso !== 'UKR');
+    }
+
     this.updateCountryHighlights(map, isoCodes);
 
     // Actualizar aliados
@@ -285,6 +290,12 @@ export const ConflictVisualization = {
     const shouldShowMarkers = !selectedConflictId;
     this.setConflictMarkersVisibility(map, shouldShowMarkers);
     
+    if (selectedConflictId === 'russia-ukraine-war') {
+      this.loadUkraineRealTimeLayers(map);
+    } else {
+      this.removeUkraineLayers(map);
+    }
+
     console.log('[DEBUG] Updated visualization - selectedConflictId:', selectedConflictId, 'showMarkers:', shouldShowMarkers, 'isoCodes:', isoCodes);
   },
 
@@ -359,5 +370,46 @@ export const ConflictVisualization = {
     };
     
     animate();
+  },
+
+  loadUkraineRealTimeLayers(map: mapboxgl.Map) {
+    const fetchUkraineGeoJSON = async () => {
+      const lastRes = await fetch('https://deepstatemap.live/api/history/last');
+      const last = await lastRes.json();
+      const geoRes = await fetch(`https://deepstatemap.live/api/history/${last.id}/geojson`);
+      return await geoRes.json();
+    };
+
+    fetchUkraineGeoJSON().then(geojson => {
+      if (!map.getSource('ukraine-realtime')) {
+        map.addSource('ukraine-realtime', {
+          type: 'geojson',
+          data: geojson
+        });
+
+        map.addLayer({
+          id: 'ukraine-areas-fill',
+          type: 'fill',
+          source: 'ukraine-realtime',
+          paint: {
+            'fill-color': ['get', 'Color'],
+            'fill-opacity': 0.4
+          }
+        });
+      } else {
+        (map.getSource('ukraine-realtime') as mapboxgl.GeoJSONSource).setData(geojson);
+      }
+    }).catch(error => {
+      console.error('Failed to load Ukraine geojson:', error);
+    });
+  },
+
+  removeUkraineLayers(map: mapboxgl.Map) {
+    if (map.getLayer('ukraine-areas-fill')) {
+      map.removeLayer('ukraine-areas-fill');
+    }
+    if (map.getSource('ukraine-realtime')) {
+      map.removeSource('ukraine-realtime');
+    }
   }
 }; 
