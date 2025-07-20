@@ -155,16 +155,82 @@ export const conflictsDatabase: Conflict[] = [
     involvedISO: ['LBY']
   },
   {
-    id: 'sudan-civil-war',
+    id: 'sudan-civil-war-2023',
     country: 'Sudan',
     region: 'Africa',
     conflictType: 'Civil War',
-    description: 'Conflict between Sudanese Armed Forces and Rapid Support Forces (a paramilitary group) since April 2023, with widespread fighting and civilian harm.',
+    description: 'A civil war in Sudan between the Sudanese Armed Forces and the paramilitary Rapid Support Forces (RSF) that began on 15 April 2023, resulting from a power struggle within the military council. The conflict has caused widespread violence, atrocities, famine, and one of the world\'s worst displacement crises.',
     date: '2023-04-15',
     casualties: 150000,
     status: 'War',
-    coordinates: { lat: 15.6000, lng: 32.5000 },
-    involvedISO: ['SDN']
+    coordinates: { lat: 15.500654, lng: 32.559898 },
+    startDate: '2023-04-15',
+    escalationDate: '2023-04-15',
+    casualtiesDetailed: {
+      military: { combined: 21200 },
+      civilian: { total: 7500 }
+    },
+    displacedPersons: 14000000,
+    factions: {
+      saf: {
+        allies: ['Egypt'],
+        militarySupport: {
+          weapons: ['Arms from China', 'Arms from Russia', 'Arms from Turkey'],
+          strategicAssets: []
+        },
+        goals: [
+          'Reassert military control of the country',
+          'Regain and secure Khartoum and surrounding regions',
+          'Maintain influence over Sudan\'s political institutions'
+        ]
+      },
+      rsf: {
+        allies: ['United Arab Emirates', 'Chad', 'Libyan National Army'],
+        militarySupport: {
+          weapons: ['UAE-provided arms', 'Sudanese paramilitary vehicles'],
+          strategicAssets: ['Janjaweed militias', 'Wagner Group elements']
+        },
+        goals: [
+          'Overthrow the current military council',
+          'Expand territorial control, especially in Darfur',
+          'Gain formal political power in a new governing structure'
+        ]
+      }
+    },
+    internationalResponse: {
+      sanctions: {
+        imposedBy: ['USA', 'EU', 'UK', 'Canada'],
+        targets: ['SAF generals', 'RSF leadership', 'Paramilitary entities']
+      },
+      peaceEfforts: [
+        'Jeddah Declaration talks (May 2023)',
+        'AU Peace & Security Council mediation',
+        'Geneva humanitarian access negotiations',
+        'Omani‑facilitated secret meetings'
+      ]
+    },
+    notableEvents: [
+      { title: 'Outbreak of Civil War', date: '2023-04-15' },
+      { title: 'Battle of Nyala', date: '2023-04-15 to 2023-10-26' },
+      { title: 'Jeddah Declaration signed', date: '2023-05-12' },
+      { title: 'Battle of Geneina', date: '2023-06' },
+      { title: 'Famine declared in North Darfur', date: '2024-08' },
+      { title: 'SAF recaptures Khartoum', date: '2025-03-26' },
+      { title: 'Formation of Government of Peace and Unity', date: '2025-02-23' },
+      { title: 'Salha massacre', date: '2025-04-27' }
+    ],
+    sources: ['ACLED', 'UN OCHA', 'UNHCR', 'AP News', 'Washington Post', 'ReliefWeb', 'The Guardian', 'NRC', 'Wikipedia'],
+    involvedISO: ['SDN'],
+    alliesByFaction: {
+      saf: {
+        isoCodes: ['EGY'],
+        color: '#0000FF'
+      },
+      rsf: {
+        isoCodes: ['ARE', 'TCD', 'LBY'],
+        color: '#008000'
+      }
+    }
   },
   {
     id: 'somalia-insurgency',

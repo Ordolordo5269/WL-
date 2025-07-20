@@ -16,9 +16,10 @@ interface WorldMapProps {
   conflicts?: ConflictData[];
   onConflictClick?: (conflictId: string) => void;
   selectedConflictId?: string | null;
+  isLeftSidebarOpen?: boolean;
 }
 
-const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCountry, onResetView, conflicts = [], onConflictClick, selectedConflictId }, ref) => {
+const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCountry, onResetView, conflicts = [], onConflictClick, selectedConflictId, isLeftSidebarOpen = false }, ref) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const geocoderContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -26,6 +27,7 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const animationFrameRef = useRef<number | undefined>(undefined);
   const conflictDataManager = useRef<ConflictDataManager | null>(null);
+  const isLeftSidebarOpenRef = useRef(isLeftSidebarOpen);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
 
   // Inicializar el conflict data manager
@@ -44,6 +46,11 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
       });
     }
   }, []);
+
+  // Función para validar y manejar selección de países
+  const handleCountrySelection = useCallback((countryName: string) => {
+    onCountrySelect(countryName);
+  }, [onCountrySelect]);
 
   // Exponer métodos del mapa al componente padre
   useImperativeHandle(ref, () => ({
@@ -148,7 +155,7 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
           });
         }
         
-        onCountrySelect(finalCountryName);
+        handleCountrySelection(finalCountryName);
        } else {
          // Si no se encuentra el feature, al menos centrar en las coordenadas
          map.easeTo({
@@ -159,7 +166,7 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
          });
          
          // Llamar a la función de selección con el nombre del geocoder
-         onCountrySelect(countryName);
+         handleCountrySelection(countryName);
        }
        
        // Limpiar el input del geocoder para permitir nuevas búsquedas
@@ -264,6 +271,13 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
 
       // Eventos de hover optimizados
       map.on('mousemove', 'country-highlight', (e) => {
+        // Si la sidebar izquierda está abierta, no procesar hover
+        if (isLeftSidebarOpenRef.current) {
+          // Usar el cursor personalizado minimalista
+          map.getCanvas().style.cursor = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='8' fill='none' stroke='%2387CEEB' stroke-width='1.5' opacity='0.9'/%3E%3Ccircle cx='10' cy='10' r='2' fill='%2387CEEB' opacity='0.7'/%3E%3C/svg%3E\") 10 10, auto";
+          return;
+        }
+
         if (e.features && e.features.length > 0) {
           const id = e.features[0].id;
           
@@ -316,6 +330,11 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
 
       // Evento de clic para seleccionar país
       map.on('click', 'country-highlight', (e) => {
+        // Si la sidebar izquierda está abierta, no procesar el click
+        if (isLeftSidebarOpenRef.current) {
+          return;
+        }
+
         if (e.features && e.features.length > 0) {
           const feature = e.features[0];
           const countryName = feature.properties?.name_en || feature.properties?.name || 'Unknown Country';
@@ -404,7 +423,7 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
             }
           }
           
-          onCountrySelect(countryName);
+          handleCountrySelection(countryName);
         }
       });
     });
@@ -544,6 +563,23 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
     }
   }, [onResetView]);
   
+  // Efecto para actualizar el ref cuando cambia el estado de sidebar izquierda
+  useEffect(() => {
+    isLeftSidebarOpenRef.current = isLeftSidebarOpen;
+    if (mapRef.current && isMapLoaded) {
+      const canvas = mapRef.current.getCanvas();
+      if (isLeftSidebarOpen) {
+        // Cursor personalizado minimalista y elegante
+        canvas.style.cursor = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='8' fill='none' stroke='%2387CEEB' stroke-width='1.5' opacity='0.9'/%3E%3Ccircle cx='10' cy='10' r='2' fill='%2387CEEB' opacity='0.7'/%3E%3C/svg%3E\") 10 10, auto";
+        // Agregar una clase CSS para efectos adicionales
+        canvas.classList.add('sidebar-open-cursor');
+      } else {
+        canvas.style.cursor = 'grab';
+        canvas.classList.remove('sidebar-open-cursor');
+      }
+    }
+  }, [isLeftSidebarOpen, isMapLoaded]);
+
   // Efecto separado para manejar la función de selección
   useEffect(() => {
     // Este efecto se ejecuta cuando cambia onCountrySelect pero no recrea el mapa

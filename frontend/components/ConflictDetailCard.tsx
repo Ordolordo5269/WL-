@@ -126,6 +126,49 @@ const ConflictDetailCard: React.FC<ConflictDetailCardProps> = ({ conflict, onBac
                     </div>
                   )}
                 </div>
+                
+                {/* Ukraine API Legend - Only show for Russia-Ukraine conflict */}
+                {conflict.id === 'russia-ukraine-war' && (
+                  <>
+                    <div className="detail-block-title mt-4">Real-time Map Data</div>
+                    <div className="detail-block-content">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                        <span className="text-sm font-medium text-green-400">Live Ukraine frontline data</span>
+                      </div>
+                      <div className="text-sm text-slate-300 mb-3">
+                        <span className="font-medium">Source:</span>{' '}
+                        <a 
+                          href="https://deepstatemap.live" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-400 hover:text-blue-300 underline"
+                        >
+                          DeepStateMap
+                        </a>
+                      </div>
+                      
+                      {/* Map Legend */}
+                      <div className="mt-4 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                        <div className="text-sm font-medium text-slate-200 mb-2">Map Legend:</div>
+                        <div className="space-y-2 text-xs">
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                            <span className="text-slate-300">Red: Russian-controlled territories</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                            <span className="text-slate-300">Blue: Points of interest</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+                            <span className="text-slate-300">Lines: Battle fronts</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
             {activeTab === 'factions' && (

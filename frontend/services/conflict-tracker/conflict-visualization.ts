@@ -373,43 +373,21 @@ export const ConflictVisualization = {
   },
 
   loadUkraineRealTimeLayers(map: mapboxgl.Map) {
-    const fetchUkraineGeoJSON = async () => {
-      const lastRes = await fetch('https://deepstatemap.live/api/history/last');
-      const last = await lastRes.json();
-      const geoRes = await fetch(`https://deepstatemap.live/api/history/${last.id}/geojson`);
-      return await geoRes.json();
-    };
-
-    fetchUkraineGeoJSON().then(geojson => {
-      if (!map.getSource('ukraine-realtime')) {
-        map.addSource('ukraine-realtime', {
-          type: 'geojson',
-          data: geojson
-        });
-
-        map.addLayer({
-          id: 'ukraine-areas-fill',
-          type: 'fill',
-          source: 'ukraine-realtime',
-          paint: {
-            'fill-color': ['get', 'Color'],
-            'fill-opacity': 0.4
-          }
-        });
-      } else {
-        (map.getSource('ukraine-realtime') as mapboxgl.GeoJSONSource).setData(geojson);
-      }
+    // Import and use the enhanced Ukraine API service
+    import('../ukraine-api').then(({ UkraineAPIService }) => {
+      UkraineAPIService.loadUkraineDataWithFeedback(map);
     }).catch(error => {
-      console.error('Failed to load Ukraine geojson:', error);
+      console.error('Failed to load Ukraine API service:', error);
     });
   },
 
   removeUkraineLayers(map: mapboxgl.Map) {
-    if (map.getLayer('ukraine-areas-fill')) {
-      map.removeLayer('ukraine-areas-fill');
-    }
-    if (map.getSource('ukraine-realtime')) {
-      map.removeSource('ukraine-realtime');
-    }
+    // Import and use the enhanced Ukraine API service
+    import('../ukraine-api').then(({ UkraineAPIService }) => {
+      UkraineAPIService.removeUkraineLayers(map);
+      UkraineAPIService.stopAutoRefresh();
+    }).catch(error => {
+      console.error('Failed to load Ukraine API service:', error);
+    });
   }
 }; 

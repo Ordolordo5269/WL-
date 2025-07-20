@@ -37,7 +37,13 @@ const ConflictStats: React.FC<ConflictStatsProps> = ({ conflict }) => {
             <div className="flex flex-col justify-center flex-1">
               <div className="stat-title text-sm text-blue-300 font-semibold uppercase tracking-wide mb-1">Militares</div>
               <div className="stat-value text-3xl text-blue-100 font-bold mb-1 leading-tight">{formatNumber(Object.values(conflict.casualtiesDetailed.military).reduce((sum, val) => sum + val, 0))}</div>
-              <div className="stat-desc text-sm text-blue-400 mt-1 font-normal">Ucrania: {formatNumber(conflict.casualtiesDetailed.military.ukraine)} | Rusia: {formatNumber(conflict.casualtiesDetailed.military.russia)}</div>
+              <div className="stat-desc text-sm text-blue-400 mt-1 font-normal">
+                {Object.entries(conflict.casualtiesDetailed.military).map(([key, value], index) => (
+                  <span key={key}>
+                    {index > 0 ? ' | ' : ''}{key.charAt(0).toUpperCase() + key.slice(1)}: {formatNumber(value)}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
         )}

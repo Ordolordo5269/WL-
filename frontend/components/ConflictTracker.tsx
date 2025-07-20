@@ -117,10 +117,16 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect 
 
   // Enhanced conflict click handler for detailed view
   const handleConflictClickEnhanced = (conflict: Conflict) => {
-    // For Ukraine conflict, show detailed view AND center map
-    if (conflict.id === 'russia-ukraine-war') {
+    // Check if conflict has detailed data (factions, casualtiesDetailed, etc.)
+    const hasDetailedData = conflict.factions || 
+                           conflict.casualtiesDetailed || 
+                           conflict.displacedPersons || 
+                           conflict.internationalResponse || 
+                           conflict.notableEvents;
+    
+    if (hasDetailedData) {
       setSelectedConflict(conflict);
-      // Also center the map on Ukraine and show the marker
+      // Center the map on the conflict and show the marker
       if (onCenterMap) {
         onCenterMap(conflict.coordinates);
       }
@@ -129,7 +135,7 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect 
         onConflictSelect(conflict.id);
       }
     } else {
-      // For other conflicts, use the original handler
+      // For conflicts without detailed data, use the original handler
       handleConflictClick(conflict);
     }
   };

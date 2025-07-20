@@ -31,7 +31,7 @@ function App() {
     conflict: false // conflict tracker
   });
 
-  // Unified toggle function
+  // Función para manejar sidebars
   const toggleSidebar = useCallback((type: 'country' | 'menu' | 'conflict', open: boolean) => {
     setSidebars(prev => ({ ...prev, [type]: open }));
   }, []);
@@ -50,8 +50,7 @@ function App() {
       });
   }, []);
 
-  // Optimized handlers with useCallback to prevent unnecessary re-renders
-  // Update handlers to use toggleSidebar
+  // Handler para selección de países
   const handleCountrySelect = useCallback((countryName: string) => {
     setSelectedCountry(countryName);
     toggleSidebar('country', true);
@@ -70,9 +69,10 @@ function App() {
     // Esta función se pasa al WorldMap para exponer resetMapView
   }, []);
 
+  // Simplificados: handlers para sidebars
   const handleToggleLeftSidebar = useCallback(() => {
-    setSidebars(prev => ({ ...prev, menu: !prev.menu }));
-  }, []);
+    toggleSidebar('menu', !sidebars.menu);
+  }, [sidebars.menu, toggleSidebar]);
 
   const handleCloseLeftSidebar = useCallback(() => {
     toggleSidebar('menu', false);
@@ -80,7 +80,6 @@ function App() {
 
   const handleOpenConflictTracker = useCallback(() => {
     toggleSidebar('conflict', true);
-    toggleSidebar('menu', false);
   }, [toggleSidebar]);
 
   const handleCloseConflictTracker = useCallback(() => {
@@ -89,9 +88,8 @@ function App() {
   }, [toggleSidebar]);
 
   const handleBackToLeftSidebar = useCallback(() => {
-    toggleSidebar('conflict', false);
-    toggleSidebar('menu', true);
     setSelectedConflictId(null);
+    toggleSidebar('menu', true);
   }, [toggleSidebar]);
 
   const handleCenterMapOnConflict = (coordinates: { lat: number; lng: number }) => {
@@ -167,6 +165,7 @@ function App() {
         conflicts={conflictsForMap}
         onConflictClick={handleConflictClick}
         selectedConflictId={selectedConflictId}
+        isLeftSidebarOpen={sidebars.menu}
       />
       
       {/* Country Sidebar with improved animations */}
@@ -246,7 +245,7 @@ function App() {
           />
           
           <ConflictTracker 
-            onBack={handleBackToLeftSidebar}
+            onBack={handleCloseConflictTracker}
             onCenterMap={handleCenterMapOnConflict}
             onConflictSelect={handleConflictSelect}
           />
