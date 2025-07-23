@@ -2,6 +2,8 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Globe, Banknote, Landmark, Shield, Users, Globe2, Cpu, Palette, X } from 'lucide-react';
 import '../src/styles/conflict-tracker.css';
+import { useEconomyData } from '../hooks/useEconomyData';
+import EconomySection from './EconomySection';
 
 interface CategoryGroupProps {
   icon: React.ReactNode;
@@ -93,6 +95,9 @@ interface CountrySidebarProps {
 export default function CountrySidebar({ isOpen, onClose, countryName }: CountrySidebarProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
+  
+  // Load economy data for the selected country
+  const { economyData, isLoading: isEconomyLoading, error: economyError } = useEconomyData(countryName);
 
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -228,17 +233,60 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
           {/* Categories List */}
           <div className="sidebar-content">
             <div className="p-2">
-              {categories.map((category) => (
-                <CategoryGroup
-                  key={category.title}
-                  icon={category.icon}
-                  title={category.title}
-                  items={category.items}
-                  isOpen={openCategories.has(category.title)}
-                  onToggle={() => toggleCategory(category.title)}
-                  searchTerm={searchTerm}
-                />
-              ))}
+              {categories.map((category) => {
+                // Special handling for Economy category
+                if (category.title === "Economy") {
+                  return (
+                    <div key={category.title} className="mb-2">
+                      <button
+                        onClick={() => toggleCategory(category.title)}
+                        className={`flex w-full items-center gap-3 hover:bg-slate-800 rounded-lg p-3 text-left transition-all duration-300 ${
+                          openCategories.has(category.title) ? 'category-open' : ''
+                        }`}
+                      >
+                        {category.icon}
+                        <span className="font-medium flex-1">{category.title}</span>
+                        <span className="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded-full">
+                          {economyData ? 'Data Available' : isEconomyLoading ? 'Loading...' : 'No Data'}
+                        </span>
+                        <ChevronDown 
+                          className={`h-4 w-4 transition-transform duration-300 ${
+                            openCategories.has(category.title) ? 'rotate-180' : ''
+                          }`} 
+                        />
+                      </button>
+                      {openCategories.has(category.title) && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.3, ease: 'easeInOut' }}
+                          className="ml-2 mt-2"
+                        >
+                          <EconomySection 
+                            economyData={economyData}
+                            isLoading={isEconomyLoading}
+                            error={economyError}
+                          />
+                        </motion.div>
+                      )}
+                    </div>
+                  );
+                }
+                
+                // Regular category handling for other categories
+                return (
+                  <CategoryGroup
+                    key={category.title}
+                    icon={category.icon}
+                    title={category.title}
+                    items={category.items}
+                    isOpen={openCategories.has(category.title)}
+                    onToggle={() => toggleCategory(category.title)}
+                    searchTerm={searchTerm}
+                  />
+                );
+              })}
               
               {searchTerm && visibleCategories.length === 0 && (
                 <div className="text-center text-slate-400 py-8">

@@ -8,16 +8,17 @@
     "clean": "rimraf dist"
   },
   "dependencies": {
+    "axios": "^1.11.0",
+    "cors": "^2.8.5",
     "express": "^4.19.2",
-    "morgan": "^1.10.0",
-    "cors": "^2.8.5"
+    "morgan": "^1.10.0"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.17",
     "@types/express": "^5.0.2",
     "@types/morgan": "^1.9.9",
-    "@types/cors": "^2.8.17",
+    "rimraf": "^5.0.5",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.2.2",
-    "rimraf": "^5.0.5"
+    "typescript": "^5.2.2"
   }
 }

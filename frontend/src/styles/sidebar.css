@@ -22,6 +22,310 @@
   contain: layout style paint;
 }
 
+/* Compact Economy Section - Optimized Layout */
+.economy-container {
+  padding: 16px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Main Metrics Grid */
+.metrics-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+/* Main Metric Card */
+.main-metric {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(71, 85, 105, 0.3);
+  border-radius: 8px;
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.main-metric:hover {
+  border-color: rgba(59, 130, 246, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.metric-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.metric-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 8px;
+  color: #3b82f6;
+}
+
+.metric-icon.small {
+  width: 32px;
+  height: 32px;
+  background: rgba(71, 85, 105, 0.2);
+  color: #94a3b8;
+}
+
+.metric-info {
+  flex: 1;
+}
+
+.metric-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin: 0;
+}
+
+.metric-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 4px 0 2px 0;
+}
+
+.metric-subtitle {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.quality-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.quality-badge.good {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+/* Secondary Metrics */
+.secondary-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.metric-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(71, 85, 105, 0.2);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.metric-item:hover {
+  background: rgba(15, 23, 42, 0.8);
+  border-color: rgba(71, 85, 105, 0.4);
+}
+
+.metric-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.metric-label {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.metric-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+/* Section Cards */
+.section-card {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(71, 85, 105, 0.2);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: #3b82f6;
+}
+
+.section-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin: 0;
+}
+
+/* Sectors Grid */
+.sectors-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sector-item {
+  padding: 8px 0;
+}
+
+.sector-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.sector-name {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.sector-value {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sector-value.emerald { color: #10b981; }
+.sector-value.blue { color: #3b82f6; }
+.sector-value.purple { color: #8b5cf6; }
+
+.sector-bar {
+  height: 4px;
+  background: rgba(71, 85, 105, 0.3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.sector-progress {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.sector-progress.emerald { background: #10b981; }
+.sector-progress.blue { background: #3b82f6; }
+.sector-progress.purple { background: #8b5cf6; }
+
+/* Trade Items */
+.trade-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.trade-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(71, 85, 105, 0.2);
+}
+
+.trade-item:last-child {
+  border-bottom: none;
+}
+
+.trade-item.balance {
+  padding-top: 12px;
+  margin-top: 8px;
+  border-top: 1px solid rgba(71, 85, 105, 0.3);
+}
+
+.trade-label {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.trade-value {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.trade-value.positive { color: #10b981; }
+.trade-value.negative { color: #ef4444; }
+
+.trade-status {
+  font-size: 10px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Info Row */
+.info-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid rgba(71, 85, 105, 0.2);
+  border-radius: 6px;
+  margin-top: 12px;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.info-label {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.info-value {
+  font-size: 12px;
+  font-weight: 500;
+  color: #e2e8f0;
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  .economy-container {
+    padding: 12px;
+  }
+  
+  .secondary-metrics {
+    grid-template-columns: 1fr;
+  }
+  
+  .metric-item {
+    padding: 10px;
+  }
+  
+  .section-card {
+    padding: 12px;
+  }
+}
+
+/* Color-coded values for positive/negative */
+.value-positive { color: #10b981; }
+.value-negative { color: #ef4444; }
+.value-neutral { color: #94a3b8; }
+
 /* Headers consolidados */
 .sidebar-header, .left-sidebar-header {
   padding: 24px 20px 16px;
