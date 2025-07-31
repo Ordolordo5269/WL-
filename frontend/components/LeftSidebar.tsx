@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, Home, Search, Settings, Info, Globe, Users, BarChart3, Map } from 'lucide-react';
+import { Home, Search, Settings, Info, Globe, Users, BarChart3, Map } from 'lucide-react';
 
 interface LeftSidebarProps {
   isOpen: boolean;
@@ -16,7 +16,7 @@ interface MenuItem {
   onClick?: () => void;
 }
 
-export default function LeftSidebar({ isOpen, onClose, onCenterMap, onOpenConflictTracker }: LeftSidebarProps) {
+export default function LeftSidebar({ isOpen, onOpenConflictTracker }: LeftSidebarProps) {
   const [activeItem, setActiveItem] = useState<string>('home');
 
   const menuItems: MenuItem[] = useMemo(() => [
@@ -62,7 +62,7 @@ export default function LeftSidebar({ isOpen, onClose, onCenterMap, onOpenConfli
     }
   ], []);
 
-  const handleItemClick = useCallback((item: MenuItem, index: number) => {
+  const handleItemClick = useCallback((item: MenuItem) => {
     setActiveItem(item.label.toLowerCase());
     
     // Handle Conflict Tracker specifically
@@ -111,7 +111,7 @@ export default function LeftSidebar({ isOpen, onClose, onCenterMap, onOpenConfli
                       href={item.href}
                       onClick={(e) => {
                         e.preventDefault();
-                        handleItemClick(item, index);
+                        handleItemClick(item);
                       }}
                       className={`left-sidebar-item ${
                         activeItem === item.label.toLowerCase() ? 'active' : ''

@@ -1,5 +1,4 @@
 import React from 'react';
-import { Chrono } from 'react-chrono';
 import type { Conflict } from '../src/types';
 
 interface ConflictTimelineProps {
@@ -7,38 +6,30 @@ interface ConflictTimelineProps {
 }
 
 const ConflictTimeline: React.FC<ConflictTimelineProps> = ({ conflict }) => {
-  // Preparar los eventos notables para react-chrono
-  const items = (conflict.notableEvents || []).map(event => ({
-    title: event.title,
-    cardTitle: event.title,
-    cardSubtitle: event.date ? new Date(event.date).toLocaleDateString('es-ES') : '',
-  }));
+  const events = conflict.notableEvents || [];
+
+  if (events.length === 0) {
+    return (
+      <div className="section-content">
+        <p>No timeline events available for this conflict.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="conflict-timeline" style={{ maxHeight: 540, overflowY: 'auto' }}>
-      {/* Timeline minimalista con react-chrono */}
-      {items.length > 0 && (
-        <div className="mb-6">
-          <Chrono
-            items={items}
-            mode="VERTICAL_ALTERNATING"
-            hideControls
-            cardHeight={60}
-            theme={{
-              primary: '#2563eb',
-              secondary: '#e5e7eb',
-              cardBgColor: 'transparent',
-              cardTitleColor: '#1e293b',
-              titleColor: '#2563eb',
-              cardSubtitleColor: '#64748b',
-              detailsColor: '#64748b',
-            }}
-            disableToolbar
-            borderLessCards
-            cardLess
-          />
+    <div className="timeline-container">
+      <div className="timeline-line"></div>
+      {events.map((event, index) => (
+        <div key={index} className="timeline-item">
+          <div className={`timeline-marker${index === 0 ? ' active' : ''}`}></div>
+          <div className="timeline-content">
+            <p className="timeline-date">
+              {event.date ? new Date(event.date).toLocaleDateString('en-GB') : 'Date unknown'}
+            </p>
+            <h4 className="timeline-title">{event.title}</h4>
+          </div>
         </div>
-      )}
+      ))}
     </div>
   );
 };

@@ -10,76 +10,49 @@ const ConflictFactions: React.FC<ConflictFactionsProps> = ({ conflict }) => {
     return null;
   }
 
-  const getFactionColor = (factionName: string) => {
-    const colors = {
-      ukraine: '#2563eb', // blue
-      russia: '#dc2626', // red
-      default: '#64748b'
+  const getFactionIconClass = (factionName: string) => {
+    const iconClasses = {
+      ukraine: 'faction-icon blue',
+      russia: 'faction-icon red',
+      default: 'faction-icon'
     };
-    return colors[factionName as keyof typeof colors] || colors.default;
+    return iconClasses[factionName as keyof typeof iconClasses] || iconClasses.default;
   };
 
-  const getAllyColor = (ally: string) => {
-    const allyColors: { [key: string]: string } = {
-      'United States': '#2563eb',
-      'European Union': '#1e40af',
-      'United Kingdom': '#2563eb',
-      'NATO (support, not direct)': '#60a5fa',
-      'Belarus': '#dc2626',
-      'Iran (drone supply)': '#22c55e',
-      'North Korea (ammunition)': '#f87171',
-      'China (diplomatic support)': '#fbbf24'
+  const getAllyTagClass = (ally: string) => {
+    const allyClasses: { [key: string]: string } = {
+      'United States': 'faction-tag',
+      'European Union': 'faction-tag',
+      'United Kingdom': 'faction-tag',
+      'NATO (support, not direct)': 'faction-tag',
+      'Belarus': 'faction-tag red',
+      'Iran (drone supply)': 'faction-tag green',
+      'North Korea (ammunition)': 'faction-tag red',
+      'China (diplomatic support)': 'faction-tag yellow'
     };
-    return allyColors[ally] || '#64748b';
+    return allyClasses[ally] || 'faction-tag';
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', width: '100%' }}>
+    <div>
       {Object.entries(conflict.factions).map(([factionName, faction]) => (
-        <div
-          key={factionName}
-          style={{
-            background: 'rgba(30,41,59,0.85)',
-            borderRadius: '12px',
-            padding: '16px',
-            border: `1.5px solid ${getFactionColor(factionName)}`,
-            width: '100%'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-            <div
-              style={{
-                width: 14,
-                height: 14,
-                borderRadius: '50%',
-                background: getFactionColor(factionName),
-                marginRight: 10
-              }}
-            />
-            <span style={{ fontWeight: 700, fontSize: '1.08rem', color: '#fff', letterSpacing: '0.02em' }}>
+        <div key={factionName} className="faction-card">
+          <div className="faction-header">
+            <div className={getFactionIconClass(factionName)}>
+              {factionName.charAt(0).toUpperCase()}
+            </div>
+            <h3 className="faction-name">
               {factionName.charAt(0).toUpperCase() + factionName.slice(1)}
-            </span>
+            </h3>
           </div>
 
           {/* Allies */}
           {faction.allies && faction.allies.length > 0 && (
-            <div style={{ marginBottom: 10 }}>
-              <div style={{ color: '#60a5fa', fontWeight: 500, fontSize: '0.98rem', marginBottom: 2 }}>Allies</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            <div className="faction-section">
+              <h4 className="faction-section-title">Allies</h4>
+              <div className="faction-tags">
                 {faction.allies.map((ally) => (
-                  <span
-                    key={ally}
-                    style={{
-                      background: 'rgba(37,99,235,0.08)',
-                      border: `1px solid ${getAllyColor(ally)}`,
-                      color: getAllyColor(ally),
-                      borderRadius: 8,
-                      padding: '2px 10px',
-                      fontSize: '0.97rem',
-                      fontWeight: 500,
-                      marginBottom: 2
-                    }}
-                  >
+                  <span key={ally} className={getAllyTagClass(ally)}>
                     {ally}
                   </span>
                 ))}
@@ -89,11 +62,11 @@ const ConflictFactions: React.FC<ConflictFactionsProps> = ({ conflict }) => {
 
           {/* Goals */}
           {faction.goals && faction.goals.length > 0 && (
-            <div style={{ marginBottom: 10 }}>
-              <div style={{ color: '#60a5fa', fontWeight: 500, fontSize: '0.98rem', marginBottom: 2 }}>Goals</div>
-              <ul style={{ color: '#e0e7ef', fontSize: '0.97rem', margin: 0, paddingLeft: 18, listStyle: 'disc' }}>
+            <div className="faction-section">
+              <h4 className="faction-section-title">Goals</h4>
+              <ul className="faction-list">
                 {faction.goals.map((goal, index) => (
-                  <li key={index} style={{ marginBottom: 2 }}>{goal}</li>
+                  <li key={index}>{goal}</li>
                 ))}
               </ul>
             </div>
@@ -101,31 +74,35 @@ const ConflictFactions: React.FC<ConflictFactionsProps> = ({ conflict }) => {
 
           {/* Military Support */}
           {faction.militarySupport && (
-            <div>
-              <div style={{ color: '#60a5fa', fontWeight: 500, fontSize: '0.98rem', marginBottom: 2 }}>Military Support</div>
+            <div className="faction-section">
+              <h4 className="faction-section-title">Military Support</h4>
               {faction.militarySupport.weapons && (
-                <div style={{ marginBottom: 4 }}>
-                  <span style={{ color: '#a5b4fc', fontSize: '0.96rem', marginRight: 4 }}>Weapons:</span>
-                  <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4 }}>
+                <div style={{ marginBottom: 8 }}>
+                  <span style={{ color: '#94a3b8', fontSize: '0.875rem' }}>Weapons:</span>
+                  <div className="faction-tags" style={{ marginTop: 4 }}>
                     {faction.militarySupport.weapons.map((weapon) => (
-                      <span key={weapon} style={{ background: '#172554', color: '#e0e7ef', borderRadius: 6, padding: '2px 8px', fontSize: '0.95rem', marginRight: 2 }}>{weapon}</span>
+                      <span key={weapon} className="faction-tag">
+                        {weapon}
+                      </span>
                     ))}
-                  </span>
+                  </div>
                 </div>
               )}
               {faction.militarySupport.aidValue && (
-                <div style={{ color: '#a5b4fc', fontSize: '0.96rem', marginBottom: 2 }}>
-                  <span style={{ fontWeight: 500 }}>Aid value:</span> {faction.militarySupport.aidValue}
-                </div>
+                <p style={{ color: '#94a3b8', fontSize: '0.875rem', margin: '8px 0' }}>
+                  <strong>Aid value:</strong> {faction.militarySupport.aidValue}
+                </p>
               )}
               {faction.militarySupport.strategicAssets && (
-                <div style={{ marginTop: 2 }}>
-                  <span style={{ color: '#a5b4fc', fontSize: '0.96rem', marginRight: 4 }}>Strategic assets:</span>
-                  <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4 }}>
+                <div style={{ marginTop: 8 }}>
+                  <span style={{ color: '#94a3b8', fontSize: '0.875rem' }}>Strategic assets:</span>
+                  <div className="faction-tags" style={{ marginTop: 4 }}>
                     {faction.militarySupport.strategicAssets.map((asset) => (
-                      <span key={asset} style={{ background: '#fee2e2', color: '#dc2626', borderRadius: 6, padding: '2px 8px', fontSize: '0.95rem', marginRight: 2 }}>{asset}</span>
+                      <span key={asset} className="faction-tag red">
+                        {asset}
+                      </span>
                     ))}
-                  </span>
+                  </div>
                 </div>
               )}
             </div>

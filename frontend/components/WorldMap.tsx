@@ -7,7 +7,7 @@ import { ConflictVisualization } from '../services/conflict-tracker/conflict-vis
 import { ConflictDataManager, type ConflictData } from '../services/conflict-tracker/conflict-data-manager';
 import { findCapitalByCountry } from '../data/world-capitals';
 
-mapboxgl.accessToken = (import.meta as any).env.VITE_MAPBOX_TOKEN;
+mapboxgl.accessToken = (import.meta as unknown as { env: { VITE_MAPBOX_TOKEN: string } }).env.VITE_MAPBOX_TOKEN || '';
 
 interface WorldMapProps {
   onCountrySelect: (countryName: string) => void;
@@ -19,16 +19,59 @@ interface WorldMapProps {
   isLeftSidebarOpen?: boolean;
 }
 
-const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCountry, onResetView, conflicts = [], onConflictClick, selectedConflictId, isLeftSidebarOpen = false }, ref) => {
+// Tipos específicos para evitar 'any'
+interface MapEaseToOptions {
+  center?: [number, number];
+  zoom?: number;
+  duration?: number;
+  easing?: (t: number) => number;
+  pitch?: number;
+  bearing?: number;
+}
+
+interface ConflictGeoJSON {
+  type: 'FeatureCollection';
+  features: Array<{
+    type: 'Feature';
+    geometry: {
+      type: 'Point';
+      coordinates: [number, number];
+    };
+    properties: {
+      id: string;
+      country: string;
+      status: string;
+      [key: string]: unknown;
+    };
+  }>;
+}
+
+const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMap: () => mapboxgl.Map | null }, WorldMapProps>(({ onCountrySelect, selectedCountry, onResetView, conflicts = [], selectedConflictId, isLeftSidebarOpen = false }, ref) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const geocoderContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const selectedCountryId = useRef<string | number | null>(null);
-  const markersRef = useRef<mapboxgl.Marker[]>([]);
+  // Removed unused markersRef to prevent memory leaks
   const animationFrameRef = useRef<number | undefined>(undefined);
   const conflictDataManager = useRef<ConflictDataManager | null>(null);
   const isLeftSidebarOpenRef = useRef(isLeftSidebarOpen);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
+  
+  // ✅ NUEVO: Refs para prevenir memory leaks
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const spinIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const eventListenersRef = useRef<EventListenerRecord[]>([]);
+  
+  // ✅ NUEVO: Tipos específicos para event listeners
+  type MapMouseEventHandler = (e: mapboxgl.MapMouseEvent) => void;
+  type MapTouchEventHandler = (e: mapboxgl.MapTouchEvent) => void;
+  type GeocoderEventHandler = (e: unknown) => void;
+  
+  interface EventListenerRecord {
+    event: string;
+    handler: MapMouseEventHandler | MapTouchEventHandler | GeocoderEventHandler;
+    layer?: string;
+  }
 
   // Inicializar el conflict data manager
   useEffect(() => {
@@ -37,12 +80,12 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
     }
   }, []);
 
-  // Optimized map methods
-  const easeTo = useCallback((options: any) => {
+  // ✅ MEJORADO: Optimized map methods con tipos específicos
+  const easeTo = useCallback((options: MapEaseToOptions) => {
     if (mapRef.current) {
       mapRef.current.easeTo({
         ...options,
-        easing: (t: number) => 1 - Math.pow(1 - t, 3) // Smooth easing
+        easing: options.easing || ((t: number) => 1 - Math.pow(1 - t, 3)) // Smooth easing
       });
     }
   }, []);
@@ -51,6 +94,42 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
   const handleCountrySelection = useCallback((countryName: string) => {
     onCountrySelect(countryName);
   }, [onCountrySelect]);
+
+  // ✅ MEJORADO: Función de cleanup para prevenir memory leaks
+  const cleanupResources = useCallback(() => {
+    // Limpiar timeouts
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    
+    if (spinIntervalRef.current) {
+      clearInterval(spinIntervalRef.current);
+      spinIntervalRef.current = null;
+    }
+    
+    // Limpiar animation frames
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = undefined;
+    }
+    
+    // ✅ MEJORADO: Limpiar event listeners con manejo de capas
+    if (mapRef.current) {
+      eventListenersRef.current.forEach(({ event, handler, layer }) => {
+        try {
+          if (layer) {
+            mapRef.current?.off(event, layer, handler as MapMouseEventHandler);
+          } else {
+            mapRef.current?.off(event, handler);
+          }
+        } catch (error) {
+          console.warn(`Error removing event listener for ${event}${layer ? ` on layer ${layer}` : ''}:`, error);
+        }
+      });
+      eventListenersRef.current = [];
+    }
+  }, []);
 
   // Exponer métodos del mapa al componente padre
   useImperativeHandle(ref, () => ({
@@ -88,7 +167,7 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
     // Buscador de países en inglés
     const geocoder = new MapboxGeocoder({
       accessToken: mapboxgl.accessToken as string,
-      mapboxgl: mapboxgl as any,
+      mapboxgl: mapboxgl as { Map: typeof mapboxgl.Map },
       types: 'country',
       language: 'en',
       placeholder: 'Search country',
@@ -98,9 +177,10 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
     });
     
     // Evento cuando se selecciona un país desde el geocoder
-    geocoder.on('result', (e) => {
-      const countryName = e.result.place_name || e.result.text;
-      const coordinates = e.result.center;
+    const handleGeocoderResult = (e: unknown) => {
+      const event = e as { result: { place_name?: string; text?: string; center: [number, number] } };
+      const countryName = event.result.place_name || event.result.text || 'Unknown Country';
+      const coordinates = event.result.center;
       
       // Buscar el país en las capas del mapa para obtener su feature
       const features = map.querySourceFeatures('country-boundaries', {
@@ -173,7 +253,9 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
        setTimeout(() => {
          geocoder.clear();
        }, 100);
-    });
+    };
+    
+    geocoder.on('result', handleGeocoderResult);
     
     if (geocoderContainer.current) {
       geocoderContainer.current.innerHTML = '';
@@ -187,21 +269,30 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
     map.scrollZoom.setWheelZoomRate(1/450); // Más suave
     map.scrollZoom.setZoomRate(1/150); // Más controlado
     
-    // Configurar transiciones suaves para el mapa
-    map.on('movestart', () => {
+    // ✅ MEJORADO: Configurar transiciones suaves para el mapa con cleanup
+    const handleMoveStart = () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = undefined;
       }
-    });
+    };
     
-    map.on('moveend', () => {
+    const handleMoveEnd = () => {
       // Optimizar renderizado después del movimiento
       animationFrameRef.current = requestAnimationFrame(() => {
         if (mapRef.current) {
           mapRef.current.triggerRepaint();
         }
       });
-    });
+    };
+    
+    // ✅ MEJORADO: Registrar event listeners para cleanup posterior
+    map.on('movestart', handleMoveStart);
+    map.on('moveend', handleMoveEnd);
+    eventListenersRef.current.push(
+      { event: 'movestart', handler: handleMoveStart },
+      { event: 'moveend', handler: handleMoveEnd }
+    );
     
     // Configurar el globo y capas cuando el mapa esté cargado
     map.on('load', () => {
@@ -267,10 +358,9 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
       ConflictVisualization.addLayers(map, 'country-boundaries', conflictGeoJSON);
 
       let hoveredId: number | string | null = null;
-      let hoverTimeout: NodeJS.Timeout | null = null;
 
-      // Eventos de hover optimizados
-      map.on('mousemove', 'country-highlight', (e) => {
+      // ✅ MEJORADO: Eventos de hover optimizados con cleanup de timeouts
+      const handleMouseMove = (e: mapboxgl.MapMouseEvent) => {
         // Si la sidebar izquierda está abierta, no procesar hover
         if (isLeftSidebarOpenRef.current) {
           // Usar el cursor personalizado minimalista
@@ -283,9 +373,9 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
           
           // Solo actualizar si el ID cambió
           if (id !== hoveredId) {
-            // Limpiar timeout anterior
-            if (hoverTimeout) {
-              clearTimeout(hoverTimeout);
+            // ✅ MEJORADO: Limpiar timeout anterior usando ref
+            if (hoverTimeoutRef.current) {
+              clearTimeout(hoverTimeoutRef.current);
             }
             
             // Limpiar hover anterior
@@ -298,8 +388,8 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
             
             hoveredId = id as number | string | null;
             
-            // Aplicar nuevo hover con pequeño delay para evitar flickering
-            hoverTimeout = setTimeout(() => {
+            // ✅ MEJORADO: Aplicar nuevo hover con pequeño delay usando ref
+            hoverTimeoutRef.current = setTimeout(() => {
               if (hoveredId !== null) {
                 map.setFeatureState(
                   { source: 'country-boundaries', sourceLayer: 'country_boundaries', id: hoveredId },
@@ -310,12 +400,13 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
           }
         }
         map.getCanvas().style.cursor = 'pointer';
-      });
+      };
 
-      map.on('mouseleave', 'country-highlight', () => {
-        if (hoverTimeout) {
-          clearTimeout(hoverTimeout);
-          hoverTimeout = null;
+      const handleMouseLeave = () => {
+        // ✅ MEJORADO: Limpiar timeout usando ref
+        if (hoverTimeoutRef.current) {
+          clearTimeout(hoverTimeoutRef.current);
+          hoverTimeoutRef.current = null;
         }
         
         if (hoveredId !== null) {
@@ -326,10 +417,18 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
         }
         hoveredId = null;
         map.getCanvas().style.cursor = 'grab';
-      });
+      };
 
-      // Evento de clic para seleccionar país
-      map.on('click', 'country-highlight', (e) => {
+      // ✅ MEJORADO: Registrar event listeners para cleanup con capas
+      map.on('mousemove', 'country-highlight', handleMouseMove);
+      map.on('mouseleave', 'country-highlight', handleMouseLeave);
+      eventListenersRef.current.push(
+        { event: 'mousemove', handler: handleMouseMove, layer: 'country-highlight' },
+        { event: 'mouseleave', handler: handleMouseLeave, layer: 'country-highlight' }
+      );
+
+      // ✅ MEJORADO: Evento de clic para seleccionar país con cleanup
+      const handleCountryClick = (e: mapboxgl.MapMouseEvent) => {
         // Si la sidebar izquierda está abierta, no procesar el click
         if (isLeftSidebarOpenRef.current) {
           return;
@@ -425,14 +524,17 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
           
           handleCountrySelection(countryName);
         }
-      });
+      };
+
+      map.on('click', 'country-highlight', handleCountryClick);
+      eventListenersRef.current.push({ event: 'click', handler: handleCountryClick, layer: 'country-highlight' });
     });
 
-    // Animación de rotación automática
+    // ✅ MEJORADO: Animación de rotación automática con cleanup
     let userInteracting = false;
     const spinEnabled = false;
 
-    function spinGlobe() {
+    const spinGlobe = () => {
       const zoom = map.getZoom();
       if (spinEnabled && !userInteracting && zoom < 5) {
         const distancePerSecond = 360 / 120;
@@ -440,54 +542,86 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
         center.lng -= distancePerSecond;
         map.easeTo({ center, duration: 1000, easing: (n) => n });
       }
-    }
+    };
 
-    // Pausar rotación durante interacción del usuario
-    map.on('mousedown', () => {
-      userInteracting = true;
-    });
+    // ✅ MEJORADO: Event handlers con cleanup
+    const handleMouseDown = () => { userInteracting = true; };
+    const handleMouseUp = () => { 
+      userInteracting = false; 
+      spinGlobe(); 
+    };
+    const handleDragEnd = () => { 
+      userInteracting = false; 
+      spinGlobe(); 
+    };
+    const handlePitchEnd = () => { 
+      userInteracting = false; 
+      spinGlobe(); 
+    };
+    const handleRotateEnd = () => { 
+      userInteracting = false; 
+      spinGlobe(); 
+    };
+    const handleMoveEndGlobe = () => { 
+      spinGlobe(); 
+    };
 
-    map.on('mouseup', () => {
-      userInteracting = false;
-      spinGlobe();
-    });
-
-    map.on('dragend', () => {
-      userInteracting = false;
-      spinGlobe();
-    });
-
-    map.on('pitchend', () => {
-      userInteracting = false;
-      spinGlobe();
-    });
-
-    map.on('rotateend', () => {
-      userInteracting = false;
-      spinGlobe();
-    });
-
-    map.on('moveend', () => {
-      spinGlobe();
-    });
+    // ✅ NUEVO: Registrar todos los event listeners para cleanup
+    map.on('mousedown', handleMouseDown);
+    map.on('mouseup', handleMouseUp);
+    map.on('dragend', handleDragEnd);
+    map.on('pitchend', handlePitchEnd);
+    map.on('rotateend', handleRotateEnd);
+    map.on('moveend', handleMoveEndGlobe);
+    
+    eventListenersRef.current.push(
+      { event: 'mousedown', handler: handleMouseDown },
+      { event: 'mouseup', handler: handleMouseUp },
+      { event: 'dragend', handler: handleDragEnd },
+      { event: 'pitchend', handler: handlePitchEnd },
+      { event: 'rotateend', handler: handleRotateEnd },
+      { event: 'moveend', handler: handleMoveEndGlobe }
+    );
 
     // Iniciar la rotación
     spinGlobe();
 
-    // Cleanup
+    // ✅ MEJORADO: Cleanup completo para prevenir memory leaks
     return () => {
+      // Limpiar todos los recursos
+      cleanupResources();
+      
+      // Limpiar geocoder
       if (geocoder) {
-        geocoder.onRemove();
+        try {
+          geocoder.off('result', handleGeocoderResult);
+          geocoder.onRemove();
+        } catch (error) {
+          console.warn('Error cleaning up geocoder:', error);
+        }
       }
+      
+      // Limpiar conflict data manager
       if (conflictDataManager.current) {
         conflictDataManager.current.cleanup();
       }
+      
       // Limpiar capas de visualización de conflictos
       if (mapRef.current) {
-        ConflictVisualization.cleanup(mapRef.current);
+        try {
+          ConflictVisualization.cleanup(mapRef.current);
+        } catch (error) {
+          console.warn('Error cleaning up conflict visualization:', error);
+        }
       }
+      
+      // Limpiar mapa
       if (mapRef.current) {
-        mapRef.current.remove();
+        try {
+          mapRef.current.remove();
+        } catch (error) {
+          console.warn('Error removing map:', error);
+        }
         mapRef.current = null;
       }
     };
@@ -500,7 +634,7 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
     }
   }, [conflicts]);
 
-  // Actualizar marcadores y países en conflicto cuando cambian los datos o la selección
+  // ✅ MEJORADO: Actualizar marcadores y países en conflicto con cleanup
   useEffect(() => {
     const update = () => {
       if (mapRef.current && isMapLoaded) {
@@ -508,10 +642,24 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
         ConflictVisualization.updateConflictMarkers(mapRef.current, conflictGeoJSON);
         ConflictVisualization.updateVisualization(mapRef.current, selectedConflictId ?? null, conflicts);
       } else {
-        setTimeout(update, 100);
+        // ✅ MEJORADO: Usar ref para timeout y limpiarlo
+        const timeoutId = setTimeout(update, 100);
+        // Guardar el timeout ID para cleanup si es necesario
+        if (hoverTimeoutRef.current) {
+          clearTimeout(hoverTimeoutRef.current);
+        }
+        hoverTimeoutRef.current = timeoutId;
       }
     };
     update();
+    
+    // ✅ NUEVO: Cleanup del timeout si el componente se desmonta
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+        hoverTimeoutRef.current = null;
+      }
+    };
   }, [conflicts, selectedConflictId, isMapLoaded]);
 
   // Función para resetear la vista del mapa
@@ -549,9 +697,15 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
     // y hay una selección actual en el mapa
     if (!selectedCountry && selectedCountryId.current) {
       // Pequeño delay para evitar conflictos con otras animaciones
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         resetMapView();
       }, 100);
+      
+      // ✅ MEJORADO: Guardar timeout para cleanup
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+      hoverTimeoutRef.current = timeoutId;
     }
   }, [selectedCountry]);
   
@@ -603,8 +757,8 @@ const WorldMap = forwardRef<any, WorldMapProps>(({ onCountrySelect, selectedCoun
 
 WorldMap.displayName = 'WorldMap';
 
-// Helper: Convert conflicts to GeoJSON FeatureCollection
-function conflictsToGeoJSON(conflicts: any[]): any {
+// ✅ MEJORADO: Helper con tipos específicos
+function conflictsToGeoJSON(conflicts: ConflictData[]): ConflictGeoJSON {
   return {
     type: 'FeatureCollection',
     features: conflicts.map(conflict => ({
@@ -614,10 +768,10 @@ function conflictsToGeoJSON(conflicts: any[]): any {
         coordinates: [conflict.coordinates.lng, conflict.coordinates.lat]
       },
       properties: {
+        ...conflict,
         id: conflict.id,
         country: conflict.country,
-        status: conflict.status,
-        ...conflict
+        status: conflict.status
       }
     }))
   };

@@ -93,56 +93,33 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect 
     }
   }, [selectedNewsRegion, activeTab, loadNews]);
 
-
-
   // Memoized data to prevent unnecessary recalculations
   const regions = useMemo(() => ConflictService.getAvailableRegions(), []);
   const statuses = useMemo(() => ConflictService.getAvailableStatuses(), []);
 
-  const filteredConflicts = useMemo(() => 
-    ConflictService.getFilteredConflicts(
-      selectedRegion === 'All' ? undefined : selectedRegion,
-      selectedStatus === 'All' ? undefined : selectedStatus as 'War' | 'Warm' | 'Improving'
-    ), [selectedRegion, selectedStatus]
-  );
+  // Filter conflicts based on selected filters
+  const filteredConflicts = useMemo(() => {
+    return conflicts.filter(conflict => {
+      const regionMatch = selectedRegion === 'All' || conflict.region === selectedRegion;
+      const statusMatch = selectedStatus === 'All' || conflict.status === selectedStatus;
+      return regionMatch && statusMatch;
+    });
+  }, [conflicts, selectedRegion, selectedStatus]);
 
-  // Use conflict actions service
-  const conflictActionHandlers: ConflictActionHandlers = {
-    onCenterMap,
-    onConflictSelect,
-    onBack
-  };
-  
-  const { handleConflictClick, handleBack } = useConflictActions(conflictActionHandlers);
-
-  // Enhanced conflict click handler for detailed view
+  // Enhanced conflict click handler
   const handleConflictClickEnhanced = (conflict: Conflict) => {
-    // Check if conflict has detailed data (factions, casualtiesDetailed, etc.)
-    const hasDetailedData = conflict.factions || 
-                           conflict.casualtiesDetailed || 
-                           conflict.displacedPersons || 
-                           conflict.internationalResponse || 
-                           conflict.notableEvents;
-    
-    if (hasDetailedData) {
-      setSelectedConflict(conflict);
-      // Center the map on the conflict and show the marker
-      if (onCenterMap) {
-        onCenterMap(conflict.coordinates);
-      }
-      // Show the conflict marker on the map
-      if (onConflictSelect) {
-        onConflictSelect(conflict.id);
-      }
-    } else {
-      // For conflicts without detailed data, use the original handler
-      handleConflictClick(conflict);
+    setSelectedConflict(conflict);
+    if (onConflictSelect) {
+      onConflictSelect(conflict.id);
+    }
+    if (onCenterMap) {
+      onCenterMap(conflict.coordinates);
     }
   };
 
+  // Back to conflicts list
   const handleBackToConflicts = () => {
     setSelectedConflict(null);
-    // Clear the map selection when going back
     if (onConflictSelect) {
       onConflictSelect(null);
     }
@@ -162,20 +139,19 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect 
         exit={{ opacity: 0 }}
       >
         <div className="conflict-tracker-header">
-          <button onClick={onBack} className="conflict-tracker-back-btn">
-            <ArrowLeft className="w-4 h-4" />
-            Back
+          <h1 className="conflict-tracker-title">CONFLICT TRACKER</h1>
+          <button onClick={onBack} className="conflict-tracker-close-btn">
+            <X className="h-5 w-5" />
           </button>
-          <h2 className="conflict-tracker-title">Conflict Tracker</h2>
         </div>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-slate-400">Loading conflict data...</div>
+        <div className="conflict-tracker-content">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px' }}>
+            <div style={{ color: '#94a3b8' }}>Loading conflict data...</div>
+          </div>
         </div>
       </motion.div>
     );
   }
-
-
 
   return (
     <motion.div 
@@ -193,7 +169,7 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect 
       {/* Header */}
       <div className="conflict-tracker-header">
         <h1 className="conflict-tracker-title">CONFLICT TRACKER</h1>
-        <button onClick={handleBack} className="conflict-tracker-close-btn">
+        <button onClick={onBack} className="conflict-tracker-close-btn">
           <X className="h-5 w-5" />
         </button>
       </div>
@@ -206,14 +182,12 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect 
               className={`conflict-tracker-tab${activeTab === 'conflicts' ? ' active' : ''}`}
               onClick={() => handleTabChange('conflicts')}
             >
-              <AlertTriangle size={16} />
               Conflicts <span className="conflict-tracker-tab-count">({filteredConflicts.length})</span>
             </button>
             <button
               className={`conflict-tracker-tab${activeTab === 'news' ? ' active' : ''}`}
               onClick={() => handleTabChange('news')}
             >
-              <TrendingUp size={16} />
               News <span className="conflict-tracker-tab-count">({news.length})</span>
             </button>
           </div>
@@ -224,6 +198,7 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect 
               <select
                 value={selectedRegion}
                 onChange={(e) => setSelectedRegion(e.target.value)}
+                className="conflict-tracker-filter-select"
               >
                 <option value="All">All Regions</option>
                 {regions.map(region => (
@@ -233,6 +208,7 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect 
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
+                className="conflict-tracker-filter-select"
               >
                 <option value="All">All Statuses</option>
                 {statuses.map(status => (
@@ -246,6 +222,7 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect 
               <select
                 value={selectedNewsRegion}
                 onChange={(e) => setSelectedNewsRegion(e.target.value)}
+                className="conflict-tracker-filter-select"
               >
                 <option value="All">All Regions</option>
                 {regions.map(region => (
@@ -259,40 +236,33 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect 
 
       {/* Content */}
       <div className="conflict-tracker-content">
-        {activeTab === 'conflicts' ? (
+        {selectedConflict ? (
+          // Detailed view for selected conflict
+          <ConflictDetailCard conflict={selectedConflict} onBack={handleBackToConflicts} />
+        ) : (
+          // Regular conflicts list or news
           <div>
-            {selectedConflict ? (
-              // Detailed view for selected conflict
-              <div className="conflict-detail-view">
-                <ConflictDetailCard conflict={selectedConflict} onBack={handleBackToConflicts} />
-              </div>
-            ) : (
-              // Regular conflicts list
+            {activeTab === 'conflicts' ? (
               <div>
                 <div className="conflict-tracker-section-header">
-                  <AlertTriangle className="icon" />
+                  <AlertTriangle size={16} />
                   <h3>Active Conflicts ({filteredConflicts.length})</h3>
                 </div>
-                {loading ? (
-                  <div className="conflict-tracker-loading">
-                    <div className="spinner"></div>
-                    <p>Loading conflicts...</p>
-                  </div>
-                ) : error ? (
+                {error ? (
                   <div className="conflict-tracker-empty">
-                    <AlertTriangle className="icon" style={{color: 'rgb(248, 113, 113)'}} />
-                    <p style={{color: 'rgb(252, 165, 165)'}}>Error Loading Data</p>
-                    <p style={{color: 'rgb(248, 113, 113)'}}>{error}</p>
+                    <AlertTriangle size={20} style={{ color: '#fca5a5' }} />
+                    <p style={{ color: '#fca5a5' }}>Error Loading Data</p>
+                    <p style={{ color: '#fca5a5' }}>{error}</p>
                   </div>
                 ) : filteredConflicts.length === 0 ? (
                   <div className="conflict-tracker-empty">
-                    <AlertTriangle className="icon" />
+                    <AlertTriangle size={20} />
                     <p>No conflicts found</p>
                     <p>Try adjusting your filters</p>
                   </div>
                 ) : (
                   <div>
-                    {filteredConflicts.map((conflict, index) => (
+                    {filteredConflicts.map((conflict) => (
                       <div
                         key={conflict.id}
                         className="conflict-card"
@@ -305,48 +275,48 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect 
                         <div className="conflict-card-description">{conflict.description}</div>
                         <div className="conflict-card-meta">
                           <span><Users size={14} /> {ConflictService.formatCasualties(conflict.casualties)} casualties</span>
-                          <span><Calendar size={14} /> {new Date(conflict.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                          <span><Calendar size={14} /> {new Date(conflict.date).toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-            )}
-          </div>
-        ) : (
-          <div>
-            <div className="conflict-tracker-section-header">
-              <TrendingUp className="icon" />
-              <h3>Recent News ({news.length})</h3>
-            </div>
-            {newsLoading ? (
-              <div className="conflict-tracker-loading">
-                <div className="spinner"></div>
-                <p>Loading news...</p>
-              </div>
             ) : (
               <div>
-                {news.slice(0, 10).map((article, index) => (
-                  <div
-                    key={article.id}
-                    className="conflict-card news"
-                    onClick={() => window.open(article.url, '_blank')}
-                  >
-                    <div className="conflict-card-header">
-                      <ExternalLink size={16} /> {article.title}
-                    </div>
-                    <div className="conflict-card-description">{article.description}</div>
-                    <div className="conflict-card-meta">
-                      <span>{article.source}</span>
-                      <span><Calendar size={14} /> {new Date(article.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-                    </div>
+                <div className="conflict-tracker-section-header">
+                  <TrendingUp size={16} />
+                  <h3>Recent News ({news.length})</h3>
+                </div>
+                {newsLoading ? (
+                  <div className="conflict-tracker-loading">
+                    <div style={{ width: '20px', height: '20px', border: '2px solid #3b82f6', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+                    <p>Loading news...</p>
                   </div>
-                ))}
-                {news.length === 0 && (
-                  <div className="conflict-tracker-empty">
-                    <ExternalLink className="icon" />
-                    <p>No news available at the moment</p>
+                ) : (
+                  <div>
+                    {news.slice(0, 10).map((article) => (
+                      <div
+                        key={article.id}
+                        className="conflict-card news"
+                        onClick={() => window.open(article.url, '_blank')}
+                      >
+                        <div className="conflict-card-header">
+                          <ExternalLink size={16} /> {article.title}
+                        </div>
+                        <div className="conflict-card-description">{article.description}</div>
+                        <div className="conflict-card-meta">
+                          <span>{article.source}</span>
+                          <span><Calendar size={14} /> {new Date(article.date).toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                        </div>
+                      </div>
+                    ))}
+                    {news.length === 0 && (
+                      <div className="conflict-tracker-empty">
+                        <ExternalLink size={20} />
+                        <p>No news available at the moment</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -354,11 +324,12 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect 
           </div>
         )}
       </div>
+
       {/* Footer */}
       <div className="conflict-tracker-footer">
-        <div className="text-xs text-slate-400 text-center">
-          Data sources: ACLED, Crisis Group, NewsAPI
-        </div>
+        <p className="footer-text">
+          Data sources: <a href="#" className="footer-sources">ACLED</a>, <a href="#" className="footer-sources">Crisis Group</a>, <a href="#" className="footer-sources">NewsAPI</a>
+        </p>
       </div>
     </motion.div>
   );

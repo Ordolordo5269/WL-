@@ -122,7 +122,7 @@ export class ConflictDataManager {
    * Remove conflict source from the map
    */
   removeConflictSource(): void {
-    if (!this.map || (this.map as any)._removed) {
+    if (!this.map || (this.map as { _removed?: boolean })._removed) {
       // Map not initialized or already removed
       return;
     }

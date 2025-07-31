@@ -1,6 +1,35 @@
 import mapboxgl from 'mapbox-gl';
 import { getInvolvedISO, getAlliesByFaction } from './country-conflict-mapper';
 
+// ✅ MEJORADO: Interfaces específicas para evitar tipos 'any'
+export interface ConflictGeoJSON {
+  type: 'FeatureCollection';
+  features: Array<{
+    type: 'Feature';
+    geometry: {
+      type: 'Point';
+      coordinates: [number, number];
+    };
+    properties: {
+      id: string;
+      country: string;
+      status: string;
+      [key: string]: unknown;
+    };
+  }>;
+}
+
+export interface ConflictData {
+  id: string;
+  country: string;
+  status: string;
+  coordinates: {
+    lat: number;
+    lng: number;
+  };
+  [key: string]: unknown;
+}
+
 // ===== CONSTANTES DE CONFIGURACIÓN =====
 
 // Colores y estilos
@@ -52,7 +81,7 @@ export const ConflictVisualization = {
   /**
    * Agrega capas de visualización de conflictos con animación de ondas minimalista
    */
-  addLayers(map: mapboxgl.Map, countrySource = 'country-boundaries', conflictGeoJSON: any = null) {
+  addLayers(map: mapboxgl.Map, countrySource = 'country-boundaries', conflictGeoJSON: ConflictGeoJSON | null = null) {
     // Países en conflicto (relleno) - usando filter en lugar de feature-state
     if (!map.getLayer(LAYERS.COUNTRY_FILL)) {
       map.addLayer({
@@ -85,7 +114,7 @@ export const ConflictVisualization = {
     }
 
     // Capas para aliados - crear para posibles facciones (e.g., faction1, faction2)
-    ['faction1', 'faction2'].forEach((faction, index) => {
+    ['faction1', 'faction2'].forEach((faction) => {
       const fillId = LAYERS.ALLY_FILL(faction);
       const borderId = LAYERS.ALLY_BORDER(faction);
 
@@ -124,7 +153,7 @@ export const ConflictVisualization = {
       if (map.getLayer('country-selected')) map.moveLayer(LAYERS.COUNTRY_FILL, 'country-selected');
       if (map.getLayer('country-selected')) map.moveLayer(LAYERS.COUNTRY_BORDER, 'country-selected');
       if (map.getLayer(LAYERS.CONFLICT_MARKER)) map.moveLayer(LAYERS.CONFLICT_MARKER);
-    } catch (e) { /* ignore if layers missing */ }
+    } catch { /* ignore if layers missing */ }
 
     // Marcadores de conflicto principales
     if (conflictGeoJSON && !map.getSource(LAYERS.CONFLICT_SOURCE)) {
@@ -202,15 +231,15 @@ export const ConflictVisualization = {
       }
 
       console.log('[DEBUG] Updated country highlights with ISO:', isoCodes);
-    } catch (error) {
-      console.error('[ERROR] Failed to update country highlights:', error);
+    } catch {
+      console.error('[ERROR] Failed to update country highlights');
     }
   },
 
   /**
    * Actualiza los datos de los marcadores de conflicto
    */
-  updateConflictMarkers(map: mapboxgl.Map, conflictGeoJSON: any) {
+  updateConflictMarkers(map: mapboxgl.Map, conflictGeoJSON: ConflictGeoJSON) {
     const source = map.getSource(LAYERS.CONFLICT_SOURCE) as mapboxgl.GeoJSONSource;
     if (source) {
       source.setData(conflictGeoJSON);
@@ -233,15 +262,15 @@ export const ConflictVisualization = {
           map.setLayoutProperty(rippleLayerId, 'visibility', visible ? 'visible' : 'none');
         }
       }
-    } catch (error) {
-      console.error('[ERROR] Failed to set marker visibility:', error);
+    } catch {
+      console.error('[ERROR] Failed to set marker visibility');
     }
   },
 
   /**
    * Actualiza la visualización completa basada en el conflicto seleccionado
    */
-  updateVisualization(map: mapboxgl.Map, selectedConflictId: string | null, conflicts: any[]) {
+  updateVisualization(map: mapboxgl.Map, selectedConflictId: string | null, conflicts: ConflictData[]) {
     let isoCodes = selectedConflictId ? getInvolvedISO(selectedConflictId, conflicts) : [];
 
     if (selectedConflictId === 'russia-ukraine-war') {
@@ -362,7 +391,7 @@ export const ConflictVisualization = {
             map.setPaintProperty(rippleLayerId, 'circle-opacity', Math.max(0, waveOpacity));
           }
         }
-      } catch (error) {
+      } catch {
         // Ignorar errores si las capas no existen
       }
       

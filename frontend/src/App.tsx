@@ -11,10 +11,15 @@ import './index.css';
 import './styles/sidebar.css';
 import "./styles/conflict-tracker.css";
 
+// ✅ MEJORADO: Interfaces específicas para evitar tipos 'any'
 interface Country {
   name: string;
   capital: string;
   region: string;
+}
+
+interface WindowWithResetMapView extends Window {
+  resetMapView?: () => void;
 }
 
 function App() {
@@ -22,7 +27,7 @@ function App() {
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedConflictId, setSelectedConflictId] = useState<string | null>(null);
-  const mapRef = useRef<any>(null);
+  const mapRef = useRef<{ easeTo: (options: { center: [number, number]; zoom: number; duration: number }) => void } | null>(null);
 
   // Add unified sidebars state
   const [sidebars, setSidebars] = useState({
@@ -60,8 +65,8 @@ function App() {
     toggleSidebar('country', false);
     setSelectedCountry(null);
     // Resetear la vista del mapa a la vista principal del globo
-    if ((window as any).resetMapView) {
-      (window as any).resetMapView();
+    if ((window as WindowWithResetMapView).resetMapView) {
+      (window as WindowWithResetMapView).resetMapView();
     }
   }, [toggleSidebar]);
 
@@ -87,10 +92,7 @@ function App() {
     setSelectedConflictId(null);
   }, [toggleSidebar]);
 
-  const handleBackToLeftSidebar = useCallback(() => {
-    setSelectedConflictId(null);
-    toggleSidebar('menu', true);
-  }, [toggleSidebar]);
+  // ✅ REMOVIDO: Función no utilizada handleBackToLeftSidebar
 
   const handleCenterMapOnConflict = (coordinates: { lat: number; lng: number }) => {
     if (mapRef.current) {

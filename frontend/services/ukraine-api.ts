@@ -1,19 +1,71 @@
 // Ukraine API Service - Enhanced with DeepStateMap capabilities
 // Based on Frontlines project analysis and current implementation
 
+// ✅ MEJORADO: Interfaces específicas para evitar tipos 'any'
+export interface GeoJSONFeature {
+  type: 'Feature';
+  geometry: {
+    type: 'Polygon' | 'MultiPolygon' | 'LineString' | 'MultiLineString';
+    coordinates: number[][][] | number[][];
+  };
+  properties: {
+    [key: string]: unknown;
+  };
+}
+
+export interface GeoJSONCollection {
+  type: 'FeatureCollection';
+  features: GeoJSONFeature[];
+}
+
 export interface UkraineFrontlineData {
-  map: any; // Using any to avoid complex GeoJSON type issues
+  map: GeoJSONCollection; // ✅ MEJORADO: Tipo específico en lugar de 'any'
   datetime: string;
   id?: string;
+}
+
+export interface MapboxPaint {
+  'fill-color'?: string | unknown[];
+  'fill-opacity'?: number;
+  'fill-outline-color'?: string;
+  'line-color'?: string | unknown[];
+  'line-width'?: number;
+  'line-opacity'?: number;
+  'circle-color'?: string | unknown[];
+  'circle-radius'?: number;
+  'circle-opacity'?: number;
+  [key: string]: unknown;
+}
+
+export interface MapboxLayout {
+  visibility?: 'visible' | 'none';
+  [key: string]: unknown;
 }
 
 export interface UkraineLayerConfig {
   id: string;
   type: 'fill' | 'line' | 'circle';
   source: string;
-  filter?: any[];
-  paint: any;
-  layout?: any;
+  filter?: unknown[];
+  paint: MapboxPaint;
+  layout?: MapboxLayout;
+}
+
+export interface HistoricalDataItem {
+  datetime?: string;
+  id: string;
+}
+
+export interface MapboxMap {
+  addSource: (id: string, source: unknown) => void;
+  addLayer: (layer: UkraineLayerConfig) => void;
+  removeLayer: (id: string) => void;
+  removeSource: (id: string) => void;
+  getLayer: (id: string) => unknown;
+  getSource: (id: string) => unknown;
+  on: (event: string, handler: (e: unknown) => void) => void;
+  off: (event: string, handler: (e: unknown) => void) => void;
+  getCanvas: () => HTMLCanvasElement;
 }
 
 export class UkraineAPIService {
@@ -35,7 +87,7 @@ export class UkraineAPIService {
         throw new Error(`HTTP error! status: ${lastResponse.status}`);
       }
       
-      const lastData = await lastResponse.json();
+      const lastData = await lastResponse.json() as HistoricalDataItem;
       console.log('[Ukraine API] Latest data ID:', lastData.id);
       
       // Get the GeoJSON data for that ID
@@ -44,7 +96,7 @@ export class UkraineAPIService {
         throw new Error(`HTTP error! status: ${geoResponse.status}`);
       }
       
-      const geoData = await geoResponse.json();
+      const geoData = await geoResponse.json() as GeoJSONCollection;
       
       const result: UkraineFrontlineData = {
         map: geoData,
@@ -73,7 +125,7 @@ export class UkraineAPIService {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const geoData = await response.json();
+      const geoData = await response.json() as GeoJSONCollection;
       return {
         map: geoData,
         datetime: date,
@@ -95,11 +147,11 @@ export class UkraineAPIService {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const data = await response.json();
-      return data.map((item: any) => item.datetime || item.id).filter(Boolean);
+      const data = await response.json() as HistoricalDataItem[];
+      return data.map((item: HistoricalDataItem) => item.datetime || item.id).filter(Boolean);
     } catch (error) {
       console.error('[Ukraine API] Error fetching available dates:', error);
-      return [];
+      throw error;
     }
   }
 
@@ -184,11 +236,11 @@ export class UkraineAPIService {
   /**
    * Add Ukraine layers to the map with enhanced functionality
    */
-  static addUkraineLayers(map: any, data: UkraineFrontlineData): void {
+  static addUkraineLayers(map: unknown, data: UkraineFrontlineData): void {
     try {
       // Add or update the data source
       if (map.getSource('ukraine-realtime')) {
-        (map.getSource('ukraine-realtime') as any).setData(data.map);
+        (map.getSource('ukraine-realtime') as { setData: (data: GeoJSONCollection) => void }).setData(data.map);
       } else {
         map.addSource('ukraine-realtime', {
           type: 'geojson',
@@ -216,15 +268,16 @@ export class UkraineAPIService {
   /**
    * Add interactive handlers for Ukraine layers
    */
-  private static addInteractiveHandlers(map: any, lastUpdate: string): void {
+  private static addInteractiveHandlers(map: MapboxMap, lastUpdate: string): void {
     const layerIds = ['ukraine-polygons', 'ukraine-lines', 'ukraine-points'];
     
     layerIds.forEach(layerId => {
       // Click handler
-      map.on('click', layerId, (e: any) => {
-        if (!e.features || e.features.length === 0) return;
+      map.on('click', layerId, (e: unknown) => {
+        const event = e as { features?: Array<{ properties?: Record<string, unknown> }>; lngLat?: { lng: number; lat: number } };
+        if (!event.features || event.features.length === 0) return;
         
-        const feature = e.features[0];
+        const feature = event.features[0];
         const props = feature.properties || {};
         
         let popupContent = '<div style="font-family: Arial, sans-serif; max-width: 300px;">';
@@ -238,7 +291,7 @@ export class UkraineAPIService {
         popupContent += '</div>';
         
         // Use global mapboxgl for popup
-        const Popup = (window as any).mapboxgl?.Popup;
+        const Popup = (window as { mapboxgl?: { Popup?: new (options: { closeButton: boolean; maxWidth: string }) => { setLngLat: (lngLat: { lng: number; lat: number }) => { setHTML: (html: string) => { addTo: (map: unknown) => void } } } } }).mapboxgl?.Popup;
         if (Popup) {
           new Popup({
             closeButton: true,
@@ -264,7 +317,7 @@ export class UkraineAPIService {
   /**
    * Remove Ukraine layers from the map
    */
-  static removeUkraineLayers(map: any): void {
+  static removeUkraineLayers(map: unknown): void {
     const layerIds = [
       'ukraine-polygons',
       'ukraine-outlines', 
@@ -288,7 +341,7 @@ export class UkraineAPIService {
   /**
    * Start auto-refresh of Ukraine data
    */
-  static startAutoRefresh(map: any): void {
+  static startAutoRefresh(map: unknown): void {
     if (this.refreshTimer) {
       clearInterval(this.refreshTimer);
     }
@@ -360,7 +413,7 @@ export class UkraineAPIService {
   /**
    * Enhanced Ukraine data loading with error handling and user feedback
    */
-  static async loadUkraineDataWithFeedback(map: any): Promise<void> {
+  static async loadUkraineDataWithFeedback(map: unknown): Promise<void> {
     try {
       // Show loading indicator
       const loadingDiv = document.createElement('div');
