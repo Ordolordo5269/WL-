@@ -27,37 +27,37 @@ export default function LeftSidebar({ isOpen, onOpenConflictTracker }: LeftSideb
     },
     {
       icon: <Globe className="h-5 w-5" />,
-      label: 'Explorar Países',
+      label: 'Explore Countries',
       href: '#explore'
     },
     {
       icon: <Map className="h-5 w-5" />,
-      label: 'Mapa Mundial',
+      label: 'World Map',
       href: '#map'
     },
     {
       icon: <BarChart3 className="h-5 w-5" />,
-      label: 'Estadísticas',
+      label: 'Statistics',
       href: '#stats'
     },
     {
       icon: <Users className="h-5 w-5" />,
-      label: 'Comparar Países',
+      label: 'Compare Countries',
       href: '#compare'
     },
     {
       icon: <Search className="h-5 w-5" />,
-      label: 'Búsqueda Avanzada',
+      label: 'Advanced Search',
       href: '#search'
     },
     {
       icon: <Settings className="h-5 w-5" />,
-      label: 'Configuración',
+      label: 'Settings',
       href: '#settings'
     },
     {
       icon: <Info className="h-5 w-5" />,
-      label: 'Acerca de',
+      label: 'About',
       href: '#about'
     }
   ], []);

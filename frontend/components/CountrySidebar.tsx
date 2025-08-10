@@ -1,9 +1,14 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Globe, Banknote, Landmark, Shield, Users, Globe2, Cpu, Palette, X } from 'lucide-react';
-import '../src/styles/conflict-tracker.css';
 import { useEconomyData } from '../hooks/useEconomyData';
+import { useCountryBasicInfo } from '../hooks/useCountryBasicInfo.ts';
 import EconomySection from './EconomySection';
+import BasicInfoSection from './BasicInfoSection';
+import { useSocietyData } from '../hooks/useSocietyData';
+import SocietySection from './SocietySection';
+import { usePoliticsData } from '../hooks/usePoliticsData';
+import PoliticsSection from './PoliticsSection';
 
 interface CategoryGroupProps {
   icon: React.ReactNode;
@@ -15,20 +20,20 @@ interface CategoryGroupProps {
 }
 
 function CategoryGroup({ icon, title, items, isOpen, onToggle, searchTerm }: CategoryGroupProps) {
-  // Filtrar items basado en el término de búsqueda
+  // Filter items based on the search term
   const filteredItems = useMemo(() => 
     items.filter(item => 
       item.toLowerCase().includes(searchTerm.toLowerCase())
     ), [items, searchTerm]
   );
   
-  // Verificar si la categoría coincide con la búsqueda
+  // Check if the category matches the search
   const categoryMatches = title.toLowerCase().includes(searchTerm.toLowerCase());
   
-  // Mostrar la categoría si coincide o si tiene items que coinciden
+  // Show the category if it matches or if it has matching items
   const shouldShow = !searchTerm || categoryMatches || filteredItems.length > 0;
   
-  // Función para resaltar texto
+  // Highlight helper
   const highlightText = useCallback((text: string, highlight: string) => {
     if (!highlight) return text;
     
@@ -45,7 +50,7 @@ function CategoryGroup({ icon, title, items, isOpen, onToggle, searchTerm }: Cat
     <div className="mb-2">
       <button
         onClick={onToggle}
-        className={`flex w-full items-center gap-3 hover:bg-slate-800 rounded-lg p-3 text-left transition-all duration-300 ${
+        className={`category-item flex w-full items-center gap-3 rounded-lg p-3 text-left transition-all duration-300 ${
           isOpen ? 'category-open' : ''
         }`}
         data-count={searchTerm ? filteredItems.length : items.length}
@@ -54,7 +59,7 @@ function CategoryGroup({ icon, title, items, isOpen, onToggle, searchTerm }: Cat
         <span className="font-medium flex-1">
           {highlightText(title, searchTerm)}
         </span>
-        <span className="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded-full">
+        <span className="badge text-xs px-2 py-1">
           {searchTerm ? filteredItems.length : items.length}
         </span>
         <ChevronDown 
@@ -93,15 +98,21 @@ interface CountrySidebarProps {
 }
 
 export default function CountrySidebar({ isOpen, onClose, countryName }: CountrySidebarProps) {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm] = useState('');
   const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
   
   // Load economy data for the selected country
   const { economyData, isLoading: isEconomyLoading, error: economyError } = useEconomyData(countryName);
-
-  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-  }, []);
+  
+  // Load basic info data for the selected country
+  const { countryData, isLoading: isBasicInfoLoading, error: basicInfoError } = useCountryBasicInfo(countryName);
+  
+  // Load society indicators via ISO3 once basic info is available
+  const iso3 = countryData?.cca3 ?? null;
+  const { data: societyData, isLoading: isSocietyLoading, error: societyError } = useSocietyData(iso3);
+  const { data: politicsData, isLoading: isPoliticsLoading, error: politicsError } = usePoliticsData(countryName, iso3);
+  
+  // Search removed per UX request; keep invariant empty term so lists show all items
 
   const toggleCategory = useCallback((title: string) => {
     setOpenCategories(prev => {
@@ -115,71 +126,72 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
     });
   }, []);
 
+  // Ordered and translated categories for a professional sidebar
   const categories = [
     {
       icon: <Globe className="text-blue-400" />,
-      title: "General Information",
+      title: 'General Information',
       items: [
-        "Official Name", "Flag", "Surface Area", "Languages", "Currency",
-        "ISO Code", "Continent", "Capital City", "Population", "Government Type"
+        'Official name', 'Flag', 'Surface area', 'Languages', 'Currency',
+        'ISO codes', 'Continent', 'Capital', 'Population', 'Government type'
       ]
     },
     {
       icon: <Banknote className="text-green-400" />,
-      title: "Economy",
+      title: 'Economy',
       items: [
-        "GDP (Gross Domestic Product)", "GDP per Capita", "Inflation Rate",
-        "GINI Index", "GDP Sector Breakdown", "Exports & Imports",
-        "Main Trade Partners", "External Debt", "Unemployment Rate"
-      ]
-    },
-    {
-      icon: <Landmark className="text-purple-400" />,
-      title: "Politics",
-      items: ["Political Parties", "Political System", "Head of State / Government", "Political Stability"]
-    },
-    {
-      icon: <Shield className="text-red-400" />,
-      title: "Defense",
-      items: [
-        "Military Budget", "Armed Forces Size", "Active Conflicts",
-        "Peace Operations", "Main Military Adversaries"
+        'GDP (Gross Domestic Product)', 'GDP per capita', 'Inflation',
+        'GINI index', 'GDP structure', 'Exports and imports',
+        'Top trade partners', 'External debt', 'Unemployment rate'
       ]
     },
     {
       icon: <Users className="text-yellow-400" />,
-      title: "Social",
+      title: 'Society',
       items: [
-        "Life Expectancy", "Literacy Rate", "Poverty Indicators",
-        "Health & Education Access", "Human Development Index (HDI)",
-        "Demographics", "Birth / Death Rates", "Urban / Rural Population (%)", "Population Density"
+        'Life expectancy', 'Literacy rate', 'Poverty indicators',
+        'Access to health and education', 'Human Development Index (HDI)',
+        'Demographics', 'Birth and mortality rates', 'Urban/rural population (%)', 'Population density'
+      ]
+    },
+    {
+      icon: <Landmark className="text-purple-400" />,
+      title: 'Politics',
+      items: ['Political parties', 'Political system', 'Head of State/Government', 'Political stability']
+    },
+    {
+      icon: <Shield className="text-red-400" />,
+      title: 'Defense',
+      items: [
+        'Military budget', 'Armed forces size', 'Active conflicts',
+        'Peace operations', 'Military adversaries'
       ]
     },
     {
       icon: <Globe2 className="text-cyan-400" />,
-      title: "International",
+      title: 'International',
       items: [
-        "International Organizations Membership", "Treaties", "Regional Cooperation",
-        "Official Development Assistance (ODA)", "Top Recipients", "Rival Countries", "Key Allies"
+        'International organizations', 'Treaties', 'Regional cooperation',
+        'Official development assistance (ODA)', 'Main recipients', 'Rival countries', 'Key allies'
       ]
     },
     {
       icon: <Cpu className="text-indigo-400" />,
-      title: "Technology & National Assets",
+      title: 'Technology and National Assets',
       items: [
-        "R&D Index", "Tech Exports", "Top National Companies",
-        "State-Owned Enterprises (SOEs)", "Strategic Holdings", "Sovereign Wealth Funds",
-        "Strategic Industries & Specializations", "Industrial Policy", "Critical Minerals & Share of Global Supply"
+        'R&D index', 'Tech exports', 'Major national companies',
+        'State-owned enterprises', 'Strategic assets', 'Sovereign funds',
+        'Strategic industries and specializations', 'Industrial policy', 'Critical minerals and global supply share'
       ]
     },
     {
       icon: <Palette className="text-pink-400" />,
-      title: "Culture",
-      items: ["Religions", "UNESCO World Heritage Sites", "Soft Power Metrics"]
+      title: 'Culture',
+      items: ['Religions', 'UNESCO World Heritage', 'Soft power metrics']
     }
   ];
 
-  // Filtrar categorías para el contador
+  // Filter categories for the footer counter
   const visibleCategories = categories.filter(category => {
     if (!searchTerm) return true;
     const categoryMatches = category.title.toLowerCase().includes(searchTerm.toLowerCase());
@@ -206,10 +218,44 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
         >
           {/* Header */}
           <div className="sidebar-header">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="sidebar-title">
-                {countryName || 'Country Data'}
-              </h2>
+            {/* Top row: Flag, Country Name (centered), and Close Button */}
+            <div className="header-top-row">
+              <div className="flag-container">
+                {countryData?.flags?.png && (
+                  <img 
+                    src={countryData.flags.png} 
+                    alt={`Flag of ${countryName}`}
+                    className="country-flag"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                    }}
+                  />
+                )}
+              </div>
+              
+              <div className="country-info-container">
+                <h2 className="country-title">
+                  {countryName || 'Country data'}
+                </h2>
+                {countryData && (
+                  <div className="country-details">
+                    <div className="details-row">
+                      {countryData.name?.official && (
+                        <div className="official-name">
+                          {countryData.name.official}
+                        </div>
+                      )}
+                      {countryData.region && (
+                        <div className="country-region">
+                          {countryData.region}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+              
               <button
                 onClick={onClose}
                 className="conflict-tracker-close-btn"
@@ -219,35 +265,67 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
               </button>
             </div>
             
-            {/* Search Input */}
-            <div className="mb-4">
-              <input
-                type="text"
-                placeholder="Search country data..."
-                value={searchTerm}
-                onChange={handleSearchChange}
-              />
-            </div>
+            {/* Search removed */}
           </div>
 
           {/* Categories List */}
           <div className="sidebar-content">
             <div className="p-2">
               {categories.map((category) => {
-                // Special handling for Economy category
-                if (category.title === "Economy") {
+                // Special handling for General Information category
+                if (category.title === 'General Information') {
                   return (
                     <div key={category.title} className="mb-2">
                       <button
                         onClick={() => toggleCategory(category.title)}
-                        className={`flex w-full items-center gap-3 hover:bg-slate-800 rounded-lg p-3 text-left transition-all duration-300 ${
+                        className={`category-item flex w-full items-center gap-3 rounded-lg p-3 text-left transition-all duration-300 ${
                           openCategories.has(category.title) ? 'category-open' : ''
                         }`}
                       >
                         {category.icon}
                         <span className="font-medium flex-1">{category.title}</span>
-                        <span className="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded-full">
-                          {economyData ? 'Data Available' : isEconomyLoading ? 'Loading...' : 'No Data'}
+                        <span className="badge text-xs px-2 py-1">
+                          {countryData ? 'Available' : isBasicInfoLoading ? 'Loading...' : 'No data'}
+                        </span>
+                        <ChevronDown 
+                          className={`h-4 w-4 transition-transform duration-300 ${
+                            openCategories.has(category.title) ? 'rotate-180' : ''
+                          }`} 
+                        />
+                      </button>
+                      {openCategories.has(category.title) && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.3, ease: 'easeInOut' }}
+                          className="ml-2 mt-2"
+                        >
+                          <BasicInfoSection 
+                            countryData={countryData}
+                            isLoading={isBasicInfoLoading}
+                            error={basicInfoError}
+                          />
+                        </motion.div>
+                      )}
+                    </div>
+                  );
+                }
+                
+                // Special handling for Economy category
+                if (category.title === 'Economy') {
+                  return (
+                    <div key={category.title} className="mb-2">
+                      <button
+                        onClick={() => toggleCategory(category.title)}
+                        className={`category-item flex w-full items-center gap-3 rounded-lg p-3 text-left transition-all duration-300 ${
+                          openCategories.has(category.title) ? 'category-open' : ''
+                        }`}
+                      >
+                        {category.icon}
+                        <span className="font-medium flex-1">{category.title}</span>
+                        <span className="badge text-xs px-2 py-1">
+                          {economyData ? 'Available' : isEconomyLoading ? 'Loading...' : 'No data'}
                         </span>
                         <ChevronDown 
                           className={`h-4 w-4 transition-transform duration-300 ${
@@ -274,7 +352,87 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
                   );
                 }
                 
-                // Regular category handling for other categories
+                // Special handling for Politics category
+                if (category.title === 'Politics') {
+                  return (
+                    <div key={category.title} className="mb-2">
+                      <button
+                        onClick={() => toggleCategory(category.title)}
+                        className={`category-item flex w-full items-center gap-3 rounded-lg p-3 text-left transition-all duration-300 ${
+                          openCategories.has(category.title) ? 'category-open' : ''
+                        }`}
+                      >
+                        {category.icon}
+                        <span className="font-medium flex-1">{category.title}</span>
+                        <span className="badge text-xs px-2 py-1">
+                          {politicsData ? 'Available' : isPoliticsLoading ? 'Loading...' : iso3 ? 'No data' : 'Waiting country'}
+                        </span>
+                        <ChevronDown 
+                          className={`h-4 w-4 transition-transform duration-300 ${
+                            openCategories.has(category.title) ? 'rotate-180' : ''
+                          }`} 
+                        />
+                      </button>
+                      {openCategories.has(category.title) && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.3, ease: 'easeInOut' }}
+                          className="ml-2 mt-2"
+                        >
+                          <PoliticsSection 
+                            data={politicsData}
+                            isLoading={isPoliticsLoading}
+                            error={politicsError}
+                          />
+                        </motion.div>
+                      )}
+                    </div>
+                  );
+                }
+
+                // Special handling for Society category
+                if (category.title === 'Society') {
+                  return (
+                    <div key={category.title} className="mb-2">
+                      <button
+                        onClick={() => toggleCategory(category.title)}
+                        className={`category-item flex w-full items-center gap-3 rounded-lg p-3 text-left transition-all duration-300 ${
+                          openCategories.has(category.title) ? 'category-open' : ''
+                        }`}
+                      >
+                        {category.icon}
+                        <span className="font-medium flex-1">{category.title}</span>
+                        <span className="badge text-xs px-2 py-1">
+                          {societyData ? 'Available' : isSocietyLoading ? 'Loading...' : iso3 ? 'No data' : 'Waiting country'}
+                        </span>
+                        <ChevronDown 
+                          className={`h-4 w-4 transition-transform duration-300 ${
+                            openCategories.has(category.title) ? 'rotate-180' : ''
+                          }`} 
+                        />
+                      </button>
+                      {openCategories.has(category.title) && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.3, ease: 'easeInOut' }}
+                          className="ml-2 mt-2"
+                        >
+                          <SocietySection 
+                            data={societyData}
+                            isLoading={isSocietyLoading}
+                            error={societyError}
+                          />
+                        </motion.div>
+                      )}
+                    </div>
+                  );
+                }
+
+                // Regular category handling for all other categories
                 return (
                   <CategoryGroup
                     key={category.title}
@@ -290,7 +448,7 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
               
               {searchTerm && visibleCategories.length === 0 && (
                 <div className="text-center text-slate-400 py-8">
-                  <p>No se encontraron resultados para "{searchTerm}"</p>
+                  <p>No results found for "{searchTerm}"</p>
                 </div>
               )}
             </div>
@@ -300,7 +458,7 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
           <div className="sidebar-footer">
             <div className="sidebar-counter">
               {searchTerm ? 
-                `${visibleCategories.length} de ${categories.length} categorías` : 
+                `${visibleCategories.length} of ${categories.length} categories` : 
                 `${categories.length} categories available`
               }
             </div>

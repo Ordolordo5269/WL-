@@ -7,7 +7,7 @@ import { ConflictVisualization } from '../services/conflict-tracker/conflict-vis
 import { ConflictDataManager, type ConflictData } from '../services/conflict-tracker/conflict-data-manager';
 import { findCapitalByCountry } from '../data/world-capitals';
 
-mapboxgl.accessToken = (import.meta as unknown as { env: { VITE_MAPBOX_TOKEN: string } }).env.VITE_MAPBOX_TOKEN || '';
+mapboxgl.accessToken = 'pk.eyJ1IjoiYW5kcmVzb29kIiwiYSI6ImNtNWNtMmd4dzJlZmQybXFyMGJuMDFxemsifQ.t4UlHVJhUi9ntjG5Tiq5_A';
 
 interface WorldMapProps {
   onCountrySelect: (countryName: string) => void;
@@ -45,6 +45,10 @@ interface ConflictGeoJSON {
     };
   }>;
 }
+
+// Zoom configuration for country focus
+const COUNTRY_FOCUS_MAX_ZOOM = 4; // lower = farther
+const COUNTRY_FITBOUNDS_MAX_ZOOM = 4;
 
 const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMap: () => mapboxgl.Map | null }, WorldMapProps>(({ onCountrySelect, selectedCountry, onResetView, conflicts = [], selectedConflictId, isLeftSidebarOpen = false }, ref) => {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -217,8 +221,8 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         const capitalData = findCapitalByCountry(finalCountryName);
         
         if (capitalData) {
-          // Zoom a la capital del país con zoom dinámico basado en el tamaño del país
-          const zoomLevel = capitalData.zoomLevel || 6; // Usar zoom personalizado o 6 por defecto
+          // Zoom a la capital del país con límite máximo para verse más lejos
+          const zoomLevel = Math.min(capitalData.zoomLevel || 6, COUNTRY_FOCUS_MAX_ZOOM);
           map.easeTo({
             center: capitalData.coordinates,
             zoom: zoomLevel,
@@ -229,7 +233,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
           // Fallback: usar las coordenadas del geocoder
           map.easeTo({
             center: coordinates,
-            zoom: 5,
+            zoom: COUNTRY_FOCUS_MAX_ZOOM,
             duration: 1200,
             easing: (t: number) => 1 - Math.pow(1 - t, 3)
           });
@@ -240,7 +244,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
          // Si no se encuentra el feature, al menos centrar en las coordenadas
          map.easeTo({
            center: coordinates,
-           zoom: 5, // Zoom fijo para mostrar la capital con contexto
+           zoom: COUNTRY_FOCUS_MAX_ZOOM, // Zoom fijo para mostrar la capital con contexto
            duration: 1200,
            easing: (t: number) => 1 - Math.pow(1 - t, 3)
          });
@@ -464,8 +468,8 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
           const capitalData = findCapitalByCountry(countryName);
           
           if (capitalData) {
-            // Zoom a la capital del país con zoom dinámico basado en el tamaño del país
-            const zoomLevel = capitalData.zoomLevel || 6; // Usar zoom personalizado o 6 por defecto
+            // Zoom a la capital del país con límite máximo para verse más lejos
+            const zoomLevel = Math.min(capitalData.zoomLevel || 6, COUNTRY_FOCUS_MAX_ZOOM);
             map.easeTo({
               center: capitalData.coordinates,
               zoom: zoomLevel,
@@ -494,7 +498,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
                 map.fitBounds(bounds, {
                   padding: { top: 50, bottom: 50, left: 200, right: 200 },
                   duration: 1200,
-                  maxZoom: 6,
+                  maxZoom: COUNTRY_FITBOUNDS_MAX_ZOOM,
                   easing: (t: number) => {
                     return 1 - Math.pow(1 - t, 3);
                   }
@@ -505,7 +509,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
                 if (e.lngLat) {
                   map.easeTo({
                     center: [e.lngLat.lng, e.lngLat.lat],
-                    zoom: Math.min(Math.max(map.getZoom(), 3), 5),
+                    zoom: Math.min(Math.max(map.getZoom(), 3), COUNTRY_FOCUS_MAX_ZOOM),
                     duration: 1200,
                     easing: (t: number) => 1 - Math.pow(1 - t, 3)
                   });
@@ -515,7 +519,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
               // Fallback: centrar en el punto de clic
               map.easeTo({
                 center: [e.lngLat.lng, e.lngLat.lat],
-                zoom: Math.min(Math.max(map.getZoom(), 3), 5),
+                zoom: Math.min(Math.max(map.getZoom(), 3), COUNTRY_FOCUS_MAX_ZOOM),
                 duration: 1200,
                 easing: (t: number) => 1 - Math.pow(1 - t, 3)
               });

@@ -72,6 +72,9 @@ const LAYERS = {
   ALLY_BORDER: (faction: string) => `ally-border-${faction}`,
 } as const;
 
+// Filtro seguro que no coincide con ningún elemento. Evita castear propiedades nulas.
+const MATCH_NONE_FILTER: any = ['==', ['literal', 1], 2];
+
 // Variables de animación (estado global)
 let animationId: number | null = null;
 let ripplePhase = 0;
@@ -89,7 +92,7 @@ export const ConflictVisualization = {
         type: 'fill',
         source: countrySource,
         'source-layer': 'country_boundaries',
-        filter: ['boolean', false], // Inicialmente oculto
+        filter: MATCH_NONE_FILTER, // Inicialmente oculto
         paint: {
           'fill-color': COLORS.COUNTRY_FILL,
           'fill-opacity': OPACITIES.COUNTRY_FILL
@@ -104,7 +107,7 @@ export const ConflictVisualization = {
         type: 'line',
         source: countrySource,
         'source-layer': 'country_boundaries',
-        filter: ['boolean', false], // Inicialmente oculto
+        filter: MATCH_NONE_FILTER, // Inicialmente oculto
         paint: {
           'line-color': COLORS.COUNTRY_BORDER,
           'line-width': SIZES.COUNTRY_BORDER_WIDTH,
@@ -124,7 +127,7 @@ export const ConflictVisualization = {
           type: 'fill',
           source: countrySource,
           'source-layer': 'country_boundaries',
-          filter: ['==', ['string', ['get', 'iso_3166_1_alpha_3']], 'NON_EXISTENT'],
+          filter: MATCH_NONE_FILTER,
           paint: {
             'fill-color': '#000000', // Placeholder
             'fill-opacity': OPACITIES.COUNTRY_FILL
@@ -138,7 +141,7 @@ export const ConflictVisualization = {
           type: 'line',
           source: countrySource,
           'source-layer': 'country_boundaries',
-          filter: ['==', ['string', ['get', 'iso_3166_1_alpha_3']], 'NON_EXISTENT'],
+          filter: MATCH_NONE_FILTER,
           paint: {
             'line-color': '#000000', // Placeholder
             'line-width': SIZES.COUNTRY_BORDER_WIDTH,
@@ -220,8 +223,8 @@ export const ConflictVisualization = {
 
     try {
       const filter = isoCodes.length > 0 
-        ? ['in', ['get', 'iso_3166_1_alpha_3'], ['literal', isoCodes]]
-        : ['==', ['string', ['get', 'iso_3166_1_alpha_3']], 'NON_EXISTENT'];
+        ? ['in', ['coalesce', ['get', 'iso_3166_1_alpha_3'], ''], ['literal', isoCodes]]
+        : MATCH_NONE_FILTER;
 
       if (map.getLayer(LAYERS.COUNTRY_FILL)) {
         map.setFilter(LAYERS.COUNTRY_FILL, filter);
@@ -291,8 +294,8 @@ export const ConflictVisualization = {
         const borderId = LAYERS.ALLY_BORDER(`faction${index + 1}`);
 
         const filter = allyISO?.length > 0 
-          ? ['in', ['get', 'iso_3166_1_alpha_3'], ['literal', allyISO]]
-          : ['==', ['string', ['get', 'iso_3166_1_alpha_3']], 'NON_EXISTENT'];
+          ? ['in', ['coalesce', ['get', 'iso_3166_1_alpha_3'], ''], ['literal', allyISO]]
+          : MATCH_NONE_FILTER;
 
         if (map.getLayer(fillId)) {
           map.setFilter(fillId, filter);
@@ -310,8 +313,8 @@ export const ConflictVisualization = {
       const fillId = LAYERS.ALLY_FILL(`faction${i + 1}`);
       const borderId = LAYERS.ALLY_BORDER(`faction${i + 1}`);
       if (i >= factions.length) {
-        if (map.getLayer(fillId)) map.setFilter(fillId, ['==', ['string', ['get', 'iso_3166_1_alpha_3']], 'NON_EXISTENT']);
-        if (map.getLayer(borderId)) map.setFilter(borderId, ['==', ['string', ['get', 'iso_3166_1_alpha_3']], 'NON_EXISTENT']);
+        if (map.getLayer(fillId)) map.setFilter(fillId, MATCH_NONE_FILTER);
+        if (map.getLayer(borderId)) map.setFilter(borderId, MATCH_NONE_FILTER);
       }
     }
 

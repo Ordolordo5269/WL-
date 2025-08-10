@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import './styles/sidebar.css'; // Import sidebar styles globally
 
 // Función para mostrar el contenido cuando todo esté listo
 function showContent() {

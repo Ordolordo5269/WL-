@@ -1,3 +1,5 @@
+import economyDataJson from '../data/economy_data.json';
+
 export interface EconomyData {
   country_id: string;
   gdp_usd: number | null;
@@ -23,15 +25,12 @@ class EconomyService {
   private economyData: EconomyData[] = [];
   private isLoaded = false;
 
-  async loadEconomyData(): Promise<void> {
+  loadEconomyData(): void {
     if (this.isLoaded) return;
 
     try {
-      const response = await fetch('/economy_data.json');
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      this.economyData = await response.json();
+      // Import the JSON data directly instead of fetching
+      this.economyData = economyDataJson as EconomyData[];
       this.isLoaded = true;
     } catch (error) {
       console.error('Error loading economy data:', error);
@@ -42,7 +41,6 @@ class EconomyService {
   getEconomyDataByCountry(countryName: string): EconomyData | null {
     if (!this.isLoaded) {
       this.loadEconomyData();
-      return null;
     }
 
     // Try exact match first

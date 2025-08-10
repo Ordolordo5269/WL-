@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { economyService, EconomyData } from '../services/economy-service';
+import { economyService } from '../services/economy-service';
+import type { EconomyData } from '../services/economy-service';
 
 export interface UseEconomyDataReturn {
   economyData: EconomyData | null;
@@ -18,10 +19,7 @@ export function useEconomyData(countryName: string | null): UseEconomyDataReturn
     setError(null);
     
     try {
-      // Ensure economy data is loaded first
-      await economyService.loadEconomyData();
-      
-      // Get economy data for the country
+      // Get economy data for the country (loading is now synchronous)
       const data = economyService.getEconomyDataByCountry(country);
       setEconomyData(data);
       

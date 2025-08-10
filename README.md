@@ -1,286 +1,138 @@
-# Worldlore - Conflict Tracker
+# 🌍 WorldLore - Plataforma Global de Análisis Geopolítico
 
-Una aplicación web interactiva para visualizar y rastrear conflictos globales en tiempo real, construida con React, TypeScript, Node.js y Mapbox GL JS.
+Una aplicación web moderna para explorar y analizar información geopolítica global, conflictos internacionales y datos económicos de países.
 
-## 🚀 Características
+## 🚀 Inicio Rápido
 
-- **Globo 3D Interactivo**: Visualización inmersiva del mundo usando Mapbox GL JS
-- **Rastreador de Conflictos**: Datos actualizados de conflictos globales con filtros por región y estado
-- **Búsqueda de Países**: Geocoder integrado para buscar y navegar a países específicos
-- **Interfaz Moderna**: Diseño responsive con Tailwind CSS y animaciones suaves
-- **API REST**: Backend Express con endpoints para datos de países y conflictos
-
-## 📋 Requisitos Previos
-
-Antes de comenzar, asegúrate de tener instalado:
-
-- **Node.js** (versión 18 o superior)
+### Prerrequisitos
+- **Node.js** (versión 18 o superior) - [Descargar aquí](https://nodejs.org/)
 - **npm** (incluido con Node.js)
-- **Git** (para clonar el repositorio)
 
-### Verificar instalaciones:
-```bash
-node --version  # Debe ser >= 18.0.0
-npm --version   # Debe ser >= 8.0.0
-git --version   # Cualquier versión reciente
-```
+### Instalación y Ejecución
 
-## 🛠️ Instalación y Configuración
+#### Opción 1: Script Automático (Recomendado)
 
-### 1. Clonar el Repositorio
-
-```bash
-git clone <URL_DEL_REPOSITORIO>
-cd WL-
-```
-
-### 2. Configurar Variables de Entorno
-
-El proyecto requiere un token de Mapbox para funcionar. Tienes dos opciones:
-
-#### Opción A: Instalación Automática (Recomendada)
-
-**Para Linux/macOS:**
-```bash
-chmod +x setup.sh
-./setup.sh
-```
-
-**Para Windows:**
+**Windows:**
 ```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-.\setup.ps1
+.\start-servers.ps1
 ```
 
-#### Opción B: Configuración Manual
-
-**Obtener Token de Mapbox:**
-1. Ve a [Mapbox](https://www.mapbox.com/) y crea una cuenta gratuita
-2. En tu dashboard, copia tu **Access Token**
-3. Crea los siguientes archivos `.env`:
-
-**En la raíz del proyecto:**
+**Linux/macOS:**
 ```bash
-# Crear archivo .env en la raíz
-echo "MAPBOX_TOKEN=tu_token_de_mapbox_aqui" > .env
-echo "PORT=3000" >> .env
+./start-servers.sh
 ```
 
-**En el directorio frontend:**
+#### Opción 2: Instalación Manual
+
+1. **Instalar dependencias del backend:**
+   ```bash
+   cd backend
+   npm install
+   ```
+
+2. **Instalar dependencias del frontend:**
+   ```bash
+   cd frontend
+   npm install
+   ```
+
+3. **Iniciar el backend:**
+   ```bash
+   cd backend
+   npm run dev
+   ```
+
+4. **Iniciar el frontend (en otra terminal):**
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+
+### Acceso a la Aplicación
+
+- **Frontend:** http://localhost:5173
+- **Backend API:** http://localhost:3001
+
+### Verificar que Todo Funciona
+
+1. Abre http://localhost:5173 en tu navegador
+2. Prueba la API: http://localhost:3001/api/countries/Spain/basic-info
+
+## 🛠️ Solución de Problemas
+
+### Error: "Failed to fetch" o "ERR_CONNECTION_REFUSED"
+
+Si ves este error, significa que el backend no está ejecutándose. Soluciones:
+
+1. **Verifica que el backend esté iniciado:**
+   - Deberías ver "Server listening on port 3001" en la consola del backend
+
+2. **Reinicia los servidores:**
+   - Cierra todas las ventanas de terminal
+   - Ejecuta el script de inicio nuevamente
+
+3. **Verifica los puertos:**
+   - Puerto 3001: Backend API
+   - Puerto 5173: Frontend
+
+### Dependencias No Instaladas
+
+Los scripts automáticos verifican e instalan automáticamente las dependencias. Si hay problemas:
+
 ```bash
-# Crear archivo .env en frontend/
-echo "VITE_MAPBOX_TOKEN=tu_token_de_mapbox_aqui" > frontend/.env
-```
-
-**En el directorio backend:**
-```bash
-# Crear archivo .env en backend/
-echo "MAPBOX_TOKEN=tu_token_de_mapbox_aqui" > backend/.env
-echo "PORT=3000" >> backend/.env
-```
-
-**Archivos de ejemplo disponibles:**
-- `env.example` - Para la raíz del proyecto
-- `backend/env.example` - Para el backend
-- `frontend/env.example` - Para el frontend
-
-### 3. Instalar Dependencias
-
-El proyecto tiene múltiples directorios con sus propias dependencias. Ejecuta estos comandos en orden:
-
-```bash
-# Instalar dependencias del proyecto principal
-npm install
-
-# Instalar dependencias del backend
+# Backend
 cd backend
 npm install
-cd ..
 
-# Instalar dependencias del frontend
+# Frontend  
 cd frontend
 npm install
-cd ..
 ```
-
-### 4. Verificar la Instalación
-
-Para asegurarte de que todo está configurado correctamente:
-
-```bash
-# Verificar que las dependencias están instaladas
-ls node_modules
-ls backend/node_modules
-ls frontend/node_modules
-
-# Verificar que los archivos .env existen
-ls .env
-ls backend/.env
-ls frontend/.env
-```
-
-## 🚀 Ejecutar el Proyecto
-
-### Opción 1: Ejecutar Todo Junto (Recomendado)
-
-```bash
-# Terminal 1: Backend
-npm run dev
-
-# Terminal 2: Frontend
-npm run client
-```
-
-### Opción 2: Ejecutar por Separado
-
-```bash
-# Terminal 1: Backend
-cd backend
-npm run dev
-
-# Terminal 2: Frontend
-cd frontend
-npm run dev
-```
-
-### Puertos por Defecto:
-- **Backend**: http://localhost:3000
-- **Frontend**: http://localhost:5173
 
 ## 📁 Estructura del Proyecto
 
 ```
 WL-/
-├── backend/                 # Servidor Express
+├── backend/                 # API REST con Express + TypeScript
 │   ├── src/
-│   │   ├── controllers/     # Controladores de la API
+│   │   ├── app.ts          # Configuración de Express
+│   │   ├── index.ts        # Punto de entrada del servidor
+│   │   ├── controllers/    # Controladores de la API
 │   │   ├── routes/         # Rutas de la API
-│   │   ├── services/       # Lógica de negocio
-│   │   └── middleware/     # Middleware personalizado
+│   │   └── services/       # Lógica de negocio
 │   └── package.json
-├── frontend/               # Aplicación React
-│   ├── components/         # Componentes React
-│   ├── services/          # Servicios y lógica
-│   ├── data/              # Datos estáticos
-│   ├── src/               # Código fuente principal
+├── frontend/               # Aplicación React + Vite
+│   ├── src/
+│   │   ├── App.tsx         # Componente principal
+│   │   ├── components/     # Componentes React
+│   │   ├── services/       # Servicios de API
+│   │   └── types/          # Tipos TypeScript
 │   └── package.json
-├── .env                   # Variables de entorno (crear)
-├── .gitignore            # Archivos ignorados por Git
-└── README.md             # Este archivo
+├── start-servers.ps1       # Script de inicio para Windows
+├── start-servers.sh        # Script de inicio para Unix/Linux/macOS
+└── README.md
 ```
 
 ## 🔧 Scripts Disponibles
 
-### Scripts Principales:
-```bash
-npm run dev          # Ejecutar backend en modo desarrollo
-npm run client       # Ejecutar frontend en modo desarrollo
-npm run build        # Compilar backend para producción
-```
+### Backend
+- `npm run dev` - Ejecuta en modo desarrollo con hot reload
+- `npm run build` - Compila TypeScript a JavaScript
+- `npm start` - Ejecuta la versión compilada
 
-### Scripts del Backend:
-```bash
-cd backend
-npm run dev          # Ejecutar con ts-node-dev (hot reload)
-npm run start        # Ejecutar versión compilada
-npm run build        # Compilar TypeScript
-npm run clean        # Limpiar archivos compilados
-```
+### Frontend
+- `npm run dev` - Ejecuta en modo desarrollo con Vite
+- `npm run build` - Construye para producción
+- `npm run preview` - Previsualiza la build de producción
 
-### Scripts del Frontend:
-```bash
-cd frontend
-npm run dev          # Ejecutar servidor de desarrollo Vite
-npm run build        # Compilar para producción
-npm run preview      # Previsualizar build de producción
-npm run lint         # Ejecutar ESLint
-```
+## 🌟 Características
 
-## 🌐 Configuración de Red
+- **Mapa Interactivo:** Visualización de países y conflictos
+- **Información de Países:** Datos demográficos, económicos y políticos
+- **Seguimiento de Conflictos:** Análisis de conflictos internacionales
+- **API REST:** Backend robusto con TypeScript
+- **UI Moderna:** Interfaz responsive con React y Tailwind CSS
 
-### Si necesitas cambiar los puertos:
+## 📝 Licencia
 
-**Backend** (backend/.env):
-```env
-PORT=3000
-MAPBOX_TOKEN=tu_token_aqui
-```
-
-**Frontend** (frontend/.env):
-```env
-VITE_MAPBOX_TOKEN=tu_token_aqui
-VITE_API_URL=http://localhost:3000
-```
-
-## 🐛 Solución de Problemas
-
-### Error: "Cannot find module"
-```bash
-# Eliminar node_modules y reinstalar
-rm -rf node_modules package-lock.json
-npm install
-```
-
-### Error: "Mapbox token not found"
-- Verifica que los archivos `.env` existen en las ubicaciones correctas
-- Asegúrate de que el token de Mapbox sea válido
-- Reinicia los servidores después de crear los archivos `.env`
-
-### Error: "Port already in use"
-```bash
-# Cambiar puerto en el archivo .env correspondiente
-# O matar el proceso que usa el puerto
-lsof -ti:3000 | xargs kill -9  # Para puerto 3000
-```
-
-### Error: "TypeScript compilation failed"
-```bash
-# Limpiar caché de TypeScript
-rm -rf **/*.tsbuildinfo
-rm -rf **/dist
-npm run build
-```
-
-## 📦 Despliegue
-
-### Para Producción:
-
-1. **Compilar el proyecto:**
-```bash
-# Backend
-cd backend
-npm run build
-
-# Frontend
-cd frontend
-npm run build
-```
-
-2. **Configurar variables de entorno de producción**
-3. **Usar un servidor web como Nginx o Apache**
-4. **Configurar un proceso manager como PM2**
-
-## 🤝 Contribuir
-
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
-
-## 📄 Licencia
-
-Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
-
-## 🆘 Soporte
-
-Si encuentras algún problema:
-
-1. Revisa la sección de "Solución de Problemas" arriba
-2. Verifica que todas las dependencias están instaladas correctamente
-3. Asegúrate de que los archivos `.env` están configurados
-4. Abre un issue en el repositorio con detalles del error
-
----
-
-**Nota**: Este proyecto requiere un token de Mapbox válido para funcionar. El token gratuito de Mapbox incluye 50,000 cargas de mapa por mes, lo cual es suficiente para desarrollo y uso personal.
+Este proyecto está bajo la Licencia MIT.

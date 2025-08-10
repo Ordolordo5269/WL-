@@ -95,7 +95,7 @@ const MenuToggleButton: React.FC<MenuToggleButtonProps> = ({ isOpen, onClick }) 
         whileHover={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.2 }}
       >
-        {isOpen ? 'Cerrar menú' : 'Abrir menú'}
+        {isOpen ? 'Close menu' : 'Open menu'}
       </motion.div>
     </motion.button>
   );

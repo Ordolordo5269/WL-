@@ -21,7 +21,10 @@
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+    
+    /* JSON imports */
+    "resolveJsonModule": true
   },
-  "include": ["src"]
+  "include": ["src", "data"]
 }

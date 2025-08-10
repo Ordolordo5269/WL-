@@ -36,7 +36,7 @@ function App() {
     conflict: false // conflict tracker
   });
 
-  // Función para manejar sidebars
+  // Unified sidebars handler
   const toggleSidebar = useCallback((type: 'country' | 'menu' | 'conflict', open: boolean) => {
     setSidebars(prev => ({ ...prev, [type]: open }));
   }, []);
@@ -55,7 +55,7 @@ function App() {
       });
   }, []);
 
-  // Handler para selección de países
+  // Country selection handler
   const handleCountrySelect = useCallback((countryName: string) => {
     setSelectedCountry(countryName);
     toggleSidebar('country', true);
@@ -64,7 +64,7 @@ function App() {
   const handleCloseSidebar = useCallback(() => {
     toggleSidebar('country', false);
     setSelectedCountry(null);
-    // Resetear la vista del mapa a la vista principal del globo
+    // Reset map view back to the globe
     if ((window as WindowWithResetMapView).resetMapView) {
       (window as WindowWithResetMapView).resetMapView();
     }
@@ -74,7 +74,7 @@ function App() {
     // Esta función se pasa al WorldMap para exponer resetMapView
   }, []);
 
-  // Simplificados: handlers para sidebars
+  // Left sidebar handlers
   const handleToggleLeftSidebar = useCallback(() => {
     toggleSidebar('menu', !sidebars.menu);
   }, [sidebars.menu, toggleSidebar]);
@@ -92,7 +92,7 @@ function App() {
     setSelectedConflictId(null);
   }, [toggleSidebar]);
 
-  // ✅ REMOVIDO: Función no utilizada handleBackToLeftSidebar
+  // Removed: unused handleBackToLeftSidebar
 
   const handleCenterMapOnConflict = (coordinates: { lat: number; lng: number }) => {
     if (mapRef.current) {
@@ -134,20 +134,20 @@ function App() {
 
   return (
     <div className="relative w-full h-full overflow-hidden">
-      {/* Botón para abrir/cerrar el menú izquierdo */}
+      {/* Left menu toggle button */}
       <MenuToggleButton 
         isOpen={sidebars.menu}
         onClick={handleToggleLeftSidebar}
       />
       
-      {/* Sidebar izquierda */}
+      {/* Left sidebar */}
       <LeftSidebar 
         isOpen={sidebars.menu}
         onClose={handleCloseLeftSidebar}
         onOpenConflictTracker={handleOpenConflictTracker}
       />
       
-      {/* Overlay para la sidebar izquierda con animación mejorada */}
+      {/* Left sidebar overlay */}
       {sidebars.menu && (
         <motion.div 
           className="fixed inset-0 bg-black z-40 cursor-pointer"
@@ -170,10 +170,10 @@ function App() {
         isLeftSidebarOpen={sidebars.menu}
       />
       
-      {/* Country Sidebar with improved animations */}
+      {/* Country Sidebar */}
       {sidebars.country && (
         <>
-          {/* Overlay con animación fluida */}
+          {/* Overlay */}
           <motion.div 
             className="fixed inset-0 bg-black z-40 cursor-pointer"
             initial={{ opacity: 0 }}
@@ -191,7 +191,7 @@ function App() {
         </>
       )}
       
-      {/* Pantalla de carga mejorada con animación */}
+      {/* Global loading overlay */}
       <AnimatePresence>
         {isLoading && (
           <motion.div 
@@ -212,13 +212,13 @@ function App() {
                 animate={{ rotate: 360 }}
                 transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
               />
-              Cargando...
+              Loading...
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
       
-      {/* Panel flotante para información de países con animación */}
+      {/* Floating country card */}
       <AnimatePresence>
         {selectedCountryData && (
           <motion.div 
@@ -233,10 +233,10 @@ function App() {
         )}
       </AnimatePresence>
 
-      {/* Conflict Tracker con animaciones mejoradas */}
+      {/* Conflict Tracker */}
       {sidebars.conflict && (
         <>
-          {/* Overlay para ConflictTracker */}
+          {/* Overlay for ConflictTracker */}
           <motion.div 
             className="fixed inset-0 bg-black z-40 cursor-pointer"
             initial={{ opacity: 0 }}
