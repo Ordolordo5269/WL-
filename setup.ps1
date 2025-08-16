@@ -65,20 +65,20 @@ Set-Location frontend
 npm install
 Set-Location ..
 
-Write-Host ""
+Write-Host "" 
 Write-Host "🔧 Configurando variables de entorno..." -ForegroundColor Yellow
 
 # Crear archivos .env
 "MAPBOX_TOKEN=$MAPBOX_TOKEN" | Out-File -FilePath ".env" -Encoding UTF8
-"PORT=3000" | Out-File -FilePath ".env" -Append -Encoding UTF8
+"PORT=3001" | Out-File -FilePath ".env" -Append -Encoding UTF8
 "NODE_ENV=development" | Out-File -FilePath ".env" -Append -Encoding UTF8
 
 "VITE_MAPBOX_TOKEN=$MAPBOX_TOKEN" | Out-File -FilePath "frontend\.env" -Encoding UTF8
-"VITE_API_URL=http://localhost:3000" | Out-File -FilePath "frontend\.env" -Append -Encoding UTF8
+"VITE_API_URL=http://localhost:3001" | Out-File -FilePath "frontend\.env" -Append -Encoding UTF8
 "NODE_ENV=development" | Out-File -FilePath "frontend\.env" -Append -Encoding UTF8
 
 "MAPBOX_TOKEN=$MAPBOX_TOKEN" | Out-File -FilePath "backend\.env" -Encoding UTF8
-"PORT=3000" | Out-File -FilePath "backend\.env" -Append -Encoding UTF8
+"PORT=3001" | Out-File -FilePath "backend\.env" -Append -Encoding UTF8
 "NODE_ENV=development" | Out-File -FilePath "backend\.env" -Append -Encoding UTF8
 "CORS_ORIGIN=http://localhost:5173" | Out-File -FilePath "backend\.env" -Append -Encoding UTF8
 
@@ -88,13 +88,15 @@ Write-Host ""
 Write-Host "🚀 Para ejecutar el proyecto:" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "Terminal 1 (Backend):" -ForegroundColor White
-Write-Host "  npm run dev" -ForegroundColor Cyan
+Write-Host "  npm run backend:dev" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Terminal 2 (Frontend):" -ForegroundColor White
-Write-Host "  npm run client" -ForegroundColor Cyan
+Write-Host "  npm run frontend:dev" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "O usa: npm run dev para correr ambos a la vez" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "🌐 URLs:" -ForegroundColor Yellow
 Write-Host "  Frontend: http://localhost:5173" -ForegroundColor White
-Write-Host "  Backend:  http://localhost:3000" -ForegroundColor White
-Write-Host ""
+Write-Host "  Backend:  http://localhost:3001" -ForegroundColor White
+Write-Host "" 
 Write-Host "📚 Para más información, consulta el README.md" -ForegroundColor White 

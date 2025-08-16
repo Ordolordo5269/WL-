@@ -49,7 +49,7 @@ chmod +x setup.sh
 **Para Windows:**
 ```powershell
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-.\setup.ps1
+./setup.ps1
 ```
 
 #### Opción B: Configuración Manual
@@ -63,20 +63,22 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```bash
 # Crear archivo .env en la raíz
 echo "MAPBOX_TOKEN=tu_token_de_mapbox_aqui" > .env
-echo "PORT=3000" >> .env
+echo "PORT=3001" >> .env
 ```
 
 **En el directorio frontend:**
 ```bash
 # Crear archivo .env en frontend/
 echo "VITE_MAPBOX_TOKEN=tu_token_de_mapbox_aqui" > frontend/.env
+echo "VITE_API_URL=http://localhost:3001" >> frontend/.env
 ```
 
 **En el directorio backend:**
 ```bash
 # Crear archivo .env en backend/
 echo "MAPBOX_TOKEN=tu_token_de_mapbox_aqui" > backend/.env
-echo "PORT=3000" >> backend/.env
+echo "PORT=3001" >> backend/.env
+echo "CORS_ORIGIN=http://localhost:5173" >> backend/.env
 ```
 
 **Archivos de ejemplo disponibles:**
@@ -124,11 +126,7 @@ ls frontend/.env
 ### Opción 1: Ejecutar Todo Junto (Recomendado)
 
 ```bash
-# Terminal 1: Backend
-npm run dev
-
-# Terminal 2: Frontend
-npm run client
+npm run dev  # Inicia backend en 3001 y frontend en 5173
 ```
 
 ### Opción 2: Ejecutar por Separado
@@ -136,16 +134,12 @@ npm run client
 ```bash
 # Terminal 1: Backend
 cd backend
-npm run dev
+npm run dev  # http://localhost:3001
 
 # Terminal 2: Frontend
 cd frontend
-npm run dev
+npm run dev  # http://localhost:5173
 ```
-
-### Puertos por Defecto:
-- **Backend**: http://localhost:3000
-- **Frontend**: http://localhost:5173
 
 ## 📁 Estructura del Proyecto
 
@@ -202,14 +196,14 @@ npm run lint         # Ejecutar ESLint
 
 **Backend** (backend/.env):
 ```env
-PORT=3000
+PORT=3001
 MAPBOX_TOKEN=tu_token_aqui
 ```
 
 **Frontend** (frontend/.env):
 ```env
 VITE_MAPBOX_TOKEN=tu_token_aqui
-VITE_API_URL=http://localhost:3000
+VITE_API_URL=http://localhost:3001
 ```
 
 ## 🐛 Solución de Problemas
@@ -230,7 +224,7 @@ npm install
 ```bash
 # Cambiar puerto en el archivo .env correspondiente
 # O matar el proceso que usa el puerto
-lsof -ti:3000 | xargs kill -9  # Para puerto 3000
+lsof -ti:3001 | xargs kill -9  # Para puerto 3001
 ```
 
 ### Error: "TypeScript compilation failed"

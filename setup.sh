@@ -68,15 +68,15 @@ echo "🔧 Configurando variables de entorno..."
 
 # Crear archivos .env
 echo "MAPBOX_TOKEN=$MAPBOX_TOKEN" > .env
-echo "PORT=3000" >> .env
+echo "PORT=3001" >> .env
 echo "NODE_ENV=development" >> .env
 
 echo "VITE_MAPBOX_TOKEN=$MAPBOX_TOKEN" > frontend/.env
-echo "VITE_API_URL=http://localhost:3000" >> frontend/.env
+echo "VITE_API_URL=http://localhost:3001" >> frontend/.env
 echo "NODE_ENV=development" >> frontend/.env
 
 echo "MAPBOX_TOKEN=$MAPBOX_TOKEN" > backend/.env
-echo "PORT=3000" >> backend/.env
+echo "PORT=3001" >> backend/.env
 echo "NODE_ENV=development" >> backend/.env
 echo "CORS_ORIGIN=http://localhost:5173" >> backend/.env
 
@@ -86,13 +86,15 @@ echo ""
 echo "🚀 Para ejecutar el proyecto:"
 echo ""
 echo "Terminal 1 (Backend):"
-echo "  npm run dev"
+echo "  npm run backend:dev"
 echo ""
 echo "Terminal 2 (Frontend):"
-echo "  npm run client"
+echo "  npm run frontend:dev"
+echo ""
+echo "O usa: npm run dev para correr ambos a la vez"
 echo ""
 echo "🌐 URLs:"
 echo "  Frontend: http://localhost:5173"
-echo "  Backend:  http://localhost:3000"
+echo "  Backend:  http://localhost:3001"
 echo ""
 echo "📚 Para más información, consulta el README.md" 
