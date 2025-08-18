@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { coefToHexRdBu } from '../services/alignment.colors';
 import { coefOnAxis, coefWeighted } from '../services/alignment.math';
 import { ProjectionRequestBody } from '../types/alignment.types';
+import { generateDataset, generateOverlay } from '../services/alignment.dataset';
 
 export function getColorForCoef(req: Request, res: Response) {
   const q = req.query.c as string | undefined;
@@ -55,5 +56,20 @@ export function batchColors(req: Request, res: Response) {
   const hi = Number.isFinite(max as number) ? (max as number) : 1;
   const colors = coefs.map((c) => coefToHexRdBu(Number(c), lo, hi));
   return res.json({ min: lo, max: hi, colors });
+}
+
+export function getDataset(req: Request, res: Response) {
+  const data = generateDataset();
+  return res.json(data);
+}
+
+export function getOverlay(req: Request, res: Response) {
+  const minQ = req.query.min as string | undefined;
+  const maxQ = req.query.max as string | undefined;
+  const min = minQ !== undefined ? Number(minQ) : -1;
+  const max = maxQ !== undefined ? Number(maxQ) : 1;
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return res.status(400).json({ error: 'Invalid min/max' });
+  const overlay = generateOverlay(min, max);
+  return res.json(overlay);
 }
 
