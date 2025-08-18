@@ -35,6 +35,8 @@ function App() {
     menu: false,    // left menu sidebar
     conflict: false // conflict tracker
   });
+  const [alignmentOverlayEnabled, setAlignmentOverlayEnabled] = useState(false);
+  const [alignmentPreviewColor, setAlignmentPreviewColor] = useState<string>('#f7f7f7');
 
   // Función para manejar sidebars
   const toggleSidebar = useCallback((type: 'country' | 'menu' | 'conflict', open: boolean) => {
@@ -145,6 +147,8 @@ function App() {
         isOpen={sidebars.menu}
         onClose={handleCloseLeftSidebar}
         onOpenConflictTracker={handleOpenConflictTracker}
+        onToggleAlignmentOverlay={setAlignmentOverlayEnabled}
+        onPreviewAlignmentColor={setAlignmentPreviewColor}
       />
       
       {/* Overlay para la sidebar izquierda con animación mejorada */}
@@ -168,6 +172,7 @@ function App() {
         onConflictClick={handleConflictClick}
         selectedConflictId={selectedConflictId}
         isLeftSidebarOpen={sidebars.menu}
+        alignmentOverlayEnabled={alignmentOverlayEnabled}
       />
       
       {/* Country Sidebar with improved animations */}

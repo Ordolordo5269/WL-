@@ -17,6 +17,7 @@ interface WorldMapProps {
   onConflictClick?: (conflictId: string) => void;
   selectedConflictId?: string | null;
   isLeftSidebarOpen?: boolean;
+  alignmentOverlayEnabled?: boolean;
 }
 
 // Tipos específicos para evitar 'any'
@@ -46,7 +47,7 @@ interface ConflictGeoJSON {
   }>;
 }
 
-const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMap: () => mapboxgl.Map | null }, WorldMapProps>(({ onCountrySelect, selectedCountry, onResetView, conflicts = [], selectedConflictId, isLeftSidebarOpen = false }, ref) => {
+const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMap: () => mapboxgl.Map | null }, WorldMapProps>(({ onCountrySelect, selectedCountry, onResetView, conflicts = [], selectedConflictId, isLeftSidebarOpen = false, alignmentOverlayEnabled = false }, ref) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const geocoderContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -56,6 +57,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   const conflictDataManager = useRef<ConflictDataManager | null>(null);
   const isLeftSidebarOpenRef = useRef(isLeftSidebarOpen);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
+  const [alignmentPaintApplied, setAlignmentPaintApplied] = useState(false);
   
   // ✅ NUEVO: Refs para prevenir memory leaks
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -626,6 +628,43 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       }
     };
   }, []); // Solo ejecutar una vez
+
+  // Apply/remove alignment overlay paint
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isMapLoaded) return;
+    const layerId = 'country-alignment';
+    const source = 'country-boundaries';
+    const sourceLayer = 'country_boundaries';
+
+    if (alignmentOverlayEnabled) {
+      if (!map.getLayer(layerId)) {
+        map.addLayer({
+          id: layerId,
+          type: 'fill',
+          source,
+          'source-layer': sourceLayer,
+          paint: {
+            'fill-color': {
+              property: 'name_en',
+              type: 'categorical',
+              stops: [
+                ['United States', '#053061'],
+                ['China', '#67001f']
+              ]
+            },
+            'fill-opacity': 0.35
+          }
+        });
+      }
+      setAlignmentPaintApplied(true);
+    } else if (alignmentPaintApplied) {
+      if (map.getLayer(layerId)) {
+        map.removeLayer(layerId);
+      }
+      setAlignmentPaintApplied(false);
+    }
+  }, [alignmentOverlayEnabled, isMapLoaded, alignmentPaintApplied]);
 
   // Efecto para actualizar conflictos cuando cambien
   useEffect(() => {

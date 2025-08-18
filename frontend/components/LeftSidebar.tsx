@@ -7,6 +7,8 @@ interface LeftSidebarProps {
   onClose: () => void;
   onCenterMap?: (coordinates: { lat: number; lng: number }) => void;
   onOpenConflictTracker?: () => void;
+  onToggleAlignmentOverlay?: (enabled: boolean) => void;
+  onPreviewAlignmentColor?: (hex: string) => void;
 }
 
 interface MenuItem {
@@ -16,8 +18,11 @@ interface MenuItem {
   onClick?: () => void;
 }
 
-export default function LeftSidebar({ isOpen, onOpenConflictTracker }: LeftSidebarProps) {
+export default function LeftSidebar({ isOpen, onOpenConflictTracker, onToggleAlignmentOverlay, onPreviewAlignmentColor }: LeftSidebarProps) {
   const [activeItem, setActiveItem] = useState<string>('home');
+  const [alignmentEnabled, setAlignmentEnabled] = useState<boolean>(false);
+  const [coefSlider, setCoefSlider] = useState<number>(0); // -100..100
+  const [coefHex, setCoefHex] = useState<string>('#f7f7f7');
 
   const menuItems: MenuItem[] = useMemo(() => [
     {
@@ -78,6 +83,25 @@ export default function LeftSidebar({ isOpen, onOpenConflictTracker }: LeftSideb
     // onClose();
   }, [onOpenConflictTracker]);
 
+  // Fetch color preview from backend when slider changes
+  React.useEffect(() => {
+    const c = (coefSlider / 100).toFixed(2);
+    const controller = new AbortController();
+    fetch(`http://localhost:3000/api/alignment/color?c=${c}`, { signal: controller.signal })
+      .then(r => r.json())
+      .then(d => {
+        if (d && typeof d.color === 'string') setCoefHex(d.color);
+        if (d && typeof d.color === 'string' && onPreviewAlignmentColor) onPreviewAlignmentColor(d.color);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [coefSlider, onPreviewAlignmentColor]);
+
+  const handleToggleAlignment = useCallback(() => {
+    const next = !alignmentEnabled;
+    setAlignmentEnabled(next);
+    if (onToggleAlignmentOverlay) onToggleAlignmentOverlay(next);
+  }, [alignmentEnabled, onToggleAlignmentOverlay]);
 
 
   return (
@@ -145,6 +169,30 @@ export default function LeftSidebar({ isOpen, onOpenConflictTracker }: LeftSideb
                       )}
                     </motion.a>
                   ))}
+                  {/* Alignment controls under World Map section */}
+                  <div className="mt-3 px-3 py-3 rounded-xl bg-slate-800/40 border border-slate-700">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-slate-200 text-sm">World Map: Alignment Overlay</span>
+                      <button
+                        onClick={handleToggleAlignment}
+                        className={`px-2 py-1 text-xs rounded-md ${alignmentEnabled ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300'}`}
+                      >
+                        {alignmentEnabled ? 'On' : 'Off'}
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="range"
+                        min={-100}
+                        max={100}
+                        value={coefSlider}
+                        onChange={(e) => setCoefSlider(Number(e.target.value))}
+                        className="w-full"
+                      />
+                      <div className="w-6 h-6 rounded-full border border-slate-600" style={{ backgroundColor: coefHex }} />
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-1">Preview color for coef: {(coefSlider/100).toFixed(2)}</div>
+                  </div>
                 </nav>
               </div>
 
