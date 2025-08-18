@@ -27,7 +27,7 @@ function App() {
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedConflictId, setSelectedConflictId] = useState<string | null>(null);
-  const mapRef = useRef<{ easeTo: (options: { center: [number, number]; zoom: number; duration: number }) => void } | null>(null);
+  const mapRef = useRef<{ easeTo: (options: { center?: [number, number]; zoom?: number; duration?: number }) => void; getMap: () => any | null } | null>(null);
 
   // Add unified sidebars state
   const [sidebars, setSidebars] = useState({
@@ -97,7 +97,7 @@ function App() {
   // ✅ REMOVIDO: Función no utilizada handleBackToLeftSidebar
 
   const handleCenterMapOnConflict = (coordinates: { lat: number; lng: number }) => {
-    if (mapRef.current) {
+    if (mapRef.current && mapRef.current.easeTo) {
       mapRef.current.easeTo({
         center: [coordinates.lng, coordinates.lat],
         zoom: 4,
@@ -173,6 +173,7 @@ function App() {
         selectedConflictId={selectedConflictId}
         isLeftSidebarOpen={sidebars.menu}
         alignmentOverlayEnabled={alignmentOverlayEnabled}
+        alignmentColorHex={alignmentPreviewColor}
       />
       
       {/* Country Sidebar with improved animations */}

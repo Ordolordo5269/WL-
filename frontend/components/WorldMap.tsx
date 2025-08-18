@@ -18,6 +18,7 @@ interface WorldMapProps {
   selectedConflictId?: string | null;
   isLeftSidebarOpen?: boolean;
   alignmentOverlayEnabled?: boolean;
+  alignmentColorHex?: string;
 }
 
 // Tipos específicos para evitar 'any'
@@ -47,7 +48,7 @@ interface ConflictGeoJSON {
   }>;
 }
 
-const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMap: () => mapboxgl.Map | null }, WorldMapProps>(({ onCountrySelect, selectedCountry, onResetView, conflicts = [], selectedConflictId, isLeftSidebarOpen = false, alignmentOverlayEnabled = false }, ref) => {
+const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMap: () => mapboxgl.Map | null }, WorldMapProps>(({ onCountrySelect, selectedCountry, onResetView, conflicts = [], selectedConflictId, isLeftSidebarOpen = false, alignmentOverlayEnabled = false, alignmentColorHex = '#f7f7f7' }, ref) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const geocoderContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -169,7 +170,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     // Buscador de países en inglés
     const geocoder = new MapboxGeocoder({
       accessToken: mapboxgl.accessToken as string,
-      mapboxgl: mapboxgl as { Map: typeof mapboxgl.Map },
+      mapboxgl: mapboxgl as any,
       types: 'country',
       language: 'en',
       placeholder: 'Search country',
@@ -645,17 +646,12 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
           source,
           'source-layer': sourceLayer,
           paint: {
-            'fill-color': {
-              property: 'name_en',
-              type: 'categorical',
-              stops: [
-                ['United States', '#053061'],
-                ['China', '#67001f']
-              ]
-            },
+            'fill-color': alignmentColorHex,
             'fill-opacity': 0.35
           }
         });
+      } else {
+        map.setPaintProperty(layerId, 'fill-color', alignmentColorHex);
       }
       setAlignmentPaintApplied(true);
     } else if (alignmentPaintApplied) {
@@ -664,7 +660,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       }
       setAlignmentPaintApplied(false);
     }
-  }, [alignmentOverlayEnabled, isMapLoaded, alignmentPaintApplied]);
+  }, [alignmentOverlayEnabled, alignmentColorHex, isMapLoaded, alignmentPaintApplied]);
 
   // Efecto para actualizar conflictos cuando cambien
   useEffect(() => {

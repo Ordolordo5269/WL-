@@ -51,18 +51,13 @@ const MenuToggleButton: React.FC<MenuToggleButtonProps> = ({ isOpen, onClick }) 
       {/* Icon container */}
       <motion.div
         className="menu-toggle-icon"
-        initial={{
-          filter: 'drop-shadow(0 0 0px rgba(59, 130, 246, 0))'
-        }}
         animate={{ 
           rotate: isOpen ? 180 : 0,
-          color: isOpen ? '#ef4444' : '#3b82f6'
+          color: isOpen ? '#ef4444' : '#3b82f6',
+          scale: 1
         }}
         whileHover={{
-          scale: 1.1,
-          filter: isOpen 
-            ? 'drop-shadow(0 0 10px rgba(239, 68, 68, 0.8))'
-            : 'drop-shadow(0 0 10px rgba(59, 130, 246, 0.8))'
+          scale: 1.1
         }}
         transition={{ 
           duration: 0.3,
