@@ -53,14 +53,10 @@ function CategoryGroup({ icon, title, items, isOpen, onToggle, searchTerm }: Cat
         className={`category-item flex w-full items-center gap-3 rounded-lg p-3 text-left transition-all duration-300 ${
           isOpen ? 'category-open' : ''
         }`}
-        data-count={searchTerm ? filteredItems.length : items.length}
       >
         {icon}
         <span className="font-medium flex-1">
           {highlightText(title, searchTerm)}
-        </span>
-        <span className="badge text-xs px-2 py-1">
-          {searchTerm ? filteredItems.length : items.length}
         </span>
         <ChevronDown 
           className={`h-4 w-4 transition-transform duration-300 ${
@@ -284,9 +280,6 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
                       >
                         {category.icon}
                         <span className="font-medium flex-1">{category.title}</span>
-                        <span className="badge text-xs px-2 py-1">
-                          {countryData ? 'Available' : isBasicInfoLoading ? 'Loading...' : 'No data'}
-                        </span>
                         <ChevronDown 
                           className={`h-4 w-4 transition-transform duration-300 ${
                             openCategories.has(category.title) ? 'rotate-180' : ''
@@ -324,9 +317,6 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
                       >
                         {category.icon}
                         <span className="font-medium flex-1">{category.title}</span>
-                        <span className="badge text-xs px-2 py-1">
-                          {economyData ? 'Available' : isEconomyLoading ? 'Loading...' : 'No data'}
-                        </span>
                         <ChevronDown 
                           className={`h-4 w-4 transition-transform duration-300 ${
                             openCategories.has(category.title) ? 'rotate-180' : ''
@@ -364,9 +354,6 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
                       >
                         {category.icon}
                         <span className="font-medium flex-1">{category.title}</span>
-                        <span className="badge text-xs px-2 py-1">
-                          {politicsData ? 'Available' : isPoliticsLoading ? 'Loading...' : iso3 ? 'No data' : 'Waiting country'}
-                        </span>
                         <ChevronDown 
                           className={`h-4 w-4 transition-transform duration-300 ${
                             openCategories.has(category.title) ? 'rotate-180' : ''
@@ -404,9 +391,6 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
                       >
                         {category.icon}
                         <span className="font-medium flex-1">{category.title}</span>
-                        <span className="badge text-xs px-2 py-1">
-                          {societyData ? 'Available' : isSocietyLoading ? 'Loading...' : iso3 ? 'No data' : 'Waiting country'}
-                        </span>
                         <ChevronDown 
                           className={`h-4 w-4 transition-transform duration-300 ${
                             openCategories.has(category.title) ? 'rotate-180' : ''
