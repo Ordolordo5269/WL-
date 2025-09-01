@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { AlertCircle, Scale, Landmark, UserCircle2, ExternalLink } from 'lucide-react';
+import { AlertCircle, Scale, Landmark, UserCircle2, Gavel } from 'lucide-react';
 import { politicsService, TPoliticsData } from '../services/politics-service';
 
 interface PoliticsSectionProps {
@@ -53,74 +53,10 @@ export default function PoliticsSection({ data, isLoading, error }: PoliticsSect
 
   const s = politicsService;
 
-  function extractRoleAndEntity(title: string): { role: string; entity: string } {
-    const normalized = title.trim();
-    // Try to split by known patterns
-    const roleMatches = [
-      'Prime Minister',
-      'President of the Republic',
-      'President',
-      'Chancellor',
-      'Premier',
-      'President of the Government',
-      'Head of Government',
-      'Head of State',
-      'King',
-      'Queen',
-      'Monarch',
-      'Emperor',
-      'Emir',
-      'Sultan',
-      'Government',
-      'Cabinet',
-      'Council of Ministers'
-    ];
-
-    for (const candidate of roleMatches) {
-      const idx = normalized.toLowerCase().indexOf(candidate.toLowerCase());
-      if (idx !== -1) {
-        // Role at start, entity after
-        const rest = normalized.slice(idx + candidate.length).trim();
-        const entity = rest.replace(/^of\s*/i, '').replace(/[()]/g, '').trim() || normalized;
-        return { role: candidate, entity };
-      }
-    }
-    // Fallback: if title has parentheses, treat inside as entity
-    const parenMatch = normalized.match(/^(.*)\((.*)\)$/);
-    if (parenMatch) {
-      return { role: parenMatch[1].trim(), entity: parenMatch[2].trim() };
-    }
-    return { role: normalized, entity: '' };
-  }
-
-  function mapToGenericRole(role: string): string {
-    const r = role.toLowerCase();
-    const isPresidentOfGovernment = r.includes('president of the government');
-    const headOfGovernmentSynonyms = [
-      'prime minister',
-      'chancellor',
-      'premier',
-      'head of government'
-    ];
-    const headOfStateSynonyms = [
-      'president of the republic',
-      'president',
-      'head of state',
-      'king',
-      'queen',
-      'monarch',
-      'emperor',
-      'emir',
-      'sultan'
-    ];
-
-    if (isPresidentOfGovernment) return 'Head of Government';
-    if (headOfGovernmentSynonyms.some(s => r.includes(s))) return 'Head of Government';
-    if (headOfStateSynonyms.some(s => r.includes(s))) return 'Head of State';
-    if (r.includes('council of ministers') || r.includes('cabinet')) return 'Cabinet';
-    if (r.includes('government')) return 'Government';
-    return 'Government';
-  }
+  const stability = data.wgiPoliticalStability.value;
+  const stabilityLabel = typeof stability === 'number' ? `${s.formatNumber(stability)} score` : 'N/A';
+  const democracy = data.democracyIndex?.value;
+  const democracyLabel = democracy === null || democracy === undefined ? 'N/A' : `${s.formatNumber(democracy, 2)} / 10`;
 
   return (
     <motion.div
@@ -130,8 +66,62 @@ export default function PoliticsSection({ data, isLoading, error }: PoliticsSect
       className="p-4 space-y-4"
     >
       <div className="secondary-metrics">
-        <Metric icon={<Scale className="w-4 h-4" />} label="WGI: Political Stability" value={s.formatNumber(data.wgiPoliticalStability.value)} />
+        <Metric icon={<Scale className="w-4 h-4" />} label="WGI: Political Stability" value={stabilityLabel} />
+        <Metric icon={<Gavel className="w-4 h-4" />} label="Democracy Index (proxy)" value={democracyLabel} />
       </div>
+
+      <div className="section-card">
+        <div className="section-header">
+          <Scale className="h-4 w-4" />
+          <h3>Governance (World Bank WGI)</h3>
+        </div>
+        <div className="space-y-2">
+          <div className="metric-item">
+            <div className="metric-icon small"><Gavel className="w-4 h-4" /></div>
+            <div className="metric-content">
+              <div className="metric-label">Government Effectiveness <span className="ml-2 inline-flex items-center rounded bg-slate-700/60 px-1.5 py-0.5 text-[10px] text-slate-200 border border-slate-600/60">GE.EST</span>{data.wgiGovernmentEffectiveness.year ? <span className="ml-2 text-[10px] text-slate-400">{data.wgiGovernmentEffectiveness.year}</span> : null}</div>
+              <div className="metric-value">{s.formatNumber(data.wgiGovernmentEffectiveness.value)}</div>
+            </div>
+          </div>
+          <div className="metric-item">
+            <div className="metric-icon small"><Gavel className="w-4 h-4" /></div>
+            <div className="metric-content">
+              <div className="metric-label">Regulatory Quality <span className="ml-2 inline-flex items-center rounded bg-slate-700/60 px-1.5 py-0.5 text-[10px] text-slate-200 border border-slate-600/60">RQ.EST</span>{data.wgiRegulatoryQuality.year ? <span className="ml-2 text-[10px] text-slate-400">{data.wgiRegulatoryQuality.year}</span> : null}</div>
+              <div className="metric-value">{s.formatNumber(data.wgiRegulatoryQuality.value)}</div>
+            </div>
+          </div>
+          <div className="metric-item">
+            <div className="metric-icon small"><Gavel className="w-4 h-4" /></div>
+            <div className="metric-content">
+              <div className="metric-label">Rule of Law <span className="ml-2 inline-flex items-center rounded bg-slate-700/60 px-1.5 py-0.5 text-[10px] text-slate-200 border border-slate-600/60">RL.EST</span>{data.wgiRuleOfLaw.year ? <span className="ml-2 text-[10px] text-slate-400">{data.wgiRuleOfLaw.year}</span> : null}</div>
+              <div className="metric-value">{s.formatNumber(data.wgiRuleOfLaw.value)}</div>
+            </div>
+          </div>
+          <div className="metric-item">
+            <div className="metric-icon small"><Gavel className="w-4 h-4" /></div>
+            <div className="metric-content">
+              <div className="metric-label">Control of Corruption <span className="ml-2 inline-flex items-center rounded bg-slate-700/60 px-1.5 py-0.5 text-[10px] text-slate-200 border border-slate-600/60">CC.EST</span>{data.wgiControlOfCorruption.year ? <span className="ml-2 text-[10px] text-slate-400">{data.wgiControlOfCorruption.year}</span> : null}</div>
+              <div className="metric-value">{s.formatNumber(data.wgiControlOfCorruption.value)}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {data.formOfGovernment && (
+        <div className="section-card">
+          <div className="section-header">
+            <Gavel className="h-4 w-4" />
+            <h3>Form of Government</h3>
+          </div>
+          <div className="metric-item">
+            <div className="metric-icon small"><Gavel className="w-4 h-4" /></div>
+            <div className="metric-content">
+              <div className="metric-label">Form of Government</div>
+              <div className="metric-value">{data.formOfGovernment}</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {data.headsOfGovernment.length > 0 && (
         <div className="section-card">
@@ -139,34 +129,23 @@ export default function PoliticsSection({ data, isLoading, error }: PoliticsSect
             <Landmark className="h-4 w-4" />
             <h3>Heads of Government (Wikipedia)</h3>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {data.headsOfGovernment.map((entry) => {
-              const { role, entity } = extractRoleAndEntity(entry.title);
-              const displayRole = mapToGenericRole(role);
-              return (
-                <a
-                  key={entry.url}
-                  href={entry.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="group relative rounded-lg border border-slate-700/60 bg-slate-800/40 p-3 hover:bg-slate-800 hover:border-slate-600 transition-colors"
-                  title={entry.title}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="shrink-0 rounded-full bg-slate-700/40 p-2">
-                      <UserCircle2 className="w-4 h-4 text-slate-300 group-hover:text-white" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-slate-100 truncate" title={displayRole}>{displayRole}</div>
-                      {entity && (
-                        <div className="text-xs text-slate-400 truncate" title={entity}>{entity}</div>
-                      )}
-                    </div>
-                    <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-slate-200" />
-                  </div>
-                </a>
-              );
-            })}
+          <div className="space-y-2">
+            {data.headsOfGovernment.map((entry) => (
+              <a
+                key={entry.url || entry.title}
+                href={entry.url || undefined}
+                target={entry.url ? "_blank" : undefined}
+                rel={entry.url ? "noreferrer" : undefined}
+                className="metric-item hover-lift"
+                title={entry.title}
+              >
+                <div className="metric-icon small"><UserCircle2 className="w-4 h-4" /></div>
+                <div className="metric-content">
+                  <div className="metric-label">{entry.office || 'Head of Government'}</div>
+                  <div className="metric-value truncate">{entry.person || entry.title}</div>
+                </div>
+              </a>
+            ))}
           </div>
         </div>
       )}

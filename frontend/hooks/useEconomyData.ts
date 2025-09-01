@@ -9,23 +9,18 @@ export interface UseEconomyDataReturn {
   refetch: () => void;
 }
 
-export function useEconomyData(countryName: string | null): UseEconomyDataReturn {
+export function useEconomyData(iso3: string | null, countryName?: string | null): UseEconomyDataReturn {
   const [economyData, setEconomyData] = useState<EconomyData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchEconomyData = useCallback(async (country: string) => {
+  const fetchEconomyData = useCallback(async (code3: string, country?: string | null) => {
     setIsLoading(true);
     setError(null);
     
     try {
-      // Get economy data for the country (loading is now synchronous)
-      const data = economyService.getEconomyDataByCountry(country);
+      const data = await economyService.getEconomyDataByISO3(code3, country ?? null);
       setEconomyData(data);
-      
-      if (!data) {
-        setError(`No economic data found for ${country}`);
-      }
     } catch (err) {
       console.error('Error fetching economy data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load economic data');
@@ -36,20 +31,20 @@ export function useEconomyData(countryName: string | null): UseEconomyDataReturn
   }, []);
 
   const refetch = useCallback(() => {
-    if (countryName) {
-      fetchEconomyData(countryName);
+    if (iso3) {
+      fetchEconomyData(iso3, countryName);
     }
-  }, [countryName, fetchEconomyData]);
+  }, [iso3, countryName, fetchEconomyData]);
 
   useEffect(() => {
-    if (countryName) {
-      fetchEconomyData(countryName);
+    if (iso3) {
+      fetchEconomyData(iso3, countryName);
     } else {
       setEconomyData(null);
       setError(null);
       setIsLoading(false);
     }
-  }, [countryName, fetchEconomyData]);
+  }, [iso3, countryName, fetchEconomyData]);
 
   return {
     economyData,

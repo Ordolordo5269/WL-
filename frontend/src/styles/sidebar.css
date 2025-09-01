@@ -179,6 +179,8 @@
   margin: 0;
 }
 
+/* (Removed) politics-specific styles were simplified to Tailwind utilities in components */
+
 /* Sectors Grid */
 .sectors-grid {
   display: flex;

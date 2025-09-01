@@ -73,7 +73,6 @@ export default function SocietySection({ data, isLoading, error }: SocietySectio
         <Metric icon={<MapPin className="w-4 h-4" />} label="Population density" value={s.formatNumber(data.populationDensity.value)} />
         <Metric icon={<GraduationCap className="w-4 h-4" />} label="Primary net enrollment" value={s.formatPercent(data.primaryNetEnrollment.value)} />
         <Metric icon={<Activity className="w-4 h-4" />} label="Extreme poverty ($2.15)" value={s.formatPercent(data.povertyExtreme215.value)} />
-        <Metric icon={<HeartPulse className="w-4 h-4" />} label="HDI" value={data.hdi.value == null ? 'N/A' : data.hdi.value.toFixed(3)} />
       </div>
     </motion.div>
   );

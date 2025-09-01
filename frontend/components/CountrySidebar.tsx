@@ -9,6 +9,14 @@ import { useSocietyData } from '../hooks/useSocietyData';
 import SocietySection from './SocietySection';
 import { usePoliticsData } from '../hooks/usePoliticsData';
 import PoliticsSection from './PoliticsSection';
+import { useDefenseData } from '../hooks/useDefenseData';
+import DefenseSection from './DefenseSection';
+import { useInternationalData } from '../hooks/useInternationalData';
+import InternationalSection from './InternationalSection';
+import { useTechnologyData } from '../hooks/useTechnologyData';
+import TechnologySection from './TechnologySection';
+import { useCultureData } from '../hooks/useCultureData';
+import CultureSection from './CultureSection';
 
 interface CategoryGroupProps {
   icon: React.ReactNode;
@@ -97,16 +105,20 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
   const [searchTerm] = useState('');
   const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
   
-  // Load economy data for the selected country
-  const { economyData, isLoading: isEconomyLoading, error: economyError } = useEconomyData(countryName);
-  
   // Load basic info data for the selected country
   const { countryData, isLoading: isBasicInfoLoading, error: basicInfoError } = useCountryBasicInfo(countryName);
   
   // Load society indicators via ISO3 once basic info is available
   const iso3 = countryData?.cca3 ?? null;
+  
+  // Load economy data via ISO3 (uses World Bank APIs)
+  const { economyData, isLoading: isEconomyLoading, error: economyError } = useEconomyData(iso3, countryName);
   const { data: societyData, isLoading: isSocietyLoading, error: societyError } = useSocietyData(iso3);
   const { data: politicsData, isLoading: isPoliticsLoading, error: politicsError } = usePoliticsData(countryName, iso3);
+  const { data: defenseData, isLoading: isDefenseLoading, error: defenseError } = useDefenseData(iso3, countryName);
+  const { data: internationalData, isLoading: isInternationalLoading, error: internationalError } = useInternationalData(iso3, countryName);
+  const { data: technologyData, isLoading: isTechnologyLoading, error: technologyError } = useTechnologyData(iso3, countryName);
+  const { data: cultureData, isLoading: isCultureLoading, error: cultureError } = useCultureData(iso3, countryName);
   
   // Search removed per UX request; keep invariant empty term so lists show all items
 
@@ -379,6 +391,43 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
                   );
                 }
 
+                // Special handling for Defense category
+                if (category.title === 'Defense') {
+                  return (
+                    <div key={category.title} className="mb-2">
+                      <button
+                        onClick={() => toggleCategory(category.title)}
+                        className={`category-item flex w-full items-center gap-3 rounded-lg p-3 text-left transition-all duration-300 ${
+                          openCategories.has(category.title) ? 'category-open' : ''
+                        }`}
+                      >
+                        {category.icon}
+                        <span className="font-medium flex-1">{category.title}</span>
+                        <ChevronDown 
+                          className={`h-4 w-4 transition-transform duration-300 ${
+                            openCategories.has(category.title) ? 'rotate-180' : ''
+                          }`} 
+                        />
+                      </button>
+                      {openCategories.has(category.title) && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.3, ease: 'easeInOut' }}
+                          className="ml-2 mt-2"
+                        >
+                          <DefenseSection 
+                            data={defenseData}
+                            isLoading={isDefenseLoading}
+                            error={defenseError}
+                          />
+                        </motion.div>
+                      )}
+                    </div>
+                  );
+                }
+
                 // Special handling for Society category
                 if (category.title === 'Society') {
                   return (
@@ -409,6 +458,117 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
                             data={societyData}
                             isLoading={isSocietyLoading}
                             error={societyError}
+                          />
+                        </motion.div>
+                      )}
+                    </div>
+                  );
+                }
+
+                // Special handling for International category
+                if (category.title === 'International') {
+                  return (
+                    <div key={category.title} className="mb-2">
+                      <button
+                        onClick={() => toggleCategory(category.title)}
+                        className={`category-item flex w-full items-center gap-3 rounded-lg p-3 text-left transition-all duration-300 ${
+                          openCategories.has(category.title) ? 'category-open' : ''
+                        }`}
+                      >
+                        {category.icon}
+                        <span className="font-medium flex-1">{category.title}</span>
+                        <ChevronDown 
+                          className={`h-4 w-4 transition-transform duration-300 ${
+                            openCategories.has(category.title) ? 'rotate-180' : ''
+                          }`} 
+                        />
+                      </button>
+                      {openCategories.has(category.title) && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.3, ease: 'easeInOut' }}
+                          className="ml-2 mt-2"
+                        >
+                          <InternationalSection 
+                            data={internationalData}
+                            isLoading={isInternationalLoading}
+                            error={internationalError}
+                          />
+                        </motion.div>
+                      )}
+                    </div>
+                  );
+                }
+
+                // Special handling for Technology and National Assets
+                if (category.title === 'Technology and National Assets') {
+                  return (
+                    <div key={category.title} className="mb-2">
+                      <button
+                        onClick={() => toggleCategory(category.title)}
+                        className={`category-item flex w-full items-center gap-3 rounded-lg p-3 text-left transition-all duration-300 ${
+                          openCategories.has(category.title) ? 'category-open' : ''
+                        }`}
+                      >
+                        {category.icon}
+                        <span className="font-medium flex-1">{category.title}</span>
+                        <ChevronDown 
+                          className={`h-4 w-4 transition-transform duration-300 ${
+                            openCategories.has(category.title) ? 'rotate-180' : ''
+                          }`} 
+                        />
+                      </button>
+                      {openCategories.has(category.title) && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.3, ease: 'easeInOut' }}
+                          className="ml-2 mt-2"
+                        >
+                          <TechnologySection 
+                            data={technologyData}
+                            isLoading={isTechnologyLoading}
+                            error={technologyError}
+                          />
+                        </motion.div>
+                      )}
+                    </div>
+                  );
+                }
+
+                // Special handling for Culture category
+                if (category.title === 'Culture') {
+                  return (
+                    <div key={category.title} className="mb-2">
+                      <button
+                        onClick={() => toggleCategory(category.title)}
+                        className={`category-item flex w-full items-center gap-3 rounded-lg p-3 text-left transition-all duration-300 ${
+                          openCategories.has(category.title) ? 'category-open' : ''
+                        }`}
+                      >
+                        {category.icon}
+                        <span className="font-medium flex-1">{category.title}</span>
+                        <ChevronDown 
+                          className={`h-4 w-4 transition-transform duration-300 ${
+                            openCategories.has(category.title) ? 'rotate-180' : ''
+                          }`} 
+                        />
+                      </button>
+                      {openCategories.has(category.title) && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.3, ease: 'easeInOut' }}
+                          className="ml-2 mt-2"
+                        >
+                          <CultureSection 
+                            data={cultureData}
+                            isLoading={isCultureLoading}
+                            error={cultureError}
                           />
                         </motion.div>
                       )}

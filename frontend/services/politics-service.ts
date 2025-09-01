@@ -6,18 +6,25 @@ export interface IndicatorPoint {
 export interface WikipediaEntry {
   title: string;
   url: string;
+  role?: 'head_of_government' | 'head_of_state';
+  office?: string;
+  person?: string;
 }
 
 export interface PoliticsData {
   countryCode3: string; // ISO3 (cca3)
   countryName: string;
   wgiPoliticalStability: IndicatorPoint; // WGI PV.EST
+  democracyIndex: IndicatorPoint; // Proxy: WGI VA.EST normalized to 0-10
+  wgiGovernmentEffectiveness: IndicatorPoint; // GE.EST
+  wgiRegulatoryQuality: IndicatorPoint; // RQ.EST
+  wgiRuleOfLaw: IndicatorPoint; // RL.EST
+  wgiControlOfCorruption: IndicatorPoint; // CC.EST
   headsOfGovernment: WikipediaEntry[]; // e.g., Prime Minister, President
+  formOfGovernment?: string | null;
   sources: {
     worldBankWgi: string;
-    parlGov: string;
-    mediaWiki: string;
-    vdem: string;
+    wikidata: string;
   };
 }
 
@@ -55,6 +62,20 @@ class PoliticsService {
     }
   }
 
+  private async fetchOfficesFromBackend(iso3: string): Promise<{ formOfGovernment: string | null; offices: Array<{ officeLabel: string; personLabel: string; role: 'head_of_government' | 'head_of_state'; personUrl: string | null }> }> {
+    const base = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3001';
+    const res = await fetch(`${base}/api/politics/offices/${encodeURIComponent(iso3)}`);
+    if (!res.ok) throw new Error(`offices ${res.status}`);
+    const json = await res.json();
+    const offices = Array.isArray(json.offices) ? json.offices.map((o: any) => ({
+      officeLabel: String(o.officeLabel || ''),
+      personLabel: String(o.personLabel || ''),
+      role: o.role === 'head_of_state' ? 'head_of_state' : 'head_of_government',
+      personUrl: o.personUrl ? String(o.personUrl) : null
+    })) : [];
+    return { formOfGovernment: json.formOfGovernment ?? null, offices };
+  }
+
   private async searchWikipedia(query: string): Promise<WikipediaEntry | null> {
     try {
       const params = new URLSearchParams({
@@ -80,28 +101,55 @@ class PoliticsService {
   }
 
   async getPoliticsData(countryName: string, iso3: string): Promise<PoliticsData> {
-    const [wgiPoliticalStability, pm, president, government] = await Promise.all([
+    const [wgiPoliticalStability, wgiVoiceAccountability, wgiGovernmentEffectiveness, wgiRegulatoryQuality, wgiRuleOfLaw, wgiControlOfCorruption, officesPayload] = await Promise.all([
       this.fetchWorldBankLatest(iso3, 'PV.EST'),
-      this.searchWikipedia(`Prime Minister of ${countryName}`),
-      this.searchWikipedia(`President of ${countryName}`),
-      this.searchWikipedia(`Government of ${countryName}`)
+      this.fetchWorldBankLatest(iso3, 'VA.EST'),
+      this.fetchWorldBankLatest(iso3, 'GE.EST'),
+      this.fetchWorldBankLatest(iso3, 'RQ.EST'),
+      this.fetchWorldBankLatest(iso3, 'RL.EST'),
+      this.fetchWorldBankLatest(iso3, 'CC.EST'),
+      this.fetchOfficesFromBackend(iso3).catch(() => ({ formOfGovernment: null, offices: [] }))
     ]);
-
+    // Defensive deduplication in case backend or external sources return duplicates
+    const tempHeads: WikipediaEntry[] = officesPayload.offices.map((o) => ({
+      title: `${o.officeLabel} — ${o.personLabel}`,
+      url: o.personUrl || '',
+      role: o.role,
+      office: o.officeLabel,
+      person: o.personLabel
+    }));
+    const seen = new Set<string>();
     const headsOfGovernment: WikipediaEntry[] = [];
-    for (const entry of [pm, president, government]) {
-      if (entry) headsOfGovernment.push(entry);
+    for (const h of tempHeads) {
+      const key = `${h.title.toLowerCase()}||${(h.url || '').toLowerCase()}||${h.role ?? ''}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        headsOfGovernment.push(h);
+      }
     }
+
+    // Normalize VA.EST (-2.5 to 2.5) to a 0–10 scale
+    const democracyIndex: IndicatorPoint = (() => {
+      if (wgiVoiceAccountability.value === null) return { value: null, year: wgiVoiceAccountability.year };
+      const normalized = ((Number(wgiVoiceAccountability.value) + 2.5) / 5) * 10;
+      const clamped = Math.max(0, Math.min(10, normalized));
+      return { value: Number(clamped.toFixed(2)), year: wgiVoiceAccountability.year };
+    })();
 
     return {
       countryCode3: iso3,
       countryName,
       wgiPoliticalStability,
+      democracyIndex,
+      wgiGovernmentEffectiveness,
+      wgiRegulatoryQuality,
+      wgiRuleOfLaw,
+      wgiControlOfCorruption,
       headsOfGovernment,
+      formOfGovernment: officesPayload.formOfGovernment,
       sources: {
         worldBankWgi: 'https://api.worldbank.org/v2/',
-        parlGov: 'http://api.parlgov.org/',
-        mediaWiki: 'https://en.wikipedia.org/w/api.php',
-        vdem: 'https://v-dem.net/vdemds/api/'
+        wikidata: 'https://query.wikidata.org/sparql'
       }
     };
   }

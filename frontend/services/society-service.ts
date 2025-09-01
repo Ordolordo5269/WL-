@@ -20,7 +20,6 @@ export interface SocietyIndicators {
   urbanPopulationPercent: IndicatorPoint; // SP.URB.TOTL.IN.ZS (%)
   ruralPopulationPercent: IndicatorPoint; // SP.RUR.TOTL.ZS (%)
   populationDensity: IndicatorPoint; // SP.POP.DNST (people per sq. km)
-  hdi: IndicatorPoint; // From OWID HDI dataset
 }
 
 type WorldBankApiResponse = [
@@ -70,20 +69,7 @@ class SocietyService {
     }
   }
 
-  // Very light CSV parse: expects header row: Entity,Code,Year,HDI
-  // OWID HDI file is simple; fields are not quoted with commas in practice
-  private async fetchLatestHDI(iso3: string): Promise<IndicatorPoint> {
-    try {
-      const response = await fetch(`${this.backendBaseUrl}/api/society/hdi/${encodeURIComponent(iso3)}`);
-      if (!response.ok) throw new Error(`HDI backend error: ${response.status}`);
-      const json = await response.json();
-      const value = typeof json.value === 'number' ? json.value : null;
-      const year = typeof json.year === 'number' ? json.year : null;
-      return { value, year };
-    } catch (_err) {
-      return { value: null, year: null };
-    }
-  }
+  // HDI removed per product requirement
 
   async getSocietyIndicatorsByISO3(iso3: string): Promise<SocietyIndicators> {
     const [
@@ -98,8 +84,7 @@ class SocietyService {
       crudeDeathRate,
       urbanPopulationPercent,
       ruralPopulationPercent,
-      populationDensity,
-      hdi
+      populationDensity
     ] = await Promise.all([
       this.fetchWorldBankLatest(iso3, 'SP.DYN.LE00.IN'),
       this.fetchWorldBankLatest(iso3, 'SE.ADT.LITR.ZS'),
@@ -112,8 +97,7 @@ class SocietyService {
       this.fetchWorldBankLatest(iso3, 'SP.DYN.CDRT.IN'),
       this.fetchWorldBankLatest(iso3, 'SP.URB.TOTL.IN.ZS'),
       this.fetchWorldBankLatest(iso3, 'SP.RUR.TOTL.ZS'),
-      this.fetchWorldBankLatest(iso3, 'SP.POP.DNST'),
-      this.fetchLatestHDI(iso3)
+      this.fetchWorldBankLatest(iso3, 'SP.POP.DNST')
     ]);
 
     return {
@@ -129,8 +113,7 @@ class SocietyService {
       crudeDeathRate,
       urbanPopulationPercent,
       ruralPopulationPercent,
-      populationDensity,
-      hdi
+      populationDensity
     };
   }
 
