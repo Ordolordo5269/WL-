@@ -1,9 +1,10 @@
 import express from 'express';
 import morgan from 'morgan';
 import cors from 'cors';
-import countryRoutes from './routes/country.routes';
+import countryRoutes from './modules/countries/routes';
 import societyRoutes from './routes/society.routes';
 import politicsRoutes from './routes/politics.routes';
+import { errorHandler } from './core/errors/errorHandler';
 
 const app = express();
 
@@ -25,5 +26,8 @@ app.get('/test', (req, res) => {
 app.use('/api/countries', countryRoutes);
 app.use('/api/society', societyRoutes);
 app.use('/api/politics', politicsRoutes);
+
+// Central error handler
+app.use(errorHandler);
 
 export default app;
