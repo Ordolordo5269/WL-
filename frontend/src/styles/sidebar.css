@@ -86,7 +86,7 @@
 }
 
 .metric-value {
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 700;
   color: #ffffff;
   margin: 4px 0 2px 0;
@@ -119,6 +119,83 @@
   gap: 8px;
 }
 
+/* Society grid tweaks: allow specific cards to span full width when needed */
+.society-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 1024px) {
+  .society-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .society-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.full-span {
+  grid-column: 1 / -1;
+}
+
+/* Two-column nested layout for specific rows */
+.chart-row.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .chart-row.two-col {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Minimal visuals for inline charts */
+.sparkline {
+  display: block;
+  outline: none;
+}
+
+.divergent-bar {
+  display: block;
+}
+
+.donut-chart {
+  display: block;
+}
+
+/* Chart card layout polish */
+.chart-metric {
+  align-items: flex-start;
+}
+.chart-metric .metric-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.chart-metric .metric-value {
+  font-size: 16px;
+}
+.chart-metric .legend {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+}
+.legend-item {
+  font-size: 12px;
+  color: #94a3b8;
+}
+.legend-swatch {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  margin-right: 6px;
+}
+
 .metric-item {
   display: flex;
   align-items: center;
@@ -128,6 +205,12 @@
   border: 1px solid rgba(71, 85, 105, 0.2);
   border-radius: 6px;
   transition: all 0.2s ease;
+}
+
+/* Chart metrics: allow vertical layout inside content to use more height */
+.chart-metric .metric-content {
+  display: flex;
+  flex-direction: column;
 }
 
 .metric-item:hover {
@@ -1024,6 +1107,32 @@
     radial-gradient(120px 60px at 90% 0%, rgba(147, 51, 234, 0.10), transparent 60%);
 }
 
+/* Background flag overlay inside header */
+.sidebar-header .flag-bg {
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  opacity: 0.22;
+  filter: blur(1.5px) saturate(1.15) contrast(1.05);
+  pointer-events: none;
+  z-index: 0;
+  /* soften edges so text remains readable */
+  -webkit-mask-image: radial-gradient(120% 90% at 50% 20%, rgba(0,0,0,1) 55%, rgba(0,0,0,0.75) 75%, rgba(0,0,0,0) 100%);
+  mask-image: radial-gradient(120% 90% at 50% 20%, rgba(0,0,0,1) 55%, rgba(0,0,0,0.75) 75%, rgba(0,0,0,0) 100%);
+}
+
+.sidebar-header .flag-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  /* subtle vignette and top-to-bottom darkening to preserve contrast */
+  background:
+    radial-gradient(80% 60% at 50% 30%, rgba(0,0,0,0) 0%, rgba(0,0,0,0.2) 65%, rgba(0,0,0,0.38) 100%),
+    linear-gradient(to bottom, rgba(15,23,42,0.25), rgba(15,23,42,0.45));
+}
+
 /* Hairline accent at the bottom of the header */
 .sidebar-header::after {
   content: '';
@@ -1043,6 +1152,7 @@
   gap: 20px;
   margin-bottom: 24px;
   position: relative;
+  z-index: 1;
 }
 
 /* Flag Container - Left Side */
@@ -1195,8 +1305,8 @@
 
 /* Flag Image Enhancements */
 .country-flag {
-  width: 88px;
-  height: 60px;
+  width: 120px;
+  height: 80px;
   object-fit: cover;
   border-radius: 12px;
   border: 2px solid rgba(71, 85, 105, 0.4);

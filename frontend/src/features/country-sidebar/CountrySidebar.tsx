@@ -1,22 +1,22 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Globe, Banknote, Landmark, Shield, Users, Globe2, Cpu, Palette, X } from 'lucide-react';
-import { useEconomyData } from '../hooks/useEconomyData';
-import { useCountryBasicInfo } from '../hooks/useCountryBasicInfo.ts';
-import EconomySection from './EconomySection';
-import BasicInfoSection from './BasicInfoSection';
-import { useSocietyData } from '../hooks/useSocietyData';
-import SocietySection from './SocietySection';
-import { usePoliticsData } from '../hooks/usePoliticsData';
-import PoliticsSection from './PoliticsSection';
-import { useDefenseData } from '../hooks/useDefenseData';
-import DefenseSection from './DefenseSection';
-import { useInternationalData } from '../hooks/useInternationalData';
-import InternationalSection from './InternationalSection';
-import { useTechnologyData } from '../hooks/useTechnologyData';
-import TechnologySection from './TechnologySection';
-import { useCultureData } from '../hooks/useCultureData';
-import CultureSection from './CultureSection';
+import { useEconomyData } from '../../../hooks/useEconomyData';
+import { useCountryBasicInfo } from '../../../hooks/useCountryBasicInfo.ts';
+import EconomySection from '../../../components/EconomySection';
+import BasicInfoSection from '../../../components/BasicInfoSection';
+import { useSocietyData } from '../../../hooks/useSocietyData';
+import SocietySection from '../../../components/SocietySection';
+import { usePoliticsData } from '../../../hooks/usePoliticsData';
+import PoliticsSection from '../../../components/PoliticsSection';
+import { useDefenseData } from '../../../hooks/useDefenseData';
+import DefenseSection from '../../../components/DefenseSection';
+import { useInternationalData } from '../../../hooks/useInternationalData';
+import InternationalSection from '../../../components/InternationalSection';
+import { useTechnologyData } from '../../../hooks/useTechnologyData';
+import TechnologySection from '../../../components/TechnologySection';
+import { useCultureData } from '../../../hooks/useCultureData';
+import CultureSection from '../../../components/CultureSection';
 
 interface CategoryGroupProps {
   icon: React.ReactNode;
@@ -28,32 +28,22 @@ interface CategoryGroupProps {
 }
 
 function CategoryGroup({ icon, title, items, isOpen, onToggle, searchTerm }: CategoryGroupProps) {
-  // Filter items based on the search term
   const filteredItems = useMemo(() => 
     items.filter(item => 
       item.toLowerCase().includes(searchTerm.toLowerCase())
     ), [items, searchTerm]
   );
-  
-  // Check if the category matches the search
   const categoryMatches = title.toLowerCase().includes(searchTerm.toLowerCase());
-  
-  // Show the category if it matches or if it has matching items
   const shouldShow = !searchTerm || categoryMatches || filteredItems.length > 0;
-  
-  // Highlight helper
   const highlightText = useCallback((text: string, highlight: string) => {
     if (!highlight) return text;
-    
     const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
     return parts.map((part, index) => 
       part.toLowerCase() === highlight.toLowerCase() ? 
         <span key={index} className="search-highlight">{part}</span> : part
     );
   }, []);
-  
   if (!shouldShow) return null;
-  
   return (
     <div className="mb-2">
       <button
@@ -104,23 +94,15 @@ interface CountrySidebarProps {
 export default function CountrySidebar({ isOpen, onClose, countryName }: CountrySidebarProps) {
   const [searchTerm] = useState('');
   const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
-  
-  // Load basic info data for the selected country
   const { countryData, isLoading: isBasicInfoLoading, error: basicInfoError } = useCountryBasicInfo(countryName);
-  
-  // Load society indicators via ISO3 once basic info is available
   const iso3 = countryData?.cca3 ?? null;
-  
-  // Load economy data via ISO3 (uses World Bank APIs)
   const { economyData, isLoading: isEconomyLoading, error: economyError } = useEconomyData(iso3, countryName);
-  const { data: societyData, isLoading: isSocietyLoading, error: societyError, series: societySeries } = useSocietyData(iso3);
+  const { data: societyData, isLoading: isSocietyLoading, error: societyError } = useSocietyData(iso3);
   const { data: politicsData, isLoading: isPoliticsLoading, error: politicsError } = usePoliticsData(countryName, iso3);
   const { data: defenseData, isLoading: isDefenseLoading, error: defenseError } = useDefenseData(iso3, countryName);
   const { data: internationalData, isLoading: isInternationalLoading, error: internationalError } = useInternationalData(iso3, countryName);
   const { data: technologyData, isLoading: isTechnologyLoading, error: technologyError } = useTechnologyData(iso3, countryName);
   const { data: cultureData, isLoading: isCultureLoading, error: cultureError } = useCultureData(iso3, countryName);
-  
-  // Search removed per UX request; keep invariant empty term so lists show all items
 
   const toggleCategory = useCallback((title: string) => {
     setOpenCategories(prev => {
@@ -134,7 +116,6 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
     });
   }, []);
 
-  // Ordered and translated categories for a professional sidebar
   const categories = [
     {
       icon: <Globe className="text-blue-400" />,
@@ -199,7 +180,6 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
     }
   ];
 
-  // Filter categories for the footer counter
   const visibleCategories = categories.filter(category => {
     if (!searchTerm) return true;
     const categoryMatches = category.title.toLowerCase().includes(searchTerm.toLowerCase());
@@ -224,17 +204,7 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
             duration: 0.3
           }}
         >
-          {/* Header */}
           <div className="sidebar-header">
-            {countryData?.flags && (countryData.flags.svg || countryData.flags.png) && (
-              <div
-                className="flag-bg"
-                style={{
-                  backgroundImage: `url(${countryData.flags.svg || countryData.flags.png})`
-                }}
-              />
-            )}
-            {/* Top row: Flag, Country Name (centered), and Close Button */}
             <div className="header-top-row">
               <div className="flag-container">
                 {countryData?.flags?.png && (
@@ -249,7 +219,6 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
                   />
                 )}
               </div>
-              
               <div className="country-info-container">
                 <h2 className="country-title">
                   {countryName || 'Country data'}
@@ -271,7 +240,6 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
                   </div>
                 )}
               </div>
-              
               <button
                 onClick={onClose}
                 className="conflict-tracker-close-btn"
@@ -280,15 +248,10 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
                 <X className="h-5 w-5" />
               </button>
             </div>
-            
-            {/* Search removed */}
           </div>
-
-          {/* Categories List */}
           <div className="sidebar-content">
             <div className="p-2">
               {categories.map((category) => {
-                // Special handling for General Information category
                 if (category.title === 'General Information') {
                   return (
                     <div key={category.title} className="mb-2">
@@ -324,8 +287,6 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
                     </div>
                   );
                 }
-                
-                // Special handling for Economy category
                 if (category.title === 'Economy') {
                   return (
                     <div key={category.title} className="mb-2">
@@ -361,8 +322,6 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
                     </div>
                   );
                 }
-                
-                // Special handling for Politics category
                 if (category.title === 'Politics') {
                   return (
                     <div key={category.title} className="mb-2">
@@ -398,8 +357,6 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
                     </div>
                   );
                 }
-
-                // Special handling for Defense category
                 if (category.title === 'Defense') {
                   return (
                     <div key={category.title} className="mb-2">
@@ -435,8 +392,6 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
                     </div>
                   );
                 }
-
-                // Special handling for Society category
                 if (category.title === 'Society') {
                   return (
                     <div key={category.title} className="mb-2">
@@ -466,15 +421,12 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
                             data={societyData}
                             isLoading={isSocietyLoading}
                             error={societyError}
-                            series={societySeries}
                           />
                         </motion.div>
                       )}
                     </div>
                   );
                 }
-
-                // Special handling for International category
                 if (category.title === 'International') {
                   return (
                     <div key={category.title} className="mb-2">
@@ -510,8 +462,6 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
                     </div>
                   );
                 }
-
-                // Special handling for Technology and National Assets
                 if (category.title === 'Technology and National Assets') {
                   return (
                     <div key={category.title} className="mb-2">
@@ -547,8 +497,6 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
                     </div>
                   );
                 }
-
-                // Special handling for Culture category
                 if (category.title === 'Culture') {
                   return (
                     <div key={category.title} className="mb-2">
@@ -584,8 +532,6 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
                     </div>
                   );
                 }
-
-                // Regular category handling for all other categories
                 return (
                   <CategoryGroup
                     key={category.title}
@@ -598,16 +544,8 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
                   />
                 );
               })}
-              
-              {searchTerm && visibleCategories.length === 0 && (
-                <div className="text-center text-slate-400 py-8">
-                  <p>No results found for "{searchTerm}"</p>
-                </div>
-              )}
             </div>
           </div>
-
-          {/* Footer */}
           <div className="sidebar-footer">
             <div className="sidebar-counter">
               {searchTerm ? 
@@ -621,3 +559,6 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
     </AnimatePresence>
   );
 }
+
+
+

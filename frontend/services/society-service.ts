@@ -69,6 +69,31 @@ class SocietyService {
     }
   }
 
+  // Public: small time series for last N years (non-null points only, ascending by year)
+  async fetchWorldBankSeries(
+    iso3: string,
+    indicatorCode: string,
+    maxYears: number = 15
+  ): Promise<Array<{ year: number; value: number | null }>> {
+    try {
+      const url = `${SocietyService.WORLD_BANK_BASE}/country/${encodeURIComponent(iso3)}/indicator/${encodeURIComponent(indicatorCode)}?format=json&per_page=20000`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`WorldBank ${indicatorCode} error: ${response.status}`);
+      }
+      const data = (await response.json()) as WorldBankApiResponse;
+      const entries = Array.isArray(data) && Array.isArray(data[1]) ? data[1] : [];
+      const points = entries
+        .map(row => ({ year: Number(row.date), value: row.value }))
+        .filter(p => Number.isFinite(p.year))
+        .sort((a, b) => a.year - b.year);
+      // Take last maxYears items (keep nulls if present for continuity)
+      return points.slice(Math.max(0, points.length - maxYears));
+    } catch (_err) {
+      return [];
+    }
+  }
+
   // HDI removed per product requirement
 
   async getSocietyIndicatorsByISO3(iso3: string): Promise<SocietyIndicators> {

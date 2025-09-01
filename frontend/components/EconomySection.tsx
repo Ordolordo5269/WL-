@@ -141,7 +141,6 @@ export default function EconomySection({ economyData, isLoading, error }: Econom
               <div className="metric-value">{economyService.formatCurrency(economyData.gdp_usd)}</div>
               <div className="metric-subtitle">{economyData.gdp_year} data</div>
             </div>
-            <div className="quality-badge good">Good</div>
           </div>
         </div>
 

@@ -14,26 +14,48 @@ export async function getCountries() {
 
 export async function getCountryBasicInfo(countryName: string): Promise<CountryBasicInfoResponse> {
   try {
-    // Try exact name match first
-    let response = await axios.get(`${REST_COUNTRIES_API}/name/${encodeURIComponent(countryName)}?fullText=true`);
-    
-    if (response.data && response.data.length > 0) {
-      return { data: response.data[0] };
+    const original = (countryName || '').trim();
+    // Normalize common problem cases: remove parentheticals and excessive qualifiers
+    const stripped = original.replace(/\(.*?\)/g, '').replace(/,.*$/, '').replace(/\s+/g, ' ').trim();
+    // Alias map for known synonyms
+    const lc = stripped.toLowerCase();
+    const aliasMap: Record<string, string> = {
+      'burma': 'myanmar',
+      'ivory coast': "côte d'ivoire",
+      'cote d ivoire': "côte d'ivoire",
+      'south korea': 'korea (republic of)',
+      'north korea': "korea (democratic people's republic of)",
+    };
+    const alias = aliasMap[lc] ?? stripped;
+
+    const attempts = [original, alias];
+
+    // Try each attempt: exact match then partial
+    for (const attempt of attempts) {
+      if (!attempt) continue;
+      try {
+        const exact = await axios.get(`${REST_COUNTRIES_API}/name/${encodeURIComponent(attempt)}?fullText=true`);
+        if (exact.data && exact.data.length > 0) {
+          return { data: exact.data[0] };
+        }
+      } catch (_e) {
+        // ignore, fall through to partial search
+      }
+
+      try {
+        const partial = await axios.get(`${REST_COUNTRIES_API}/name/${encodeURIComponent(attempt)}`);
+        if (partial.data && partial.data.length > 0) {
+          const bestMatch = partial.data.find((country: CountryBasicInfo) => 
+            country.name.common.toLowerCase() === attempt.toLowerCase() ||
+            country.name.official.toLowerCase() === attempt.toLowerCase()
+          ) || partial.data[0];
+          return { data: bestMatch };
+        }
+      } catch (_e) {
+        // continue to next attempt
+      }
     }
-    
-    // If exact match fails, try partial match
-    response = await axios.get(`${REST_COUNTRIES_API}/name/${encodeURIComponent(countryName)}`);
-    
-    if (response.data && response.data.length > 0) {
-      // Find the best match
-      const bestMatch = response.data.find((country: CountryBasicInfo) => 
-        country.name.common.toLowerCase() === countryName.toLowerCase() ||
-        country.name.official.toLowerCase() === countryName.toLowerCase()
-      ) || response.data[0];
-      
-      return { data: bestMatch };
-    }
-    
+
     return { error: `Country '${countryName}' not found` };
   } catch (error) {
     console.error('Error fetching country basic info:', error);

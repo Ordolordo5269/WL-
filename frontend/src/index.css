@@ -34,6 +34,12 @@ html, body {
   backface-visibility: hidden;
 }
 
+/* Ajuste visual: desplaza el canvas del mapa ligeramente hacia arriba para ocultar
+   la franja azul del borde superior sin modificar la configuración del mapa. */
+.mapboxgl-map {
+  top: -8px !important;
+}
+
 /* Prevenir el flash de contenido sin estilo */
 body {
   visibility: hidden;

@@ -753,7 +753,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       <div 
         ref={geocoderContainer} 
         className="geocoder-container absolute left-1/2 transform -translate-x-1/2 z-20 w-80"
-        style={{ top: '40px' }}
+        style={{ top: '16px' }}
       />
     </>
   );
