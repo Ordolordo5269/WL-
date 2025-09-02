@@ -100,3 +100,6 @@ export default function TechnologySection({ data, isLoading, error }: Technology
 
 
 
+
+
+
