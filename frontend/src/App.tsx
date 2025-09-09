@@ -92,6 +92,19 @@ function App() {
     setSelectedConflictId(null);
   }, [toggleSidebar]);
 
+  // Open the World Map section from the left sidebar
+  const handleOpenWorldMap = useCallback(() => {
+    // Close detail sidebars and reset selections
+    toggleSidebar('country', false);
+    toggleSidebar('conflict', false);
+    setSelectedCountry(null);
+    setSelectedConflictId(null);
+    // Reset map view if exposed
+    if ((window as WindowWithResetMapView).resetMapView) {
+      (window as WindowWithResetMapView).resetMapView();
+    }
+  }, [toggleSidebar]);
+
   // Removed: unused handleBackToLeftSidebar
 
   const handleCenterMapOnConflict = (coordinates: { lat: number; lng: number }) => {
@@ -145,6 +158,7 @@ function App() {
         isOpen={sidebars.menu}
         onClose={handleCloseLeftSidebar}
         onOpenConflictTracker={handleOpenConflictTracker}
+        onOpenWorldMap={handleOpenWorldMap}
       />
       
       {/* Left sidebar overlay */}

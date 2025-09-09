@@ -7,6 +7,7 @@ interface LeftSidebarProps {
   onClose: () => void;
   onCenterMap?: (coordinates: { lat: number; lng: number }) => void;
   onOpenConflictTracker?: () => void;
+  onOpenWorldMap?: () => void;
 }
 
 interface MenuItem {
@@ -16,7 +17,7 @@ interface MenuItem {
   onClick?: () => void;
 }
 
-export default function LeftSidebar({ isOpen, onOpenConflictTracker }: LeftSidebarProps) {
+export default function LeftSidebar({ isOpen, onOpenConflictTracker, onOpenWorldMap }: LeftSidebarProps) {
   const [activeItem, setActiveItem] = useState<string>('home');
 
   const menuItems: MenuItem[] = useMemo(() => [
@@ -68,6 +69,11 @@ export default function LeftSidebar({ isOpen, onOpenConflictTracker }: LeftSideb
     // Handle Conflict Tracker specifically
     if (item.label === 'Conflict Tracker' && onOpenConflictTracker) {
       onOpenConflictTracker();
+      return;
+    }
+    // Handle World Map specifically
+    if (item.label === 'World Map' && onOpenWorldMap) {
+      onOpenWorldMap();
       return;
     }
     
