@@ -224,6 +224,13 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
             duration: 0.3
           }}
         >
+          <button
+            onClick={onClose}
+            className="conflict-tracker-close-btn"
+            aria-label="Close sidebar"
+          >
+            <X className="h-5 w-5" />
+          </button>
           {/* Header */}
           <div className="sidebar-header">
             {countryData?.flags && (countryData.flags.svg || countryData.flags.png) && (
@@ -234,7 +241,7 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
                 }}
               />
             )}
-            {/* Top row: Flag, Country Name (centered), and Close Button */}
+            {/* Top row: Flag and Country Info */}
             <div className="header-top-row">
               <div className="flag-container">
                 {countryData?.flags?.png && (
@@ -251,19 +258,19 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
               </div>
               
               <div className="country-info-container">
-                <h2 className="country-title">
+                <h2 className="country-title" title={countryName || 'Country data'}>
                   {countryName || 'Country data'}
                 </h2>
                 {countryData && (
                   <div className="country-details">
                     <div className="details-row">
                       {countryData.name?.official && (
-                        <div className="official-name">
+                        <p className="official-name" title={countryData.name.official}>
                           {countryData.name.official}
-                        </div>
+                        </p>
                       )}
                       {countryData.region && (
-                        <div className="country-region">
+                        <div className="country-region" title={countryData.region}>
                           {countryData.region}
                         </div>
                       )}
@@ -272,13 +279,6 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
                 )}
               </div>
               
-              <button
-                onClick={onClose}
-                className="conflict-tracker-close-btn"
-                aria-label="Close sidebar"
-              >
-                <X className="h-5 w-5" />
-              </button>
             </div>
             
             {/* Search removed */}
