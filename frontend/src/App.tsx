@@ -35,6 +35,7 @@ function App() {
     menu: false,    // left menu sidebar
     conflict: false // conflict tracker
   });
+  const [showWikidataEvents, setShowWikidataEvents] = useState<boolean>(false);
 
   // Unified sidebars handler
   const toggleSidebar = useCallback((type: 'country' | 'menu' | 'conflict', open: boolean) => {
@@ -103,6 +104,7 @@ function App() {
     if ((window as WindowWithResetMapView).resetMapView) {
       (window as WindowWithResetMapView).resetMapView();
     }
+    setShowWikidataEvents(true);
   }, [toggleSidebar]);
 
   // Removed: unused handleBackToLeftSidebar
@@ -182,6 +184,7 @@ function App() {
         onConflictClick={handleConflictClick}
         selectedConflictId={selectedConflictId}
         isLeftSidebarOpen={sidebars.menu}
+        showWikidataEvents={showWikidataEvents}
       />
       
       {/* Country Sidebar */}

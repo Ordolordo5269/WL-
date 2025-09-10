@@ -6,6 +6,9 @@ import '../src/styles/geocoder.css';
 import { ConflictVisualization } from '../services/conflict-tracker/conflict-visualization';
 import { ConflictDataManager, type ConflictData } from '../services/conflict-tracker/conflict-data-manager';
 import { findCapitalByCountry } from '../data/world-capitals';
+import WikidataEventsLayer from '../src/map/layers/WikidataEventsLayer';
+import EventFilters from '../src/map/components/EventFilters';
+import type { EventType as WikidataEventType } from '../src/map/hooks/useWikidataEvents';
 
 mapboxgl.accessToken = 'pk.eyJ1IjoiYW5kcmVzb29kIiwiYSI6ImNtNWNtMmd4dzJlZmQybXFyMGJuMDFxemsifQ.t4UlHVJhUi9ntjG5Tiq5_A';
 
@@ -17,6 +20,7 @@ interface WorldMapProps {
   onConflictClick?: (conflictId: string) => void;
   selectedConflictId?: string | null;
   isLeftSidebarOpen?: boolean;
+  showWikidataEvents?: boolean;
 }
 
 // Tipos específicos para evitar 'any'
@@ -50,7 +54,7 @@ interface ConflictGeoJSON {
 const COUNTRY_FOCUS_MAX_ZOOM = 4; // lower = farther
 const COUNTRY_FITBOUNDS_MAX_ZOOM = 4;
 
-const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMap: () => mapboxgl.Map | null }, WorldMapProps>(({ onCountrySelect, selectedCountry, onResetView, conflicts = [], selectedConflictId, isLeftSidebarOpen = false }, ref) => {
+const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMap: () => mapboxgl.Map | null }, WorldMapProps>(({ onCountrySelect, selectedCountry, onResetView, conflicts = [], selectedConflictId, isLeftSidebarOpen = false, showWikidataEvents = false }, ref) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const geocoderContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -60,6 +64,10 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   const conflictDataManager = useRef<ConflictDataManager | null>(null);
   const isLeftSidebarOpenRef = useRef(isLeftSidebarOpen);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
+  // Wikidata events controls state
+  const [eventsDays, setEventsDays] = useState<number>(7);
+  const [eventsTypes, setEventsTypes] = useState<WikidataEventType[]>(['protest', 'conflict']);
+  const [eventsRefreshKey, setEventsRefreshKey] = useState(0);
   
   // ✅ NUEVO: Refs para prevenir memory leaks
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -750,6 +758,18 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         className="fixed inset-0 w-full h-full"
         style={{ cursor: 'grab' }}
       />
+      {/* Wikidata events layer and filters */}
+      {showWikidataEvents && (
+        <>
+          <WikidataEventsLayer map={mapRef.current} days={eventsDays} types={eventsTypes} refreshKey={eventsRefreshKey} />
+          <EventFilters
+            days={eventsDays}
+            types={eventsTypes}
+            onChange={(s) => { setEventsDays(s.days); setEventsTypes(s.types as WikidataEventType[]); }}
+            onRefresh={() => setEventsRefreshKey((k) => k + 1)}
+          />
+        </>
+      )}
       <div 
         ref={geocoderContainer} 
         className="geocoder-container absolute left-1/2 transform -translate-x-1/2 z-20 w-80"

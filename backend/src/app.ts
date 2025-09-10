@@ -4,6 +4,7 @@ import cors from 'cors';
 import countryRoutes from './routes/country.routes';
 import societyRoutes from './routes/society.routes';
 import politicsRoutes from './routes/politics.routes';
+import eventsRoutes from './routes/events';
 
 const app = express();
 
@@ -25,5 +26,6 @@ app.get('/test', (req, res) => {
 app.use('/api/countries', countryRoutes);
 app.use('/api/society', societyRoutes);
 app.use('/api/politics', politicsRoutes);
+app.use('/api/events', eventsRoutes);
 
 export default app;
