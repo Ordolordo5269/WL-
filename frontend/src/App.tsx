@@ -2,8 +2,11 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import WorldMap from '../components/WorldMap';
 import LeftSidebar from '../components/LeftSidebar';
+import { fetchGdpLatestByIso3, buildGdpChoropleth } from '../services/worldbank-gdp';
+import { fetchInflationLatestByIso3, buildInflationChoropleth } from '../services/worldbank-inflation';
 import CountrySidebar from '../components/CountrySidebar';
 import ConflictTracker from '../components/ConflictTracker';
+import GdeltTracker from '../components/GdeltTracker';
 import CountryCard from '../components/CountryCard';
 import MenuToggleButton from '../components/MenuToggleButton';
 import { conflictsDatabase } from '../data/conflicts-data';
@@ -27,33 +30,86 @@ function App() {
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedConflictId, setSelectedConflictId] = useState<string | null>(null);
-  const mapRef = useRef<{ easeTo: (options: { center: [number, number]; zoom: number; duration: number }) => void } | null>(null);
+type MapEaseToOptionsApp = { center?: [number, number]; zoom?: number; duration?: number; easing?: (t: number) => number; pitch?: number; bearing?: number };
+const mapRef = useRef<{ easeTo: (options: MapEaseToOptionsApp) => void; getMap: () => any; setBaseMapStyle?: (next: 'night' | 'light' | 'outdoors' | 'physical') => void; setPlanetPreset?: (preset: 'default' | 'nebula' | 'sunset' | 'dawn') => void; setTerrainEnabled?: (v: boolean) => void; setHillshadeEnabled?: (v: boolean) => void; setMinimalMode?: (v: boolean) => void; setAutoRotate?: (v: boolean) => void; setRotateSpeed?: (v: number) => void; setChoropleth?: (metric: 'gdp' | 'inflation', spec: any | null) => void; setActiveChoropleth?: (metric: 'gdp' | 'inflation' | null) => void } | null>(null);
 
   // Add unified sidebars state
   const [sidebars, setSidebars] = useState({
     country: false, // right sidebar for countries
     menu: false,    // left menu sidebar
-    conflict: false // conflict tracker
+    conflict: false, // conflict tracker
+    gdelt: false     // gdelt tracker
   });
 
+  const [gdpEnabled, setGdpEnabled] = useState<boolean>(false);
+  const [gdpLegend, setGdpLegend] = useState<Array<{ color: string; min?: number; max?: number }>>([]);
+  const [inflationEnabled, setInflationEnabled] = useState<boolean>(false);
+  const [inflationLegend, setInflationLegend] = useState<Array<{ color: string; min?: number; max?: number }>>([]);
+
   // Unified sidebars handler
-  const toggleSidebar = useCallback((type: 'country' | 'menu' | 'conflict', open: boolean) => {
+  const toggleSidebar = useCallback((type: 'country' | 'menu' | 'conflict' | 'gdelt', open: boolean) => {
     setSidebars(prev => ({ ...prev, [type]: open }));
   }, []);
 
   useEffect(() => {
-    // Load countries from local cache
-    fetch('/data/countries-cache.json')
-      .then((res) => res.json())
-      .then((data) => {
+    // Load countries and warm up GDP cache
+    const load = async () => {
+      try {
+        const res = await fetch('/data/countries-cache.json');
+        const data = await res.json();
         setCountries(data);
-        setIsLoading(false);
-      })
-      .catch((error) => {
+      } catch (error) {
         console.error(error);
+      } finally {
         setIsLoading(false);
-      });
+      }
+    };
+    load();
+    // Prefetch in background to speed up toggle
+    fetchGdpLatestByIso3({ yearWindow: '1960:2050' }).catch(() => {});
+    fetchInflationLatestByIso3({ yearWindow: '1960:2050' }).catch(() => {});
   }, []);
+
+  // GDP layer management
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (!gdpEnabled) {
+        if (inflationEnabled) mapRef.current?.setActiveChoropleth?.('inflation');
+        else mapRef.current?.setActiveChoropleth?.(null);
+        setGdpLegend([]);
+        return;
+      }
+      const byIso3 = await fetchGdpLatestByIso3({ yearWindow: '1960:2050' });
+      if (cancelled) return;
+      const spec = buildGdpChoropleth(byIso3, { buckets: 7 });
+      setGdpLegend(spec.legend.map(l => ({ color: l.color, min: l.min, max: l.max })));
+      mapRef.current?.setChoropleth?.('gdp', spec as any);
+      mapRef.current?.setActiveChoropleth?.('gdp');
+    };
+    run();
+    return () => { cancelled = true; };
+  }, [gdpEnabled]);
+
+  // Inflation layer management
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (!inflationEnabled) {
+        if (gdpEnabled) mapRef.current?.setActiveChoropleth?.('gdp');
+        else mapRef.current?.setActiveChoropleth?.(null);
+        return;
+      }
+      const byIso3 = await fetchInflationLatestByIso3({ yearWindow: '1960:2050' });
+      if (cancelled) return;
+      const spec = buildInflationChoropleth(byIso3, { buckets: 7 });
+      setInflationLegend(spec.legend.map(l => ({ color: l.color, min: l.min, max: l.max })));
+      mapRef.current?.setChoropleth?.('inflation', spec as any);
+      mapRef.current?.setActiveChoropleth?.('inflation');
+    };
+    run();
+    return () => { cancelled = true; };
+  }, [inflationEnabled]);
 
   // Country selection handler
   const handleCountrySelect = useCallback((countryName: string) => {
@@ -65,9 +121,7 @@ function App() {
     toggleSidebar('country', false);
     setSelectedCountry(null);
     // Reset map view back to the globe
-    if ((window as WindowWithResetMapView).resetMapView) {
-      (window as WindowWithResetMapView).resetMapView();
-    }
+    (window as WindowWithResetMapView).resetMapView?.();
   }, [toggleSidebar]);
 
   const handleResetView = useCallback(() => {
@@ -91,6 +145,44 @@ function App() {
     toggleSidebar('conflict', false);
     setSelectedConflictId(null);
   }, [toggleSidebar]);
+
+  const handleOpenGdeltTracker = useCallback(() => {
+    toggleSidebar('gdelt', true);
+  }, [toggleSidebar]);
+
+  const handleCloseGdeltTracker = useCallback(() => {
+    toggleSidebar('gdelt', false);
+  }, [toggleSidebar]);
+
+  // New: map style callbacks for Settings section
+  const handleSetBaseMapStyle = useCallback((next: 'night' | 'light' | 'outdoors' | 'physical') => {
+    mapRef.current?.setBaseMapStyle?.(next);
+  }, []);
+  const handleSetPlanetPreset = useCallback((preset: 'default' | 'nebula' | 'sunset' | 'dawn') => {
+    mapRef.current?.setPlanetPreset?.(preset);
+  }, []);
+  const handleSetTerrain = useCallback((v: boolean) => {
+    mapRef.current?.setTerrainEnabled?.(v);
+  }, []);
+  const handleSetMinimalMode = useCallback((v: boolean) => {
+    mapRef.current?.setMinimalMode?.(v);
+  }, []);
+
+  const handleSetAutoRotate = useCallback((v: boolean) => {
+    mapRef.current?.setAutoRotate?.(v);
+  }, []);
+  const handleSetRotateSpeed = useCallback((n: number) => {
+    mapRef.current?.setRotateSpeed?.(n);
+  }, []);
+
+  const handleToggleGdpLayer = useCallback((enabled: boolean) => {
+    setGdpEnabled(enabled);
+  }, []);
+
+  const handleToggleInflationLayer = useCallback((enabled: boolean) => {
+    setInflationEnabled(enabled);
+    if (enabled) setGdpEnabled(false); // ensure only one is active in current UI
+  }, []);
 
   // Removed: unused handleBackToLeftSidebar
 
@@ -145,6 +237,19 @@ function App() {
         isOpen={sidebars.menu}
         onClose={handleCloseLeftSidebar}
         onOpenConflictTracker={handleOpenConflictTracker}
+        onOpenGdeltTracker={handleOpenGdeltTracker}
+        onSetBaseMapStyle={handleSetBaseMapStyle}
+        onSetPlanetPreset={handleSetPlanetPreset}
+        onSetTerrain={handleSetTerrain}
+        onSetMinimalMode={handleSetMinimalMode}
+        onSetAutoRotate={handleSetAutoRotate}
+        onSetRotateSpeed={handleSetRotateSpeed}
+        onToggleGdpLayer={handleToggleGdpLayer}
+        gdpEnabled={gdpEnabled}
+        gdpLegend={gdpLegend}
+        onToggleInflationLayer={handleToggleInflationLayer}
+        inflationEnabled={inflationEnabled}
+        inflationLegend={inflationLegend}
       />
       
       {/* Left sidebar overlay */}
@@ -250,6 +355,25 @@ function App() {
             onBack={handleCloseConflictTracker}
             onCenterMap={handleCenterMapOnConflict}
             onConflictSelect={handleConflictSelect}
+          />
+        </>
+      )}
+
+      {/* GDELT Tracker */}
+      {sidebars.gdelt && (
+        <>
+          {/* Overlay for GdeltTracker */}
+          <motion.div 
+            className="fixed inset-0 bg-black z-40 cursor-pointer"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.4 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            onClick={handleCloseGdeltTracker}
+          />
+
+          <GdeltTracker 
+            onBack={handleCloseGdeltTracker}
           />
         </>
       )}

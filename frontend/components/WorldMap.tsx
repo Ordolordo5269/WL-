@@ -1,5 +1,7 @@
-import React, { useRef, useEffect, useCallback, useImperativeHandle, forwardRef, useState } from 'react';
+import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
+import { applyFog as appearanceApplyFog, applyRelief as appearanceApplyRelief, setBaseFeaturesVisibility as appearanceSetBaseFeaturesVisibility, applyPhysicalModeTweaks as appearanceApplyPhysical, MAP_STYLES, type StyleKey, type PlanetPreset } from './map/mapAppearance';
+import type { ChoroplethSpec } from '../services/worldbank-gdp';
 import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
 import '../src/styles/geocoder.css';
@@ -48,9 +50,10 @@ interface ConflictGeoJSON {
 
 // Zoom configuration for country focus
 const COUNTRY_FOCUS_MAX_ZOOM = 4; // lower = farther
-const COUNTRY_FITBOUNDS_MAX_ZOOM = 4;
+// Removed unused COUNTRY_FITBOUNDS_MAX_ZOOM
 
-const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMap: () => mapboxgl.Map | null }, WorldMapProps>(({ onCountrySelect, selectedCountry, onResetView, conflicts = [], selectedConflictId, isLeftSidebarOpen = false }, ref) => {
+type MetricId = 'gdp' | 'inflation';
+const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMap: () => mapboxgl.Map | null; setChoropleth?: (metric: MetricId, spec: ChoroplethSpec | null) => void; setActiveChoropleth?: (metric: MetricId | null) => void }, WorldMapProps>(({ onCountrySelect, selectedCountry, onResetView, conflicts = [], selectedConflictId, isLeftSidebarOpen = false }, ref) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const geocoderContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -64,7 +67,24 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   // ✅ NUEVO: Refs para prevenir memory leaks
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const spinIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const rotationSpeedRef = useRef<number>(3);
+  const spinRafRef = useRef<number | null>(null);
+  const userInteractingRef = useRef<boolean>(false);
   const eventListenersRef = useRef<EventListenerRecord[]>([]);
+  const choroplethSpecRef = useRef<Record<MetricId, ChoroplethSpec | null>>({ gdp: null, inflation: null });
+  const activeChoroplethRef = useRef<MetricId | null>(null);
+
+  // Estilos centralizados en mapAppearance
+  const [styleKey, setStyleKey] = useState<StyleKey>('night');
+  
+  // Relieve y sombreado
+  const [terrainOn, setTerrainOn] = useState(false);
+  const [hillshadeOn, setHillshadeOn] = useState(false);
+  
+  // Presets de planeta (atmósfera)
+  const [planetPreset, setPlanetPreset] = useState<PlanetPreset>('default');
+  // Ocultar nombres/carreteras/fronteras
+  const [minimalModeOn, setMinimalModeOn] = useState(false);
   
   // ✅ NUEVO: Tipos específicos para event listeners
   type MapMouseEventHandler = (e: mapboxgl.MapMouseEvent) => void;
@@ -117,6 +137,10 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = undefined;
     }
+    if (spinRafRef.current !== null) {
+      cancelAnimationFrame(spinRafRef.current);
+      spinRafRef.current = null;
+    }
     
     // ✅ MEJORADO: Limpiar event listeners con manejo de capas
     if (mapRef.current) {
@@ -135,18 +159,369 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     }
   }, []);
 
-  // Exponer métodos del mapa al componente padre
+  // Exponer métodos del mapa al componente padre (se define más abajo tras helpers)
+
+  // Reaplicar niebla/atmósfera con fondo estrellado
+  const applyFog = useCallback((preset: PlanetPreset = planetPreset) => {
+    if (!mapRef.current) return;
+    appearanceApplyFog(mapRef.current, preset);
+  }, [planetPreset]);
+
+  // Aplicar capas de relieve (DEM) y sombreado de colinas
+  const applyTerrainLayers = useCallback((overrideTerrain?: boolean, overrideHillshade?: boolean) => {
+    if (!mapRef.current) return;
+    appearanceApplyRelief(mapRef.current, {
+      terrain: overrideTerrain ?? terrainOn,
+      hillshade: overrideHillshade ?? hillshadeOn
+    });
+  }, [terrainOn, hillshadeOn]);
+
+  // Ocultar capas políticas y overlays en modo físico
+  const applyPhysicalModeTweaks = useCallback(() => {
+    if (!mapRef.current) return;
+    appearanceApplyPhysical(mapRef.current);
+  }, []);
+
+  // Mostrar/ocultar nombres, carreteras y fronteras en cualquier estilo
+  const setBaseFeaturesVisibility = useCallback((hide: boolean) => {
+    if (!mapRef.current) return;
+    appearanceSetBaseFeaturesVisibility(mapRef.current, hide);
+  }, []);
+
+  // Helper: add/update/remove GDP choropleth layer
+  const applyChoropleth = useCallback((metric: MetricId) => {
+    const map = mapRef.current;
+    const spec = choroplethSpecRef.current[metric];
+    if (!map) return;
+    if (!map.getSource('country-boundaries')) return;
+
+    const layerId = metric === 'gdp' ? 'gdp-fill' : 'inflation-fill';
+    const sourceLayer = 'country_boundaries';
+
+    // Remove if no spec
+    if (!spec) {
+      try { if (map.getLayer(layerId)) map.removeLayer(layerId); } catch {}
+      return;
+    }
+
+    // Build a match expression on ISO3 code using multiple potential fields
+    // Normalize to uppercase to ensure consistency with WB ISO3 keys
+    const isoExpr: any[] = ['upcase', ['coalesce', ['get', 'iso_3166_1_alpha_3'], ['get', 'wb_a3'], ['get', 'adm0_a3'], ['get', 'iso_3166_1']]];
+    const expr: any[] = ['match', isoExpr];
+    for (const [iso3, color] of Object.entries(spec.iso3ToColor)) {
+      expr.push(iso3, color);
+    }
+    expr.push(spec.defaultColor);
+
+    if (!map.getLayer(layerId)) {
+      try {
+        const beforeId = map.getLayer('country-highlight') ? 'country-highlight' : undefined;
+        if (beforeId) {
+          map.addLayer({
+            id: layerId,
+            type: 'fill',
+            source: 'country-boundaries',
+            'source-layer': sourceLayer,
+            paint: {
+              'fill-color': expr as any,
+              'fill-opacity': 0.75
+            }
+          } as any, beforeId);
+        } else {
+          map.addLayer({
+            id: layerId,
+            type: 'fill',
+            source: 'country-boundaries',
+            'source-layer': sourceLayer,
+            paint: {
+              'fill-color': expr as any,
+              'fill-opacity': 0.75
+            }
+          } as any);
+        }
+      } catch {}
+    } else {
+      try { map.setPaintProperty(layerId, 'fill-color', expr as any); } catch {}
+      try { map.setPaintProperty(layerId, 'fill-opacity', 0.75); } catch {}
+    }
+  }, []);
+
+  // Exponer métodos del mapa al componente padre (incluye estilo/preset/relieve)
   useImperativeHandle(ref, () => ({
     easeTo,
-    getMap: () => mapRef.current
-  }), [easeTo]);
+    getMap: () => mapRef.current,
+    setChoropleth: (metric: MetricId, spec: ChoroplethSpec | null) => {
+      choroplethSpecRef.current[metric] = spec;
+      applyChoropleth(metric);
+    },
+    setActiveChoropleth: (metric: MetricId | null) => {
+      activeChoroplethRef.current = metric;
+      const map = mapRef.current;
+      if (!map) return;
+      const layers: Record<MetricId, string> = { gdp: 'gdp-fill', inflation: 'inflation-fill' };
+      (Object.keys(layers) as MetricId[]).forEach((m) => {
+        const id = layers[m];
+        if (!map.getLayer(id)) return;
+        try { map.setLayoutProperty(id, 'visibility', metric === m ? 'visible' : 'none'); } catch {}
+      });
+    },
+    setBaseMapStyle: (next: StyleKey) => {
+      setStyleKey(next);
+      if (!mapRef.current) return;
+      const map = mapRef.current;
+      try {
+        map.setStyle(MAP_STYLES[next], { diff: false } as any);
+        map.once('style.load', () => {
+          applyFog();
+          if (next === 'physical') {
+            setTerrainOn(true);
+            setHillshadeOn(true);
+          }
+          applyTerrainLayers( next === 'physical' ? true : undefined, next === 'physical' ? true : undefined );
+          reinitializeInteractiveLayers();
+          if (next === 'physical') applyPhysicalModeTweaks();
+        });
+      } catch {}
+    },
+    setPlanetPreset: (preset: PlanetPreset) => {
+      setPlanetPreset(preset);
+      applyFog(preset);
+    },
+    setTerrainEnabled: (v: boolean) => {
+      // Unificado: terrain y hillshade siguen el mismo estado
+      setTerrainOn(v);
+      setHillshadeOn(v);
+      applyTerrainLayers(v, v);
+    },
+    setHillshadeEnabled: (v: boolean) => {
+      // Compatibilidad: delega en Terrain unificado
+      setTerrainOn(v);
+      setHillshadeOn(v);
+      applyTerrainLayers(v, v);
+    },
+    setMinimalMode: (v: boolean) => { setMinimalModeOn(v); setBaseFeaturesVisibility(v); },
+    // NEW: Globe rotation controls (smooth RAF-based)
+    setAutoRotate: (enabled: boolean) => {
+      // Stop any interval-based fallback if present
+      if (spinIntervalRef.current) {
+        clearInterval(spinIntervalRef.current);
+        spinIntervalRef.current = null;
+      }
+      // Stop existing RAF loop
+      if (!enabled) {
+        if (spinRafRef.current !== null) {
+          cancelAnimationFrame(spinRafRef.current);
+          spinRafRef.current = null;
+        }
+        return;
+      }
+      // Start RAF loop
+      let lastTs = 0;
+      const step = (ts: number) => {
+        const map = mapRef.current;
+        if (!map) {
+          spinRafRef.current = null;
+          return;
+        }
+        if (lastTs === 0) lastTs = ts;
+        const dt = Math.max(0, (ts - lastTs) / 1000);
+        lastTs = ts;
+        const zoom = map.getZoom();
+        const isMoving = (map as any).isMoving?.() ?? false;
+        if (!isMoving && !userInteractingRef.current && zoom < 5) {
+          const center = map.getCenter();
+          center.lng -= rotationSpeedRef.current * dt;
+          // Use setCenter for immediate, smooth updates each frame
+          map.setCenter(center);
+        }
+        spinRafRef.current = requestAnimationFrame(step);
+      };
+      if (spinRafRef.current !== null) cancelAnimationFrame(spinRafRef.current);
+      spinRafRef.current = requestAnimationFrame(step);
+    },
+    setRotateSpeed: (degPerSec: number) => {
+      rotationSpeedRef.current = Math.max(0, Number.isFinite(degPerSec) ? degPerSec : 0);
+    }
+  }), [easeTo, applyFog, applyTerrainLayers, applyPhysicalModeTweaks, styleKey, setBaseFeaturesVisibility]);
+
+  // Helper para reinstalar fuentes/capas y eventos tras cambio de estilo
+  const reinitializeInteractiveLayers = useCallback(() => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+
+    // Asegurar atmósfera/fog y terreno/hillshade tras cambio de estilo
+    applyFog();
+    applyTerrainLayers();
+    setBaseFeaturesVisibility(minimalModeOn);
+
+    // Si estamos en modo físico, ocultar política y no reinyectar overlays
+    if (styleKey === 'physical') {
+      applyPhysicalModeTweaks();
+      return;
+    }
+    // Fuente de límites de países
+    if (!map.getSource('country-boundaries')) {
+      try {
+        map.addSource('country-boundaries', {
+          type: 'vector',
+          url: 'mapbox://mapbox.country-boundaries-v1'
+        } as any);
+      } catch {}
+    }
+
+    // Apply any existing choropleths and reassert active visibility
+    applyChoropleth('gdp');
+    applyChoropleth('inflation');
+    if (activeChoroplethRef.current) {
+      const map = mapRef.current;
+      if (map) {
+        const layers: Record<MetricId, string> = { gdp: 'gdp-fill', inflation: 'inflation-fill' };
+        (Object.keys(layers) as MetricId[]).forEach((m) => {
+          const id = layers[m];
+          if (!map.getLayer(id)) return;
+          try { map.setLayoutProperty(id, 'visibility', activeChoroplethRef.current === m ? 'visible' : 'none'); } catch {}
+        });
+      }
+    }
+
+    // Capa hover
+    if (!map.getLayer('country-highlight')) {
+      try {
+        map.addLayer({
+          id: 'country-highlight',
+          type: 'fill',
+          source: 'country-boundaries',
+          'source-layer': 'country_boundaries',
+          paint: {
+            'fill-color': '#87CEEB',
+            'fill-opacity': [
+              'case',
+              ['boolean', ['feature-state', 'hover'], false],
+              0.3,
+              0
+            ]
+          }
+        } as any);
+      } catch {}
+    }
+
+    // Capa seleccionado
+    if (!map.getLayer('country-selected')) {
+      try {
+        map.addLayer({
+          id: 'country-selected',
+          type: 'fill',
+          source: 'country-boundaries',
+          'source-layer': 'country_boundaries',
+          paint: {
+            'fill-color': '#4A90E2',
+            'fill-opacity': [
+              'case',
+              ['boolean', ['feature-state', 'selected'], false],
+              0.5,
+              0
+            ]
+          }
+        } as any);
+      } catch {}
+    }
+
+    // Reagregar visualización de conflictos
+    try {
+      const conflictGeoJSON = conflictsToGeoJSON(conflicts);
+      ConflictVisualization.addLayers(map, 'country-boundaries', conflictGeoJSON);
+    } catch {}
+
+    // Re-registrar eventos mínimos (hover y click)
+    let hoveredId: number | string | null = null;
+
+    const handleMouseMove = (e: mapboxgl.MapMouseEvent) => {
+      if (isLeftSidebarOpenRef.current) {
+        map.getCanvas().style.cursor = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='8' fill='none' stroke='%2387CEEB' stroke-width='1.5' opacity='0.9'/%3E%3Ccircle cx='10' cy='10' r='2' fill='%2387CEEB' opacity='0.7'/%3E%3C/svg%3E\") 10 10, auto";
+        return;
+      }
+      if (e.features && e.features.length > 0) {
+        const id = e.features[0].id as any;
+        if (id !== hoveredId) {
+          if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+          if (hoveredId !== null) {
+            try {
+              map.setFeatureState({ source: 'country-boundaries', sourceLayer: 'country_boundaries', id: hoveredId }, { hover: false });
+            } catch {}
+          }
+          hoveredId = id;
+          hoverTimeoutRef.current = setTimeout(() => {
+            if (hoveredId !== null) {
+              try {
+                map.setFeatureState({ source: 'country-boundaries', sourceLayer: 'country_boundaries', id: hoveredId }, { hover: true });
+              } catch {}
+            }
+          }, 50);
+        }
+      }
+      map.getCanvas().style.cursor = 'pointer';
+    };
+
+    const handleMouseLeave = () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+        hoverTimeoutRef.current = null;
+      }
+      if (hoveredId !== null) {
+        try {
+          map.setFeatureState({ source: 'country-boundaries', sourceLayer: 'country_boundaries', id: hoveredId }, { hover: false });
+        } catch {}
+      }
+      hoveredId = null;
+      map.getCanvas().style.cursor = 'grab';
+    };
+
+    const handleCountryClick = (e: mapboxgl.MapMouseEvent) => {
+      if (isLeftSidebarOpenRef.current) return;
+      if (e.features && e.features.length > 0) {
+        const feature: any = e.features[0];
+        const countryName = feature.properties?.name_en || feature.properties?.name || 'Unknown Country';
+        const featureId = feature.id;
+        if (featureId === undefined || featureId === null) return;
+
+        if (selectedCountryId.current !== null) {
+          try {
+            map.setFeatureState({ source: 'country-boundaries', sourceLayer: 'country_boundaries', id: selectedCountryId.current }, { selected: false });
+          } catch {}
+        }
+        selectedCountryId.current = featureId as any;
+        try {
+          map.setFeatureState({ source: 'country-boundaries', sourceLayer: 'country_boundaries', id: featureId }, { selected: true });
+        } catch {}
+
+        const capitalData = findCapitalByCountry(countryName);
+        if (capitalData) {
+          map.easeTo({ center: capitalData.coordinates, zoom: Math.min(capitalData.zoomLevel || 6, COUNTRY_FOCUS_MAX_ZOOM), duration: 1200, easing: (t: number) => 1 - Math.pow(1 - t, 3) });
+        }
+        handleCountrySelection(countryName);
+      }
+    };
+
+    try {
+      map.on('mousemove', 'country-highlight', handleMouseMove);
+      map.on('mouseleave', 'country-highlight', handleMouseLeave);
+      map.on('click', 'country-highlight', handleCountryClick);
+      eventListenersRef.current.push(
+        { event: 'mousemove', handler: handleMouseMove, layer: 'country-highlight' },
+        { event: 'mouseleave', handler: handleMouseLeave, layer: 'country-highlight' },
+        { event: 'click', handler: handleCountryClick, layer: 'country-highlight' }
+      );
+    } catch {}
+  }, [conflicts, handleCountrySelection, applyFog, applyTerrainLayers, applyPhysicalModeTweaks, styleKey, minimalModeOn, setBaseFeaturesVisibility]);
+
+  // El toggle inline fue movido a la sidebar (Settings)
 
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
     
     const map = new mapboxgl.Map({
       container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/navigation-night-v1',
+      style: MAP_STYLES[styleKey],
       center: [0, 20],
       zoom: 2,
       minZoom: 0.5,
@@ -171,7 +546,8 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     // Buscador de países en inglés
     const geocoder = new MapboxGeocoder({
       accessToken: mapboxgl.accessToken as string,
-      mapboxgl: mapboxgl as { Map: typeof mapboxgl.Map },
+      // @ts-expect-error mapbox-gl-geocoder types expect full module; runtime is fine
+      mapboxgl: mapboxgl as unknown as typeof mapboxgl,
       types: 'country',
       language: 'en',
       placeholder: 'Search country',
@@ -301,14 +677,11 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     // Configurar el globo y capas cuando el mapa esté cargado
     map.on('load', () => {
       setIsMapLoaded(true);
-      // Configurar la atmósfera del globo
-      map.setFog({
-        'color': 'rgb(186, 210, 235)',
-        'high-color': 'rgb(36, 92, 223)',
-        'horizon-blend': 0.02,
-        'space-color': 'rgb(11, 11, 25)',
-        'star-intensity': 0.6
-      });
+      // Configurar la atmósfera del globo con fondo estrellado
+      applyFog();
+      // aplicar estado inicial de terrain/hillshade
+      applyTerrainLayers(terrainOn, hillshadeOn);
+      if (styleKey === 'physical') applyPhysicalModeTweaks();
 
       // Initialize conflict data manager and add conflict source
       if (conflictDataManager.current) {
@@ -318,220 +691,8 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
 
       // Conflict visualization is now handled by CountryConflictVisualization
 
-      // Fuente y capa para resaltar países al pasar el ratón
-      map.addSource('country-boundaries', {
-        type: 'vector',
-        url: 'mapbox://mapbox.country-boundaries-v1'
-      });
-
-      map.addLayer({
-        id: 'country-highlight',
-        type: 'fill',
-        source: 'country-boundaries',
-        'source-layer': 'country_boundaries',
-        paint: {
-          'fill-color': '#87CEEB',
-          'fill-opacity': [
-            'case',
-            ['boolean', ['feature-state', 'hover'], false],
-            0.3,
-            0
-          ]
-        }
-      });
-
-      // Capa para país seleccionado
-      map.addLayer({
-        id: 'country-selected',
-        type: 'fill',
-        source: 'country-boundaries',
-        'source-layer': 'country_boundaries',
-        paint: {
-          'fill-color': '#4A90E2',
-          'fill-opacity': [
-            'case',
-            ['boolean', ['feature-state', 'selected'], false],
-            0.5,
-            0
-          ]
-        }
-      });
-
-      // Agregar capas de visualización de conflictos con animación de pulso
-      const conflictGeoJSON = conflictsToGeoJSON(conflicts);
-      ConflictVisualization.addLayers(map, 'country-boundaries', conflictGeoJSON);
-
-      let hoveredId: number | string | null = null;
-
-      // ✅ MEJORADO: Eventos de hover optimizados con cleanup de timeouts
-      const handleMouseMove = (e: mapboxgl.MapMouseEvent) => {
-        // Si la sidebar izquierda está abierta, no procesar hover
-        if (isLeftSidebarOpenRef.current) {
-          // Usar el cursor personalizado minimalista
-          map.getCanvas().style.cursor = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='8' fill='none' stroke='%2387CEEB' stroke-width='1.5' opacity='0.9'/%3E%3Ccircle cx='10' cy='10' r='2' fill='%2387CEEB' opacity='0.7'/%3E%3C/svg%3E\") 10 10, auto";
-          return;
-        }
-
-        if (e.features && e.features.length > 0) {
-          const id = e.features[0].id;
-          
-          // Solo actualizar si el ID cambió
-          if (id !== hoveredId) {
-            // ✅ MEJORADO: Limpiar timeout anterior usando ref
-            if (hoverTimeoutRef.current) {
-              clearTimeout(hoverTimeoutRef.current);
-            }
-            
-            // Limpiar hover anterior
-            if (hoveredId !== null) {
-              map.setFeatureState(
-                { source: 'country-boundaries', sourceLayer: 'country_boundaries', id: hoveredId },
-                { hover: false }
-              );
-            }
-            
-            hoveredId = id as number | string | null;
-            
-            // ✅ MEJORADO: Aplicar nuevo hover con pequeño delay usando ref
-            hoverTimeoutRef.current = setTimeout(() => {
-              if (hoveredId !== null) {
-                map.setFeatureState(
-                  { source: 'country-boundaries', sourceLayer: 'country_boundaries', id: hoveredId },
-                  { hover: true }
-                );
-              }
-            }, 50);
-          }
-        }
-        map.getCanvas().style.cursor = 'pointer';
-      };
-
-      const handleMouseLeave = () => {
-        // ✅ MEJORADO: Limpiar timeout usando ref
-        if (hoverTimeoutRef.current) {
-          clearTimeout(hoverTimeoutRef.current);
-          hoverTimeoutRef.current = null;
-        }
-        
-        if (hoveredId !== null) {
-          map.setFeatureState(
-            { source: 'country-boundaries', sourceLayer: 'country_boundaries', id: hoveredId },
-            { hover: false }
-          );
-        }
-        hoveredId = null;
-        map.getCanvas().style.cursor = 'grab';
-      };
-
-      // ✅ MEJORADO: Registrar event listeners para cleanup con capas
-      map.on('mousemove', 'country-highlight', handleMouseMove);
-      map.on('mouseleave', 'country-highlight', handleMouseLeave);
-      eventListenersRef.current.push(
-        { event: 'mousemove', handler: handleMouseMove, layer: 'country-highlight' },
-        { event: 'mouseleave', handler: handleMouseLeave, layer: 'country-highlight' }
-      );
-
-      // ✅ MEJORADO: Evento de clic para seleccionar país con cleanup
-      const handleCountryClick = (e: mapboxgl.MapMouseEvent) => {
-        // Si la sidebar izquierda está abierta, no procesar el click
-        if (isLeftSidebarOpenRef.current) {
-          return;
-        }
-
-        if (e.features && e.features.length > 0) {
-          const feature = e.features[0];
-          const countryName = feature.properties?.name_en || feature.properties?.name || 'Unknown Country';
-          const featureId = feature.id;
-          
-          // Verificar que featureId no sea undefined
-          if (featureId === undefined || featureId === null) {
-            console.warn('Feature ID is undefined or null');
-            return;
-          }
-          
-          // Limpiar selección anterior
-          if (selectedCountryId.current !== null) {
-            map.setFeatureState(
-              { source: 'country-boundaries', sourceLayer: 'country_boundaries', id: selectedCountryId.current },
-              { selected: false }
-            );
-          }
-          
-          // Establecer nueva selección
-          selectedCountryId.current = featureId as string | number;
-          map.setFeatureState(
-            { source: 'country-boundaries', sourceLayer: 'country_boundaries', id: featureId },
-            { selected: true }
-          );
-          
-          // Buscar la capital del país seleccionado
-          const capitalData = findCapitalByCountry(countryName);
-          
-          if (capitalData) {
-            // Zoom a la capital del país con límite máximo para verse más lejos
-            const zoomLevel = Math.min(capitalData.zoomLevel || 6, COUNTRY_FOCUS_MAX_ZOOM);
-            map.easeTo({
-              center: capitalData.coordinates,
-              zoom: zoomLevel,
-              duration: 1200,
-              easing: (t: number) => 1 - Math.pow(1 - t, 3)
-            });
-          } else {
-            // Fallback: centrar en el país usando bounds si no se encuentra la capital
-            if (feature.geometry) {
-              try {
-                let coordinates: number[][];
-                
-                if (feature.geometry.type === 'Polygon') {
-                  coordinates = feature.geometry.coordinates[0];
-                } else if (feature.geometry.type === 'MultiPolygon') {
-                  // Para MultiPolygon, usar el primer polígono
-                  coordinates = feature.geometry.coordinates[0][0];
-                } else {
-                  throw new Error('Unsupported geometry type');
-                }
-                
-                const bounds = coordinates.reduce((bounds: mapboxgl.LngLatBounds, coord: number[]) => {
-                  return bounds.extend(coord as [number, number]);
-                }, new mapboxgl.LngLatBounds());
-                
-                map.fitBounds(bounds, {
-                  padding: { top: 50, bottom: 50, left: 200, right: 200 },
-                  duration: 1200,
-                  maxZoom: COUNTRY_FITBOUNDS_MAX_ZOOM,
-                  easing: (t: number) => {
-                    return 1 - Math.pow(1 - t, 3);
-                  }
-                });
-              } catch (error) {
-                console.warn('Error processing country geometry:', error);
-                // Fallback: centrar en el punto de clic
-                if (e.lngLat) {
-                  map.easeTo({
-                    center: [e.lngLat.lng, e.lngLat.lat],
-                    zoom: Math.min(Math.max(map.getZoom(), 3), COUNTRY_FOCUS_MAX_ZOOM),
-                    duration: 1200,
-                    easing: (t: number) => 1 - Math.pow(1 - t, 3)
-                  });
-                }
-              }
-            } else if (e.lngLat) {
-              // Fallback: centrar en el punto de clic
-              map.easeTo({
-                center: [e.lngLat.lng, e.lngLat.lat],
-                zoom: Math.min(Math.max(map.getZoom(), 3), COUNTRY_FOCUS_MAX_ZOOM),
-                duration: 1200,
-                easing: (t: number) => 1 - Math.pow(1 - t, 3)
-              });
-            }
-          }
-          
-          handleCountrySelection(countryName);
-        }
-      };
-
-      map.on('click', 'country-highlight', handleCountryClick);
-      eventListenersRef.current.push({ event: 'click', handler: handleCountryClick, layer: 'country-highlight' });
+      // Reusar helper estándar
+      reinitializeInteractiveLayers();
     });
 
     // ✅ MEJORADO: Animación de rotación automática con cleanup
@@ -549,21 +710,25 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     };
 
     // ✅ MEJORADO: Event handlers con cleanup
-    const handleMouseDown = () => { userInteracting = true; };
+    const handleMouseDown = () => { userInteracting = true; userInteractingRef.current = true; };
     const handleMouseUp = () => { 
       userInteracting = false; 
+      userInteractingRef.current = false;
       spinGlobe(); 
     };
     const handleDragEnd = () => { 
       userInteracting = false; 
+      userInteractingRef.current = false;
       spinGlobe(); 
     };
     const handlePitchEnd = () => { 
       userInteracting = false; 
+      userInteractingRef.current = false;
       spinGlobe(); 
     };
     const handleRotateEnd = () => { 
       userInteracting = false; 
+      userInteractingRef.current = false;
       spinGlobe(); 
     };
     const handleMoveEndGlobe = () => { 
@@ -642,9 +807,9 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   useEffect(() => {
     const update = () => {
       if (mapRef.current && isMapLoaded) {
-        const conflictGeoJSON = conflictsToGeoJSON(conflicts);
-        ConflictVisualization.updateConflictMarkers(mapRef.current, conflictGeoJSON);
-        ConflictVisualization.updateVisualization(mapRef.current, selectedConflictId ?? null, conflicts);
+        const conflictGeoJSON = conflictsToGeoJSON(conflicts as any);
+        ConflictVisualization.updateConflictMarkers(mapRef.current, conflictGeoJSON as any);
+        ConflictVisualization.updateVisualization(mapRef.current, selectedConflictId ?? null, conflicts as any);
       } else {
         // ✅ MEJORADO: Usar ref para timeout y limpiarlo
         const timeoutId = setTimeout(update, 100);
@@ -750,6 +915,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         className="fixed inset-0 w-full h-full"
         style={{ cursor: 'grab' }}
       />
+      {/* Control de estilo movido a la LeftSidebar > Settings */}
       <div 
         ref={geocoderContainer} 
         className="geocoder-container absolute left-1/2 transform -translate-x-1/2 z-20 w-80"
