@@ -123,7 +123,7 @@ const mapRef = useRef<{ easeTo: (options: MapEaseToOptionsApp) => void; getMap: 
 
 
   useEffect(() => {
-    // Load countries and warm up GDP cache
+    // Load countries cache (lightweight local JSON)
     const load = async () => {
       try {
         const res = await fetch('/data/countries-cache.json');
@@ -131,11 +131,16 @@ const mapRef = useRef<{ easeTo: (options: MapEaseToOptionsApp) => void; getMap: 
         setCountries(data);
       } catch (error) {
         console.error(error);
-      } finally {
-        setIsLoading(false);
       }
+      // NOTE: isLoading is now controlled by onMapReady callback from WorldMap,
+      // so the overlay stays visible until map tiles are actually rendered.
     };
     load();
+  }, []);
+
+  // Called by WorldMap when map.on('load') fires — tiles + style are ready
+  const handleMapReady = useCallback(() => {
+    setIsLoading(false);
   }, []);
 
   // Load countries for selector (from API)
@@ -172,17 +177,8 @@ const mapRef = useRef<{ easeTo: (options: MapEaseToOptionsApp) => void; getMap: 
     };
     
     loadCountriesForSelector();
-    // Prefetch indicators from database in background to speed up toggle
-    fetchGdpLatestByIso3().catch(() => {});
-    fetchGdpPerCapitaLatestByIso3().catch(() => {});
-    fetchInflationLatestByIso3({ yearWindow: '1960:2050' }).catch(() => {});
-    fetchIndicatorLatestByIso3FromDb('gini').catch(() => {});
-    fetchIndicatorLatestByIso3FromDb('exports').catch(() => {});
-    // Prefetch new indicators
-    fetchIndicatorLatestByIso3FromDb('life-expectancy').catch(() => {});
-    fetchIndicatorLatestByIso3FromDb('military-expenditure').catch(() => {});
-    fetchIndicatorLatestByIso3FromDb('democracy-index').catch(() => {});
-    fetchIndicatorLatestByIso3FromDb('trade-gdp').catch(() => {});
+    // Indicator data is fetched on-demand when the user toggles a choropleth layer.
+    // No prefetch here — keeps initial load fast and network free for map tiles.
   }, []);
 
   // GDP layer management
@@ -848,6 +844,7 @@ const mapRef = useRef<{ easeTo: (options: MapEaseToOptionsApp) => void; getMap: 
         onConflictClick={handleConflictClick}
         selectedConflictId={selectedConflictId}
         isLeftSidebarOpen={sidebars.menu}
+        onMapReady={handleMapReady}
       />
       
       {/* Country Sidebar */}

@@ -114,8 +114,9 @@
   width: 24px;
   height: 18px;
   object-fit: cover;
-  border-radius: 3px;
-  border: 1px solid rgba(71, 85, 105, 0.3);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 }
 
 .compare-countries-vs {
@@ -267,8 +268,15 @@
   width: 48px;
   height: 36px;
   object-fit: cover;
-  border-radius: 4px;
-  border: 1px solid rgba(71, 85, 105, 0.3);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.compare-countries-header-flag:hover {
+  transform: scale(1.02);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset, 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
 .compare-countries-header-info {

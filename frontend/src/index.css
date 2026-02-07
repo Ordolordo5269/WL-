@@ -1,12 +1,10 @@
+/* CSS imports MUST come before any other rules (PostCSS requirement) */
+@import './styles/predictive-analysis.css';
+@import './styles/compare-countries.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Import predictive analysis styles */
-@import './styles/predictive-analysis.css';
-
-/* Import compare countries styles */
-@import './styles/compare-countries.css';
 
 /* Eliminar márgenes y padding por defecto */
 * {
@@ -28,6 +26,12 @@ html, body {
   will-change: auto;
 }
 
+/* Tipografía — la fuente Inter se carga via <link> en index.html (no bloquea render) */
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  letter-spacing: -0.015em;
+}
+
 /* Hacer que el contenedor root ocupe toda la pantalla */
 #root {
   width: 100%;
@@ -44,16 +48,6 @@ html, body {
    la franja azul del borde superior sin modificar la configuración del mapa. */
 .mapboxgl-map {
   top: -8px !important;
-}
-
-/* Prevenir el flash de contenido sin estilo */
-body {
-  visibility: hidden;
-}
-
-body.loaded {
-  visibility: visible;
-  transition: visibility 0.1s ease;
 }
 
 /* Optimizaciones globales para animaciones */
@@ -86,30 +80,20 @@ body.loaded {
   }
 }
 
-/* Eliminar los estilos de .conflict-tracker y subclases aquí */
-
-/* ===== Estética mínima adicional ===== */
-/* Tipografía y micro-interacciones sin afectar la lógica */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
-body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  letter-spacing: -0.015em;
-}
-
-/* Botón de categoría con efecto sutil */
+/* Botón de categoría - diseño refinado */
 .category-item {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
+  background: rgba(44, 47, 67, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
   transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  margin-bottom: 4px;
 }
 
 .category-item:hover {
-  background: rgba(255, 255, 255, 0.10);
-  border-color: rgba(255, 255, 255, 0.20);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  background: rgba(55, 60, 80, 0.7);
+  border-color: rgba(135, 206, 235, 0.15);
+  transform: translateX(2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 /* Badges con look profesional */

@@ -1,7 +1,11 @@
 import { Router } from 'express';
-import { getGdpLatest, getGdpByCountry, getGdpPerCapitaLatest, getGdpPerCapitaByCountry, getInflationLatest, getInflationByCountry, getIndicatorLatest, getIndicatorTimeSeriesController } from '../controllers/indicator.controller';
+import { getGdpLatest, getGdpByCountry, getGdpPerCapitaLatest, getGdpPerCapitaByCountry, getInflationLatest, getInflationByCountry, getIndicatorLatest, getIndicatorTimeSeriesController, getIndicatorBatch } from '../controllers/indicator.controller';
 
 const router = Router();
+
+// Batch: fetch multiple indicators in a single request
+// GET /api/indicators/batch?slugs=gdp,inflation,gini,...
+router.get('/batch', getIndicatorBatch);
 
 // Get latest GDP values for all countries from database
 router.get('/gdp/latest', getGdpLatest);

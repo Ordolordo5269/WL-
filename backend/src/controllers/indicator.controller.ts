@@ -1,5 +1,6 @@
 import { Request, Response, RequestHandler } from 'express';
 import { getGdpLatestByIso3, getGdpByIso3, getGdpPerCapitaLatestByIso3, getGdpPerCapitaByIso3, getInflationLatestByIso3, getInflationByIso3, getIndicatorLatestBySlug, getIndicatorTimeSeries } from '../services/indicator.service';
+import { memoryCache } from '../core/cache/memoryCache';
 
 export const getGdpLatest: RequestHandler = async (_req: Request, res: Response) => {
   try {
@@ -205,6 +206,60 @@ export const getIndicatorTimeSeriesController: RequestHandler = async (req: Requ
     console.error(`getIndicatorTimeSeries error (${req.params.slug}/${req.params.iso3}):`, error);
     res.status(500).json({ 
       error: 'Failed to fetch time series data',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+/**
+ * Batch endpoint: fetch latest values for multiple indicators in a single request.
+ * GET /api/indicators/batch?slugs=gdp,inflation,gini,...
+ * Returns { [slug]: { [iso3]: { value, year } } }
+ * Cached in memory for 5 minutes to avoid repeated DB hits.
+ */
+const BATCH_CACHE_TTL = 5 * 60 * 1000; // 5 min
+
+export const getIndicatorBatch: RequestHandler = async (req: Request, res: Response) => {
+  try {
+    const rawSlugs = req.query.slugs;
+    if (!rawSlugs || typeof rawSlugs !== 'string') {
+      return res.status(400).json({ error: 'Missing or invalid "slugs" query param. Example: ?slugs=gdp,inflation,gini' });
+    }
+
+    const slugs = rawSlugs.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    if (slugs.length === 0) {
+      return res.status(400).json({ error: 'No valid slugs provided' });
+    }
+    if (slugs.length > 20) {
+      return res.status(400).json({ error: 'Too many slugs (max 20)' });
+    }
+
+    // Build result, checking memory cache first per slug
+    const result: Record<string, Record<string, { value: number | null; year: number | null }>> = {};
+
+    await Promise.all(slugs.map(async (slug) => {
+      const cacheKey = `ind:latest:${slug}`;
+      const cached = memoryCache.get<Record<string, { value: number | null; year: number | null }>>(cacheKey);
+      if (cached) {
+        result[slug] = cached;
+        return;
+      }
+
+      const data = await getIndicatorLatestBySlug(slug);
+      const normalized: Record<string, { value: number | null; year: number | null }> = {};
+      for (const [iso3, entry] of Object.entries(data)) {
+        normalized[iso3] = { value: entry.value, year: entry.year };
+      }
+      memoryCache.set(cacheKey, normalized, BATCH_CACHE_TTL);
+      result[slug] = normalized;
+    }));
+
+    res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600');
+    res.json(result);
+  } catch (error) {
+    console.error('getIndicatorBatch error:', error);
+    res.status(500).json({
+      error: 'Failed to fetch batch indicator data',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }

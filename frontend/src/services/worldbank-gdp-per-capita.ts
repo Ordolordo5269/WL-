@@ -58,9 +58,9 @@ export async function fetchGdpPerCapitaLatestByIso3(options?: {
   forceRefresh?: boolean;
 }): Promise<Record<Iso3, GdpPerCapitaEntry>> {
   const cacheKey = makeCacheKey();
-  // Clear cache on localhost or if forceRefresh is true
-  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || options?.forceRefresh)) {
-    localStorage.removeItem(cacheKey);
+  // Only clear cache when explicitly requested (forceRefresh)
+  if (options?.forceRefresh) {
+    try { localStorage.removeItem(cacheKey); } catch {}
   }
   const cached = loadCache<Record<Iso3, GdpPerCapitaEntry>>(cacheKey);
   if (cached && !options?.forceRefresh) return cached;

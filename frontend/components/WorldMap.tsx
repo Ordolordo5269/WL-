@@ -12,7 +12,16 @@ import { AVAILABLE_HISTORY_YEARS, snapToAvailableYear } from '../src/utils/histo
 import { ConflictDataManager, type ConflictData } from '../services/conflict-tracker/conflict-data-manager';
 import type { GeoCity } from '../services/geo.service';
 
-mapboxgl.accessToken = 'pk.eyJ1IjoiYW5kcmVzb29kIiwiYSI6ImNtNWNtMmd4dzJlZmQybXFyMGJuMDFxemsifQ.t4UlHVJhUi9ntjG5Tiq5_A';
+// Mapbox token from environment variable (see frontend/.env)
+const _mbToken = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
+if (!_mbToken) {
+  console.error(
+    '[WorldMap] VITE_MAPBOX_TOKEN is not defined. ' +
+    'Make sure frontend/.env exists, is UTF-8 encoded (no BOM), ' +
+    'contains VITE_MAPBOX_TOKEN=pk.xxx, and restart the Vite dev server.'
+  );
+}
+mapboxgl.accessToken = _mbToken || '';
 
 interface WorldMapProps {
   onCountrySelect: (countryName: string) => void;
@@ -22,6 +31,8 @@ interface WorldMapProps {
   onConflictClick?: (conflictId: string) => void;
   selectedConflictId?: string | null;
   isLeftSidebarOpen?: boolean;
+  /** Called once when map tiles + style finish loading (map.on('load')) */
+  onMapReady?: () => void;
 }
 
 // Tipos específicos para evitar 'any'
@@ -70,7 +81,7 @@ interface WorldMapRef {
   flyToCity?: (lat: number, lng: number, cityName?: string) => void;
 }
 
-const WorldMap = forwardRef<WorldMapRef, WorldMapProps>(({ onCountrySelect, selectedCountry, onResetView, conflicts = [], selectedConflictId, isLeftSidebarOpen = false }, ref) => {
+const WorldMap = forwardRef<WorldMapRef, WorldMapProps>(({ onCountrySelect, selectedCountry, onResetView, conflicts = [], selectedConflictId, isLeftSidebarOpen = false, onMapReady }, ref) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const geocoderContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -1948,7 +1959,7 @@ const WorldMap = forwardRef<WorldMapRef, WorldMapProps>(({ onCountrySelect, sele
 
     // Buscador de países en inglés
     const geocoder = new MapboxGeocoder({
-      accessToken: mapboxgl.accessToken as string,
+      accessToken: mapboxgl.accessToken || '',
       // @ts-expect-error mapbox-gl-geocoder types expect full module; runtime is fine
       mapboxgl: mapboxgl as unknown as typeof mapboxgl,
       types: 'country',
@@ -2173,6 +2184,7 @@ const WorldMap = forwardRef<WorldMapRef, WorldMapProps>(({ onCountrySelect, sele
     // Configurar el globo y capas cuando el mapa esté cargado
     map.on('load', () => {
       setIsMapLoaded(true);
+      onMapReady?.();
       // Configurar la atmósfera del globo con fondo estrellado
       applyFog();
       // Restaurar y aplicar terreno si estaba activo

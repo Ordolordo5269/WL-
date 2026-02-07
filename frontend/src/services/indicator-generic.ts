@@ -58,10 +58,9 @@ export async function fetchIndicatorLatestByIso3(
 	options?: { cacheTtlMs?: number; forceRefresh?: boolean }
 ): Promise<Record<Iso3, IndicatorEntry>> {
 	const cacheKey = makeCacheKey(code);
-	if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || options?.forceRefresh)) {
-		try {
-			localStorage.removeItem(cacheKey);
-		} catch {}
+	// Only clear cache when explicitly requested (forceRefresh)
+	if (options?.forceRefresh) {
+		try { localStorage.removeItem(cacheKey); } catch {}
 	}
 	const cached = loadCache<Record<Iso3, IndicatorEntry>>(cacheKey);
 	if (cached && !options?.forceRefresh) return cached;

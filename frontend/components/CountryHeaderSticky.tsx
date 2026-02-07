@@ -62,9 +62,9 @@ export default function CountryHeaderSticky({ countryData, countryName }: Countr
       <div className="country-header-content">
         {/* Left: Flag */}
         <div className="country-header-flag">
-          {countryData?.flags?.png && (
+          {(countryData?.flags?.svg || countryData?.flags?.png) && (
             <img 
-              src={countryData.flags.png} 
+              src={countryData.flags.svg || countryData.flags.png} 
               alt={`Flag of ${countryName}`}
               className="country-flag-image"
               onError={(e) => {

@@ -576,9 +576,9 @@ export default function CountrySidebar({ isOpen, onClose, countryName, onNavigat
                 )}
                 <div className="header-top-row">
                   <div className="flag-container">
-                    {countryData?.flags?.png && (
+                    {(countryData?.flags?.svg || countryData?.flags?.png) && (
                       <img 
-                        src={countryData.flags.png} 
+                        src={countryData.flags.svg || countryData.flags.png} 
                         alt={`Flag of ${countryName}`}
                         className="country-flag"
                         onError={(e) => {

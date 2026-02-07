@@ -5,13 +5,22 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>World Globe</title>
-    <!-- Mapbox GL CSS -->
+
+    <!-- Preconectar a dominios externos para reducir latencia -->
+    <link rel="preconnect" href="https://api.mapbox.com" crossorigin>
+    <link rel="preconnect" href="https://api.tiles.mapbox.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- Google Fonts: carga no bloqueante con font-display: swap -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+
+    <!-- Mapbox GL CSS — preload first, then apply as stylesheet for fastest paint -->
+    <link rel="preload" href="https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css" as="style">
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css" rel="stylesheet" />
-    <!-- Precargar recursos críticos -->
-    <link rel="preconnect" href="https://api.mapbox.com">
-    <link rel="preconnect" href="https://api.tiles.mapbox.com">
+
     <style>
-      /* CSS crítico inline para evitar flash */
+      /* CSS crítico inline — fondo oscuro inmediato, sin flash blanco */
       html, body {
         margin: 0;
         padding: 0;

@@ -7,15 +7,15 @@
   min-width: 340px;
   max-width: 480px;
   height: 100vh;
-  background: linear-gradient(135deg, rgba(15, 15, 30, 0.96) 0%, rgba(22, 30, 49, 0.96) 100%);
-  backdrop-filter: blur(18px);
-  border-left: 0.5px solid rgba(135, 206, 235, 0.1);
+  background: linear-gradient(165deg, rgba(18, 22, 35, 0.98) 0%, rgba(24, 32, 52, 0.96) 50%, rgba(18, 22, 35, 0.98) 100%);
+  backdrop-filter: blur(20px) saturate(1.1);
+  border-left: 0.5px solid rgba(135, 206, 235, 0.08);
   color: #ffffff;
   z-index: 50;
   display: flex;
   flex-direction: column;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.6);
+  box-shadow: -12px 0 48px rgba(0, 0, 0, 0.5), -2px 0 0 rgba(255, 255, 255, 0.02);
   will-change: transform, opacity;
   transform: translateZ(0);
   transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -589,7 +589,7 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 4px 6px;
+  padding: 8px 10px;
   /* Optimización de scroll */
   scroll-behavior: smooth;
   overscroll-behavior: contain;
@@ -1643,9 +1643,9 @@
 
 /* Enhanced Country Sidebar Header Styles - Optimized Space */
 .sidebar-header {
-  padding: 12px 16px 10px 16px;
+  padding: 14px 16px 12px 16px;
   border-bottom: 0.5px solid rgba(135, 206, 235, 0.08);
-  background: rgba(15, 23, 42, 0.6); /* Unified with sidebar */
+  background: linear-gradient(180deg, rgba(20, 30, 48, 0.85) 0%, rgba(15, 23, 42, 0.75) 100%);
   transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
@@ -1656,26 +1656,25 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  /* Subtle professional accents in the corners */
+  /* Acentos sutiles en esquinas - más refinados */
   background:
-    radial-gradient(120px 60px at 10% 0%, rgba(59, 130, 246, 0.12), transparent 60%),
-    radial-gradient(120px 60px at 90% 0%, rgba(147, 51, 234, 0.10), transparent 60%);
+    radial-gradient(140px 80px at 5% 0%, rgba(59, 130, 246, 0.08), transparent 70%),
+    radial-gradient(140px 80px at 95% 0%, rgba(147, 51, 234, 0.06), transparent 70%);
 }
 
-/* Background flag overlay inside header */
+/* Background flag overlay inside header - refuerza la presencia de la bandera */
 .sidebar-header .flag-bg {
   position: absolute;
   inset: 0;
   background-repeat: no-repeat;
-  background-position: center center;
-  background-size: 140%;
-  opacity: 0.22;
-  filter: blur(1px) saturate(1.2) contrast(1.1);
+  background-position: center 35%;
+  background-size: 130%;
+  opacity: 0.28;
+  filter: blur(1px) saturate(1.15) contrast(1.1);
   pointer-events: none;
   z-index: 0;
-  /* Máscara más amplia que permite ver más de la bandera, extendiéndose más abajo */
-  -webkit-mask-image: radial-gradient(180% 150% at 50% 40%, rgba(0,0,0,1) 40%, rgba(0,0,0,0.85) 60%, rgba(0,0,0,0.6) 80%, rgba(0,0,0,0.3) 95%, rgba(0,0,0,0) 100%);
-  mask-image: radial-gradient(180% 150% at 50% 40%, rgba(0,0,0,1) 40%, rgba(0,0,0,0.85) 60%, rgba(0,0,0,0.6) 80%, rgba(0,0,0,0.3) 95%, rgba(0,0,0,0) 100%);
+  -webkit-mask-image: radial-gradient(ellipse 110% 95% at 50% 40%, rgba(0,0,0,0.85) 35%, rgba(0,0,0,0.4) 70%, rgba(0,0,0,0) 100%);
+  mask-image: radial-gradient(ellipse 110% 95% at 50% 40%, rgba(0,0,0,0.85) 35%, rgba(0,0,0,0.4) 70%, rgba(0,0,0,0) 100%);
 }
 
 /* Bandera de fondo más prominente en vista ampliada */
@@ -1895,27 +1894,39 @@
   margin: 0 6px 0 2px;
 }
 
-/* Flag Image Enhancements */
+/* Flag Image Enhancements - Más visible y destacada */
 .country-flag {
-  width: 92px;
-  height: 60px;
+  width: 112px;
+  height: 75px; /* 3:2 ratio */
   object-fit: cover;
   border-radius: 12px;
-  border: 2px solid rgba(71, 85, 105, 0.25);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  /* Sombra pronunciada para destacar del fondo */
+  box-shadow: 
+    0 1px 0 rgba(255, 255, 255, 0.2) inset,
+    0 6px 20px rgba(0, 0, 0, 0.5),
+    0 12px 32px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(0, 0, 0, 0.15);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), 
+              box-shadow 0.25s ease,
+              border-color 0.2s ease;
   flex-shrink: 0;
 }
 
 @media (max-width: 420px) {
-  .country-flag { width: 84px; height: 56px; }
+  .country-flag { width: 96px; height: 64px; }
   .country-title { font-size: clamp(20px, 6vw, 26px); }
   .header-top-row { gap: 12px; }
 }
 
 .country-flag:hover {
-  transform: scale(1.1);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.3);
+  transform: scale(1.05);
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 
+    0 1px 0 rgba(255, 255, 255, 0.25) inset,
+    0 8px 28px rgba(0, 0, 0, 0.55),
+    0 16px 40px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(0, 0, 0, 0.2);
 }
 
 /* Enhanced Category Buttons - Optimized Space */
@@ -1923,37 +1934,37 @@
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  background: rgba(30, 30, 50, 0.6);
-  border: 0.5px solid rgba(135, 206, 235, 0.15);
-  border-radius: 6px;
+  gap: 12px;
+  padding: 11px 14px;
+  background: rgba(44, 47, 67, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
   color: #ffffff;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: left;
-  margin-bottom: 3px;
-  backdrop-filter: blur(5px);
+  margin-bottom: 4px;
+  backdrop-filter: blur(6px);
 }
 
 .sidebar-content button:hover {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(135, 206, 235, 0.25);
-  transform: translateX(1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  background: rgba(55, 60, 80, 0.7);
+  border-color: rgba(135, 206, 235, 0.18);
+  transform: translateX(2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .sidebar-content button:active {
-  transform: translateX(1px);
+  transform: translateX(2px) scale(0.995);
 }
 
 /* Enhanced Category Open State */
 .category-open {
-  background: rgba(59, 130, 246, 0.12) !important;
-  border-color: rgba(59, 130, 246, 0.4) !important;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  background: rgba(59, 130, 246, 0.1) !important;
+  border-color: rgba(59, 130, 246, 0.25) !important;
+  box-shadow: 0 2px 12px rgba(59, 130, 246, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.04);
   position: relative;
 }
 
@@ -1964,8 +1975,8 @@
   top: 0;
   bottom: 0;
   width: 3px;
-  background: linear-gradient(to bottom, rgba(59, 130, 246, 0.6), rgba(6, 182, 212, 0.5));
-  border-radius: 2px 0 0 2px;
+  background: linear-gradient(to bottom, rgba(59, 130, 246, 0.7), rgba(6, 182, 212, 0.5));
+  border-radius: 3px 0 0 3px;
 }
 
 /* Enhanced Info Items */
@@ -2022,10 +2033,11 @@
 
 .sidebar-counter {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.55);
   text-align: center;
   position: relative;
   z-index: 1;
+  letter-spacing: 0.2px;
 }
 
 /* ============================================
@@ -2113,12 +2125,20 @@
   flex-shrink: 0;
 }
 
+/* Banderas unificadas: estilo premium en header sticky y comparador */
 .country-flag-image {
   width: 64px;
   height: 48px;
   object-fit: cover;
-  border-radius: 4px;
+  border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.country-flag-image:hover {
+  transform: scale(1.02);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset, 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
 .country-header-info {
