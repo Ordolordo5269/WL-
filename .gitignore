@@ -1,3 +1,33 @@
+# Environment files (never commit secrets)
+.env
+**/.env
+.env.*
+!.env.example
+!.env.example.*
+
+# Node / frontend & backend builds
+node_modules/
+**/node_modules/
+dist/
+build/
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+
+# Prisma local artifacts (if any)
+backend/prisma/dev.db
+backend/prisma/dev.db-journal
+
+# Local Postgres volume/data (do not version)
+pgdata/
 # Dependencies
 node_modules/
 */node_modules/
