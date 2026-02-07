@@ -1,6 +1,6 @@
 import { Request, Response, RequestHandler } from 'express';
 import {
-  getCountries,
+  getCountriesFromDatabase,
   getCountryBasicInfo,
   searchCountries,
   getCountryByCode,
@@ -9,11 +9,20 @@ import {
 
 export const listCountries: RequestHandler = async (_req: Request, res: Response) => {
   try {
-    const data = await getCountries();
-    res.json({ data, total: Array.isArray(data) ? data.length : undefined });
+    const data = await getCountriesFromDatabase();
+    if (Array.isArray(data) && data.length > 0) {
+      return res.json({ data, total: data.length });
+    }
+    // If cache is empty, return empty array instead of error
+    return res.json({ data: [], total: 0, warning: 'Cache is empty' });
   } catch (error) {
     console.error('listCountries error:', error);
-    res.status(500).json({ error: 'Failed to load countries cache' });
+    // Return 200 with empty data instead of 500
+    return res.status(200).json({ 
+      data: [], 
+      total: 0, 
+      error: 'Failed to load countries cache' 
+    });
   }
 };
 
@@ -67,14 +76,65 @@ export const getCountryByCodeController: RequestHandler = async (req: Request, r
 export const getAllCountriesController: RequestHandler = async (_req: Request, res: Response) => {
   try {
     const result = await getAllCountries();
-    if (result.error) {
-      res.status(500).json({ error: result.error, data: result.data, total: result.total });
-      return;
+    
+    // If we got data (even with an error message), return it
+    if (result.data && Array.isArray(result.data) && result.data.length > 0) {
+      return res.json({
+        data: result.data,
+        total: result.data.length,
+        source: result.error ? 'database' : 'api',
+        ...(result.error && { warning: result.error })
+      });
     }
-    res.json(result);
+    
+    // If no data from getAllCountries, try cache as last resort
+    try {
+      const cachedData = await getCountriesFromDatabase();
+      if (Array.isArray(cachedData) && cachedData.length > 0) {
+        console.log(`✅ Using cached countries (${cachedData.length} countries) as fallback`);
+        return res.json({
+          data: cachedData,
+          total: cachedData.length,
+          source: 'cache',
+          warning: 'Using cached data as fallback'
+        });
+      }
+    } catch (cacheError) {
+      console.error('Failed to load cached countries:', cacheError);
+    }
+    
+    // If everything fails, return empty array (not an error, just no data)
+    console.warn('⚠️ No countries available from any source');
+    return res.status(200).json({ 
+      data: [], 
+      total: 0, 
+      warning: result.error || 'No countries available from any source'
+    });
   } catch (error) {
-    console.error('getAllCountriesController error:', error);
-    res.status(500).json({ error: 'Failed to fetch countries' });
+    console.error('❌ getAllCountriesController error:', error);
+    
+    // Try cache as last resort before returning error
+    try {
+      const cachedData = await getCountriesFromDatabase();
+      if (Array.isArray(cachedData) && cachedData.length > 0) {
+        console.log(`✅ Using cached countries (${cachedData.length} countries) as fallback after error`);
+        return res.json({
+          data: cachedData,
+          total: cachedData.length,
+          source: 'cache',
+          warning: 'Using cached data due to error'
+        });
+      }
+    } catch (cacheError) {
+      console.error('Failed to load cached countries:', cacheError);
+    }
+    
+    // Return 200 with empty data instead of 500 to prevent frontend errors
+    return res.status(200).json({ 
+      data: [], 
+      total: 0,
+      error: error instanceof Error ? error.message : 'Failed to fetch countries'
+    });
   }
 };
 

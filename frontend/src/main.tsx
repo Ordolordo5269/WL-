@@ -1,8 +1,9 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom'
+import { AuthProvider } from './contexts/AuthContext'
 import './index.css'
-import App from './App.tsx'
-import './styles/sidebar.css'; // Import sidebar styles globally
+import AppRouter from './AppRouter.tsx'
 
 // Función para mostrar el contenido cuando todo esté listo
 function showContent() {
@@ -17,6 +18,15 @@ window.addEventListener('load', () => {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <BrowserRouter
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true
+      }}
+    >
+      <AuthProvider>
+        <AppRouter />
+      </AuthProvider>
+    </BrowserRouter>
   </StrictMode>,
 )

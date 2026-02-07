@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import predictive analysis styles */
+@import './styles/predictive-analysis.css';
+
+/* Import compare countries styles */
+@import './styles/compare-countries.css';
+
 /* Eliminar márgenes y padding por defecto */
 * {
   margin: 0;

@@ -1,0 +1,579 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EntityType {
+  COUNTRY
+  REGION
+  CITY
+  COMPANY
+  INVESTOR
+  PERSON
+  MINE
+  RESOURCE
+  FACILITY
+  PROJECT
+  ORGANIZATION
+  SECTOR
+  PIPELINE
+  PORT
+  RAILWAY
+  TREATY
+}
+
+enum RelationType {
+  LOCATED_IN
+  OWNS
+  OPERATES
+  INVESTS_IN
+  EXTRACTS_RESOURCE
+  SUPPLIES_TO
+  TRANSPORTED_VIA
+  PART_OF
+  LICENSED_BY
+  REGULATED_BY
+  SANCTIONED_BY
+  RELATED_TO
+  MEMBER_OF
+  OBSERVES
+  SIGNATORY_TO
+  RATIFIED
+  APPLIES_TO
+  DEPOSITORY
+  COVERS_SECTOR
+}
+
+enum Frequency {
+  ANNUAL
+  QUARTERLY
+  MONTHLY
+  ONE_OFF
+}
+
+model Entity {
+  id           String     @id @default(uuid()) @db.Uuid
+  type         EntityType
+  name         String
+  slug         String     @unique
+  iso2         String?    @db.VarChar(2)
+  iso3         String?    @db.VarChar(3)
+  isoNumeric   Int?
+  unM49        String?
+  wbCode       String?
+  region       String?
+  subregion    String?
+  country      String?
+  lat          Float?
+  lng          Float?
+  validFrom    DateTime?
+  validTo      DateTime?
+  props        Json?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  fromRelations Relation[] @relation("From")
+  toRelations   Relation[] @relation("To")
+  indicators    IndicatorValue[]
+  // Back-relations for typed specs
+  organizationSpec OrganizationSpec?
+  treatySpec       TreatySpec?
+  mineSpec         MineSpec?
+  resourceSpec     ResourceSpec?
+  facilitySpec     FacilitySpec?
+  companyProfile   CompanyProfile?
+  // Back-relations for other models
+  boundaries       Boundary[]
+  tradeFrom        TradeFlow[]     @relation("TradeFrom")
+  tradeTo          TradeFlow[]     @relation("TradeTo")
+  ownerHoldings    Ownership[]     @relation("Owner")
+  ownedTargets     Ownership[]     @relation("Owned")
+  infrastructureNodes InfrastructureNode[]
+  naturalFeatureCoverages NaturalFeatureCoverage[]
+
+  @@index([type, country])
+  @@index([name])
+  @@index([iso3])
+}
+
+model Relation {
+  id        String       @id @default(uuid())
+  type      RelationType
+  fromId    String       @db.Uuid
+  toId      String       @db.Uuid
+  from      Entity       @relation("From", fields: [fromId], references: [id])
+  to        Entity       @relation("To", fields: [toId], references: [id])
+  role      String?
+  percent   Float?
+  amount    Decimal?
+  currency  String?
+  startDate DateTime?
+  endDate   DateTime?
+  props     Json?
+  sources   Json?
+  createdAt DateTime     @default(now())
+
+  @@index([type, fromId])
+  @@index([type, toId])
+  @@index([startDate, endDate])
+}
+
+model OrganizationSpec {
+  entityId  String  @id @unique @db.Uuid
+  entity    Entity  @relation(fields: [entityId], references: [id])
+  orgType   String
+  founded   Int?
+  hqCountry String?
+  website   String?
+}
+
+model TreatySpec {
+  entityId       String  @id @unique @db.Uuid
+  entity         Entity  @relation(fields: [entityId], references: [id])
+  shortName      String?
+  signedDate     DateTime?
+  entryIntoForce DateTime?
+  status         String?
+  topics         Json?
+  depository     String?
+  referenceUrl   String?
+}
+
+model MineSpec {
+  entityId  String @id @unique @db.Uuid
+  entity    Entity @relation(fields: [entityId], references: [id])
+  status    String?
+  method    String?
+  startYear Int?
+  endYear   Int?
+  elevation Int?
+}
+
+model ResourceSpec {
+  entityId  String @id @unique @db.Uuid
+  entity    Entity @relation(fields: [entityId], references: [id])
+  commodity String
+  unit      String
+}
+
+model FacilitySpec {
+  entityId     String @id @unique @db.Uuid
+  entity       Entity @relation(fields: [entityId], references: [id])
+  facilityType String
+  unitCapacity String?
+}
+
+model CompanyProfile {
+  entityId  String @id @unique @db.Uuid
+  entity    Entity @relation(fields: [entityId], references: [id])
+  isin      String?
+  ticker    String?
+  hqCountry String?
+  sector    String?
+}
+
+model Indicator {
+  code        String    @id
+  name        String
+  topic       String?
+  unit        String?
+  frequency   Frequency @default(ANNUAL)
+  source      String?
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  values IndicatorValue[]
+}
+
+model IndicatorValue {
+  id            String   @id @default(uuid())
+  entityId      String   @db.Uuid
+  indicatorCode String
+  year          Int
+  value         Decimal?
+  meta          Json?
+  source        String?
+  revisedAt     DateTime?
+
+  entity    Entity    @relation(fields: [entityId], references: [id])
+  indicator Indicator @relation(fields: [indicatorCode], references: [code])
+
+  @@unique([entityId, indicatorCode, year])
+  @@index([entityId, indicatorCode])
+  @@index([indicatorCode, year])
+}
+
+model Boundary {
+  id        String   @id @default(uuid())
+  entityId  String   @db.Uuid
+  name      String
+  versions  BoundaryVersion[]
+  entity    Entity   @relation(fields: [entityId], references: [id])
+}
+
+model BoundaryVersion {
+  id         String   @id @default(uuid())
+  boundaryId String
+  validFrom  DateTime?
+  validTo    DateTime?
+  geojson    Json
+  source     String?
+  boundary   Boundary @relation(fields: [boundaryId], references: [id])
+
+  @@index([validFrom, validTo])
+}
+
+model TradeFlow {
+  id       String  @id @default(uuid())
+  year     Int
+  fromId   String   @db.Uuid
+  toId     String   @db.Uuid
+  hsCode   String
+  quantity Decimal?
+  unit     String?
+  valueUsd Decimal?
+  route    String?
+
+  from Entity @relation("TradeFrom", fields: [fromId], references: [id])
+  to   Entity @relation("TradeTo", fields: [toId], references: [id])
+
+  @@index([fromId, year])
+  @@index([toId, year])
+  @@index([hsCode, year])
+}
+
+model Ownership {
+  id        String   @id @default(uuid())
+  holderId  String   @db.Uuid
+  targetId  String   @db.Uuid
+  percent   Float?
+  startDate DateTime?
+  endDate   DateTime?
+  sources   Json?
+
+  holder Entity @relation("Owner", fields: [holderId], references: [id])
+  target Entity @relation("Owned", fields: [targetId], references: [id])
+
+  @@index([holderId])
+  @@index([targetId])
+}
+
+model InfrastructureNode {
+  id        String  @id @default(uuid())
+  type      String
+  name      String
+  entityId  String?  @db.Uuid
+  lat       Float?
+  lng       Float?
+  capacity  Decimal?
+  unit      String?
+  props     Json?
+
+  entity Entity? @relation(fields: [entityId], references: [id])
+
+  @@index([type])
+}
+
+model InfrastructureEdge {
+  id        String  @id @default(uuid())
+  type      String
+  fromNode  String
+  toNode    String
+  lengthKm  Float?
+  capacity  Decimal?
+  unit      String?
+  validFrom DateTime?
+  validTo   DateTime?
+  geojson   Json?
+  props     Json?
+
+  @@index([type])
+  @@index([validFrom, validTo])
+}
+
+// ============================
+// Natural features (rivers, ranges, peaks)
+// ============================
+
+enum NaturalFeatureType {
+  RIVER
+  MOUNTAIN_RANGE
+  PEAK
+}
+
+enum NaturalLod {
+  LOW
+  MED
+  HIGH
+}
+
+model NaturalFeature {
+  id         String             @id @default(uuid())
+  type       NaturalFeatureType
+  name       String?
+  slug       String             @unique
+  props      Json?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  geometries NaturalGeometry[]
+  coverage   NaturalFeatureCoverage[]
+
+  @@index([type, name])
+}
+
+model NaturalGeometry {
+  id        String         @id @default(uuid())
+  featureId String
+  lod       NaturalLod
+  geojson   Json
+  source    String?
+
+  feature   NaturalFeature  @relation(fields: [featureId], references: [id])
+
+  @@unique([featureId, lod])
+  @@index([lod])
+}
+
+model NaturalFeatureCoverage {
+  featureId String
+  entityId  String         @db.Uuid
+
+  feature   NaturalFeature @relation(fields: [featureId], references: [id])
+  entity    Entity         @relation(fields: [entityId], references: [id])
+
+  @@id([featureId, entityId])
+  @@index([entityId])
+}
+
+// ============================
+// Historical basemaps (DB-backed History Mode)
+// ============================
+
+enum HistoryLod {
+  LOW
+  MED
+  HIGH
+}
+
+model HistoricalPolity {
+  id           String   @id @default(uuid())
+  canonicalKey String   @unique
+  displayName  String?
+  colorHex     String?
+  validFromYear Int?
+  validToYear   Int?
+  props        Json?
+
+  areas        HistoricalArea[]
+}
+
+model HistoricalArea {
+  id              String   @id @default(uuid())
+  year            Int
+  name            String?
+  canonicalName   String?
+  borderPrecision Int?
+  props           Json?
+  polityId        String?
+
+  polity          HistoricalPolity? @relation(fields: [polityId], references: [id])
+  geometries      HistoricalAreaGeometry[]
+
+  @@index([year])
+}
+
+model HistoricalAreaGeometry {
+  id      String     @id @default(uuid())
+  areaId  String
+  lod     HistoryLod
+  geojson Json
+  source  String?
+
+  area    HistoricalArea @relation(fields: [areaId], references: [id])
+
+  @@unique([areaId, lod])
+}
+
+// ============================
+// Conflict Tracker
+// ============================
+
+enum ConflictStatus {
+  WAR
+  WARM
+  IMPROVING
+  RESOLVED
+  FROZEN
+}
+
+model Conflict {
+  id                String   @id @default(uuid()) @db.Uuid
+  slug              String   @unique
+  name              String
+  country           String
+  region            String
+  conflictType      String
+  description       String   @db.Text
+  status            ConflictStatus
+  startDate         DateTime
+  escalationDate    DateTime?
+  endDate           DateTime?
+  coordinates       Json     // { lat: number, lng: number }
+  involvedISO       String[] // Array of ISO 3166-1 alpha-3 codes
+  sources           String[] // Array of source strings
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Relations
+  casualties        ConflictCasualty[]
+  factions          ConflictFaction[]
+  events            ConflictEvent[]
+  news              ConflictNews[]
+  updates           ConflictUpdate[]
+  
+  @@index([status])
+  @@index([region])
+  @@index([startDate])
+  @@index([country])
+}
+
+model ConflictCasualty {
+  id            String   @id @default(uuid()) @db.Uuid
+  conflictId    String   @db.Uuid
+  date          DateTime
+  military      Int?
+  civilian      Int?
+  total         Int
+  source        String?
+  notes         String?  @db.Text
+  
+  conflict      Conflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
+  
+  @@index([conflictId, date])
+}
+
+model ConflictFaction {
+  id            String   @id @default(uuid()) @db.Uuid
+  conflictId    String   @db.Uuid
+  name          String
+  color         String?  // Hex color for map visualization
+  goals         String[] // Array of goal strings
+  allies        String[] // Array of ISO codes
+  
+  conflict      Conflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
+  support       ConflictFactionSupport[]
+  
+  @@index([conflictId])
+}
+
+model ConflictFactionSupport {
+  id            String   @id @default(uuid()) @db.Uuid
+  factionId     String   @db.Uuid
+  supporterISO  String   // ISO code of supporting country
+  supportType   String   // "military", "diplomatic", "economic"
+  weapons       String[]
+  aidValue      String?
+  strategicAssets String[]
+  
+  faction       ConflictFaction @relation(fields: [factionId], references: [id], onDelete: Cascade)
+  
+  @@index([factionId])
+}
+
+model ConflictEvent {
+  id            String   @id @default(uuid()) @db.Uuid
+  conflictId    String   @db.Uuid
+  title         String
+  date          DateTime
+  description   String?  @db.Text
+  eventType     String?  // "battle", "ceasefire", "agreement", etc.
+  location      String?
+  coordinates   Json?    // { lat: number, lng: number }
+  
+  conflict      Conflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
+  
+  @@index([conflictId, date])
+}
+
+model ConflictUpdate {
+  id            String   @id @default(uuid()) @db.Uuid
+  conflictId    String   @db.Uuid
+  date          DateTime
+  status        ConflictStatus?
+  description   String   @db.Text
+  source        String?
+  
+  conflict      Conflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
+  
+  @@index([conflictId, date])
+}
+
+model ConflictNews {
+  id            String   @id @default(uuid()) @db.Uuid
+  conflictId    String   @db.Uuid
+  title         String
+  source        String
+  url           String
+  publishedAt   DateTime
+  description   String?  @db.Text
+  imageUrl      String?
+  
+  conflict      Conflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
+  
+  @@index([conflictId, publishedAt])
+}
+
+// ============================
+// User Authentication & Favorites
+// ============================
+
+model User {
+  id          String    @id @default(uuid()) @db.Uuid
+  email       String    @unique
+  passwordHash String
+  name        String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  favorites   Favorite[]
+  
+  @@index([email])
+}
+
+model Favorite {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  countryIso3 String   @db.VarChar(3)
+  createdAt   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, countryIso3])
+  @@index([userId])
+  @@index([countryIso3])
+}
+
+// ============================
+// GeoDB Cities API Cache
+// ============================
+
+model GeoCache {
+  id        String   @id // format: "cities:{iso2}" or "regions:{iso2}"
+  type      String   // 'cities' | 'regions'
+  iso2      String   @db.VarChar(2)
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  expiresAt DateTime
+  
+  @@index([iso2])
+  @@index([type])
+  @@index([expiresAt])
+}
+

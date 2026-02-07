@@ -51,11 +51,16 @@ build/
 **/.env
 
 # IDE files
+.cursor/
+**/.cursor/
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+
+# Local ingestion logs
+backend/ingestion-log.txt
 
 # OS files
 .DS_Store

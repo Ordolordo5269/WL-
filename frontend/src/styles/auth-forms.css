@@ -1,0 +1,398 @@
+/* Auth Forms Styles - Login and Register */
+
+/* Glass card effect - reusable class */
+.glass-card {
+  background: linear-gradient(135deg, rgba(15, 15, 30, 0.96) 0%, rgba(22, 30, 49, 0.96) 100%);
+  backdrop-filter: blur(18px);
+  border: 1px solid rgba(71, 85, 105, 0.3);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+/* Auth form container - override global overflow for auth pages */
+.auth-page-container {
+  min-height: 100vh;
+  width: 100%;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 1rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+/* Wrapper para el formulario - asegura centrado */
+.auth-page-container > div {
+  width: 100% !important;
+  max-width: 28rem !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+/* Auth form card - Login (narrower) */
+.auth-form-card {
+  width: 100%;
+  max-width: 28rem;
+  padding: 2rem;
+  border-radius: 1rem;
+  margin: 0 auto;
+}
+
+/* Auth form card - Register (wider, two columns) */
+.auth-form-card.register {
+  max-width: 100%;
+  width: 100%;
+  padding: 1.75rem;
+}
+
+/* Auth form header */
+.auth-form-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.auth-form-card.register .auth-form-header {
+  margin-bottom: 1rem;
+}
+
+.auth-form-card.register .auth-form-icon-container {
+  width: 3.5rem;
+  height: 3.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.auth-form-card.register .auth-form-title {
+  font-size: 1.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.auth-form-card.register .auth-form-subtitle {
+  font-size: 0.875rem;
+}
+
+.auth-form-icon-container {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.2);
+  margin-bottom: 1rem;
+}
+
+.auth-form-title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 0.5rem;
+}
+
+.auth-form-subtitle {
+  color: #9ca3af;
+}
+
+/* Error message */
+.auth-error-message {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.auth-error-text {
+  color: #f87171;
+  font-size: 0.875rem;
+}
+
+/* Form fields */
+.auth-form-field {
+  margin-bottom: 1.5rem;
+}
+
+.auth-form-card.register .auth-form-field {
+  margin-bottom: 1.25rem;
+}
+
+/* Register form - two column layout */
+.auth-form-card.register form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem 1.5rem;
+}
+
+.auth-form-card.register .auth-form-field {
+  grid-column: span 1;
+  margin-bottom: 0;
+}
+
+.auth-form-card.register .auth-form-field .auth-form-label {
+  margin-bottom: 0.375rem;
+  font-size: 0.8125rem;
+}
+
+.auth-form-card.register .auth-form-submit {
+  grid-column: span 2;
+  margin-top: 0.25rem;
+}
+
+.auth-form-card.register .auth-form-header {
+  grid-column: span 2;
+}
+
+.auth-form-card.register .auth-error-message {
+  grid-column: span 2;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+}
+
+.auth-form-card.register .auth-form-link {
+  grid-column: span 2;
+  margin-top: 0.75rem;
+}
+
+.auth-form-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #d1d5db;
+  margin-bottom: 0.5rem;
+}
+
+.auth-form-input-wrapper {
+  position: relative;
+}
+
+.auth-form-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+.auth-form-input {
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 2.5rem;
+  background: rgba(31, 41, 55, 0.5);
+  border: 1px solid rgba(55, 65, 81, 1);
+  border-radius: 0.5rem;
+  color: #ffffff;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.auth-form-input::placeholder {
+  color: #6b7280;
+}
+
+.auth-form-input:focus {
+  outline: none;
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.auth-form-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Password visibility toggle */
+.auth-form-password-toggle {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.auth-form-password-toggle:hover {
+  color: #ffffff;
+}
+
+/* Password hint */
+.auth-form-hint {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+/* Submit button */
+.auth-form-submit {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: #2563eb;
+  color: #ffffff;
+  font-weight: 600;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.auth-form-submit:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.auth-form-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Link to other auth page */
+.auth-form-link {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+.auth-form-link-text {
+  color: #9ca3af;
+  font-size: 0.875rem;
+}
+
+.auth-form-link-button {
+  color: #60a5fa;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.auth-form-link-button:hover {
+  color: #93c5fd;
+}
+
+/* Validation states */
+.auth-form-input.valid {
+  border-color: rgba(34, 197, 94, 0.5);
+}
+
+.auth-form-input.invalid {
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.auth-form-validation-icon {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1rem;
+  height: 1rem;
+  pointer-events: none;
+}
+
+.auth-form-validation-icon.valid {
+  color: #4ade80;
+}
+
+.auth-form-validation-icon.invalid {
+  color: #f87171;
+}
+
+/* Password strength indicator */
+.auth-password-strength {
+  margin-top: 0.5rem;
+  display: flex;
+  gap: 0.25rem;
+}
+
+.auth-password-strength-bar {
+  flex: 1;
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(71, 85, 105, 0.5);
+  transition: background 0.2s ease;
+}
+
+.auth-password-strength-bar.weak {
+  background: #ef4444;
+}
+
+.auth-password-strength-bar.fair {
+  background: #f59e0b;
+}
+
+.auth-password-strength-bar.good {
+  background: #3b82f6;
+}
+
+.auth-password-strength-bar.strong {
+  background: #10b981;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .auth-form-card.register form {
+    grid-template-columns: 1fr;
+  }
+  
+  .auth-form-card.register .auth-form-field,
+  .auth-form-card.register .auth-form-submit,
+  .auth-form-card.register .auth-form-header,
+  .auth-form-card.register .auth-error-message,
+  .auth-form-card.register .auth-form-link {
+    grid-column: span 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .auth-form-card {
+    padding: 1.5rem;
+  }
+  
+  .auth-form-card.register {
+    padding: 1.5rem;
+  }
+  
+  .auth-form-title {
+    font-size: 1.5rem;
+  }
+  
+  .auth-form-field {
+    margin-bottom: 1.25rem;
+  }
+}
+
+/* Override global overflow for auth pages - DEBE IR AL FINAL PARA SOBRESCRIBIR */
+body.auth-page {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  height: 100% !important;
+  position: relative !important;
+}
+
+#root.auth-page {
+  position: relative !important;
+  overflow-y: auto !important;
+  height: 100% !important;
+  width: 100% !important;
+  top: 0 !important;
+  left: 0 !important;
+  transform: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+

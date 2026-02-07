@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Globe, Banknote, Landmark, Shield, Users, Globe2, Cpu, Palette, X } from 'lucide-react';
+import { ChevronDown, Globe, Banknote, Landmark, Shield, Users, Globe2, Cpu, Palette, X, Maximize2, Minimize2, TrendingUp, Star } from 'lucide-react';
 import { useEconomyData } from '../hooks/useEconomyData';
 import { useCountryBasicInfo } from '../hooks/useCountryBasicInfo.ts';
 import EconomySection from './EconomySection';
@@ -17,6 +17,12 @@ import { useTechnologyData } from '../hooks/useTechnologyData';
 import TechnologySection from './TechnologySection';
 import { useCultureData } from '../hooks/useCultureData';
 import CultureSection from './CultureSection';
+import HistoricalTrendsSection from './HistoricalTrendsSection';
+import CountryHeaderSticky from './CountryHeaderSticky';
+import CountryKPIs from './CountryKPIs';
+import CountryStaticData from './CountryStaticData';
+import { useAuth } from '../src/contexts/AuthContext';
+import { favoritesService } from '../services/favorites.service';
 
 interface CategoryGroupProps {
   icon: React.ReactNode;
@@ -95,30 +101,129 @@ function CategoryGroup({ icon, title, items, isOpen, onToggle, searchTerm }: Cat
   );
 }
 
+interface GeoCity {
+  id: number;
+  name: string;
+  latitude: number;
+  longitude: number;
+  population: number;
+  region: string;
+  elevationMeters: number | null;
+}
+
 interface CountrySidebarProps {
   isOpen: boolean;
   onClose: () => void;
   countryName: string | null;
+  onNavigateToCity?: (lat: number, lng: number, cityName: string) => void;
+  onCitiesLoaded?: (cities: GeoCity[]) => void;
 }
 
-export default function CountrySidebar({ isOpen, onClose, countryName }: CountrySidebarProps) {
+export default function CountrySidebar({ isOpen, onClose, countryName, onNavigateToCity, onCitiesLoaded }: CountrySidebarProps) {
   const [searchTerm] = useState('');
   const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<boolean>(false);
   
-  // Load basic info data for the selected country
-  const { countryData, isLoading: isBasicInfoLoading, error: basicInfoError } = useCountryBasicInfo(countryName);
+  // Debounce countryName to avoid rapid-fire requests when clicking countries quickly
+  const [debouncedCountryName, setDebouncedCountryName] = useState<string | null>(countryName);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Star button state
+  const { isAuthenticated } = useAuth();
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [isLoadingFavorite, setIsLoadingFavorite] = useState(false);
+  
+  useEffect(() => {
+    // Clear any existing timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    
+    // Set new timer
+    debounceTimerRef.current = setTimeout(() => {
+      setDebouncedCountryName(countryName);
+    }, 200); // 200ms debounce - fast enough for UX, slow enough to batch rapid clicks
+    
+    // Cleanup on unmount or when countryName changes
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [countryName]);
+  
+  // Reset categories when country actually changes (after debounce)
+  useEffect(() => {
+    setOpenCategories(new Set());
+    setExpanded(false);
+  }, [debouncedCountryName]);
+  
+  // Load basic info data for the selected country (always enabled - needed for ISO3)
+  const { countryData, isLoading: isBasicInfoLoading, error: basicInfoError } = useCountryBasicInfo(debouncedCountryName);
   
   // Load society indicators via ISO3 once basic info is available
   const iso3 = countryData?.cca3 ?? null;
+
+  // Check if country is favorited
+  useEffect(() => {
+    if (!isAuthenticated || !iso3) {
+      setIsFavorited(false);
+      return;
+    }
+
+    const checkFavorite = async () => {
+      try {
+        const response = await favoritesService.getFavorites();
+        const favorited = response.favorites.some(f => f.countryIso3 === iso3);
+        setIsFavorited(favorited);
+      } catch (error) {
+        setIsFavorited(false);
+      }
+    };
+
+    checkFavorite();
+  }, [isAuthenticated, iso3]);
+
+  // Handle toggle favorite
+  const handleToggleFavorite = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isAuthenticated || !iso3 || isLoadingFavorite) return;
+
+    setIsLoadingFavorite(true);
+    try {
+      if (isFavorited) {
+        await favoritesService.removeFavorite(iso3);
+        setIsFavorited(false);
+      } else {
+        await favoritesService.addFavorite(iso3);
+        setIsFavorited(true);
+      }
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error);
+    } finally {
+      setIsLoadingFavorite(false);
+    }
+  };
   
-  // Load economy data via ISO3 (uses World Bank APIs)
-  const { economyData, isLoading: isEconomyLoading, error: economyError } = useEconomyData(iso3, countryName);
-  const { data: societyData, isLoading: isSocietyLoading, error: societyError, series: societySeries } = useSocietyData(iso3);
-  const { data: politicsData, isLoading: isPoliticsLoading, error: politicsError } = usePoliticsData(countryName, iso3);
-  const { data: defenseData, isLoading: isDefenseLoading, error: defenseError } = useDefenseData(iso3, countryName);
-  const { data: internationalData, isLoading: isInternationalLoading, error: internationalError } = useInternationalData(iso3, countryName);
-  const { data: technologyData, isLoading: isTechnologyLoading, error: technologyError } = useTechnologyData(iso3, countryName);
-  const { data: cultureData, isLoading: isCultureLoading, error: cultureError } = useCultureData(iso3, countryName);
+  // Determine which categories should load data (lazy loading optimization)
+  // In expanded view, always load all data for Bento Grid
+  // In sidebar view, only load when category is open
+  const shouldLoadEconomy = expanded || openCategories.has('Economy');
+  const shouldLoadSociety = expanded || openCategories.has('Society');
+  const shouldLoadPolitics = expanded || openCategories.has('Politics');
+  const shouldLoadDefense = expanded || openCategories.has('Defense');
+  const shouldLoadInternational = expanded || openCategories.has('International');
+  const shouldLoadTechnology = expanded || openCategories.has('Technology and National Assets');
+  const shouldLoadCulture = expanded || openCategories.has('Culture');
+  
+  // Load data only when needed (lazy loading) - use debounced country name
+  const { economyData, isLoading: isEconomyLoading, error: economyError } = useEconomyData(iso3, debouncedCountryName, shouldLoadEconomy);
+  const { data: societyData, isLoading: isSocietyLoading, error: societyError, series: societySeries, fetchIndicatorSeries: fetchSocietyIndicatorSeries } = useSocietyData(iso3, shouldLoadSociety);
+  const { data: politicsData, isLoading: isPoliticsLoading, error: politicsError } = usePoliticsData(debouncedCountryName, iso3, shouldLoadPolitics);
+  const { data: defenseData, isLoading: isDefenseLoading, error: defenseError } = useDefenseData(iso3, debouncedCountryName, shouldLoadDefense);
+  const { data: internationalData, isLoading: isInternationalLoading, error: internationalError } = useInternationalData(iso3, debouncedCountryName, shouldLoadInternational);
+  const { data: technologyData, isLoading: isTechnologyLoading, error: technologyError } = useTechnologyData(iso3, debouncedCountryName, shouldLoadTechnology);
+  const { data: cultureData, isLoading: isCultureLoading, error: cultureError } = useCultureData(iso3, debouncedCountryName, shouldLoadCulture);
   
   // Search removed per UX request; keep invariant empty term so lists show all items
 
@@ -134,14 +239,22 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
     });
   }, []);
 
-  // Ordered and translated categories for a professional sidebar
-  const categories = [
+  // Memoize categories array to prevent recreation on every render
+  const categories = useMemo(() => [
     {
       icon: <Globe className="text-blue-400" />,
       title: 'General Information',
       items: [
         'Official name', 'Flag', 'Surface area', 'Languages', 'Currency',
         'ISO codes', 'Continent', 'Capital', 'Population', 'Government type'
+      ]
+    },
+    {
+      icon: <TrendingUp className="text-cyan-400" />,
+      title: 'Historical Trends',
+      items: [
+        'GDP evolution', 'GDP per capita', 'Inflation trends', 'GINI index',
+        'Exports/Imports', 'Unemployment rate', 'External debt'
       ]
     },
     {
@@ -197,7 +310,7 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
       title: 'Culture',
       items: ['Religions', 'UNESCO World Heritage', 'Soft power metrics']
     }
-  ];
+  ], []);
 
   // Filter categories for the footer counter
   const visibleCategories = categories.filter(category => {
@@ -209,379 +322,420 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
     return categoryMatches || hasMatchingItems;
   });
 
+  // Calculate panel style for expanded view
+  const panelStyle = useMemo(() => {
+    if (expanded) {
+      return {
+        width: '85vw',
+        maxWidth: '1400px',
+        height: '95vh',
+        maxHeight: '100vh',
+        position: 'fixed' as const,
+        left: '50%',
+        top: '50%',
+        borderRadius: '16px',
+        zIndex: 60
+      };
+    }
+    return {};
+  }, [expanded]);
+
+  // Auto-expand all categories when entering expanded view
+  React.useEffect(() => {
+    if (expanded) {
+      const allCategoryTitles = categories.map(cat => cat.title);
+      setOpenCategories(new Set(allCategoryTitles));
+    }
+  }, [expanded, categories]);
+
+  // Reset expanded state when sidebar closes
+  React.useEffect(() => {
+    if (!isOpen) {
+      setExpanded(false);
+    }
+  }, [isOpen]);
+
+  // Helper function to render category section
+  const renderCategorySection = useCallback((categoryTitle: string, SectionComponent: React.ComponentType<any>, sectionProps: any, inBentoGrid: boolean = false) => {
+    const isOpen = openCategories.has(categoryTitle);
+    const category = categories.find(cat => cat.title === categoryTitle);
+    if (!category) return null;
+
+    // In Bento Grid, we don't need the wrapper card or header
+    if (inBentoGrid && expanded) {
+      return (
+        <div key={categoryTitle} className="bento-section-content">
+          <div className="expanded-category-header">
+            {category.icon}
+            <h3 className="expanded-category-title">{category.title}</h3>
+          </div>
+          <SectionComponent {...sectionProps} />
+        </div>
+      );
+    }
+
+    return (
+      <div key={categoryTitle} className={expanded ? "expanded-category-card" : "mb-2"}>
+        {!expanded && (
+          <button
+            onClick={() => toggleCategory(categoryTitle)}
+            className={`category-item flex w-full items-center gap-3 rounded-lg p-3 text-left transition-all duration-300 ${
+              isOpen ? 'category-open' : ''
+            }`}
+          >
+            {category.icon}
+            <span className="font-medium flex-1">{category.title}</span>
+            <ChevronDown 
+              className={`h-4 w-4 transition-transform duration-300 ${
+                isOpen ? 'rotate-180' : ''
+              }`} 
+            />
+          </button>
+        )}
+        {expanded && (
+          <div className="expanded-category-header">
+            {category.icon}
+            <h3 className="expanded-category-title">{category.title}</h3>
+          </div>
+        )}
+        {(isOpen || expanded) && (
+          <motion.div
+            initial={expanded ? { opacity: 0 } : { opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            className={expanded ? "" : "ml-2 mt-2"}
+          >
+            <SectionComponent {...sectionProps} />
+          </motion.div>
+        )}
+      </div>
+    );
+  }, [expanded, openCategories, categories, toggleCategory]);
+
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div 
-          className="country-sidebar"
-          initial={{ x: '100%', opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          exit={{ x: '100%', opacity: 0 }}
-          transition={{ 
-            type: 'spring',
-            stiffness: 300,
-            damping: 30,
-            duration: 0.3
-          }}
-        >
-          <button
-            onClick={onClose}
-            className="conflict-tracker-close-btn"
-            aria-label="Close sidebar"
+        <>
+          {/* Overlay for expanded view */}
+          {expanded && (
+            <motion.div
+              className="country-info-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2, ease: 'easeInOut' }}
+              onClick={() => setExpanded(false)}
+            />
+          )}
+          
+          <motion.div 
+            className={expanded ? "expanded-country-view" : "country-sidebar"}
+            style={panelStyle}
+            initial={expanded ? { scale: 0.9, opacity: 0 } : { x: '100%', opacity: 0 }}
+            animate={expanded ? { scale: 1, opacity: 1 } : { x: 0, opacity: 1 }}
+            exit={expanded ? { scale: 0.9, opacity: 0 } : { x: '100%', opacity: 0 }}
+            transition={{ 
+              type: 'spring',
+              stiffness: 300,
+              damping: 30,
+              duration: 0.3
+            }}
           >
-            <X className="h-5 w-5" />
-          </button>
-          {/* Header */}
-          <div className="sidebar-header">
-            {countryData?.flags && (countryData.flags.svg || countryData.flags.png) && (
-              <div
-                className="flag-bg"
-                style={{
-                  backgroundImage: `url(${countryData.flags.svg || countryData.flags.png})`
-                }}
-              />
+            {/* Botón de expandir (solo en vista normal) */}
+            {!expanded && (
+              <button
+                onClick={() => setExpanded(true)}
+                className="country-sidebar-expand-btn"
+                aria-label="Expand country info"
+                title="Expand to full view"
+              >
+                <Maximize2 className="h-4 w-4" />
+              </button>
             )}
-            {/* Top row: Flag and Country Info */}
-            <div className="header-top-row">
-              <div className="flag-container">
-                {countryData?.flags?.png && (
-                  <img 
-                    src={countryData.flags.png} 
-                    alt={`Flag of ${countryName}`}
-                    className="country-flag"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
+            
+            {/* Botón de minimizar (solo en vista ampliada) */}
+            {expanded && (
+              <button
+                onClick={() => setExpanded(false)}
+                className="country-sidebar-minimize-btn"
+                aria-label="Minimize country info"
+                title="Return to sidebar view"
+              >
+                <Minimize2 className="h-4 w-4" />
+              </button>
+            )}
+            
+            <button
+              onClick={onClose}
+              className="conflict-tracker-close-btn"
+              aria-label="Close sidebar"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+          {/* New Bento Grid Layout for Expanded View */}
+          {expanded ? (
+            <>
+              {/* Sticky Header */}
+              <CountryHeaderSticky 
+                countryData={countryData}
+                countryName={debouncedCountryName || countryName}
+              />
+
+              {/* Scrollable Content with Bento Grid - Professional Layout */}
+              <div className="expanded-country-content">
+                <div className="bento-grid">
+                  {/* Zone 1: KPIs (Full Width) */}
+                  <div className="bento-zone-kpis">
+                    <CountryKPIs 
+                      countryData={countryData}
+                      economyData={economyData}
+                      isLoading={isEconomyLoading || isBasicInfoLoading}
+                    />
+                  </div>
+
+                  {/* Zone 2: Identity (25%) + Zone 3: Historical Trends (75%) */}
+                  <div className="bento-zone-static">
+                    <CountryStaticData 
+                      countryData={countryData}
+                      isLoading={isBasicInfoLoading}
+                    />
+                  </div>
+
+                  <div className="bento-zone-dynamic">
+                    {renderCategorySection(
+                      'Historical Trends',
+                      HistoricalTrendsSection,
+                      { iso3, countryName: debouncedCountryName || countryName, fetchSocietyIndicatorSeries: fetchSocietyIndicatorSeries },
+                      true
+                    )}
+                  </div>
+
+                  {/* Zone 4: Economy (50%) */}
+                  <div className="bento-zone-economy">
+                    {renderCategorySection(
+                      'Economy',
+                      EconomySection,
+                      { economyData, isLoading: isEconomyLoading, error: economyError },
+                      true
+                    )}
+                  </div>
+
+                  {/* Zone 5: Society (50%) */}
+                  <div className="bento-zone-society">
+                    {renderCategorySection(
+                      'Society',
+                      SocietySection,
+                      { data: societyData, isLoading: isSocietyLoading, error: societyError, series: societySeries, fetchIndicatorSeries: fetchSocietyIndicatorSeries, iso3 },
+                      true
+                    )}
+                  </div>
+
+                  {/* Zone 6-8: Politics, Defense, International (33% each) */}
+                  <div className="bento-zone-politics">
+                    {renderCategorySection(
+                      'Politics',
+                      PoliticsSection,
+                      { data: politicsData, isLoading: isPoliticsLoading, error: politicsError },
+                      true
+                    )}
+                  </div>
+
+                  <div className="bento-zone-defense">
+                    {renderCategorySection(
+                      'Defense',
+                      DefenseSection,
+                      { data: defenseData, isLoading: isDefenseLoading, error: defenseError },
+                      true
+                    )}
+                  </div>
+
+                  <div className="bento-zone-international">
+                    {renderCategorySection(
+                      'International',
+                      InternationalSection,
+                      { data: internationalData, isLoading: isInternationalLoading, error: internationalError },
+                      true
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Original Sidebar Layout for Non-Expanded View */}
+              <div className="sidebar-header">
+                {countryData?.flags && (countryData.flags.svg || countryData.flags.png) && (
+                  <div
+                    className="flag-bg"
+                    style={{
+                      backgroundImage: `url(${countryData.flags.svg || countryData.flags.png})`
                     }}
                   />
                 )}
-              </div>
-              
-              <div className="country-info-container">
-                <h2 className="country-title" title={countryName || 'Country data'}>
-                  {countryName || 'Country data'}
-                </h2>
-                {countryData && (
-                  <div className="country-details">
-                    <div className="details-row">
-                      {countryData.name?.official && (
-                        <p className="official-name" title={countryData.name.official}>
-                          {countryData.name.official}
-                        </p>
-                      )}
-                      {countryData.region && (
-                        <div className="country-region" title={countryData.region}>
-                          {countryData.region}
-                        </div>
-                      )}
-                    </div>
+                <div className="header-top-row">
+                  <div className="flag-container">
+                    {countryData?.flags?.png && (
+                      <img 
+                        src={countryData.flags.png} 
+                        alt={`Flag of ${countryName}`}
+                        className="country-flag"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                        }}
+                      />
+                    )}
                   </div>
-                )}
-              </div>
-              
-            </div>
-            
-            {/* Search removed */}
-          </div>
+                  
+                  <div className="country-info-container">
+                    <h2 className="country-title" title={debouncedCountryName || countryName || 'Country data'}>
+                      {debouncedCountryName || countryName || 'Country data'}
+                    </h2>
+                    {countryData && (
+                      <div className="country-details">
+                        <div className="details-row">
+                          {countryData.name?.official && (
+                            <p className="official-name" title={countryData.name.official}>
+                              {countryData.name.official}
+                            </p>
+                          )}
+                          {countryData.region && (
+                            <div className="country-region" title={countryData.region}>
+                              {countryData.region}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
-          {/* Categories List */}
-          <div className="sidebar-content">
-            <div className="p-2">
+                  {/* Star Button - Right Column */}
+                  <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
+                    {isAuthenticated && iso3 && (
+                      <motion.button
+                        onClick={handleToggleFavorite}
+                        disabled={isLoadingFavorite}
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: isLoadingFavorite ? 'wait' : 'pointer',
+                          padding: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          borderRadius: '8px',
+                          transition: 'background 0.2s'
+                        }}
+                        aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+                        title={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+                      >
+                        <Star
+                          className="w-5 h-5"
+                          style={{
+                            fill: isFavorited ? '#fbbf24' : 'none',
+                            color: isFavorited ? '#fbbf24' : '#94a3b8',
+                            transition: 'all 0.2s'
+                          }}
+                        />
+                      </motion.button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Categories List */}
+              <div className="sidebar-content">
+                <div className="p-1">
               {categories.map((category) => {
                 // Special handling for General Information category
                 if (category.title === 'General Information') {
-                  return (
-                    <div key={category.title} className="mb-2">
-                      <button
-                        onClick={() => toggleCategory(category.title)}
-                        className={`category-item flex w-full items-center gap-3 rounded-lg p-3 text-left transition-all duration-300 ${
-                          openCategories.has(category.title) ? 'category-open' : ''
-                        }`}
-                      >
-                        {category.icon}
-                        <span className="font-medium flex-1">{category.title}</span>
-                        <ChevronDown 
-                          className={`h-4 w-4 transition-transform duration-300 ${
-                            openCategories.has(category.title) ? 'rotate-180' : ''
-                          }`} 
-                        />
-                      </button>
-                      {openCategories.has(category.title) && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.3, ease: 'easeInOut' }}
-                          className="ml-2 mt-2"
-                        >
-                          <BasicInfoSection 
-                            countryData={countryData}
-                            isLoading={isBasicInfoLoading}
-                            error={basicInfoError}
-                          />
-                        </motion.div>
-                      )}
-                    </div>
+                  return renderCategorySection(
+                    'General Information',
+                    BasicInfoSection,
+                    {
+                      countryData,
+                      isLoading: isBasicInfoLoading,
+                      error: basicInfoError,
+                      onNavigateToCity,
+                      onCitiesLoaded
+                    }
                   );
                 }
                 
                 // Special handling for Economy category
                 if (category.title === 'Economy') {
-                  return (
-                    <div key={category.title} className="mb-2">
-                      <button
-                        onClick={() => toggleCategory(category.title)}
-                        className={`category-item flex w-full items-center gap-3 rounded-lg p-3 text-left transition-all duration-300 ${
-                          openCategories.has(category.title) ? 'category-open' : ''
-                        }`}
-                      >
-                        {category.icon}
-                        <span className="font-medium flex-1">{category.title}</span>
-                        <ChevronDown 
-                          className={`h-4 w-4 transition-transform duration-300 ${
-                            openCategories.has(category.title) ? 'rotate-180' : ''
-                          }`} 
-                        />
-                      </button>
-                      {openCategories.has(category.title) && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.3, ease: 'easeInOut' }}
-                          className="ml-2 mt-2"
-                        >
-                          <EconomySection 
-                            economyData={economyData}
-                            isLoading={isEconomyLoading}
-                            error={economyError}
-                          />
-                        </motion.div>
-                      )}
-                    </div>
+                  return renderCategorySection(
+                    'Economy',
+                    EconomySection,
+                    { economyData, isLoading: isEconomyLoading, error: economyError }
                   );
                 }
                 
                 // Special handling for Politics category
                 if (category.title === 'Politics') {
-                  return (
-                    <div key={category.title} className="mb-2">
-                      <button
-                        onClick={() => toggleCategory(category.title)}
-                        className={`category-item flex w-full items-center gap-3 rounded-lg p-3 text-left transition-all duration-300 ${
-                          openCategories.has(category.title) ? 'category-open' : ''
-                        }`}
-                      >
-                        {category.icon}
-                        <span className="font-medium flex-1">{category.title}</span>
-                        <ChevronDown 
-                          className={`h-4 w-4 transition-transform duration-300 ${
-                            openCategories.has(category.title) ? 'rotate-180' : ''
-                          }`} 
-                        />
-                      </button>
-                      {openCategories.has(category.title) && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.3, ease: 'easeInOut' }}
-                          className="ml-2 mt-2"
-                        >
-                          <PoliticsSection 
-                            data={politicsData}
-                            isLoading={isPoliticsLoading}
-                            error={politicsError}
-                          />
-                        </motion.div>
-                      )}
-                    </div>
+                  return renderCategorySection(
+                    'Politics',
+                    PoliticsSection,
+                    { data: politicsData, isLoading: isPoliticsLoading, error: politicsError }
                   );
                 }
 
                 // Special handling for Defense category
                 if (category.title === 'Defense') {
-                  return (
-                    <div key={category.title} className="mb-2">
-                      <button
-                        onClick={() => toggleCategory(category.title)}
-                        className={`category-item flex w-full items-center gap-3 rounded-lg p-3 text-left transition-all duration-300 ${
-                          openCategories.has(category.title) ? 'category-open' : ''
-                        }`}
-                      >
-                        {category.icon}
-                        <span className="font-medium flex-1">{category.title}</span>
-                        <ChevronDown 
-                          className={`h-4 w-4 transition-transform duration-300 ${
-                            openCategories.has(category.title) ? 'rotate-180' : ''
-                          }`} 
-                        />
-                      </button>
-                      {openCategories.has(category.title) && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.3, ease: 'easeInOut' }}
-                          className="ml-2 mt-2"
-                        >
-                          <DefenseSection 
-                            data={defenseData}
-                            isLoading={isDefenseLoading}
-                            error={defenseError}
-                          />
-                        </motion.div>
-                      )}
-                    </div>
+                  return renderCategorySection(
+                    'Defense',
+                    DefenseSection,
+                    { data: defenseData, isLoading: isDefenseLoading, error: defenseError }
                   );
                 }
 
                 // Special handling for Society category
                 if (category.title === 'Society') {
-                  return (
-                    <div key={category.title} className="mb-2">
-                      <button
-                        onClick={() => toggleCategory(category.title)}
-                        className={`category-item flex w-full items-center gap-3 rounded-lg p-3 text-left transition-all duration-300 ${
-                          openCategories.has(category.title) ? 'category-open' : ''
-                        }`}
-                      >
-                        {category.icon}
-                        <span className="font-medium flex-1">{category.title}</span>
-                        <ChevronDown 
-                          className={`h-4 w-4 transition-transform duration-300 ${
-                            openCategories.has(category.title) ? 'rotate-180' : ''
-                          }`} 
-                        />
-                      </button>
-                      {openCategories.has(category.title) && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.3, ease: 'easeInOut' }}
-                          className="ml-2 mt-2"
-                        >
-                          <SocietySection 
-                            data={societyData}
-                            isLoading={isSocietyLoading}
-                            error={societyError}
-                            series={societySeries}
-                          />
-                        </motion.div>
-                      )}
-                    </div>
+                  return renderCategorySection(
+                    'Society',
+                    SocietySection,
+                    { data: societyData, isLoading: isSocietyLoading, error: societyError, series: societySeries, fetchIndicatorSeries: fetchSocietyIndicatorSeries, iso3 }
                   );
                 }
 
                 // Special handling for International category
                 if (category.title === 'International') {
-                  return (
-                    <div key={category.title} className="mb-2">
-                      <button
-                        onClick={() => toggleCategory(category.title)}
-                        className={`category-item flex w-full items-center gap-3 rounded-lg p-3 text-left transition-all duration-300 ${
-                          openCategories.has(category.title) ? 'category-open' : ''
-                        }`}
-                      >
-                        {category.icon}
-                        <span className="font-medium flex-1">{category.title}</span>
-                        <ChevronDown 
-                          className={`h-4 w-4 transition-transform duration-300 ${
-                            openCategories.has(category.title) ? 'rotate-180' : ''
-                          }`} 
-                        />
-                      </button>
-                      {openCategories.has(category.title) && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.3, ease: 'easeInOut' }}
-                          className="ml-2 mt-2"
-                        >
-                          <InternationalSection 
-                            data={internationalData}
-                            isLoading={isInternationalLoading}
-                            error={internationalError}
-                          />
-                        </motion.div>
-                      )}
-                    </div>
+                  return renderCategorySection(
+                    'International',
+                    InternationalSection,
+                    { data: internationalData, isLoading: isInternationalLoading, error: internationalError }
                   );
                 }
 
                 // Special handling for Technology and National Assets
                 if (category.title === 'Technology and National Assets') {
-                  return (
-                    <div key={category.title} className="mb-2">
-                      <button
-                        onClick={() => toggleCategory(category.title)}
-                        className={`category-item flex w-full items-center gap-3 rounded-lg p-3 text-left transition-all duration-300 ${
-                          openCategories.has(category.title) ? 'category-open' : ''
-                        }`}
-                      >
-                        {category.icon}
-                        <span className="font-medium flex-1">{category.title}</span>
-                        <ChevronDown 
-                          className={`h-4 w-4 transition-transform duration-300 ${
-                            openCategories.has(category.title) ? 'rotate-180' : ''
-                          }`} 
-                        />
-                      </button>
-                      {openCategories.has(category.title) && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.3, ease: 'easeInOut' }}
-                          className="ml-2 mt-2"
-                        >
-                          <TechnologySection 
-                            data={technologyData}
-                            isLoading={isTechnologyLoading}
-                            error={technologyError}
-                          />
-                        </motion.div>
-                      )}
-                    </div>
+                  return renderCategorySection(
+                    'Technology and National Assets',
+                    TechnologySection,
+                    { data: technologyData, isLoading: isTechnologyLoading, error: technologyError }
                   );
                 }
 
                 // Special handling for Culture category
                 if (category.title === 'Culture') {
-                  return (
-                    <div key={category.title} className="mb-2">
-                      <button
-                        onClick={() => toggleCategory(category.title)}
-                        className={`category-item flex w-full items-center gap-3 rounded-lg p-3 text-left transition-all duration-300 ${
-                          openCategories.has(category.title) ? 'category-open' : ''
-                        }`}
-                      >
-                        {category.icon}
-                        <span className="font-medium flex-1">{category.title}</span>
-                        <ChevronDown 
-                          className={`h-4 w-4 transition-transform duration-300 ${
-                            openCategories.has(category.title) ? 'rotate-180' : ''
-                          }`} 
-                        />
-                      </button>
-                      {openCategories.has(category.title) && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.3, ease: 'easeInOut' }}
-                          className="ml-2 mt-2"
-                        >
-                          <CultureSection 
-                            data={cultureData}
-                            isLoading={isCultureLoading}
-                            error={cultureError}
-                          />
-                        </motion.div>
-                      )}
-                    </div>
+                  return renderCategorySection(
+                    'Culture',
+                    CultureSection,
+                    { data: cultureData, isLoading: isCultureLoading, error: cultureError }
+                  );
+                }
+
+                // Special handling for Historical Trends category (only show in expanded view)
+                if (category.title === 'Historical Trends') {
+                  if (!expanded) return null; // Don't show in sidebar view
+                  return renderCategorySection(
+                    'Historical Trends',
+                    HistoricalTrendsSection,
+                    { iso3, countryName: debouncedCountryName || countryName }
                   );
                 }
 
@@ -599,24 +753,29 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
                 );
               })}
               
-              {searchTerm && visibleCategories.length === 0 && (
-                <div className="text-center text-slate-400 py-8">
-                  <p>No results found for "{searchTerm}"</p>
+                  {searchTerm && visibleCategories.length === 0 && (
+                    <div className="text-center text-slate-400 py-8">
+                      <p>No results found for "{searchTerm}"</p>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </div>
+              </div>
+            </>
+          )}
 
-          {/* Footer */}
-          <div className="sidebar-footer">
-            <div className="sidebar-counter">
-              {searchTerm ? 
-                `${visibleCategories.length} of ${categories.length} categories` : 
-                `${categories.length} categories available`
-              }
+          {/* Footer - Only show in normal view */}
+          {!expanded && (
+            <div className="sidebar-footer">
+              <div className="sidebar-counter">
+                {searchTerm ? 
+                  `${visibleCategories.length} of ${categories.length} categories` : 
+                  `${categories.length} categories available`
+                }
+              </div>
             </div>
-          </div>
+          )}
         </motion.div>
+        </>
       )}
     </AnimatePresence>
   );
