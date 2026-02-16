@@ -166,6 +166,12 @@ public
 *.sln
 *.sw?
 
+# Database dumps (too large for GitHub)
+data_only.sql
+worldlore.dump
+worldlore.sql
+worldlore_plain.sql
+
 # Local Netlify folder
 .netlify
 

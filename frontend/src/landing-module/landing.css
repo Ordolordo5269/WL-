@@ -1,0 +1,67 @@
+/* ==========================================================================
+   Scoped styles for Landing Module
+   These styles apply ONLY inside .landing-page-root and do NOT leak to the
+   main map application.
+   ========================================================================== */
+
+.landing-page-root {
+  /* Full takeover of the viewport for the landing experience */
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background-color: #0a0a0a;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  /* Typography */
+  font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+/* Reset link styles inside landing */
+.landing-page-root a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Ensure sections stack properly */
+.landing-page-root section {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Prevent the main app's * { margin: 0; padding: 0 } from collapsing
+   spacing that Tailwind classes rely on — Tailwind utilities handle their
+   own spacing, so we just need the box model correct. */
+.landing-page-root *,
+.landing-page-root *::before,
+.landing-page-root *::after {
+  box-sizing: border-box;
+}
+
+/* Canvas elements (Three.js / R3F) should not block pointer events on
+   overlapping text/buttons */
+.landing-page-root canvas {
+  display: block;
+}
+
+/* Dark color scheme enforcement */
+@media (prefers-color-scheme: light) {
+  .landing-page-root {
+    /* Force dark theme regardless of system preference */
+    color: #ffffff;
+    background-color: #0a0a0a;
+  }
+}

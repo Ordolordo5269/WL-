@@ -34,6 +34,8 @@
   background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   border-bottom: 0.5px solid rgba(148, 163, 184, 0.08);
   position: relative;
+  z-index: 1;
+  isolation: isolate;
 }
 
 .conflict-tracker-title {

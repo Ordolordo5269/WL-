@@ -2,9 +2,11 @@
 @import './styles/predictive-analysis.css';
 @import './styles/compare-countries.css';
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* Ensure Tailwind scans all source directories including landing-module */
+@source "./landing-module";
+@source "../components";
 
 /* Eliminar márgenes y padding por defecto */
 * {

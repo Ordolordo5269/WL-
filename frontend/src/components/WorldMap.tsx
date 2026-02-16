@@ -670,7 +670,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         map.getCanvas().style.cursor = 'pointer';
       };
       const onLeave = () => {
-        map.getCanvas().style.cursor = isLeftSidebarOpenRef.current ? "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='8' fill='none' stroke='%2387CEEB' stroke-width='1.5' opacity='0.9'/%3E%3Ccircle cx='10' cy='10' r='2' fill='%2387CEEB' opacity='0.7'/%3E%3C/svg%3E\") 10 10, auto" : 'grab';
+        map.getCanvas().style.cursor = 'grab';
       };
       const onClick = (e: mapboxgl.MapMouseEvent) => {
         const feats = map.queryRenderedFeatures(e.point, { layers: [id] });
@@ -1393,11 +1393,6 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     let hoveredId: number | string | null = null;
 
     const handleMouseMove = (e: mapboxgl.MapMouseEvent) => {
-      // Permit clicks en modo historia incluso si la sidebar está abierta
-      if (isLeftSidebarOpenRef.current && !historyEnabledRef.current) {
-        map.getCanvas().style.cursor = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='8' fill='none' stroke='%2387CEEB' stroke-width='1.5' opacity='0.9'/%3E%3Ccircle cx='10' cy='10' r='2' fill='%2387CEEB' opacity='0.7'/%3E%3C/svg%3E\") 10 10, auto";
-        return;
-      }
       if (e.features && e.features.length > 0) {
         const id = e.features[0].id as any;
         if (id !== hoveredId) {
@@ -1435,10 +1430,6 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     };
 
     const handleCountryClick = (e: mapboxgl.MapMouseEvent) => {
-      // 0) Validación: fuera de modo historia, si la sidebar está abierta no permitimos click
-      //    (se mantiene exactamente el comportamiento existente).
-      if (isLeftSidebarOpenRef.current && !historyEnabledRef.current) return;
-
       // 1) Validación: necesitamos un feature del país
       if (!e.features || e.features.length === 0) return;
       const feature: any = e.features[0];
@@ -2133,18 +2124,6 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   // Efecto para actualizar el ref cuando cambia el estado de sidebar izquierda
   useEffect(() => {
     isLeftSidebarOpenRef.current = isLeftSidebarOpen;
-    if (mapRef.current && isMapLoaded) {
-      const canvas = mapRef.current.getCanvas();
-      if (isLeftSidebarOpen) {
-        // Cursor personalizado minimalista y elegante
-        canvas.style.cursor = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='8' fill='none' stroke='%2387CEEB' stroke-width='1.5' opacity='0.9'/%3E%3Ccircle cx='10' cy='10' r='2' fill='%2387CEEB' opacity='0.7'/%3E%3C/svg%3E\") 10 10, auto";
-        // Agregar una clase CSS para efectos adicionales
-        canvas.classList.add('sidebar-open-cursor');
-      } else {
-        canvas.style.cursor = 'grab';
-        canvas.classList.remove('sidebar-open-cursor');
-      }
-    }
   }, [isLeftSidebarOpen, isMapLoaded]);
 
   // Efecto separado para manejar la función de selección
@@ -2185,7 +2164,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       {/* Control de estilo movido a la LeftSidebar > Settings */}
       <div 
         ref={geocoderContainer} 
-        className="geocoder-container absolute left-1/2 transform -translate-x-1/2 z-20 w-80"
+        className="geocoder-container absolute left-1/2 transform -translate-x-1/2 z-50 w-80"
         style={{ top: '16px' }}
       />
       <script dangerouslySetInnerHTML={{ __html: `

@@ -90,6 +90,15 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
   const [orgSelectedKey, setOrgSelectedKey] = useState<string | null>(null);
   const [activeIsoToColor, setActiveIsoToColor] = useState<Record<string,string>>({});
 
+  // Reset active panel when sidebar closes
+  const prevOpenRef = useRef(isOpen);
+  useEffect(() => {
+    if (!isOpen && prevOpenRef.current) {
+      setActiveItem('');
+    }
+    prevOpenRef.current = isOpen;
+  }, [isOpen]);
+
   // Snap the active year into view when it changes
   useEffect(() => {
     const container = yearScrollRef.current;

@@ -822,16 +822,15 @@ const mapRef = useRef<{ easeTo: (options: MapEaseToOptionsApp) => void; getMap: 
         onOpenCompareCountries={handleOpenComparePopup}
       />
       
-      {/* Left sidebar overlay */}
+      {/* Left sidebar overlay — pointer-events: none so the map stays interactive */}
       {sidebars.menu && (
         <motion.div 
           className="fixed inset-0 bg-black z-40"
           initial={{ opacity: 0 }}
-          animate={{ opacity: 0.4 }}
+          animate={{ opacity: 0.3 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2, ease: 'easeInOut' }}
-          style={{ pointerEvents: historyEnabled ? 'none' as const : 'auto' as const }}
-          onClick={() => { if (!historyEnabled) handleCloseLeftSidebar(); }}
+          style={{ pointerEvents: 'none' as const }}
         />
       )}
       
