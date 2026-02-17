@@ -8,6 +8,7 @@ export default function AppRouter() {
   return (
     <Routes>
       <Route path="/" element={<WorldMapView />} />
+      <Route path="/map" element={<WorldMapView />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/login" element={<LoginForm />} />
       <Route path="/register" element={<RegisterForm />} />

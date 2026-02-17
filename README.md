@@ -1,137 +1,195 @@
 # 🌍 WorldLore - Plataforma Global de Análisis Geopolítico
 
-Una aplicación web moderna para explorar y analizar información geopolítica global, conflictos internacionales y datos económicos de países.
+Una aplicación web para explorar y analizar información geopolítica global, conflictos internacionales y datos económicos de países.
 
-## 🚀 Inicio Rápido
+---
+
+## 👋 ¿Primera vez? Cómo encender WorldLore (sin saber programar)
+
+Sigue estos pasos en orden. Solo necesitas instalar una cosa y ejecutar un comando.
+
+### Paso 1: Instalar Node.js (solo una vez)
+
+Node.js es el programa que permite ejecutar esta aplicación en tu ordenador.
+
+1. Entra en **https://nodejs.org/**
+2. Descarga la versión que diga **LTS** (recomendada).
+3. Instala: haz doble clic en el instalador y acepta las opciones por defecto (siguiente, siguiente…).
+4. Cuando termine, **reinicia el ordenador** (o al menos cierra y vuelve a abrir cualquier ventana que vayas a usar).
+
+### Paso 2: Abrir la carpeta del proyecto
+
+1. Abre **Explorador de archivos** y ve a la carpeta donde está WorldLore (por ejemplo: `Escritorio\WL-`).
+2. En la barra de arriba donde sale la ruta, haz clic una vez y escribe: **powershell**
+3. Pulsa **Enter**. Se abrirá una ventana azul/negra (es la “terminal” o “consola”).
+
+### Paso 3: Encender la aplicación
+
+En esa ventana azul, escribe exactamente esto y pulsa **Enter**:
+
+```powershell
+.\start-servers.ps1
+```
+
+- La primera vez puede tardar un poco (instala dependencias).
+- Se abrirán **dos ventanas nuevas** (backend y frontend). **No las cierres**; tienen que quedarse abiertas para que la app funcione.
+
+### Paso 4: Abrir WorldLore en el navegador
+
+1. Abre tu navegador (Chrome, Edge, Firefox…).
+2. En la barra de direcciones escribe: **http://localhost:5173**
+3. Pulsa **Enter**.
+
+Si todo va bien, verás la aplicación (mapa, países, etc.). **Eso es tener WorldLore encendido.**
+
+### Cómo apagarlo
+
+- Cierra las **dos ventanas** que se abrieron al ejecutar el script (las de fondo negro/azul).
+- Así se “apagan” los servidores y la aplicación deja de funcionar hasta que vuelvas a ejecutar `.\start-servers.ps1`.
+
+### Si algo falla
+
+- **“No se reconoce como comando” o error con `.\start-servers.ps1`**  
+  Asegúrate de estar **dentro de la carpeta del proyecto** (donde está el archivo `start-servers.ps1`). En PowerShell puedes escribir `cd` y arrastrar la carpeta del proyecto para pegar la ruta, luego Enter.
+
+- **“npm no está instalado”**  
+  Node.js no está instalado o no se detecta. Reinstala Node.js desde https://nodejs.org/ y reinicia el ordenador.
+
+- **La página no carga en http://localhost:5173**  
+  Espera 10–15 segundos después de ejecutar el script. Si sigue sin cargar, revisa que las dos ventanas del script sigan abiertas.
+
+Más opciones y solución de problemas detallada están más abajo en este mismo documento.
+
+---
+
+## 🚀 Inicio Rápido (resumen técnico)
 
 ### Prerrequisitos
+
 - **Node.js** (versión 18 o superior) - [Descargar aquí](https://nodejs.org/)
-- **npm** (incluido con Node.js)
+- **npm** (viene con Node.js)
 
-### Instalación y Ejecución
+### Clonar con la landing (submodule)
 
-#### Opción 1: Script Automático (Recomendado)
+Si clonas el repo por primera vez, inicializa el submodule de la landing:
 
-**Windows:**
+```bash
+git clone --recurse-submodules <url-del-repo>
+# o si ya clonaste sin submodules:
+git submodule update --init --recursive
+```
+
+### Instalación y ejecución
+
+#### Opción recomendada: script automático
+
+**Windows (PowerShell):**
+
 ```powershell
 .\start-servers.ps1
 ```
 
 **Linux/macOS:**
+
 ```bash
 ./start-servers.sh
 ```
 
-#### Opción 2: Instalación Manual
+El script instala dependencias si faltan y abre backend y frontend en ventanas separadas.
 
-1. **Instalar dependencias del backend:**
-   ```bash
-   cd backend
-   npm install
-   ```
+#### Opción manual
 
-2. **Instalar dependencias del frontend:**
-   ```bash
-   cd frontend
-   npm install
-   ```
+1. **Backend:** `cd backend` → `npm install` → `npm run dev`
+2. **Frontend:** en otra terminal, `cd frontend` → `npm install` → `npm run dev`
 
-3. **Iniciar el backend:**
-   ```bash
-   cd backend
-   npm run dev
-   ```
+### Dónde acceder
 
-4. **Iniciar el frontend (en otra terminal):**
-   ```bash
-   cd frontend
-   npm run dev
-   ```
+- **Aplicación (mapa y UI):** http://localhost:5173  
+- **API del backend:** http://localhost:3001  
 
-### Acceso a la Aplicación
+### Comprobar que funciona
 
-- **Frontend:** http://localhost:5173
-- **Backend API:** http://localhost:3001
+1. Abre http://localhost:5173 en el navegador.
+2. Opcional: http://localhost:3001/api/countries/Spain/basic-info (deberías ver datos en JSON).
 
-### Verificar que Todo Funciona
-
-1. Abre http://localhost:5173 en tu navegador
-2. Prueba la API: http://localhost:3001/api/countries/Spain/basic-info
+---
 
 ## 🛠️ Solución de Problemas
 
-### Error: "Failed to fetch" o "ERR_CONNECTION_REFUSED"
+### "Failed to fetch" o "ERR_CONNECTION_REFUSED"
 
-Si ves este error, significa que el backend no está ejecutándose. Soluciones:
+El frontend no puede hablar con el backend. Comprueba:
 
-1. **Verifica que el backend esté iniciado:**
-   - Deberías ver "Server listening on port 3001" en la consola del backend
+1. Que el backend esté en marcha (en una ventana debería verse algo como “Server listening on port 3001”).
+2. Que no hayas cerrado las ventanas que abrió el script.
+3. Reinicia: cierra esas ventanas y vuelve a ejecutar `.\start-servers.ps1`.
 
-2. **Reinicia los servidores:**
-   - Cierra todas las ventanas de terminal
-   - Ejecuta el script de inicio nuevamente
+### Dependencias no instaladas
 
-3. **Verifica los puertos:**
-   - Puerto 3001: Backend API
-   - Puerto 5173: Frontend
-
-### Dependencias No Instaladas
-
-Los scripts automáticos verifican e instalan automáticamente las dependencias. Si hay problemas:
+Si el script no instaló todo o hay errores:
 
 ```bash
-# Backend
 cd backend
 npm install
 
-# Frontend  
-cd frontend
+cd ..\frontend
 npm install
 ```
+
+Luego ejecuta de nuevo `.\start-servers.ps1` (Windows) o `./start-servers.sh` (Linux/macOS).
+
+### Puertos en uso
+
+- **3001** → Backend  
+- **5173** → Frontend  
+
+Si otro programa usa esos puertos, ciérralo o cambia la configuración del proyecto.
+
+---
 
 ## 📁 Estructura del Proyecto
 
 ```
 WL-/
-├── backend/                 # API REST con Express + TypeScript
-│   ├── src/
-│   │   ├── app.ts          # Configuración de Express
-│   │   ├── index.ts        # Punto de entrada del servidor
-│   │   ├── controllers/    # Controladores de la API
-│   │   ├── routes/         # Rutas de la API
-│   │   └── services/       # Lógica de negocio
-│   └── package.json
-├── frontend/               # Aplicación React + Vite
-│   ├── src/
-│   │   ├── App.tsx         # Componente principal
-│   │   ├── components/     # Componentes React
-│   │   ├── services/       # Servicios de API
-│   │   └── types/          # Tipos TypeScript
-│   └── package.json
-├── start-servers.ps1       # Script de inicio para Windows
-├── start-servers.sh        # Script de inicio para Unix/Linux/macOS
+├── backend/                 # API REST (Express + TypeScript)
+├── frontend/                # Aplicación web (React + Vite)
+├── frontend/landing/        # Landing page (submodule)
+├── start-servers.ps1        # Encender todo en Windows
+├── start-servers.sh         # Encender todo en Linux/macOS
 └── README.md
 ```
 
-## 🔧 Scripts Disponibles
+---
 
-### Backend
-- `npm run dev` - Ejecuta en modo desarrollo con hot reload
-- `npm run build` - Compila TypeScript a JavaScript
-- `npm start` - Ejecuta la versión compilada
+## 🔧 Scripts útiles
 
-### Frontend
-- `npm run dev` - Ejecuta en modo desarrollo con Vite
-- `npm run build` - Construye para producción
-- `npm run preview` - Previsualiza la build de producción
+**Backend** (`cd backend`):  
+- `npm run dev` – desarrollo con recarga automática  
+- `npm run build` / `npm start` – compilar y ejecutar  
+
+**Frontend** (`cd frontend`):  
+- `npm run dev` – desarrollo  
+- `npm run build` – build para producción  
+- `npm run preview` – previsualizar la build  
+
+---
 
 ## 🌟 Características
 
-- **Mapa Interactivo:** Visualización de países y conflictos
-- **Información de Países:** Datos demográficos, económicos y políticos
-- **Seguimiento de Conflictos:** Análisis de conflictos internacionales
-- **API REST:** Backend robusto con TypeScript
-- **UI Moderna:** Interfaz responsive con React y Tailwind CSS
+- **Mapa interactivo** de países y conflictos  
+- **Datos de países:** demografía, economía, política  
+- **Seguimiento de conflictos** internacionales  
+- **API REST** en el backend  
+- **Interfaz moderna** (React, Tailwind CSS)  
+- **Landing page** en `frontend/landing/` (submodule)
+
+---
+
+## 📝 Landing Page
+
+La landing está en `frontend/landing/` como **submodule** (repo [WLInterace](https://github.com/Ordolordo5269/WLInterace)). En la app principal se muestra en `/` y el mapa en `/map`. Para ejecutar solo la landing en otro puerto (5174): `cd frontend/landing`, `npm install`, `npm run dev`.
+
+---
 
 ## 📝 Licencia
 

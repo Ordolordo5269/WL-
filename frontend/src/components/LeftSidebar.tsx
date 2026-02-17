@@ -8,6 +8,8 @@ import { Crosshair, Search, Settings, Info, Globe, Users, BarChart3, Map, User, 
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
+const LANDING_ABOUT_URL = `${import.meta.env.VITE_LANDING_URL ?? (import.meta.env.DEV ? 'http://localhost:5174' : '')}/about`;
+
 interface LeftSidebarProps {
   isOpen: boolean;
   onClose: () => void;
@@ -160,7 +162,7 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
     {
       icon: <Info className="h-5 w-5" />,
       label: 'About',
-      href: '#about'
+      href: LANDING_ABOUT_URL
     }
   ], [navigate, isAuthenticated]);
 
@@ -220,6 +222,7 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
                       <motion.a
                         href={item.href}
                         onClick={(e) => {
+                          if (item.label === 'About') return;
                           e.preventDefault();
                           handleItemClick(item);
                         }}
