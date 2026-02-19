@@ -82,6 +82,13 @@ Write-Host "🔧 Configurando variables de entorno..." -ForegroundColor Yellow
 "NODE_ENV=development" | Out-File -FilePath "backend\.env" -Append -Encoding UTF8
 "CORS_ORIGIN=http://localhost:5173" | Out-File -FilePath "backend\.env" -Append -Encoding UTF8
 
+# Configurar archivo .env para la landing
+if (Test-Path "frontend/landing") {
+    Write-Host "Configurando variables de entorno para la landing..." -ForegroundColor White
+    "VITE_WL_APP_URL=http://localhost:5173" | Out-File -FilePath "frontend/landing\.env" -Encoding UTF8
+    Write-Host "   Archivo .env creado en frontend/landing/" -ForegroundColor Gray
+}
+
 Write-Host ""
 Write-Host "✅ Configuración completada exitosamente!" -ForegroundColor Green
 Write-Host ""

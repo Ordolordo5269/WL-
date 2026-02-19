@@ -57,6 +57,37 @@ if [ ! -d "frontend/node_modules" ]; then
     cd ..
 fi
 
+# Verificar dependencias del frontend landing
+if [ ! -d "frontend/landing/node_modules" ]; then
+    echo "📦 Instalando dependencias del frontend landing..."
+    cd frontend/landing
+    npm install
+    cd ../..
+fi
+
+# Configurar archivo .env para la landing si no existe
+if [ -d "frontend/landing" ]; then
+    LANDING_ENV="frontend/landing/.env"
+    LANDING_ENV_EXAMPLE="frontend/landing/.env.example"
+    
+    if [ ! -f "$LANDING_ENV" ]; then
+        if [ -f "$LANDING_ENV_EXAMPLE" ]; then
+            echo "📝 Creando archivo .env para la landing desde .env.example..."
+            cp "$LANDING_ENV_EXAMPLE" "$LANDING_ENV"
+            echo "   Archivo .env creado en frontend/landing/"
+            echo "   Configurado con: VITE_WL_APP_URL=http://localhost:5173"
+        else
+            echo "📝 Creando archivo .env para la landing..."
+            echo "# Variables de entorno para la Landing Page" > "$LANDING_ENV"
+            echo "# URL de la aplicación principal (WorldLore Map)" >> "$LANDING_ENV"
+            echo "VITE_WL_APP_URL=http://localhost:5173" >> "$LANDING_ENV"
+            echo "   Archivo .env creado con configuración por defecto"
+        fi
+    else
+        echo "ℹ️  Archivo .env de la landing ya existe, usando configuración existente"
+    fi
+fi
+
 # Verificar puertos y iniciar backend
 if check_port 3001; then
     echo "⚠️  Puerto 3001 ya está en uso. El backend puede estar ejecutándose."
@@ -79,15 +110,28 @@ else
     sleep 3
 fi
 
+# Verificar puertos y iniciar frontend landing
+if check_port 5174; then
+    echo "⚠️  Puerto 5174 ya está en uso. El frontend landing puede estar ejecutándose."
+else
+    echo "🌐 Iniciando frontend landing en puerto 5174..."
+    cd frontend/landing
+    npm run dev &
+    cd ../..
+    sleep 3
+fi
+
 echo ""
 echo "✅ Servidores iniciados correctamente!"
 echo ""
 echo "📊 Backend API: http://localhost:3001"
 echo "🌍 Frontend: http://localhost:5173"
+echo "🌐 Frontend Landing: http://localhost:5174"
 echo ""
 echo "💡 Para probar que todo funciona:"
-echo "   1. Abre http://localhost:5173 en tu navegador"
-echo "   2. Prueba la API: http://localhost:3001/api/countries/Spain/basic-info"
+echo "   1. Abre http://localhost:5173 en tu navegador (app principal)"
+echo "   2. Abre http://localhost:5174 en tu navegador (landing)"
+echo "   3. Prueba la API: http://localhost:3001/api/countries/Spain/basic-info"
 echo ""
 echo "🔧 Para detener los servidores, presiona Ctrl+C"
 echo ""

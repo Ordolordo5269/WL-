@@ -189,6 +189,80 @@ WL-/
 
 La landing está en `frontend/landing/` como **submodule** (repo [WLInterace](https://github.com/Ordolordo5269/WLInterace)). En la app principal se muestra en `/` y el mapa en `/map`. Para ejecutar solo la landing en otro puerto (5174): `cd frontend/landing`, `npm install`, `npm run dev`.
 
+### ⚙️ Configuración del enlace entre Landing y App Principal
+
+Para que el botón "Explore Now" en la landing funcione correctamente y redirija al mapa, necesitas configurar la variable de entorno `VITE_WL_APP_URL`:
+
+1. **Si ejecutas la landing independientemente** (puerto 5174):
+   ```bash
+   cd frontend/landing
+   cp .env.example .env
+   # Edita .env y configura: VITE_WL_APP_URL=http://localhost:5173
+   ```
+
+2. **En desarrollo local**, la detección automática debería funcionar, pero si tienes problemas:
+   - Crea `frontend/landing/.env` con: `VITE_WL_APP_URL=http://localhost:5173`
+   - O asegúrate de que la app principal esté corriendo en el puerto 5173
+
+3. **En producción**, configura la URL completa de tu app principal:
+   ```bash
+   VITE_WL_APP_URL=https://tu-dominio.com
+   ```
+
+**Nota:** Si no configuras esta variable, la landing intentará detectar automáticamente la URL en desarrollo, pero es recomendable configurarla explícitamente para evitar problemas.
+
+---
+
+## 💾 Guardar Cambios con Submódulos
+
+Cuando trabajas con este proyecto y haces cambios en el submódulo (`frontend/landing/`), debes seguir estos pasos para guardar todo correctamente:
+
+### Paso 1: Guardar cambios en el submódulo
+
+Si modificaste archivos dentro de `frontend/landing/`:
+
+```bash
+cd frontend/landing
+git status                    # Ver qué archivos cambiaron
+git add .                     # Agregar todos los cambios
+git commit -m "Descripción de los cambios"
+git push                      # Subir cambios al repo del submódulo
+```
+
+### Paso 2: Actualizar la referencia del submódulo en el proyecto principal
+
+Después de hacer commit y push en el submódulo, vuelve al proyecto principal y actualiza la referencia:
+
+```bash
+cd ../..                      # Volver a la raíz del proyecto (WL-)
+git status                    # Verás que frontend/landing aparece como modificado
+git add frontend/landing      # Agregar la nueva referencia del submódulo
+git commit -m "Actualizar submódulo landing"
+git push                      # Subir cambios al repo principal
+```
+
+### Resumen rápido (todo en uno)
+
+```bash
+# 1. Cambios en el submódulo
+cd frontend/landing
+git add .
+git commit -m "Cambios en landing"
+git push
+
+# 2. Actualizar referencia en proyecto principal
+cd ../..
+git add frontend/landing
+git commit -m "Actualizar submódulo landing"
+git push
+```
+
+### ⚠️ Importante
+
+- **Siempre haz commit y push en el submódulo primero** antes de actualizar la referencia en el proyecto principal.
+- Si solo cambias archivos del proyecto principal (no del submódulo), haz commit normalmente sin tocar el submódulo.
+- Si alguien más actualiza el submódulo, ejecuta `git submodule update --remote frontend/landing` para traer los últimos cambios.
+
 ---
 
 ## 📝 Licencia

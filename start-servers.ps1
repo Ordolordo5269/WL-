@@ -57,6 +57,39 @@ if (-not (Test-Path "frontend/node_modules")) {
     Set-Location ..
 }
 
+# Verificar dependencias del frontend landing
+if (-not (Test-Path "frontend/landing/node_modules")) {
+    Write-Host "Instalando dependencias del frontend landing..." -ForegroundColor Cyan
+    Set-Location frontend/landing
+    npm install
+    Set-Location ../..
+}
+
+# Configurar archivo .env para la landing si no existe
+if (Test-Path "frontend/landing") {
+    $landingEnvPath = "frontend/landing/.env"
+    $landingEnvExamplePath = "frontend/landing/.env.example"
+    
+    if (-not (Test-Path $landingEnvPath)) {
+        if (Test-Path $landingEnvExamplePath) {
+            Write-Host "Creando archivo .env para la landing desde .env.example..." -ForegroundColor Cyan
+            Copy-Item $landingEnvExamplePath $landingEnvPath
+            Write-Host "   Archivo .env creado en frontend/landing/" -ForegroundColor Gray
+            Write-Host "   Configurado con: VITE_WL_APP_URL=http://localhost:5173" -ForegroundColor Gray
+        } else {
+            Write-Host "Creando archivo .env para la landing..." -ForegroundColor Cyan
+            @"
+# Variables de entorno para la Landing Page
+# URL de la aplicación principal (WorldLore Map)
+VITE_WL_APP_URL=http://localhost:5173
+"@ | Out-File -FilePath $landingEnvPath -Encoding utf8
+            Write-Host "   Archivo .env creado con configuración por defecto" -ForegroundColor Gray
+        }
+    } else {
+        Write-Host "Archivo .env de la landing ya existe, usando configuración existente" -ForegroundColor Gray
+    }
+}
+
 # Verificar puertos y iniciar backend
 if (Test-Port 3001) {
     Write-Host "Puerto 3001 ya esta en uso. El backend puede estar ejecutandose." -ForegroundColor Yellow
@@ -75,14 +108,25 @@ if (Test-Port 5173) {
     Start-Sleep -Seconds 3
 }
 
+# Verificar puertos y iniciar frontend landing
+if (Test-Port 5174) {
+    Write-Host "Puerto 5174 ya esta en uso. El frontend landing puede estar ejecutandose." -ForegroundColor Yellow
+} else {
+    Write-Host "Iniciando frontend landing en puerto 5174..." -ForegroundColor Cyan
+    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd frontend/landing; npm run dev" -WindowStyle Normal
+    Start-Sleep -Seconds 3
+}
+
 Write-Host ""
 Write-Host "Servidores iniciados correctamente!" -ForegroundColor Green
 Write-Host ""
 Write-Host "Backend API: http://localhost:3001" -ForegroundColor White
 Write-Host "Frontend: http://localhost:5173" -ForegroundColor White
+Write-Host "Frontend Landing: http://localhost:5174" -ForegroundColor White
 Write-Host ""
 Write-Host "Para probar que todo funciona:" -ForegroundColor Yellow
-Write-Host "   1. Abre http://localhost:5173 en tu navegador" -ForegroundColor Gray
-Write-Host "   2. Prueba la API: http://localhost:3001/api/countries/Spain/basic-info" -ForegroundColor Gray
+Write-Host "   1. Abre http://localhost:5173 en tu navegador (app principal)" -ForegroundColor Gray
+Write-Host "   2. Abre http://localhost:5174 en tu navegador (landing)" -ForegroundColor Gray
+Write-Host "   3. Prueba la API: http://localhost:3001/api/countries/Spain/basic-info" -ForegroundColor Gray
 Write-Host ""
 Write-Host "Para detener los servidores, cierra las ventanas de PowerShell" -ForegroundColor Cyan 
