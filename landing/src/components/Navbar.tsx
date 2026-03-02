@@ -68,7 +68,7 @@ export default function Navbar() {
 
         {/* Open App button */}
         <motion.a
-          href={`${import.meta.env.VITE_WL_APP_URL || ''}/map`}
+          href={`${import.meta.env.VITE_WL_APP_URL || 'http://localhost:5173'}/map`}
           className="hidden md:inline-flex ml-auto px-5 py-2 text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg hover:from-cyan-400 hover:to-purple-600 transition-all duration-300"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.98 }}
@@ -99,7 +99,7 @@ export default function Navbar() {
               App
             </Link>
             <a
-              href={`${import.meta.env.VITE_WL_APP_URL || ''}/map`}
+              href={`${import.meta.env.VITE_WL_APP_URL || 'http://localhost:5173'}/map`}
               className="px-4 py-2 text-center font-semibold text-white bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg hover:from-cyan-400 hover:to-purple-600 transition-all duration-300"
             >
               Open App
