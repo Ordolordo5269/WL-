@@ -57,36 +57,36 @@ if (-not (Test-Path "frontend/node_modules")) {
     Set-Location ..
 }
 
-# Verificar dependencias del frontend landing
-if (-not (Test-Path "frontend/landing/node_modules")) {
-    Write-Host "Instalando dependencias del frontend landing..." -ForegroundColor Cyan
-    Set-Location frontend/landing
+# Verificar dependencias del landing
+if ((Test-Path "landing") -and (-not (Test-Path "landing/node_modules"))) {
+    Write-Host "Instalando dependencias del landing..." -ForegroundColor Cyan
+    Set-Location landing
     npm install
-    Set-Location ../..
+    Set-Location ..
 }
 
 # Configurar archivo .env para la landing si no existe
-if (Test-Path "frontend/landing") {
-    $landingEnvPath = "frontend/landing/.env"
-    $landingEnvExamplePath = "frontend/landing/.env.example"
-    
+if (Test-Path "landing") {
+    $landingEnvPath = "landing/.env"
+    $landingEnvExamplePath = "landing/.env.example"
+
     if (-not (Test-Path $landingEnvPath)) {
         if (Test-Path $landingEnvExamplePath) {
             Write-Host "Creando archivo .env para la landing desde .env.example..." -ForegroundColor Cyan
             Copy-Item $landingEnvExamplePath $landingEnvPath
-            Write-Host "   Archivo .env creado en frontend/landing/" -ForegroundColor Gray
+            Write-Host "   Archivo .env creado en landing/" -ForegroundColor Gray
             Write-Host "   Configurado con: VITE_WL_APP_URL=http://localhost:5173" -ForegroundColor Gray
         } else {
             Write-Host "Creando archivo .env para la landing..." -ForegroundColor Cyan
             @"
 # Variables de entorno para la Landing Page
-# URL de la aplicación principal (WorldLore Map)
+# URL de la aplicacion principal (WorldLore Map)
 VITE_WL_APP_URL=http://localhost:5173
 "@ | Out-File -FilePath $landingEnvPath -Encoding utf8
-            Write-Host "   Archivo .env creado con configuración por defecto" -ForegroundColor Gray
+            Write-Host "   Archivo .env creado con configuracion por defecto" -ForegroundColor Gray
         }
     } else {
-        Write-Host "Archivo .env de la landing ya existe, usando configuración existente" -ForegroundColor Gray
+        Write-Host "Archivo .env de la landing ya existe, usando configuracion existente" -ForegroundColor Gray
     }
 }
 
@@ -108,13 +108,15 @@ if (Test-Port 5173) {
     Start-Sleep -Seconds 3
 }
 
-# Verificar puertos y iniciar frontend landing
-if (Test-Port 5174) {
-    Write-Host "Puerto 5174 ya esta en uso. El frontend landing puede estar ejecutandose." -ForegroundColor Yellow
-} else {
-    Write-Host "Iniciando frontend landing en puerto 5174..." -ForegroundColor Cyan
-    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd frontend/landing; npm run dev" -WindowStyle Normal
-    Start-Sleep -Seconds 3
+# Verificar puertos y iniciar landing
+if (Test-Path "landing") {
+    if (Test-Port 5174) {
+        Write-Host "Puerto 5174 ya esta en uso. El landing puede estar ejecutandose." -ForegroundColor Yellow
+    } else {
+        Write-Host "Iniciando landing en puerto 5174..." -ForegroundColor Cyan
+        Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd landing; npm run dev" -WindowStyle Normal
+        Start-Sleep -Seconds 3
+    }
 }
 
 Write-Host ""

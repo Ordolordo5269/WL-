@@ -154,11 +154,17 @@ export async function getCountryBasicInfo(countryName: string): Promise<CountryB
 
     return { error: `Country '${countryName}' not found` };
   } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
     logger.error('Error fetching country basic info from database', {
       countryName,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: msg,
     });
-    return { error: 'Failed to fetch country information' };
+    // Include detail in dev for debugging (e.g. DB connection refused)
+    const isDev = process.env.NODE_ENV !== 'production';
+    return {
+      error: 'Failed to fetch country information',
+      ...(isDev && { detail: msg }),
+    };
   }
 }
 

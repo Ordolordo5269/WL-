@@ -55,7 +55,14 @@ class CountryBasicInfoService {
       );
 
       if (!response.ok) {
-        const message = `Failed to fetch country info (${response.status})`;
+        let message = `Failed to fetch country info (${response.status})`;
+        try {
+          const errJson = await response.json();
+          if (errJson?.detail) message += `: ${errJson.detail}`;
+          else if (errJson?.error) message += `: ${errJson.error}`;
+        } catch {
+          // ignore JSON parse errors
+        }
         throw new Error(message);
       }
 

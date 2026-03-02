@@ -1,0 +1,8 @@
+.overlayGradient {
+  background: linear-gradient(90deg, #00ffe0, #8f00ff);
+  pointer-events: none;
+}
+
+.aiDotGradient {
+  background: linear-gradient(45deg, #3b82f6, #8b5cf6);
+}

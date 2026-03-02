@@ -57,24 +57,24 @@ if [ ! -d "frontend/node_modules" ]; then
     cd ..
 fi
 
-# Verificar dependencias del frontend landing
-if [ ! -d "frontend/landing/node_modules" ]; then
-    echo "📦 Instalando dependencias del frontend landing..."
-    cd frontend/landing
+# Verificar dependencias del landing
+if [ -d "landing" ] && [ ! -d "landing/node_modules" ]; then
+    echo "📦 Instalando dependencias del landing..."
+    cd landing
     npm install
-    cd ../..
+    cd ..
 fi
 
 # Configurar archivo .env para la landing si no existe
-if [ -d "frontend/landing" ]; then
-    LANDING_ENV="frontend/landing/.env"
-    LANDING_ENV_EXAMPLE="frontend/landing/.env.example"
-    
+if [ -d "landing" ]; then
+    LANDING_ENV="landing/.env"
+    LANDING_ENV_EXAMPLE="landing/.env.example"
+
     if [ ! -f "$LANDING_ENV" ]; then
         if [ -f "$LANDING_ENV_EXAMPLE" ]; then
             echo "📝 Creando archivo .env para la landing desde .env.example..."
             cp "$LANDING_ENV_EXAMPLE" "$LANDING_ENV"
-            echo "   Archivo .env creado en frontend/landing/"
+            echo "   Archivo .env creado en landing/"
             echo "   Configurado con: VITE_WL_APP_URL=http://localhost:5173"
         else
             echo "📝 Creando archivo .env para la landing..."
@@ -110,15 +110,17 @@ else
     sleep 3
 fi
 
-# Verificar puertos y iniciar frontend landing
-if check_port 5174; then
-    echo "⚠️  Puerto 5174 ya está en uso. El frontend landing puede estar ejecutándose."
-else
-    echo "🌐 Iniciando frontend landing en puerto 5174..."
-    cd frontend/landing
-    npm run dev &
-    cd ../..
-    sleep 3
+# Verificar puertos y iniciar landing
+if [ -d "landing" ]; then
+    if check_port 5174; then
+        echo "⚠️  Puerto 5174 ya está en uso. El landing puede estar ejecutándose."
+    else
+        echo "🌐 Iniciando landing en puerto 5174..."
+        cd landing
+        npm run dev &
+        cd ..
+        sleep 3
+    fi
 fi
 
 echo ""

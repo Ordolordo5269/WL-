@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import { applyFog as appearanceApplyFog, setBaseFeaturesVisibility as appearanceSetBaseFeaturesVisibility, applyPhysicalModeTweaks as appearanceApplyPhysical, MAP_STYLES, type StyleKey, type PlanetPreset } from './map/mapAppearance';
+import { DynamicSunOverlay } from './DynamicSunOverlay';
 import { applyTerrain, reapplyAfterStyleChange, loadPersistedTerrain, persistTerrain } from './map/terrain';
 import type { ChoroplethSpec } from '../services/worldbank-gdp';
 import type { ChoroplethSpec as GdpPerCapitaChoroplethSpec } from '../services/worldbank-gdp-per-capita';
@@ -2181,6 +2182,12 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         ref={mapContainer}
         className="fixed inset-0 w-full h-full"
         style={{ cursor: 'grab' }}
+      />
+      <DynamicSunOverlay
+        containerRef={mapContainer}
+        mapRef={mapRef}
+        styleKey={styleKey}
+        planetPreset={planetPreset}
       />
       {/* Control de estilo movido a la LeftSidebar > Settings */}
       <div 

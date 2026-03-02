@@ -32,13 +32,20 @@ export const getCountryInfo: RequestHandler = async (req: Request, res: Response
     const result = await getCountryBasicInfo(countryName);
     if (result.error) {
       const notFound = result.error.toLowerCase().includes('not found');
-      res.status(notFound ? 404 : 500).json({ error: result.error });
+      const payload = 'detail' in result ? { error: result.error, detail: result.detail } : { error: result.error };
+      res.status(notFound ? 404 : 500).json(payload);
       return;
     }
     res.json({ data: result.data });
   } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
     console.error('getCountryInfo error:', error);
-    res.status(500).json({ error: 'Failed to fetch country information' });
+    // In development, include the real error to help debug
+    const isDev = process.env.NODE_ENV !== 'production';
+    res.status(500).json({
+      error: 'Failed to fetch country information',
+      ...(isDev && { detail: msg }),
+    });
   }
 };
 

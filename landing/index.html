@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WORLDLORE - The Smartest Way To Understand The World</title>
+    
+    <!-- Critical CSS to prevent FOUC (Flash of Unstyled Content) -->
+    <style>
+      /* Immediate base styles to prevent white flash */
+      html, body {
+        margin: 0;
+        padding: 0;
+        background-color: #0a0a0a;
+        color: #ffffff;
+        font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+        overflow-x: hidden;
+        min-height: 100vh;
+      }
+      
+      #root {
+        min-height: 100vh;
+        background-color: #0a0a0a;
+        position: relative;
+      }
+      
+      /* Loading state styles */
+      .loading-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        opacity: 1;
+        transition: opacity 0.5s ease-out;
+      }
+      
+      .loading-screen.fade-out {
+        opacity: 0;
+        pointer-events: none;
+      }
+      
+      /* Prevent any white background during load */
+      * {
+        box-sizing: border-box;
+      }
+    </style>
+    
+    <!-- Preload critical resources -->
+    <link rel="preload" href="/world.geo.json" as="fetch" crossorigin="anonymous">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    
+    <!-- DNS prefetch for external resources -->
+    <link rel="dns-prefetch" href="//cdnjs.cloudflare.com">
+    <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <!-- Loading screen to prevent FOUC -->
+    <div id="loading-screen" class="loading-screen">
+      <div style="text-align: center;">
+        <div style="width: 40px; height: 40px; border: 3px solid #333; border-top: 3px solid #00d4ff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+        <div style="color: #00d4ff; font-size: 18px; font-weight: 500;">WORLDLORE</div>
+        <div style="color: #888; font-size: 14px; margin-top: 8px;">Loading...</div>
+      </div>
+    </div>
+    
+    <div id="root"></div>
+    
+    <style>
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+    
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
