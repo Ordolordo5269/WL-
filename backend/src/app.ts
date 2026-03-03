@@ -42,14 +42,8 @@ if (process.env.NODE_ENV !== 'production') {
 app.use(express.json());
 
 // Enable CORS for frontend
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:3000',
-  'http://localhost:3001',
-  ...(process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',').map(s => s.trim()) : []),
-];
 app.use(cors({
-  origin: allowedOrigins,
+  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:3001'], // Vite default port and backend ports
   credentials: true
 }));
 
