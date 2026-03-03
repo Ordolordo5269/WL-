@@ -21,6 +21,10 @@ import favoritesRoutes from './routes/favorites.routes';
 import userRoutes from './routes/user.routes';
 // Prediction routes
 import predictionRoutes from './routes/prediction.routes';
+// News proxy routes
+import newsRoutes from './routes/news.routes';
+// ACLED proxy routes
+import acledRoutes from './routes/acled.routes';
 import { prisma } from './db/client';
 import { requestLogger } from './middleware/requestLogger';
 import { logger } from './core/logger';
@@ -38,8 +42,14 @@ if (process.env.NODE_ENV !== 'production') {
 app.use(express.json());
 
 // Enable CORS for frontend
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:3001',
+  ...(process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',').map(s => s.trim()) : []),
+];
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:3001'], // Vite default port and backend ports
+  origin: allowedOrigins,
   credentials: true
 }));
 
@@ -69,6 +79,10 @@ app.use('/api/favorites', favoritesRoutes);
 app.use('/api/user', userRoutes);
 // Prediction routes
 app.use('/api/prediction', predictionRoutes);
+// News proxy routes (keeps NewsAPI key server-side)
+app.use('/api/news', newsRoutes);
+// ACLED proxy routes (keeps credentials server-side)
+app.use('/api/acled', acledRoutes);
 
 // DB health
 app.get('/db/health', async (_req, res) => {
