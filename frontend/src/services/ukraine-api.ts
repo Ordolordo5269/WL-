@@ -1,5 +1,8 @@
-// Ukraine API Service - Enhanced with DeepStateMap capabilities
-// Based on Frontlines project analysis and current implementation
+// Ukraine API Service - Enhanced with DeepStateMap + RussianWarship.RIP
+// DeepStateMap: real-time frontline GeoJSON
+// RussianWarship.RIP: daily Russian military loss statistics
+
+import { RussianWarshipAPI, type WarshipDailyStats } from './russian-warship-api';
 
 // ✅ MEJORADO: Interfaces específicas para evitar tipos 'any'
 export interface GeoJSONFeature {
@@ -419,35 +422,35 @@ export class UkraineAPIService {
       const loadingDiv = document.createElement('div');
       loadingDiv.innerHTML = `
         <div style="position: absolute; top: 10px; right: 10px; background: rgba(0,123,255,0.9); color: white; padding: 10px; border-radius: 5px; font-size: 12px;">
-          🔄 Loading Ukraine data...
+          Loading Ukraine data...
         </div>
       `;
       document.body.appendChild(loadingDiv);
-      
+
       const data = await this.fetchLatestFrontlineData();
       this.addUkraineLayers(map, data);
-      
+
       // Remove loading indicator
       if (loadingDiv.parentNode) {
         loadingDiv.parentNode.removeChild(loadingDiv);
       }
-      
+
       // Start auto-refresh (no status indicator since it's now in the Overview)
       this.startAutoRefresh(map);
-      
+
     } catch (error) {
       console.error('[Ukraine API] Failed to load data:', error);
-      
+
       // Show error message
       const errorDiv = document.createElement('div');
       errorDiv.innerHTML = `
         <div style="position: absolute; top: 10px; right: 10px; background: rgba(255,0,0,0.9); color: white; padding: 10px; border-radius: 5px; font-size: 12px; max-width: 300px;">
-          ❌ Error: Could not load Ukraine data.<br>
+          Error: Could not load Ukraine data.<br>
           <small>${error instanceof Error ? error.message : 'Unknown error'}</small>
         </div>
       `;
       document.body.appendChild(errorDiv);
-      
+
       // Remove error after 10 seconds
       setTimeout(() => {
         if (errorDiv.parentNode) {
@@ -456,4 +459,49 @@ export class UkraineAPIService {
       }, 10000);
     }
   }
-} 
+
+  // --- RussianWarship.RIP integration ---
+
+  /**
+   * Fetch latest Russian military loss statistics.
+   * Delegates to RussianWarshipAPI with its own caching layer.
+   */
+  static async fetchRussianLosses(): Promise<WarshipDailyStats> {
+    return RussianWarshipAPI.getLatestStats();
+  }
+
+  /**
+   * Get a human-readable losses summary (personnel, top equipment categories).
+   */
+  static async getRussianLossesSummary() {
+    return RussianWarshipAPI.getLossesSummary();
+  }
+
+  /**
+   * Fetch Russian losses for a date range (for charts / timelines).
+   */
+  static async getRussianLossesRange(dateFrom: string, dateTo: string, limit?: number) {
+    return RussianWarshipAPI.getStatsRange(dateFrom, dateTo, limit);
+  }
+
+  /**
+   * Fetch combined Ukraine overview: frontline data + Russian losses.
+   * Both requests run in parallel for performance.
+   */
+  static async fetchCombinedOverview(): Promise<{
+    frontline: UkraineFrontlineData | null;
+    losses: WarshipDailyStats | null;
+  }> {
+    const [frontline, losses] = await Promise.allSettled([
+      this.fetchLatestFrontlineData(),
+      RussianWarshipAPI.getLatestStats(),
+    ]);
+
+    return {
+      frontline: frontline.status === 'fulfilled' ? frontline.value : null,
+      losses: losses.status === 'fulfilled' ? losses.value : null,
+    };
+  }
+}
+
+export type { WarshipDailyStats } from './russian-warship-api'; 

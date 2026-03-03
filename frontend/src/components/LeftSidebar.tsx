@@ -75,6 +75,7 @@ interface MenuItem {
   label: string;
   href?: string;
   onClick?: () => void;
+  iconBg?: string;
 }
 
 export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictTracker, onSetBaseMapStyle, onSetPlanetPreset, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, onToggleGdpLayer, gdpEnabled = false, gdpLegend = [], onToggleGdpPerCapitaLayer, gdpPerCapitaEnabled = false, gdpPerCapitaLegend = [], onToggleInflationLayer, inflationEnabled = false, inflationLegend = [], onToggleGiniLayer, giniEnabled = false, giniLegend = [], onToggleExportsLayer, exportsEnabled = false, exportsLegend = [], onToggleLifeExpectancyLayer, lifeExpectancyEnabled = false, lifeExpectancyLegend = [], onToggleMilitaryExpenditureLayer, militaryExpenditureEnabled = false, militaryExpenditureLegend = [], onToggleDemocracyIndexLayer, democracyIndexEnabled = false, democracyIndexLegend = [], onToggleTradeGdpLayer, tradeGdpEnabled = false, tradeGdpLegend = [], onToggleHistoryMode, onSetHistoryYear, historyEnabled: _historyEnabled = false, historyYear = 1880, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, naturalLod = 'auto', onSetNaturalLod }: LeftSidebarProps) {
@@ -113,39 +114,46 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
 
   const menuItems: MenuItem[] = useMemo(() => [
     {
-      icon: <Crosshair className="h-5 w-5" />,
+      icon: <Crosshair className="h-5 w-5 text-red-400" />,
       label: 'Conflict Tracker',
-      href: '#home'
+      href: '#home',
+      iconBg: 'rgba(239, 68, 68, 0.12)'
     },
     {
-      icon: <Globe className="h-5 w-5" />,
+      icon: <Globe className="h-5 w-5 text-cyan-400" />,
       label: 'History Mode',
-      href: '#history'
+      href: '#history',
+      iconBg: 'rgba(6, 182, 212, 0.12)'
     },
     {
-      icon: <Map className="h-5 w-5" />,
+      icon: <Map className="h-5 w-5 text-green-400" />,
       label: 'Physical Layers',
-      href: '#physical'
+      href: '#physical',
+      iconBg: 'rgba(16, 185, 129, 0.12)'
     },
     {
-      icon: <BarChart3 className="h-5 w-5" />,
+      icon: <BarChart3 className="h-5 w-5 text-blue-400" />,
       label: 'Statistics',
-      href: '#stats'
+      href: '#stats',
+      iconBg: 'rgba(59, 130, 246, 0.12)'
     },
     {
-      icon: <Users className="h-5 w-5" />,
+      icon: <Users className="h-5 w-5 text-yellow-400" />,
       label: 'International Organizations',
-      href: '#orgs'
+      href: '#orgs',
+      iconBg: 'rgba(234, 179, 8, 0.12)'
     },
     {
-      icon: <GitCompare className="h-5 w-5" />,
+      icon: <GitCompare className="h-5 w-5 text-purple-400" />,
       label: 'Compare Countries',
-      href: '#compare'
+      href: '#compare',
+      iconBg: 'rgba(147, 51, 234, 0.12)'
     },
     {
-      icon: <User className="h-5 w-5" />,
+      icon: <User className="h-5 w-5 text-indigo-400" />,
       label: 'Dashboard',
       href: '/dashboard',
+      iconBg: 'rgba(99, 102, 241, 0.12)',
       onClick: () => {
         if (isAuthenticated) {
           navigate('/dashboard');
@@ -155,14 +163,16 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
       }
     },
     {
-      icon: <Settings className="h-5 w-5" />,
+      icon: <Settings className="h-5 w-5 text-slate-400" />,
       label: 'Settings',
-      href: '#settings'
+      href: '#settings',
+      iconBg: 'rgba(148, 163, 184, 0.12)'
     },
     {
-      icon: <Info className="h-5 w-5" />,
+      icon: <Info className="h-5 w-5 text-pink-400" />,
       label: 'About',
-      href: LANDING_ABOUT_URL
+      href: LANDING_ABOUT_URL,
+      iconBg: 'rgba(236, 72, 153, 0.12)'
     }
   ], [navigate, isAuthenticated]);
 
@@ -241,7 +251,7 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.05 }}
                       >
-                        <div className="left-sidebar-item-icon">
+                        <div className="left-sidebar-item-icon" style={{ background: item.iconBg }}>
                           {item.icon}
                         </div>
                         <span className="left-sidebar-item-label">

@@ -10,17 +10,28 @@ export interface ConflictUpdateMessage {
 
 type ConflictUpdateHandler = (msg: ConflictUpdateMessage) => void;
 
+// Backend URL — never the Vite dev server port
+const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
 class ConflictWebSocketService {
   private socket: Socket | null = null;
+  private handler: ConflictUpdateHandler | null = null;
   private readonly PATH = '/ws/conflicts';
 
   connect(onUpdate: ConflictUpdateHandler) {
-    if (this.socket?.connected) return;
+    // Store latest handler without reconnecting
+    this.handler = onUpdate;
 
-    this.socket = io('', {
+    // Guard: don't create a second socket while one is already connecting or connected
+    if (this.socket) return;
+
+    this.socket = io(BACKEND_URL, {
       path: this.PATH,
       transports: ['websocket'],
-      autoConnect: true
+      autoConnect: true,
+      reconnection: true,
+      reconnectionDelay: 2000,
+      reconnectionAttempts: 5,
     });
 
     this.socket.on('connect', () => {
@@ -32,7 +43,7 @@ class ConflictWebSocketService {
     });
 
     this.socket.on('conflict:update', (payload: ConflictUpdateMessage) => {
-      onUpdate?.(payload);
+      this.handler?.(payload);
     });
   }
 
@@ -40,6 +51,7 @@ class ConflictWebSocketService {
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
+      this.handler = null;
     }
   }
 }

@@ -2,37 +2,37 @@
 # Ejecutar: Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 # Luego: .\setup.ps1
 
-Write-Host "🚀 Configurando Worldlore - Conflict Tracker" -ForegroundColor Green
+Write-Host "Configurando WorldLore" -ForegroundColor Green
 Write-Host "==============================================" -ForegroundColor Green
 
 # Verificar Node.js
 try {
     $nodeVersion = node --version
-    Write-Host "✅ Node.js $nodeVersion detectado" -ForegroundColor Green
+    Write-Host "Node.js $nodeVersion detectado" -ForegroundColor Green
 } catch {
-    Write-Host "❌ Error: Node.js no está instalado. Por favor instala Node.js 18+" -ForegroundColor Red
+    Write-Host "Error: Node.js no esta instalado. Por favor instala Node.js 18+" -ForegroundColor Red
     exit 1
 }
 
 # Verificar versión de Node.js
-$nodeMajorVersion = (node --version) -replace 'v', '' -split '.' | Select-Object -First 1
+$nodeMajorVersion = (node --version) -replace 'v', '' -split '\.' | Select-Object -First 1
 if ([int]$nodeMajorVersion -lt 18) {
-    Write-Host "❌ Error: Node.js versión $nodeMajorVersion detectada. Se requiere versión 18+" -ForegroundColor Red
+    Write-Host "Error: Node.js version $nodeMajorVersion detectada. Se requiere version 18+" -ForegroundColor Red
     exit 1
 }
 
 # Verificar npm
 try {
     $npmVersion = npm --version
-    Write-Host "✅ npm $npmVersion detectado" -ForegroundColor Green
+    Write-Host "npm $npmVersion detectado" -ForegroundColor Green
 } catch {
-    Write-Host "❌ Error: npm no está instalado" -ForegroundColor Red
+    Write-Host "Error: npm no esta instalado" -ForegroundColor Red
     exit 1
 }
 
 # Solicitar token de Mapbox
 Write-Host ""
-Write-Host "📋 Configuración de Mapbox" -ForegroundColor Yellow
+Write-Host "Configuracion de Mapbox" -ForegroundColor Yellow
 Write-Host "Para obtener tu token de Mapbox:" -ForegroundColor White
 Write-Host "1. Ve a https://www.mapbox.com/" -ForegroundColor White
 Write-Host "2. Crea una cuenta gratuita" -ForegroundColor White
@@ -42,12 +42,12 @@ Write-Host ""
 $MAPBOX_TOKEN = Read-Host "Ingresa tu token de Mapbox"
 
 if ([string]::IsNullOrEmpty($MAPBOX_TOKEN)) {
-    Write-Host "❌ Error: Token de Mapbox es requerido" -ForegroundColor Red
+    Write-Host "Error: Token de Mapbox es requerido" -ForegroundColor Red
     exit 1
 }
 
 Write-Host ""
-Write-Host "📦 Instalando dependencias..." -ForegroundColor Yellow
+Write-Host "Instalando dependencias..." -ForegroundColor Yellow
 
 # Instalar dependencias del proyecto principal
 Write-Host "Instalando dependencias principales..." -ForegroundColor White
@@ -65,43 +65,88 @@ Set-Location frontend
 npm install
 Set-Location ..
 
-Write-Host ""
-Write-Host "🔧 Configurando variables de entorno..." -ForegroundColor Yellow
-
-# Crear archivos .env
-"MAPBOX_TOKEN=$MAPBOX_TOKEN" | Out-File -FilePath ".env" -Encoding UTF8
-"PORT=3000" | Out-File -FilePath ".env" -Append -Encoding UTF8
-"NODE_ENV=development" | Out-File -FilePath ".env" -Append -Encoding UTF8
-
-"VITE_MAPBOX_TOKEN=$MAPBOX_TOKEN" | Out-File -FilePath "frontend\.env" -Encoding UTF8
-"VITE_API_URL=http://localhost:3000" | Out-File -FilePath "frontend\.env" -Append -Encoding UTF8
-"NODE_ENV=development" | Out-File -FilePath "frontend\.env" -Append -Encoding UTF8
-
-"MAPBOX_TOKEN=$MAPBOX_TOKEN" | Out-File -FilePath "backend\.env" -Encoding UTF8
-"PORT=3000" | Out-File -FilePath "backend\.env" -Append -Encoding UTF8
-"NODE_ENV=development" | Out-File -FilePath "backend\.env" -Append -Encoding UTF8
-"CORS_ORIGIN=http://localhost:5173" | Out-File -FilePath "backend\.env" -Append -Encoding UTF8
-
-# Configurar archivo .env para la landing
-if (Test-Path "frontend/landing") {
-    Write-Host "Configurando variables de entorno para la landing..." -ForegroundColor White
-    "VITE_WL_APP_URL=http://localhost:5173" | Out-File -FilePath "frontend/landing\.env" -Encoding UTF8
-    Write-Host "   Archivo .env creado en frontend/landing/" -ForegroundColor Gray
+# Instalar dependencias del landing
+if (Test-Path "landing") {
+    Write-Host "Instalando dependencias del landing..." -ForegroundColor White
+    Set-Location landing
+    npm install
+    Set-Location ..
 }
 
 Write-Host ""
-Write-Host "✅ Configuración completada exitosamente!" -ForegroundColor Green
+Write-Host "Configurando variables de entorno..." -ForegroundColor Yellow
+
+# Crear archivo .env del backend
+$backendEnvContent = @"
+# Variables de entorno para el backend
+
+# Token de Mapbox
+MAPBOX_TOKEN=$MAPBOX_TOKEN
+
+# Puerto del servidor backend
+PORT=3001
+
+# Entorno de desarrollo
+NODE_ENV=development
+
+# Configuracion de CORS
+CORS_ORIGIN=http://localhost:5173
+
+# Base de datos (PostgreSQL + Prisma)
+DATABASE_URL=postgresql://worldlore:worldlore@localhost:5432/worldlore?schema=public
+"@
+$backendEnvContent | Out-File -FilePath "backend\.env" -Encoding UTF8
+Write-Host "   backend/.env creado (puerto 3001)" -ForegroundColor Gray
+
+# Crear archivo .env del frontend
+$frontendEnvContent = @"
+VITE_MAPBOX_TOKEN=$MAPBOX_TOKEN
+VITE_API_URL=http://localhost:3001
+NODE_ENV=development
+"@
+$frontendEnvContent | Out-File -FilePath "frontend\.env" -Encoding UTF8
+Write-Host "   frontend/.env creado" -ForegroundColor Gray
+
+# Crear archivo .env raíz
+$rootEnvContent = @"
+MAPBOX_TOKEN=$MAPBOX_TOKEN
+PORT=3001
+NODE_ENV=development
+"@
+$rootEnvContent | Out-File -FilePath ".env" -Encoding UTF8
+Write-Host "   .env raiz creado" -ForegroundColor Gray
+
+# Configurar archivo .env para la landing
+if (Test-Path "landing") {
+    $landingEnvExamplePath = "landing/.env.example"
+    $landingEnvPath = "landing/.env"
+
+    if (Test-Path $landingEnvExamplePath) {
+        Write-Host "Creando .env de la landing desde .env.example..." -ForegroundColor White
+        Copy-Item $landingEnvExamplePath $landingEnvPath
+    } else {
+        $landingEnvContent = @"
+# Variables de entorno para la Landing Page
+# URL de la aplicacion principal (WorldLore Map)
+VITE_WL_APP_URL=http://localhost:5173
+"@
+        $landingEnvContent | Out-File -FilePath $landingEnvPath -Encoding UTF8
+    }
+    Write-Host "   landing/.env creado" -ForegroundColor Gray
+}
+
 Write-Host ""
-Write-Host "🚀 Para ejecutar el proyecto:" -ForegroundColor Yellow
+Write-Host "Configuracion completada exitosamente!" -ForegroundColor Green
 Write-Host ""
-Write-Host "Terminal 1 (Backend):" -ForegroundColor White
-Write-Host "  npm run dev" -ForegroundColor Cyan
+Write-Host "Pasos siguientes:" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "Terminal 2 (Frontend):" -ForegroundColor White
-Write-Host "  npm run client" -ForegroundColor Cyan
+Write-Host "1. Iniciar la base de datos:" -ForegroundColor White
+Write-Host "   .\start-database.ps1" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "🌐 URLs:" -ForegroundColor Yellow
+Write-Host "2. Iniciar todos los servidores:" -ForegroundColor White
+Write-Host "   .\start-servers.ps1" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "URLs:" -ForegroundColor Yellow
+Write-Host "  Landing:  http://localhost:5174" -ForegroundColor White
 Write-Host "  Frontend: http://localhost:5173" -ForegroundColor White
-Write-Host "  Backend:  http://localhost:3000" -ForegroundColor White
-Write-Host ""
-Write-Host "📚 Para más información, consulta el README.md" -ForegroundColor White 
+Write-Host "  Backend:  http://localhost:3001" -ForegroundColor White
