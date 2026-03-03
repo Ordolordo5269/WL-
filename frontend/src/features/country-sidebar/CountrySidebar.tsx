@@ -62,25 +62,27 @@ function CategoryGroup({ icon, title, items, isOpen, onToggle, searchTerm }: Cat
           }`} 
         />
       </button>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          exit={{ opacity: 0, height: 0 }}
-          transition={{ duration: 0.3, ease: 'easeInOut' }}
-          className="ml-6 mt-2"
-        >
-          {(searchTerm ? filteredItems : items).map((item) => (
-            <a
-              key={item}
-              href={`#${item.toLowerCase().replace(/\s+/g, '-')}`}
-              className="block py-2 px-3 text-sm text-slate-300 hover:text-slate-100 hover:bg-slate-800 rounded-md transition-all duration-200"
-            >
-              {highlightText(item, searchTerm)}
-            </a>
-          ))}
-        </motion.div>
-      )}
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            className="ml-6 mt-2 overflow-hidden"
+          >
+            {(searchTerm ? filteredItems : items).map((item) => (
+              <a
+                key={item}
+                href={`#${item.toLowerCase().replace(/\s+/g, '-')}`}
+                className="block py-2 px-3 text-sm text-slate-300 hover:text-slate-100 hover:bg-slate-800 rounded-md transition-all duration-200"
+              >
+                {highlightText(item, searchTerm)}
+              </a>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -194,14 +196,13 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
       {isOpen && (
         <motion.div 
           className="country-sidebar"
-          initial={{ x: '100%', opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          exit={{ x: '100%', opacity: 0 }}
-          transition={{ 
+          initial={{ x: '100%' }}
+          animate={{ x: 0 }}
+          exit={{ x: '100%' }}
+          transition={{
             type: 'spring',
             stiffness: 300,
-            damping: 30,
-            duration: 0.3
+            damping: 30
           }}
         >
           <div className="sidebar-header">

@@ -823,17 +823,19 @@ const mapRef = useRef<{ easeTo: (options: MapEaseToOptionsApp) => void; getMap: 
       />
       
       {/* Left sidebar overlay */}
-      {sidebars.menu && (
-        <motion.div 
-          className="fixed inset-0 bg-black z-40"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.4 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2, ease: 'easeInOut' }}
-          style={{ pointerEvents: historyEnabled ? 'none' as const : 'auto' as const }}
-          onClick={() => { if (!historyEnabled) handleCloseLeftSidebar(); }}
-        />
-      )}
+      <AnimatePresence>
+        {sidebars.menu && (
+          <motion.div
+            className="fixed inset-0 bg-black z-40"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.4 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            style={{ pointerEvents: historyEnabled ? 'none' as const : 'auto' as const }}
+            onClick={() => { if (!historyEnabled) handleCloseLeftSidebar(); }}
+          />
+        )}
+      </AnimatePresence>
       
       <WorldMap 
         ref={mapRefCallback}
@@ -848,10 +850,9 @@ const mapRef = useRef<{ easeTo: (options: MapEaseToOptionsApp) => void; getMap: 
       />
       
       {/* Country Sidebar */}
-      {sidebars.country && (
-        <>
-          {/* Overlay */}
-          <motion.div 
+      <AnimatePresence>
+        {sidebars.country && (
+          <motion.div
             className="fixed inset-0 bg-black z-40 cursor-pointer"
             initial={{ opacity: 0 }}
             animate={{ opacity: 0.4 }}
@@ -859,23 +860,22 @@ const mapRef = useRef<{ easeTo: (options: MapEaseToOptionsApp) => void; getMap: 
             transition={{ duration: 0.2, ease: 'easeInOut' }}
             onClick={handleCloseSidebar}
           />
-          
-          <CountrySidebar 
-            isOpen={sidebars.country}
-            onClose={handleCloseSidebar}
-            countryName={selectedCountry}
-            onNavigateToCity={(lat, lng, cityName) => {
-              mapRef.current?.flyToCity?.(lat, lng, cityName);
-            }}
-            onCitiesLoaded={(cities) => {
-              if (cities.length > 0) {
-                mapRef.current?.setCitiesData?.(cities);
-                mapRef.current?.setCitiesVisible?.(true);
-              }
-            }}
-          />
-        </>
-      )}
+        )}
+      </AnimatePresence>
+      <CountrySidebar
+        isOpen={sidebars.country}
+        onClose={handleCloseSidebar}
+        countryName={selectedCountry}
+        onNavigateToCity={(lat, lng, cityName) => {
+          mapRef.current?.flyToCity?.(lat, lng, cityName);
+        }}
+        onCitiesLoaded={(cities) => {
+          if (cities.length > 0) {
+            mapRef.current?.setCitiesData?.(cities);
+            mapRef.current?.setCitiesVisible?.(true);
+          }
+        }}
+      />
       
       {/* Global loading overlay */}
       <AnimatePresence>
@@ -920,10 +920,9 @@ const mapRef = useRef<{ easeTo: (options: MapEaseToOptionsApp) => void; getMap: 
       </AnimatePresence>
 
       {/* Conflict Tracker */}
-      {sidebars.conflict && (
-        <>
-          {/* Overlay for ConflictTracker */}
-          <motion.div 
+      <AnimatePresence>
+        {sidebars.conflict && (
+          <motion.div
             className="fixed inset-0 bg-black z-40 cursor-pointer"
             initial={{ opacity: 0 }}
             animate={{ opacity: 0.4 }}
@@ -931,13 +930,14 @@ const mapRef = useRef<{ easeTo: (options: MapEaseToOptionsApp) => void; getMap: 
             transition={{ duration: 0.2, ease: 'easeInOut' }}
             onClick={handleCloseConflictTracker}
           />
-          
-          <ConflictTracker 
-            onBack={handleCloseConflictTracker}
-            onCenterMap={handleCenterMapOnConflict}
-            onConflictSelect={handleConflictSelect}
-          />
-        </>
+        )}
+      </AnimatePresence>
+      {sidebars.conflict && (
+        <ConflictTracker
+          onBack={handleCloseConflictTracker}
+          onCenterMap={handleCenterMapOnConflict}
+          onConflictSelect={handleConflictSelect}
+        />
       )}
 
       {/* Compare Countries Popup */}

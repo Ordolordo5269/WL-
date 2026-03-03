@@ -16,9 +16,8 @@
   flex-direction: column;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   box-shadow: -12px 0 48px rgba(0, 0, 0, 0.5), -2px 0 0 rgba(255, 255, 255, 0.02);
-  will-change: transform, opacity;
+  will-change: transform;
   transform: translateZ(0);
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   contain: layout style paint;
 }
 
@@ -641,9 +640,8 @@
   flex-direction: column;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   box-shadow: 12px 0 48px rgba(0, 0, 0, 0.5), 2px 0 0 rgba(255, 255, 255, 0.02);
-  will-change: transform, opacity;
+  will-change: transform;
   transform: translateZ(0);
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   contain: layout style paint;
 }
 
@@ -1569,7 +1567,7 @@
 }
 
 .country-sidebar {
-  will-change: transform, opacity;
+  will-change: transform;
   transform: translateZ(0); /* Forzar aceleración por hardware */
 }
 

@@ -207,14 +207,14 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
   }, [activeItem, onOpenConflictTracker]);
 
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence>
       {isOpen && (
             <motion.div 
               className="left-sidebar"
-              initial={{ x: '-100%', opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: '-100%', opacity: 0 }}
-              transition={{ 
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{
                 type: 'spring',
                 stiffness: 400,
                 damping: 25,
@@ -239,17 +239,14 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
                         className={`left-sidebar-item ${
                           activeItem === item.label.toLowerCase() ? 'active' : ''
                         }`}
-                        whileHover={{ 
+                        whileHover={{
                           x: 8,
                           transition: { type: 'spring', stiffness: 500, damping: 20 }
                         }}
-                        whileTap={{ 
+                        whileTap={{
                           scale: 0.98,
                           transition: { duration: 0.1 }
                         }}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.05 }}
                       >
                         <div className="left-sidebar-item-icon" style={{ background: item.iconBg }}>
                           {item.icon}
