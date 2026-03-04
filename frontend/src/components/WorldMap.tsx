@@ -26,7 +26,6 @@ mapboxgl.accessToken = _mbToken || '';
 interface WorldMapProps {
   onCountrySelect: (countryName: string) => void;
   selectedCountry: string | null;
-  onResetView?: () => void;
   conflicts?: ConflictData[];
   onConflictClick?: (conflictId: string) => void;
   selectedConflictId?: string | null;
@@ -63,20 +62,17 @@ interface ConflictGeoJSON {
 }
 
 type MetricId = 'gdp' | 'inflation' | 'gdp-per-capita' | 'gini' | 'exports' | 'life-expectancy' | 'military-expenditure' | 'democracy-index' | 'trade-gdp';
-const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMap: () => mapboxgl.Map | null; setChoropleth?: (metric: MetricId, spec: ChoroplethSpec | GdpPerCapitaChoroplethSpec | null) => void; setActiveChoropleth?: (metric: MetricId | null) => void; setHistoryEnabled?: (enabled: boolean) => void; setHistoryYear?: (year: number) => void; highlightIso3List?: (iso: string[], colorHex?: string) => void; highlightIso3ToColorMap?: (isoToColor: Record<string,string>) => void; setTerrainEnabled?: (v: boolean) => void; setTerrainExaggeration?: (n: number) => void }, WorldMapProps>(({ onCountrySelect, selectedCountry, onResetView, conflicts = [], selectedConflictId, isLeftSidebarOpen = false, onMapReady }, ref) => {
+const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMap: () => mapboxgl.Map | null; setChoropleth?: (metric: MetricId, spec: ChoroplethSpec | GdpPerCapitaChoroplethSpec | null) => void; setActiveChoropleth?: (metric: MetricId | null) => void; setHistoryEnabled?: (enabled: boolean) => void; setHistoryYear?: (year: number) => void; highlightIso3List?: (iso: string[], colorHex?: string) => void; highlightIso3ToColorMap?: (isoToColor: Record<string,string>) => void; setTerrainEnabled?: (v: boolean) => void; setTerrainExaggeration?: (n: number) => void }, WorldMapProps>(({ onCountrySelect, selectedCountry, conflicts = [], selectedConflictId, isLeftSidebarOpen = false, onMapReady }, ref) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const geocoderContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const selectedCountryId = useRef<string | number | null>(null);
-  // Removed unused markersRef to prevent memory leaks
-  const animationFrameRef = useRef<number | undefined>(undefined);
   const conflictDataManager = useRef<ConflictDataManager | null>(null);
   const isLeftSidebarOpenRef = useRef(isLeftSidebarOpen);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const historyEnabledRef = useRef<boolean>(false);
   const historyYearRef = useRef<number>(1880);
   const availableHistoryYearsRef = useRef<number[]>(AVAILABLE_HISTORY_YEARS);
-  const subjectToColorRef = useRef<Record<string, string>>({});
   const historyCacheRef = useRef<Map<number, any>>(new Map());
   const historyRequestIdRef = useRef<number>(0);
   const historyDebounceRef = useRef<number | null>(null);
@@ -84,9 +80,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   const historyPopupRef = useRef<mapboxgl.Popup | null>(null);
   const naturalPopupRef = useRef<mapboxgl.Popup | null>(null);
   
-  // ✅ NUEVO: Refs para prevenir memory leaks
-  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const spinIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const deferredTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const rotationSpeedRef = useRef<number>(3);
   const spinRafRef = useRef<number | null>(null);
   const userInteractingRef = useRef<boolean>(false);
@@ -160,30 +154,15 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     onCountrySelect(countryName);
   }, [onCountrySelect]);
 
-  // ✅ MEJORADO: Función de cleanup para prevenir memory leaks
   const cleanupResources = useCallback(() => {
-    // Limpiar timeouts
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-      hoverTimeoutRef.current = null;
-    }
-    
-    if (spinIntervalRef.current) {
-      clearInterval(spinIntervalRef.current);
-      spinIntervalRef.current = null;
-    }
-    
-    // Limpiar animation frames
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = undefined;
+    if (deferredTimeoutRef.current) {
+      clearTimeout(deferredTimeoutRef.current);
+      deferredTimeoutRef.current = null;
     }
     if (spinRafRef.current !== null) {
       cancelAnimationFrame(spinRafRef.current);
       spinRafRef.current = null;
     }
-    
-    // ✅ MEJORADO: Limpiar event listeners con manejo de capas
     if (mapRef.current) {
       eventListenersRef.current.forEach(({ event, handler, layer }) => {
         try {
@@ -192,23 +171,15 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
           } else {
             mapRef.current?.off(event, handler);
           }
-        } catch (error) {
-          console.warn(`Error removing event listener for ${event}${layer ? ` on layer ${layer}` : ''}:`, error);
-        }
+        } catch {}
       });
       eventListenersRef.current = [];
     }
   }, []);
-
-  // Exponer métodos del mapa al componente padre (se define más abajo tras helpers)
-
-  // Reaplicar niebla/atmósfera con fondo estrellado
   const applyFog = useCallback((preset: PlanetPreset = planetPreset) => {
     if (!mapRef.current) return;
     appearanceApplyFog(mapRef.current, preset);
   }, [planetPreset]);
-
-  // (Terrain removido)
 
   // Ocultar capas políticas y overlays en modo físico
   const applyPhysicalModeTweaks = useCallback(() => {
@@ -921,8 +892,6 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     return hslToHex(hue, 55, 62);
   }
 
-  // Not used anymore; coloring comes from COLOR property on features
-
   function colorizeHistoryData(data: any): any {
     if (!data || !Array.isArray(data.features)) return data;
     // Determine color by canonical sovereign: SUBJECTO (if present) else NAME
@@ -941,8 +910,6 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     }
     return data;
   }
-
-  // computeAndApplyHistoryColorsFromData is no longer used; colors are embedded via COLOR
 
   const updateHistory = useCallback(async (year: number) => {
     const nearest = snapToAvailableYear(year, availableHistoryYearsRef.current);
@@ -970,8 +937,6 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       if (requestId !== historyRequestIdRef.current) return;
       ensureHistorySource(nearest);
       ensureHistoryLayers();
-      // colors will fallback to default
-      subjectToColorRef.current = {};
       applyHistoryColors();
     }
   }, [ensureHistorySource, ensureHistoryLayers, getHistoryGeoJsonUrl]);
@@ -1189,12 +1154,6 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     setMinimalMode: (v: boolean) => { setMinimalModeOn(v); setBaseFeaturesVisibility(v); },
     // NEW: Globe rotation controls (smooth RAF-based)
     setAutoRotate: (enabled: boolean) => {
-      // Stop any interval-based fallback if present
-      if (spinIntervalRef.current) {
-        clearInterval(spinIntervalRef.current);
-        spinIntervalRef.current = null;
-      }
-      // Stop existing RAF loop
       if (!enabled) {
         if (spinRafRef.current !== null) {
           cancelAnimationFrame(spinRafRef.current);
@@ -1390,227 +1349,121 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       try { if (map.getLayer('3d-buildings')) map.removeLayer('3d-buildings'); } catch {}
     }
 
-    // Re-registrar eventos mínimos (hover y click)
+    // Reusable source identifier to avoid object allocations in hot paths
+    const SRC_ID = { source: 'country-boundaries' as const, sourceLayer: 'country_boundaries' as const };
+
+    // Hover state — RAF-throttled to avoid blocking the main thread on rapid mouse moves
     let hoveredId: number | string | null = null;
+    let hoverRafPending = false;
 
     const handleMouseMove = (e: mapboxgl.MapMouseEvent) => {
-      // Permit clicks en modo historia incluso si la sidebar está abierta
-      if (isLeftSidebarOpenRef.current && !historyEnabledRef.current) {
-        map.getCanvas().style.cursor = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='8' fill='none' stroke='%2387CEEB' stroke-width='1.5' opacity='0.9'/%3E%3Ccircle cx='10' cy='10' r='2' fill='%2387CEEB' opacity='0.7'/%3E%3C/svg%3E\") 10 10, auto";
-        return;
+      if (isLeftSidebarOpenRef.current && !historyEnabledRef.current) return;
+      if (!e.features || e.features.length === 0) return;
+      const id = e.features[0].id as any;
+      if (id === hoveredId) return; // same feature — nothing to do
+
+      // Defer the setFeatureState to next animation frame (avoids piling up work on mousemove)
+      if (hoveredId !== null) {
+        try { map.setFeatureState({ ...SRC_ID, id: hoveredId }, { hover: false }); } catch {}
       }
-      if (e.features && e.features.length > 0) {
-        const id = e.features[0].id as any;
-        if (id !== hoveredId) {
-          if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+      hoveredId = id;
+      if (!hoverRafPending) {
+        hoverRafPending = true;
+        requestAnimationFrame(() => {
+          hoverRafPending = false;
           if (hoveredId !== null) {
-            try {
-              map.setFeatureState({ source: 'country-boundaries', sourceLayer: 'country_boundaries', id: hoveredId }, { hover: false });
-            } catch {}
+            try { map.setFeatureState({ ...SRC_ID, id: hoveredId }, { hover: true }); } catch {}
           }
-          hoveredId = id;
-          hoverTimeoutRef.current = setTimeout(() => {
-            if (hoveredId !== null) {
-              try {
-                map.setFeatureState({ source: 'country-boundaries', sourceLayer: 'country_boundaries', id: hoveredId }, { hover: true });
-              } catch {}
-            }
-          }, 50);
-        }
+        });
       }
       map.getCanvas().style.cursor = 'pointer';
     };
 
     const handleMouseLeave = () => {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current);
-        hoverTimeoutRef.current = null;
-      }
       if (hoveredId !== null) {
-        try {
-          map.setFeatureState({ source: 'country-boundaries', sourceLayer: 'country_boundaries', id: hoveredId }, { hover: false });
-        } catch {}
+        try { map.setFeatureState({ ...SRC_ID, id: hoveredId }, { hover: false }); } catch {}
       }
       hoveredId = null;
       map.getCanvas().style.cursor = 'grab';
     };
 
-    const handleCountryClick = (e: mapboxgl.MapMouseEvent) => {
-      // 0) Validación: fuera de modo historia, si la sidebar está abierta no permitimos click
-      //    (se mantiene exactamente el comportamiento existente).
-      if (isLeftSidebarOpenRef.current && !historyEnabledRef.current) return;
+    // Shared cubic ease-out
+    const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 
-      // 1) Validación: necesitamos un feature del país
+    const handleCountryClick = (e: mapboxgl.MapMouseEvent) => {
+      if (isLeftSidebarOpenRef.current && !historyEnabledRef.current) return;
       if (!e.features || e.features.length === 0) return;
       const feature: any = e.features[0];
 
-      // 2) Derivar nombre e id (se mantiene el mismo criterio)
       const countryName = feature.properties?.name_en || feature.properties?.name || 'Unknown Country';
       const featureId = feature.id;
       if (featureId === undefined || featureId === null) return;
 
-      // 3) Mantener lógica de selección visual (setFeatureState) exactamente como antes
+      // Visual selection state
       if (selectedCountryId.current !== null) {
-        try {
-          map.setFeatureState(
-            { source: 'country-boundaries', sourceLayer: 'country_boundaries', id: selectedCountryId.current },
-            { selected: false }
-          );
-        } catch {}
+        try { map.setFeatureState({ ...SRC_ID, id: selectedCountryId.current }, { selected: false }); } catch {}
       }
       selectedCountryId.current = featureId as any;
-      try {
-        map.setFeatureState(
-          { source: 'country-boundaries', sourceLayer: 'country_boundaries', id: featureId },
-          { selected: true }
-        );
-      } catch {}
+      try { map.setFeatureState({ ...SRC_ID, id: featureId }, { selected: true }); } catch {}
 
-      // 4) Nuevo sistema de enfoque:
-      //    - Calcula bbox del país desde su geometría (Polygon/MultiPolygon)
-      //    - Calcula un centroide "geométrico" (con fórmula de área para el anillo exterior)
-      //    - Usa map.fitBounds para que el zoom se ajuste automáticamente al tamaño del país
-      //    - Fallback: si no hay geometría o hay error, centra en el punto del click con zoom medio
-      const easing = (t: number) => 1 - Math.pow(1 - t, 3);
+      // --- Compute target & start animation BEFORE triggering React state updates ---
       const fallbackCenter: [number, number] = [e.lngLat.lng, e.lngLat.lat];
+      try { map.stop(); } catch {}
 
       try {
         const geometry: any = feature.geometry;
-        if (!geometry || !geometry.type || !geometry.coordinates) {
-          throw new Error('Country geometry not available');
-        }
+        if (!geometry || !geometry.coordinates) throw 0;
 
-        // 4.1) Extraer todos los puntos [lng, lat] de la geometría para poder calcular el bbox
-        const points: Array<[number, number]> = [];
-        const pushPoint = (pt: any) => {
-          if (!Array.isArray(pt) || pt.length < 2) return;
-          const lng = Number(pt[0]);
-          const lat = Number(pt[1]);
-          if (!Number.isFinite(lng) || !Number.isFinite(lat)) return;
-          points.push([lng, lat]);
-        };
-
-        if (geometry.type === 'Polygon') {
-          for (const ring of geometry.coordinates as any[]) {
-            for (const pt of ring as any[]) pushPoint(pt);
-          }
-        } else if (geometry.type === 'MultiPolygon') {
-          for (const polygon of geometry.coordinates as any[]) {
-            for (const ring of polygon as any[]) {
-              for (const pt of ring as any[]) pushPoint(pt);
-            }
-          }
-        } else {
-          // No debería ocurrir en la capa de países, pero dejamos un error explícito.
-          throw new Error(`Unsupported country geometry type: ${String(geometry.type)}`);
-        }
-
-        if (points.length === 0) throw new Error('Country geometry has no coordinates');
-
-        // 4.2) Calcular bounding box: [[minLng, minLat], [maxLng, maxLat]]
-        let minLng = Infinity;
-        let minLat = Infinity;
-        let maxLng = -Infinity;
-        let maxLat = -Infinity;
-        for (const [lng, lat] of points) {
-          if (lng < minLng) minLng = lng;
-          if (lat < minLat) minLat = lat;
-          if (lng > maxLng) maxLng = lng;
-          if (lat > maxLat) maxLat = lat;
-        }
-
-        // Validación extra por seguridad
-        if (!Number.isFinite(minLng) || !Number.isFinite(minLat) || !Number.isFinite(maxLng) || !Number.isFinite(maxLat)) {
-          throw new Error('Invalid bbox values from geometry');
-        }
-
-        const bbox: mapboxgl.LngLatBoundsLike = [
-          [minLng, minLat],
-          [maxLng, maxLat],
-        ];
-
-        // 4.3) Calcular centroide:
-        //      - Intentamos centroide del anillo exterior con fórmula de área (shoelace)
-        //      - Si falla (área ~ 0), usamos el centro del bbox como fallback robusto
-        const bboxCenter: [number, number] = [(minLng + maxLng) / 2, (minLat + maxLat) / 2];
-
-        const centroidFromRing = (ring: Array<[number, number]>) => {
-          if (ring.length < 3) return { centroid: bboxCenter, areaAbs: 0 };
-          let area2 = 0; // 2*A (signed)
-          let cx6a = 0;  // 6*A*Cx
-          let cy6a = 0;  // 6*A*Cy
-
+        // Single-pass bbox — no intermediate arrays
+        let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
+        let n = 0;
+        const rings: any[][] = geometry.type === 'Polygon'
+          ? geometry.coordinates
+          : geometry.type === 'MultiPolygon'
+            ? geometry.coordinates.flat()
+            : null;
+        if (!rings) throw 0;
+        for (let r = 0; r < rings.length; r++) {
+          const ring = rings[r];
           for (let i = 0; i < ring.length; i++) {
-            const [x0, y0] = ring[i];
-            const [x1, y1] = ring[(i + 1) % ring.length];
-            const cross = x0 * y1 - x1 * y0;
-            area2 += cross;
-            cx6a += (x0 + x1) * cross;
-            cy6a += (y0 + y1) * cross;
+            const lng = ring[i][0], lat = ring[i][1];
+            if (lng < minLng) minLng = lng;
+            if (lat < minLat) minLat = lat;
+            if (lng > maxLng) maxLng = lng;
+            if (lat > maxLat) maxLat = lat;
+            n++;
           }
+        }
+        if (n === 0) throw 0;
 
-          const area = area2 / 2;
-          const areaAbs = Math.abs(area);
-          if (areaAbs < 1e-12) return { centroid: bboxCenter, areaAbs: 0 };
-          return { centroid: [cx6a / (6 * area), cy6a / (6 * area)] as [number, number], areaAbs };
-        };
-
-        const computeCentroid = (): [number, number] => {
-          try {
-            // Para MultiPolygon, elegimos el polígono con mayor área del anillo exterior
-            if (geometry.type === 'Polygon') {
-              const outerRing = (geometry.coordinates?.[0] || []).map((p: any) => [Number(p[0]), Number(p[1])] as [number, number]);
-              return centroidFromRing(outerRing).centroid;
-            }
-
-            if (geometry.type === 'MultiPolygon') {
-              let best = { centroid: bboxCenter, areaAbs: 0 };
-              for (const polygon of geometry.coordinates as any[]) {
-                const outerRing = (polygon?.[0] || []).map((p: any) => [Number(p[0]), Number(p[1])] as [number, number]);
-                const c = centroidFromRing(outerRing);
-                if (c.areaAbs > best.areaAbs) best = c;
-              }
-              return best.centroid;
-            }
-
-            return bboxCenter;
-          } catch {
-            return bboxCenter;
-          }
-        };
-
-        const centroid = computeCentroid();
-
-        // 4.4) ⚡ Performance/robustez:
-        //      El "lagazo" venía de hacer 2 movimientos (fitBounds + luego easeTo en moveend),
-        //      y además los clicks rápidos podían aplicar el centroide anterior cuando terminaba
-        //      la animación previa. Para evitarlo:
-        //        - Cancelamos cualquier animación en curso (map.stop()).
-        //        - Calculamos el zoom automáticamente con cameraForBounds (misma idea que fitBounds).
-        //        - Hacemos UNA sola animación easeTo al centroide con ese zoom.
-        try { map.stop(); } catch {}
+        const bbox: mapboxgl.LngLatBoundsLike = [[minLng, minLat], [maxLng, maxLat]];
+        const center: [number, number] = [(minLng + maxLng) / 2, (minLat + maxLat) / 2];
 
         const camera = map.cameraForBounds(bbox, { padding: 50 });
-        if (!camera || camera.zoom === undefined || camera.zoom === null) throw new Error('cameraForBounds failed');
+        if (!camera || camera.zoom == null) throw 0;
 
-        map.easeTo({
-          center: centroid,
+        map.flyTo({
+          center,
           zoom: camera.zoom,
-          duration: 1200,
-          easing
+          duration: 900,
+          essential: true,
+          curve: 1.42,
+          minZoom: Math.min(camera.zoom, map.getZoom()) - 0.5,
+          easing: easeOut
         });
       } catch {
-        // 4.5) Fallback simple: centrar en el click con zoom medio
-        map.easeTo({
+        map.flyTo({
           center: fallbackCenter,
           zoom: 3.5,
-          duration: 1200,
-          easing
+          duration: 900,
+          essential: true,
+          curve: 1.42,
+          easing: easeOut
         });
       }
 
-      // 5) Mantener callback de selección (carga de sidebar, etc.)
-      handleCountrySelection(countryName);
+      // Defer React state update to next frame so the animation starts immediately
+      requestAnimationFrame(() => handleCountrySelection(countryName));
     };
 
     try {
@@ -1645,12 +1498,13 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       boxZoom: true,
       keyboard: true,
       renderWorldCopies: false,
-      performanceMetricsCollection: false, // Mejorar rendimiento
-      
-      fadeDuration: 300, // Smooth transitions
-      crossSourceCollisions: false, // Better performance
-      attributionControl: false // Eliminar marca de agua de Mapbox
-    });
+      performanceMetricsCollection: false,
+      fadeDuration: 300,
+      crossSourceCollisions: false,
+      attributionControl: false,
+      localIdeographFontFamily: 'sans-serif',
+      maxTileCacheSize: 200
+    } as any);
 
     mapRef.current = map;
 
@@ -1668,168 +1522,74 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     });
     
     // Evento cuando se selecciona un país desde el geocoder
+    const geoEaseOut = (t: number) => 1 - Math.pow(1 - t, 3);
+
     const handleGeocoderResult = (e: unknown) => {
       const event = e as { result: { place_name?: string; text?: string; center: [number, number] } };
       const countryName = event.result.place_name || event.result.text || 'Unknown Country';
       const coordinates = event.result.center;
-      
-      // Buscar el país en las capas del mapa para obtener su feature
-      const features = map.querySourceFeatures('country-boundaries', {
-        sourceLayer: 'country_boundaries'
+
+      const features = map.querySourceFeatures('country-boundaries', { sourceLayer: 'country_boundaries' });
+      const lcName = countryName.toLowerCase();
+      const matchingFeature = features.find(f => {
+        const n = (f.properties?.name_en || f.properties?.name || '').toLowerCase();
+        return n.includes(lcName) || lcName.includes(n);
       });
-      
-      // Encontrar el feature que corresponde al país seleccionado
-      const matchingFeature = features.find(feature => {
-        const featureName = feature.properties?.name_en || feature.properties?.name || '';
-        return featureName.toLowerCase().includes(countryName.toLowerCase()) ||
-               countryName.toLowerCase().includes(featureName.toLowerCase());
-      });
-      
+
+      try { map.stop(); } catch {}
+
       if (matchingFeature && matchingFeature.id) {
-        // Limpiar selección anterior
         if (selectedCountryId.current !== null) {
-          map.setFeatureState(
-            { source: 'country-boundaries', sourceLayer: 'country_boundaries', id: selectedCountryId.current },
-            { selected: false }
-          );
+          try { map.setFeatureState({ source: 'country-boundaries', sourceLayer: 'country_boundaries', id: selectedCountryId.current }, { selected: false }); } catch {}
         }
-        
-        // Establecer nueva selección
         selectedCountryId.current = matchingFeature.id as string | number;
-        map.setFeatureState(
-          { source: 'country-boundaries', sourceLayer: 'country_boundaries', id: matchingFeature.id },
-          { selected: true }
-        );
-        
-        // Llamar a la función de selección de país
+        try { map.setFeatureState({ source: 'country-boundaries', sourceLayer: 'country_boundaries', id: matchingFeature.id }, { selected: true }); } catch {}
+
         const finalCountryName = matchingFeature.properties?.name_en || matchingFeature.properties?.name || countryName;
-        
-        // Enfoque por geometría (bbox + centroide) para ajustar zoom automáticamente al tamaño del país.
-        // Fallback: si no hay geometría, centramos en las coordenadas del geocoder con un zoom medio.
-        const easing = (t: number) => 1 - Math.pow(1 - t, 3);
-        const fallbackCenter: [number, number] = coordinates;
 
         try {
           const geometry: any = (matchingFeature as any).geometry;
-          if (!geometry || !geometry.type || !geometry.coordinates) throw new Error('No geometry for matchingFeature');
+          if (!geometry || !geometry.coordinates) throw 0;
 
-          const points: Array<[number, number]> = [];
-          const pushPoint = (pt: any) => {
-            if (!Array.isArray(pt) || pt.length < 2) return;
-            const lng = Number(pt[0]);
-            const lat = Number(pt[1]);
-            if (!Number.isFinite(lng) || !Number.isFinite(lat)) return;
-            points.push([lng, lat]);
-          };
-
-          if (geometry.type === 'Polygon') {
-            for (const ring of geometry.coordinates as any[]) for (const pt of ring as any[]) pushPoint(pt);
-          } else if (geometry.type === 'MultiPolygon') {
-            for (const polygon of geometry.coordinates as any[]) for (const ring of polygon as any[]) for (const pt of ring as any[]) pushPoint(pt);
-          } else {
-            throw new Error(`Unsupported geometry type: ${String(geometry.type)}`);
-          }
-
-          if (points.length === 0) throw new Error('Geometry has no coordinates');
-
-          let minLng = Infinity;
-          let minLat = Infinity;
-          let maxLng = -Infinity;
-          let maxLat = -Infinity;
-          for (const [lng, lat] of points) {
-            if (lng < minLng) minLng = lng;
-            if (lat < minLat) minLat = lat;
-            if (lng > maxLng) maxLng = lng;
-            if (lat > maxLat) maxLat = lat;
-          }
-
-          const bbox: mapboxgl.LngLatBoundsLike = [
-            [minLng, minLat],
-            [maxLng, maxLat]
-          ];
-
-          const bboxCenter: [number, number] = [(minLng + maxLng) / 2, (minLat + maxLat) / 2];
-          const centroidFromRing = (ring: Array<[number, number]>) => {
-            if (ring.length < 3) return { centroid: bboxCenter, areaAbs: 0 };
-            let area2 = 0;
-            let cx6a = 0;
-            let cy6a = 0;
+          let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
+          let n = 0;
+          const rings: any[][] = geometry.type === 'Polygon'
+            ? geometry.coordinates
+            : geometry.type === 'MultiPolygon'
+              ? geometry.coordinates.flat()
+              : null;
+          if (!rings) throw 0;
+          for (let r = 0; r < rings.length; r++) {
+            const ring = rings[r];
             for (let i = 0; i < ring.length; i++) {
-              const [x0, y0] = ring[i];
-              const [x1, y1] = ring[(i + 1) % ring.length];
-              const cross = x0 * y1 - x1 * y0;
-              area2 += cross;
-              cx6a += (x0 + x1) * cross;
-              cy6a += (y0 + y1) * cross;
+              const lng = ring[i][0], lat = ring[i][1];
+              if (lng < minLng) minLng = lng;
+              if (lat < minLat) minLat = lat;
+              if (lng > maxLng) maxLng = lng;
+              if (lat > maxLat) maxLat = lat;
+              n++;
             }
-            const area = area2 / 2;
-            const areaAbs = Math.abs(area);
-            if (areaAbs < 1e-12) return { centroid: bboxCenter, areaAbs: 0 };
-            return { centroid: [cx6a / (6 * area), cy6a / (6 * area)] as [number, number], areaAbs };
-          };
+          }
+          if (n === 0) throw 0;
 
-          const computeCentroid = (): [number, number] => {
-            try {
-              if (geometry.type === 'Polygon') {
-                const outerRing = (geometry.coordinates?.[0] || []).map((p: any) => [Number(p[0]), Number(p[1])] as [number, number]);
-                return centroidFromRing(outerRing).centroid;
-              }
-              if (geometry.type === 'MultiPolygon') {
-                let best = { centroid: bboxCenter, areaAbs: 0 };
-                for (const polygon of geometry.coordinates as any[]) {
-                  const outerRing = (polygon?.[0] || []).map((p: any) => [Number(p[0]), Number(p[1])] as [number, number]);
-                  const c = centroidFromRing(outerRing);
-                  if (c.areaAbs > best.areaAbs) best = c;
-                }
-                return best.centroid;
-              }
-              return bboxCenter;
-            } catch {
-              return bboxCenter;
-            }
-          };
-
-          const centroid = computeCentroid();
-
-          // Evitar doble movimiento y race conditions igual que en click:
-          try { map.stop(); } catch {}
+          const bbox: mapboxgl.LngLatBoundsLike = [[minLng, minLat], [maxLng, maxLat]];
+          const center: [number, number] = [(minLng + maxLng) / 2, (minLat + maxLat) / 2];
 
           const camera = map.cameraForBounds(bbox, { padding: 50 });
-          if (!camera || camera.zoom === undefined || camera.zoom === null) throw new Error('cameraForBounds failed');
+          if (!camera || camera.zoom == null) throw 0;
 
-          map.easeTo({
-            center: centroid,
-            zoom: camera.zoom,
-            duration: 1200,
-            easing
-          });
+          map.flyTo({ center, zoom: camera.zoom, duration: 900, essential: true, curve: 1.42, minZoom: Math.min(camera.zoom, map.getZoom()) - 0.5, easing: geoEaseOut });
         } catch {
-          map.easeTo({
-            center: fallbackCenter,
-            zoom: 3.5,
-            duration: 1200,
-            easing
-          });
+          map.flyTo({ center: coordinates, zoom: 3.5, duration: 900, essential: true, curve: 1.42, easing: geoEaseOut });
         }
-        
-        handleCountrySelection(finalCountryName);
-       } else {
-         // Si no se encuentra el feature, al menos centrar en las coordenadas
-         map.easeTo({
-           center: coordinates,
-           zoom: 3.5, // Zoom medio como fallback cuando no encontramos el feature
-           duration: 1200,
-           easing: (t: number) => 1 - Math.pow(1 - t, 3)
-         });
-         
-         // Llamar a la función de selección con el nombre del geocoder
-         handleCountrySelection(countryName);
-       }
-       
-       // Limpiar el input del geocoder para permitir nuevas búsquedas
-       setTimeout(() => {
-         geocoder.clear();
-       }, 100);
+
+        requestAnimationFrame(() => handleCountrySelection(finalCountryName));
+      } else {
+        map.flyTo({ center: coordinates, zoom: 3.5, duration: 900, essential: true, curve: 1.42, easing: geoEaseOut });
+        requestAnimationFrame(() => handleCountrySelection(countryName));
+      }
+
+      setTimeout(() => { geocoder.clear(); }, 100);
     };
     
     geocoder.on('result', handleGeocoderResult);
@@ -1846,22 +1606,8 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     map.scrollZoom.setWheelZoomRate(1/450); // Más suave
     map.scrollZoom.setZoomRate(1/150); // Más controlado
     
-    // ✅ MEJORADO: Configurar transiciones suaves para el mapa con cleanup
-    const handleMoveStart = () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = undefined;
-      }
-    };
-    
+    // Refresh natural layers LOD on move end (only when auto LOD is active)
     const handleMoveEnd = () => {
-      // Optimizar renderizado después del movimiento
-      animationFrameRef.current = requestAnimationFrame(() => {
-        if (mapRef.current) {
-          mapRef.current.triggerRepaint();
-        }
-      });
-      // Refrescar LOD natural si está en auto y hay capas activas
       try {
         const anyEnabled = naturalEnabledRef.current.rivers || naturalEnabledRef.current.ranges || naturalEnabledRef.current.peaks;
         if (anyEnabled && naturalLodRef.current === 'auto') {
@@ -1869,14 +1615,8 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         }
       } catch {}
     };
-    
-    // ✅ MEJORADO: Registrar event listeners para cleanup posterior
-    map.on('movestart', handleMoveStart);
     map.on('moveend', handleMoveEnd);
-    eventListenersRef.current.push(
-      { event: 'movestart', handler: handleMoveStart },
-      { event: 'moveend', handler: handleMoveEnd }
-    );
+    eventListenersRef.current.push({ event: 'moveend', handler: handleMoveEnd });
     
     // Configurar el globo y capas cuando el mapa esté cargado
     map.on('load', () => {
@@ -1940,106 +1680,34 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     eventListenersRef.current.push({ event: 'click', handler: onHistoryClick, layer: 'history-fill' });
     });
 
-    // ✅ MEJORADO: Animación de rotación automática con cleanup
-    let userInteracting = false;
-    const spinEnabled = false;
+    // Track user interaction for RAF-based auto-rotation (setAutoRotate)
+    const handleInteractStart = () => { userInteractingRef.current = true; };
+    const handleInteractEnd = () => { userInteractingRef.current = false; };
 
-    const spinGlobe = () => {
-      const zoom = map.getZoom();
-      if (spinEnabled && !userInteracting && zoom < 5) {
-        const distancePerSecond = 360 / 120;
-        const center = map.getCenter();
-        center.lng -= distancePerSecond;
-        map.easeTo({ center, duration: 1000, easing: (n) => n });
-      }
-    };
+    map.on('mousedown', handleInteractStart);
+    map.on('mouseup', handleInteractEnd);
+    map.on('dragend', handleInteractEnd);
+    map.on('pitchend', handleInteractEnd);
+    map.on('rotateend', handleInteractEnd);
 
-    // ✅ MEJORADO: Event handlers con cleanup
-    const handleMouseDown = () => { userInteracting = true; userInteractingRef.current = true; };
-    const handleMouseUp = () => { 
-      userInteracting = false; 
-      userInteractingRef.current = false;
-      spinGlobe(); 
-    };
-    const handleDragEnd = () => { 
-      userInteracting = false; 
-      userInteractingRef.current = false;
-      spinGlobe(); 
-    };
-    const handlePitchEnd = () => { 
-      userInteracting = false; 
-      userInteractingRef.current = false;
-      spinGlobe(); 
-    };
-    const handleRotateEnd = () => { 
-      userInteracting = false; 
-      userInteractingRef.current = false;
-      spinGlobe(); 
-    };
-    const handleMoveEndGlobe = () => { 
-      spinGlobe(); 
-    };
-
-    // ✅ NUEVO: Registrar todos los event listeners para cleanup
-    map.on('mousedown', handleMouseDown);
-    map.on('mouseup', handleMouseUp);
-    map.on('dragend', handleDragEnd);
-    map.on('pitchend', handlePitchEnd);
-    map.on('rotateend', handleRotateEnd);
-    map.on('moveend', handleMoveEndGlobe);
-    
     eventListenersRef.current.push(
-      { event: 'mousedown', handler: handleMouseDown },
-      { event: 'mouseup', handler: handleMouseUp },
-      { event: 'dragend', handler: handleDragEnd },
-      { event: 'pitchend', handler: handlePitchEnd },
-      { event: 'rotateend', handler: handleRotateEnd },
-      { event: 'moveend', handler: handleMoveEndGlobe }
+      { event: 'mousedown', handler: handleInteractStart },
+      { event: 'mouseup', handler: handleInteractEnd },
+      { event: 'dragend', handler: handleInteractEnd },
+      { event: 'pitchend', handler: handleInteractEnd },
+      { event: 'rotateend', handler: handleInteractEnd }
     );
-
-    // Iniciar la rotación
-    spinGlobe();
-
-    // ✅ MEJORADO: Cleanup completo para prevenir memory leaks
     return () => {
-      // Limpiar todos los recursos
       cleanupResources();
-      
-      // Limpiar geocoder
-      if (geocoder) {
-        try {
-          geocoder.off('result', handleGeocoderResult);
-          geocoder.onRemove();
-        } catch (error) {
-          console.warn('Error cleaning up geocoder:', error);
-        }
-      }
-      
-      // Limpiar conflict data manager
-      if (conflictDataManager.current) {
-        conflictDataManager.current.cleanup();
-      }
-      
-      // Limpiar capas de visualización de conflictos
+      try { geocoder.off('result', handleGeocoderResult); geocoder.onRemove(); } catch {}
+      try { conflictDataManager.current?.cleanup(); } catch {}
       if (mapRef.current) {
-        try {
-          ConflictVisualization.cleanup(mapRef.current);
-        } catch (error) {
-          console.warn('Error cleaning up conflict visualization:', error);
-        }
-      }
-      
-      // Limpiar mapa
-      if (mapRef.current) {
-        try {
-          mapRef.current.remove();
-        } catch (error) {
-          console.warn('Error removing map:', error);
-        }
+        try { ConflictVisualization.cleanup(mapRef.current); } catch {}
+        try { mapRef.current.remove(); } catch {}
         mapRef.current = null;
       }
     };
-  }, []); // Solo ejecutar una vez
+  }, []);
 
   // Efecto para actualizar conflictos cuando cambien
   useEffect(() => {
@@ -2059,77 +1727,70 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         // ✅ MEJORADO: Usar ref para timeout y limpiarlo
         const timeoutId = setTimeout(update, 100);
         // Guardar el timeout ID para cleanup si es necesario
-        if (hoverTimeoutRef.current) {
-          clearTimeout(hoverTimeoutRef.current);
+        if (deferredTimeoutRef.current) {
+          clearTimeout(deferredTimeoutRef.current);
         }
-        hoverTimeoutRef.current = timeoutId;
+        deferredTimeoutRef.current = timeoutId;
       }
     };
     update();
     
     // ✅ NUEVO: Cleanup del timeout si el componente se desmonta
     return () => {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current);
-        hoverTimeoutRef.current = null;
+      if (deferredTimeoutRef.current) {
+        clearTimeout(deferredTimeoutRef.current);
+        deferredTimeoutRef.current = null;
       }
     };
   }, [conflicts, selectedConflictId, isMapLoaded]);
 
   // Función para resetear la vista del mapa
   const resetMapView = () => {
-    if (!mapRef.current) return;
-    
-    // Limpiar selección actual
-    if (selectedCountryId.current) {
-      mapRef.current.setFeatureState(
-        { source: 'country-boundaries', sourceLayer: 'country_boundaries', id: selectedCountryId.current },
-        { selected: false }
-      );
-      selectedCountryId.current = null;
-    }
-    
-    // Detener cualquier animación en curso
-    mapRef.current.stop();
-    
-    // Regresar a la vista principal del globo con coordenadas exactas
-    mapRef.current.easeTo({
-      center: [0, 20], // Coordenadas exactas de inicialización
+    const map = mapRef.current;
+    if (!map) return;
+
+    // Stop any in-progress animation first
+    try { map.stop(); } catch {}
+
+    // Start flyTo immediately — before any feature-state work
+    map.flyTo({
+      center: [0, 20],
       zoom: 2,
-      pitch: 0, // Asegurar que no hay inclinación
-      bearing: 0, // Asegurar que no hay rotación
-      duration: 1200,
-      easing: (t: number) => 1 - Math.pow(1 - t, 3) // Mismo easing que la inicialización
+      pitch: 0,
+      bearing: 0,
+      duration: 800,
+      essential: true,
+      easing: (t: number) => 1 - Math.pow(1 - t, 3)
     });
+
+    // Defer feature-state clear to next frame so the flyTo gets to paint first
+    const prevId = selectedCountryId.current;
+    selectedCountryId.current = null;
+    if (prevId !== null) {
+      requestAnimationFrame(() => {
+        try {
+          map.setFeatureState(
+            { source: 'country-boundaries', sourceLayer: 'country_boundaries', id: prevId },
+            { selected: false }
+          );
+        } catch {}
+      });
+    }
   };
 
   // Efecto para manejar cambios en el país seleccionado
   useEffect(() => {
     if (!mapRef.current) return;
-    
+
     // Solo resetear si selectedCountry cambió de un valor a null
     // y hay una selección actual en el mapa
     if (!selectedCountry && selectedCountryId.current) {
-      // Pequeño delay para evitar conflictos con otras animaciones
-      const timeoutId = setTimeout(() => {
+      // Defer to next paint frame so React finishes its render batch first
+      requestAnimationFrame(() => {
         resetMapView();
-      }, 100);
-      
-      // ✅ MEJORADO: Guardar timeout para cleanup
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current);
-      }
-      hoverTimeoutRef.current = timeoutId;
+      });
     }
   }, [selectedCountry]);
-  
-  // Exponer la función de reset a través de onResetView
-  useEffect(() => {
-    if (onResetView) {
-      // Asignar la función de reset al callback
-      (window as any).resetMapView = resetMapView;
-    }
-  }, [onResetView]);
   
   // Efecto para actualizar el ref cuando cambia el estado de sidebar izquierda
   useEffect(() => {
@@ -2148,11 +1809,6 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     }
   }, [isLeftSidebarOpen, isMapLoaded]);
 
-  // Efecto separado para manejar la función de selección
-  useEffect(() => {
-    // Este efecto se ejecuta cuando cambia onCountrySelect pero no recrea el mapa
-  }, [onCountrySelect]);
-
   // Persistencia ligera: cargar ajustes iniciales
   useEffect(() => {
     try {
@@ -2160,9 +1816,6 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       if (b3d !== null) setBuildings3DOn(b3d === '1');
     } catch {}
   }, []);
-
-  // Guardar y aplicar exageración cuando cambie
-  // (Terrain removido)
 
   // Guardar y aplicar 3D buildings cuando cambie
   useEffect(() => {
