@@ -3,7 +3,6 @@ import { ORGANIZATIONS, findOrgByQuery } from '../services/orgs-config';
 import { buildOrgHighlight } from '../services/orgs-service';
 import InternationalOrganizationsPanel from './InternationalOrganizationsPanel';
 import { AVAILABLE_HISTORY_YEARS, snapToAvailableYear } from '../utils/historical-years';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Crosshair, Search, Settings, Info, Globe, Users, BarChart3, Map, User, GitCompare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -207,20 +206,10 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
   }, [activeItem, onOpenConflictTracker]);
 
   return (
-    <AnimatePresence>
+    <>
       {isOpen && (
-            <motion.div 
-              className="left-sidebar"
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{
-                type: 'spring',
-                stiffness: 400,
-                damping: 25,
-                mass: 0.8
-              }}
-            >
+            <div className="left-sidebar">
+
               <div className="left-sidebar-header mb-4" style={{ minHeight: '64px' }}>
                 <h1 className="left-sidebar-title">WorldLore</h1>
               </div>
@@ -229,7 +218,7 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
                 <nav className="space-y-2">
                   {menuItems.map((item, index) => (
                     <div key={item.label}>
-                      <motion.a
+                      <a
                         href={item.href}
                         onClick={(e) => {
                           if (item.label === 'About') return;
@@ -239,14 +228,6 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
                         className={`left-sidebar-item ${
                           activeItem === item.label.toLowerCase() ? 'active' : ''
                         }`}
-                        whileHover={{
-                          x: 8,
-                          transition: { type: 'spring', stiffness: 500, damping: 20 }
-                        }}
-                        whileTap={{
-                          scale: 0.98,
-                          transition: { duration: 0.1 }
-                        }}
                       >
                         <div className="left-sidebar-item-icon" style={{ background: item.iconBg }}>
                           {item.icon}
@@ -255,15 +236,9 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
                           {item.label}
                         </span>
                         {activeItem === item.label.toLowerCase() && (
-                          <motion.div
-                            className="left-sidebar-item-indicator"
-                            layoutId="activeIndicator"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                          />
+                          <div className="left-sidebar-item-indicator" />
                         )}
-                      </motion.a>
+                      </a>
 
                       {item.label === 'Physical Layers' && activeItem === 'physical layers' && (
                         <div className="mt-3 ml-12 mr-3 settings-panel" aria-label="Physical Layers">
@@ -881,8 +856,8 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
               </div>
 
               <div className="left-sidebar-footer" />
-            </motion.div>
+            </div>
         )}
-      </AnimatePresence>
+      </>
     );
   }

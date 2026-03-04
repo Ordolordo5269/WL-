@@ -50,6 +50,11 @@ body {
   top: -8px !important;
 }
 
+/* Ocultar logo de Mapbox */
+.mapboxgl-ctrl-logo {
+  display: none !important;
+}
+
 /* Optimizaciones globales para animaciones */
 @media (prefers-reduced-motion: reduce) {
   *,

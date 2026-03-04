@@ -41,6 +41,7 @@ export interface CountryBasicInfo {
 
 class CountryBasicInfoService {
   private readonly apiBaseUrl: string;
+  private readonly cache = new Map<string, CountryBasicInfo>();
 
   constructor() {
     // Default to backend port 3001 if no env var is provided
@@ -49,6 +50,10 @@ class CountryBasicInfoService {
   }
 
   async getCountryBasicInfo(countryName: string): Promise<CountryBasicInfo | null> {
+    const key = countryName.toLowerCase();
+    const cached = this.cache.get(key);
+    if (cached) return cached;
+
     try {
       const response = await fetch(
         `${this.apiBaseUrl}/api/countries/${encodeURIComponent(countryName)}/basic-info`
@@ -75,9 +80,11 @@ class CountryBasicInfoService {
           throw new Error(String(json.error));
         }
         if ('data' in json && json.data) {
+          this.cache.set(key, json.data as CountryBasicInfo);
           return json.data as CountryBasicInfo;
         }
         if ('name' in json && 'cca2' in json && 'cca3' in json) {
+          this.cache.set(key, json as CountryBasicInfo);
           return json as CountryBasicInfo;
         }
       }

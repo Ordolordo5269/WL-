@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { ChevronDown, Globe, Banknote, Landmark, Shield, Users, Globe2, Cpu, Palette, X, Maximize2, Minimize2, TrendingUp, Star } from 'lucide-react';
 import { useEconomyData } from '../hooks/useEconomyData';
 import { useCountryBasicInfo } from '../hooks/useCountryBasicInfo.ts';
@@ -126,12 +126,18 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
-    
-    // Set new timer
+
+    // Set immediately when opening sidebar (no previous country) to avoid visible delay
+    if (!debouncedCountryName && countryName) {
+      setDebouncedCountryName(countryName);
+      return;
+    }
+
+    // Debounce only when switching between countries rapidly
     debounceTimerRef.current = setTimeout(() => {
       setDebouncedCountryName(countryName);
-    }, 200); // 200ms debounce - fast enough for UX, slow enough to batch rapid clicks
-    
+    }, 200);
+
     // Cleanup on unmount or when countryName changes
     return () => {
       if (debounceTimerRef.current) {
@@ -402,33 +408,20 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
   }, [expanded, openCategories, categories, toggleCategory]);
 
   return (
-    <AnimatePresence>
+    <>
       {isOpen && (
         <>
           {/* Overlay for expanded view */}
           {expanded && (
-            <motion.div
+            <div
               className="country-info-overlay"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2, ease: 'easeInOut' }}
               onClick={() => setExpanded(false)}
             />
           )}
-          
-          <motion.div 
+
+          <div
             className={expanded ? "expanded-country-view" : "country-sidebar"}
             style={panelStyle}
-            initial={expanded ? { scale: 0.9, opacity: 0 } : { x: '100%', opacity: 0 }}
-            animate={expanded ? { scale: 1, opacity: 1 } : { x: 0, opacity: 1 }}
-            exit={expanded ? { scale: 0.9, opacity: 0 } : { x: '100%', opacity: 0 }}
-            transition={{ 
-              type: 'spring',
-              stiffness: 300,
-              damping: 30,
-              duration: 0.3
-            }}
           >
             {/* Botón de expandir (solo en vista normal) */}
             {!expanded && (
@@ -602,11 +595,9 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
                   {/* Star Button - Right Column */}
                   <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
                     {isAuthenticated && iso3 && (
-                      <motion.button
+                      <button
                         onClick={handleToggleFavorite}
                         disabled={isLoadingFavorite}
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
                         style={{
                           background: 'transparent',
                           border: 'none',
@@ -629,7 +620,7 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
                             transition: 'all 0.2s'
                           }}
                         />
-                      </motion.button>
+                      </button>
                     )}
                   </div>
                 </div>
@@ -756,9 +747,9 @@ export default function CountrySidebar({ isOpen, onClose, countryName }: Country
               </div>
             </div>
           )}
-        </motion.div>
+        </div>
         </>
       )}
-    </AnimatePresence>
+    </>
   );
 }
