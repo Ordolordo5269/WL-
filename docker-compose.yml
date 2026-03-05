@@ -1,3 +1,0 @@
-version: "3.9"
-# PostgreSQL service removed - using remote database at 116.203.82.200
-# See backend/.env for connection details
