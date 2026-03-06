@@ -57,4 +57,8 @@ router.use('/osint', osintRoutes);
 import insightsRoutes from './insights.routes';
 router.use('/insights', insightsRoutes);
 
+// Dashboard
+import dashboardRoutes from './dashboard.routes';
+router.use('/dashboard', dashboardRoutes);
+
 export default router;

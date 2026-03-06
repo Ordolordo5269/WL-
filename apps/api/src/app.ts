@@ -2,10 +2,12 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import pinoHttp from 'pino-http';
+import swaggerUi from 'swagger-ui-express';
 import { env } from './config/env.js';
 import { logger } from './config/logger.js';
 import { generalLimiter } from './middleware/rate-limit.js';
 import { errorHandler } from './middleware/error.js';
+import { swaggerSpec } from './docs/swagger.js';
 import apiRouter from './routes/index.js';
 
 const app = express();
@@ -32,6 +34,9 @@ app.use(generalLimiter);
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
+
+// OpenAPI docs
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // API routes
 app.use('/api', apiRouter);
