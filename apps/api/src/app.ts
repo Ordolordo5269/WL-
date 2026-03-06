@@ -13,8 +13,11 @@ const app = express();
 // Security headers
 app.use(helmet());
 
-// CORS — explicit origin, never wildcard
-app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
+// CORS — explicit origins from env (comma-separated)
+app.use(cors({
+  origin: env.CORS_ORIGIN.split(',').map(o => o.trim()),
+  credentials: true,
+}));
 
 // Body parsing
 app.use(express.json());
