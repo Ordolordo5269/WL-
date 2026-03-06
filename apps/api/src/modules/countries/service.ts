@@ -7,6 +7,10 @@ export async function listAllCountries(): Promise<CountrySearchResponse> {
   return getAllCountries();
 }
 
+export async function listCountryEntities() {
+  return repo.listCountryEntities();
+}
+
 export async function findCountriesByName(query: string): Promise<CountrySearchResponse> {
   return searchCountries(query);
 }

@@ -2,15 +2,20 @@ import { useQuery } from '@tanstack/react-query';
 import { http } from '../../lib/http';
 import type { ConflictV2, ConflictFiltersParams } from './types';
 
-interface ConflictsResponse {
+interface ApiResponse {
   data: ConflictV2[];
+  count: number;
+}
+
+export interface ConflictsResult {
+  conflicts: ConflictV2[];
   count: number;
 }
 
 export function useConflicts(filters: ConflictFiltersParams = {}) {
   return useQuery({
     queryKey: ['conflicts', filters],
-    queryFn: () => {
+    queryFn: async (): Promise<ConflictsResult> => {
       const params = new URLSearchParams();
       if (filters.region) params.set('region', filters.region);
       if (filters.status) params.set('status', filters.status);
@@ -19,7 +24,8 @@ export function useConflicts(filters: ConflictFiltersParams = {}) {
       if (filters.to) params.set('to', filters.to);
 
       const qs = params.toString();
-      return http.get<ConflictsResponse>(`/api/conflicts/v2${qs ? `?${qs}` : ''}`);
+      const res = await http.get<ApiResponse>(`/api/conflicts/v2${qs ? `?${qs}` : ''}`);
+      return { conflicts: res.data, count: res.count };
     },
   });
 }

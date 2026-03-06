@@ -2,14 +2,16 @@ import { useState } from 'react';
 import { Send, Lock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import type { ConflictV2 } from '../conflicts/types';
+import type { CountryEntity } from './useCountryEntities';
 
 interface Props {
   conflicts: ConflictV2[];
+  countries: CountryEntity[];
   isLoading: boolean;
   onSubmit: (data: { entityType: 'conflict' | 'country'; entityId: string; question?: string }) => void;
 }
 
-export default function InsightForm({ conflicts, isLoading, onSubmit }: Props) {
+export default function InsightForm({ conflicts, countries, isLoading, onSubmit }: Props) {
   const { isAuthenticated } = useAuth();
   const [entityType, setEntityType] = useState<'conflict' | 'country'>('conflict');
   const [entityId, setEntityId] = useState('');
@@ -61,10 +63,15 @@ export default function InsightForm({ conflicts, isLoading, onSubmit }: Props) {
             className="rounded-lg bg-slate-700 border-slate-600 text-sm text-white px-3 py-2"
           >
             <option value="">Select...</option>
-            {entityType === 'conflict' &&
-              conflicts.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
+            {entityType === 'conflict'
+              ? conflicts.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))
+              : countries.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}{c.iso3 ? ` (${c.iso3})` : ''}
+                  </option>
+                ))}
           </select>
         </div>
       </div>

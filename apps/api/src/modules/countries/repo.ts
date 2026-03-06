@@ -15,6 +15,15 @@ export async function findByIso3(iso3: string) {
   });
 }
 
+export async function listCountryEntities() {
+  return prisma.entity.findMany({
+    where: { type: 'COUNTRY', iso3: { not: null } },
+    select: { id: true, name: true, iso3: true },
+    orderBy: { name: 'asc' },
+    take: 300,
+  });
+}
+
 export async function countConflictsByIso3(iso3: string) {
   return prisma.conflict.count({
     where: {

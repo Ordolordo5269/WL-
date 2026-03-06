@@ -1,5 +1,5 @@
 import { Request, Response, RequestHandler } from 'express';
-import { findCountriesByName, getCountryBasicInfoByName, getCountryByIsoCode, listAllCountries, getOverview } from './service';
+import { findCountriesByName, getCountryBasicInfoByName, getCountryByIsoCode, listAllCountries, listCountryEntities, getOverview } from './service';
 import { iso3ParamsSchema } from './schemas.js';
 
 export const list: RequestHandler = async (_req: Request, res: Response) => {
@@ -27,6 +27,12 @@ export const basicInfoByName: RequestHandler = async (req: Request, res: Respons
     return;
   }
   res.json({ data: result.data });
+};
+
+export const entities: RequestHandler = async (_req: Request, res: Response) => {
+  const data = await listCountryEntities();
+  res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+  res.json({ data });
 };
 
 export const searchByName: RequestHandler = async (req: Request, res: Response) => {

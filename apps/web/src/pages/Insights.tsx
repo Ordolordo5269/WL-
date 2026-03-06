@@ -3,9 +3,11 @@ import InsightForm from '../features/insights/InsightForm';
 import InsightResult from '../features/insights/InsightResult';
 import { useGenerateInsight } from '../features/insights/useGenerateInsight';
 import { useConflicts } from '../features/conflicts/useConflicts';
+import { useCountryEntities } from '../features/insights/useCountryEntities';
 
 export default function Insights() {
   const { data: conflictsData } = useConflicts();
+  const { data: countries } = useCountryEntities();
   const mutation = useGenerateInsight();
 
   return (
@@ -20,7 +22,8 @@ export default function Insights() {
           </div>
 
           <InsightForm
-            conflicts={conflictsData?.data ?? []}
+            conflicts={conflictsData?.conflicts ?? []}
+            countries={countries ?? []}
             isLoading={mutation.isPending}
             onSubmit={data => mutation.mutate(data)}
           />

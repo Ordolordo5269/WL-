@@ -10,15 +10,44 @@ interface Props {
   onConflictClick?: (slug: string) => void;
 }
 
+function createPopupContent(name: string, status: string, color: string, region: string): HTMLDivElement {
+  const container = document.createElement('div');
+  container.style.padding = '4px 8px';
+
+  const strong = document.createElement('strong');
+  strong.style.color = '#fff';
+  strong.textContent = name;
+  container.appendChild(strong);
+
+  container.appendChild(document.createElement('br'));
+
+  const statusSpan = document.createElement('span');
+  statusSpan.style.color = color;
+  statusSpan.style.fontWeight = '600';
+  statusSpan.textContent = status;
+  container.appendChild(statusSpan);
+
+  const regionSpan = document.createElement('span');
+  regionSpan.style.color = '#94a3b8';
+  regionSpan.style.marginLeft = '6px';
+  regionSpan.textContent = region;
+  container.appendChild(regionSpan);
+
+  return container;
+}
+
 export default function ConflictMap({ conflicts, onConflictClick }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { map, isReady } = useMapbox(containerRef);
+  const { map } = useMapbox(containerRef);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const cleanupRef = useRef<Array<() => void>>([]);
 
   useEffect(() => {
-    if (!map || !isReady) return;
+    if (!map) return;
 
-    // Clear previous markers
+    // Clean up previous markers and listeners
+    cleanupRef.current.forEach(fn => fn());
+    cleanupRef.current = [];
     markersRef.current.forEach(m => m.remove());
     markersRef.current = [];
 
@@ -36,24 +65,42 @@ export default function ConflictMap({ conflicts, onConflictClick }: Props) {
       el.style.cursor = 'pointer';
       el.style.boxShadow = `0 0 ${severity * 2}px ${color}80`;
 
-      const popup = new mapboxgl.Popup({ offset: 15, closeButton: false }).setHTML(
-        `<div style="padding:4px 8px">
-          <strong style="color:#fff">${conflict.name}</strong><br/>
-          <span style="color:${color};font-weight:600">${statusLabel(conflict.status)}</span>
-          <span style="color:#94a3b8;margin-left:6px">${conflict.region}</span>
-        </div>`
+      const popupContent = createPopupContent(
+        conflict.name,
+        statusLabel(conflict.status),
+        color,
+        conflict.region,
       );
+      const popup = new mapboxgl.Popup({ offset: 15, closeButton: false })
+        .setDOMContent(popupContent);
 
       const marker = new mapboxgl.Marker({ element: el })
         .setLngLat([conflict.coordinates.lng, conflict.coordinates.lat])
         .setPopup(popup)
         .addTo(map);
 
-      el.addEventListener('click', () => onConflictClick?.(conflict.slug));
+      const handler = () => onConflictClick?.(conflict.slug);
+      el.addEventListener('click', handler);
+      cleanupRef.current.push(() => el.removeEventListener('click', handler));
 
       markersRef.current.push(marker);
     });
-  }, [map, isReady, conflicts, onConflictClick]);
+
+    return () => {
+      cleanupRef.current.forEach(fn => fn());
+      cleanupRef.current = [];
+      markersRef.current.forEach(m => m.remove());
+      markersRef.current = [];
+    };
+  }, [map, conflicts, onConflictClick]);
+
+  if (!import.meta.env.VITE_MAPBOX_TOKEN) {
+    return (
+      <div className="w-full rounded-xl border border-slate-700/50 bg-slate-800/60 flex items-center justify-center text-slate-400 text-sm" style={{ height: 400 }}>
+        Mapbox token not configured. Add VITE_MAPBOX_TOKEN to your .env file.
+      </div>
+    );
+  }
 
   return (
     <div
