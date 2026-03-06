@@ -1,171 +1,150 @@
-# 🌍 WorldLore - Plataforma Global de Análisis Geopolítico
+# WorldLore
 
-Una aplicación web para explorar y analizar información geopolítica global, conflictos internacionales y datos económicos de países.
+Plataforma de análisis geopolítico — conflictos, indicadores por país e insights generados por IA.
 
----
+## Stack
 
-## 👋 ¿Primera vez? Cómo encender WorldLore (sin saber programar)
+- **Frontend:** Vite + React + TypeScript + Mapbox GL
+- **Backend:** Express + TypeScript (BFF)
+- **Base de datos:** Prisma + PostgreSQL (remoto)
+- **Validación:** Zod (compartida frontend/backend)
+- **Logs:** Pino
 
-Sigue estos pasos en orden. Solo necesitas instalar una cosa y ejecutar un comando.
-
-### Paso 1: Instalar Node.js (solo una vez)
-
-Node.js es el programa que permite ejecutar esta aplicación en tu ordenador.
-
-1. Entra en **https://nodejs.org/**
-2. Descarga la versión que diga **LTS** (recomendada).
-3. Instala: haz doble clic en el instalador y acepta las opciones por defecto (siguiente, siguiente…).
-4. Cuando termine, **reinicia el ordenador** (o al menos cierra y vuelve a abrir cualquier ventana que vayas a usar).
-
-### Paso 2: Abrir la carpeta del proyecto
-
-1. Abre **Explorador de archivos** y ve a la carpeta donde está WorldLore (por ejemplo: `Escritorio\WL-`).
-2. En la barra de arriba donde sale la ruta, haz clic una vez y escribe: **powershell**
-3. Pulsa **Enter**. Se abrirá una ventana azul/negra (es la "terminal" o "consola").
-
-### Paso 3: Encender la aplicación
-
-En esa ventana azul, escribe exactamente esto y pulsa **Enter**:
-
-**Windows (PowerShell):**
-
-```powershell
-.\start-servers.ps1
-```
-
-**Linux/macOS:**
-
-```bash
-./start-servers.sh
-```
-
-- La primera vez puede tardar un poco (instala dependencias).
-- Se abrirán **dos ventanas nuevas** (backend y frontend). **No las cierres**; tienen que quedarse abiertas para que la app funcione.
-
-### Paso 4: Abrir WorldLore en el navegador
-
-1. Abre tu navegador (Chrome, Edge, Firefox…).
-2. En la barra de direcciones escribe: **http://localhost:5173**
-3. Pulsa **Enter**.
-
-Si todo va bien, verás la aplicación (mapa, países, etc.). **Eso es tener WorldLore encendido.**
-
-### Cómo apagarlo
-
-- Cierra las **dos ventanas** que se abrieron al ejecutar el script (las de fondo negro/azul).
-- Así se "apagan" los servidores y la aplicación deja de funcionar hasta que vuelvas a ejecutar el script.
-
----
-
-## 🚀 Inicio Rápido (resumen técnico)
-
-### Prerrequisitos
-
-- **Node.js** (versión 18 o superior) - [Descargar aquí](https://nodejs.org/)
-- **npm** (viene con Node.js)
-
-### Instalación y ejecución
-
-```bash
-# Instalar todas las dependencias (workspaces)
-npm install
-
-# Iniciar backend + frontend
-npm run dev
-
-# O por separado:
-npm run dev:api      # Solo backend (puerto 3001)
-npm run dev:web      # Solo frontend (puerto 5173)
-npm run dev:landing  # Solo landing (puerto 5174)
-```
-
-### Dónde acceder
-
-- **Aplicación (mapa y UI):** http://localhost:5173
-- **API del backend:** http://localhost:3001
-- **Landing page:** http://localhost:5174
-
-### Comprobar que funciona
-
-1. Abre http://localhost:5173 en el navegador.
-2. Opcional: http://localhost:3001/api/countries/Spain/basic-info (deberías ver datos en JSON).
-
----
-
-## 📁 Estructura del Proyecto (Monorepo)
+## Estructura del proyecto
 
 ```
 worldlore/
 ├── apps/
-│   ├── api/                 # API REST (Express + TypeScript)
-│   └── web/                 # Aplicación web (React + Vite + Mapbox)
+│   ├── web/                 # Frontend: Vite + React + TS
+│   │   ├── src/
+│   │   │   ├── app/         # Providers, router, layouts
+│   │   │   ├── pages/       # Páginas
+│   │   │   ├── features/    # map, conflicts, country, dashboard, insights
+│   │   │   ├── lib/         # http, env, query client
+│   │   │   └── styles/      # tokens, reset, globals
+│   │   └── package.json
+│   └── api/                 # Backend: Express + TS
+│       ├── prisma/          # Schema y migraciones
+│       ├── src/
+│       │   ├── config/      # env, logger
+│       │   ├── middleware/   # validate, error, rate-limit
+│       │   ├── routes/      # Rutas HTTP
+│       │   ├── modules/     # conflicts, countries, indicators, insights, auth
+│       │   ├── integrations/# World Bank, ACLED, UCDP, LLMs
+│       │   ├── websocket/   # Socket.IO
+│       │   ├── jobs/        # Ingestion workers + scheduler
+│       │   └── db/          # Prisma client + helpers
+│       └── package.json
 ├── packages/
-│   └── contracts/           # Tipos TypeScript compartidos (FE/BE)
-├── landing/                 # Landing page (React + Three.js)
-├── docker-compose.yml       # Postgres + Redis para desarrollo local
-├── package.json             # npm workspaces root
-├── tsconfig.base.json       # Configuración TypeScript compartida
+│   └── contracts/           # Tipos + Zod schemas compartidos FE/BE
+├── .github/workflows/ci.yml
+├── package.json             # npm workspaces raíz
+├── tsconfig.base.json
+├── eslint.config.js
 └── README.md
 ```
 
----
+## Prerrequisitos
 
-## 🛠️ Solución de Problemas
+- **Node.js** 20 o superior — [nodejs.org](https://nodejs.org/)
+- **npm** (viene con Node.js)
+- Acceso a una base de datos **PostgreSQL** remota
 
-### "Failed to fetch" o "ERR_CONNECTION_REFUSED"
-
-El frontend no puede hablar con el backend. Comprueba:
-
-1. Que el backend esté en marcha (en una ventana debería verse algo como "Server listening on port 3001").
-2. Que no hayas cerrado las ventanas que abrió el script.
-3. Reinicia: cierra esas ventanas y vuelve a ejecutar el script.
-
-### Dependencias no instaladas
+## Instalación
 
 ```bash
-npm install   # Instala todo via workspaces
+git clone https://github.com/Ordolordo5269/WL-.git
+cd WL-
+npm install
 ```
 
-### Puertos en uso
+## Variables de entorno
 
-- **3001** → Backend
-- **5173** → Frontend
-- **5174** → Landing
+Copiar los archivos de ejemplo y rellenar con datos reales:
 
-Si otro programa usa esos puertos, ciérralo o cambia la configuración del proyecto.
+```bash
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env
+```
 
----
+Ver cada `.env.example` para las variables necesarias. **Nunca subir `.env` a Git.**
 
-## 🔧 Scripts útiles
+## Desarrollo
+
+```bash
+# Iniciar backend + frontend
+npm run dev
+
+# O por separado:
+npm run dev:api      # Backend  → http://localhost:3000
+npm run dev:web      # Frontend → http://localhost:5173
+```
+
+| Servicio  | URL                    |
+|-----------|------------------------|
+| Frontend  | http://localhost:5173  |
+| API       | http://localhost:3000  |
+| API Docs  | http://localhost:3000/api/docs |
+| Health    | http://localhost:3000/api/health |
+
+## Scripts útiles
 
 **Desde la raíz:**
-- `npm run dev` – Inicia backend + frontend
-- `npm run build` – Compila todos los workspaces
-- `npm run lint` – Lint en todos los workspaces
 
-**Backend** (`cd apps/api`):
-- `npm run dev` – desarrollo con recarga automática
-- `npm run build` / `npm start` – compilar y ejecutar
-- `npm run prisma:studio` – interfaz visual de la base de datos
+```bash
+npm run dev          # Backend + frontend en paralelo
+npm run build        # Compila todos los workspaces
+npm run lint         # Lint en todo el monorepo
+```
 
-**Frontend** (`cd apps/web`):
-- `npm run dev` – desarrollo
-- `npm run build` – build para producción
-- `npm run preview` – previsualizar la build
+**Backend** (`apps/api`):
 
----
+```bash
+npm run dev          # Desarrollo con recarga automática
+npm run build        # Compilar
+npm start            # Ejecutar build
+npm run prisma:studio # Interfaz visual de la BD
+```
 
-## 🌟 Características
+**Frontend** (`apps/web`):
 
-- **Mapa interactivo** de países y conflictos
-- **Datos de países:** demografía, economía, política
-- **Seguimiento de conflictos** internacionales
-- **API REST** en el backend
-- **Interfaz moderna** (React, Tailwind CSS)
-- **Landing page** con globo 3D interactivo
+```bash
+npm run dev          # Desarrollo
+npm run build        # Build para producción
+npm run preview      # Previsualizar la build
+```
 
----
+## Git workflow
 
-## 📝 Licencia
+```bash
+# 1. Siempre partir de main actualizado
+git checkout main
+git pull origin main
 
-Este proyecto está bajo la Licencia MIT.
+# 2. Crear rama para tu tarea
+git checkout -b feature/nombre-de-la-tarea
+
+# 3. Commits pequeños y claros
+git add .
+git commit -m "qué hiciste exactamente"
+
+# 4. Subir y abrir Pull Request en GitHub
+git push origin feature/nombre-de-la-tarea
+```
+
+**Regla:** nunca trabajar en `main` directamente. Siempre PR + revisión.
+
+## Seguridad
+
+- Helmet activado (headers HTTP seguros)
+- CORS con whitelist explícita (nunca `*` en producción)
+- Rate-limit global + especial para `/auth`
+- Zod valida toda entrada en cada endpoint
+- JWT_SECRET fuerte y rotado
+- Mapbox token restringido por URL
+- `.env` nunca en Git
+- Pino para logs, nunca `console.log`
+
+## Licencia
+
+MIT
