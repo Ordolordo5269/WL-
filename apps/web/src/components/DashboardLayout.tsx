@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { User, Star, LogOut, Globe, TrendingUp, LayoutDashboard } from 'lucide-react';
+import { User, Star, LogOut, Globe, TrendingUp, LayoutDashboard, Swords, Lightbulb } from 'lucide-react';
 import '../styles/dashboard.css';
 
 interface DashboardLayoutProps {
@@ -78,6 +78,26 @@ export default function DashboardLayout({ children, activeSection, onSectionChan
           >
             <TrendingUp className="w-5 h-5" />
             <span>Predictions</span>
+          </motion.button>
+
+          <motion.button
+            onClick={() => navigate('/conflicts')}
+            className="dashboard-nav-item"
+            whileHover={{ x: 4 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Swords className="w-5 h-5" />
+            <span>Conflicts</span>
+          </motion.button>
+
+          <motion.button
+            onClick={() => navigate('/insights')}
+            className="dashboard-nav-item"
+            whileHover={{ x: 4 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Lightbulb className="w-5 h-5" />
+            <span>Insights</span>
           </motion.button>
         </nav>
 
