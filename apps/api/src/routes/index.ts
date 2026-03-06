@@ -1,7 +1,7 @@
 import { Router } from 'express';
 
 // Legacy routes (will be replaced module by module in later phases)
-import countryRoutes from './country.routes';
+import countryRoutes from '../modules/countries/routes';
 import organizationRoutes from './organization.routes';
 import indicatorRoutes from './indicator.routes';
 import economyRoutes from './economy.routes';

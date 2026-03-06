@@ -1,5 +1,6 @@
 import { Request, Response, RequestHandler } from 'express';
-import { findCountriesByName, getCountryBasicInfoByName, getCountryByIsoCode, listAllCountries } from './service';
+import { findCountriesByName, getCountryBasicInfoByName, getCountryByIsoCode, listAllCountries, getOverview } from './service';
+import { iso3ParamsSchema } from './schemas.js';
 
 export const list: RequestHandler = async (_req: Request, res: Response) => {
   const result = await listAllCountries();
@@ -32,6 +33,23 @@ export const searchByName: RequestHandler = async (req: Request, res: Response) 
   const q = (req.query.q || req.query.query || '').toString();
   const result = await findCountriesByName(q);
   res.json(result);
+};
+
+export const getCountryOverview: RequestHandler = async (req: Request, res: Response) => {
+  const parsed = iso3ParamsSchema.safeParse(req.params);
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Invalid ISO3 code', details: parsed.error.issues });
+    return;
+  }
+
+  const overview = await getOverview(parsed.data.iso3);
+  if (!overview) {
+    res.status(404).json({ error: 'Country not found' });
+    return;
+  }
+
+  res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+  res.json({ data: overview });
 };
 
 
