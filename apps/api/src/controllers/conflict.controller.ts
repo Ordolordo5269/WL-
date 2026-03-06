@@ -12,7 +12,7 @@ import {
 } from '../services/conflict.service';
 import { ConflictStatus } from '@prisma/client';
 import { prisma } from '../db/client';
-import { broadcastConflictUpdate } from '../index';
+import { broadcastConflictUpdate } from '../websocket/broadcast';
 import { asyncHandler } from '../utils/asyncHandler';
 import { AppError } from '../core/errors/AppError';
 
