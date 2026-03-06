@@ -8,6 +8,7 @@ router.get('/', ctrl.list);
 router.get('/all', ctrl.list);
 router.get('/search', ctrl.searchByName);
 router.get('/code/:code', ctrl.byCode);
+router.get('/:iso3/overview', ctrl.getCountryOverview);
 router.get('/:countryName/basic-info', ctrl.basicInfoByName);
 
 export default router;
