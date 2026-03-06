@@ -53,4 +53,8 @@ router.use('/acled', acledRoutes);
 // OSINT scraper routes
 router.use('/osint', osintRoutes);
 
+// Insights module (protected — requires auth)
+import insightsRoutes from './insights.routes';
+router.use('/insights', insightsRoutes);
+
 export default router;
