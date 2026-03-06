@@ -89,7 +89,7 @@ export async function getCountriesFromDatabase(): Promise<CountryBasicInfo[]> {
 
     const mapped = entities
       .map(mapEntityToCountryBasicInfo)
-      .filter((c): c is CountryBasicInfo => Boolean(c));
+      .filter((c: any): c is CountryBasicInfo => Boolean(c));
 
     if (mapped.length === 0) {
       logger.debug('No countries found in database');
@@ -146,7 +146,7 @@ export async function getCountryBasicInfo(countryName: string): Promise<CountryB
       take: 5,
     });
 
-    const bestPartial = partialMatches.sort((a, b) => a.name.length - b.name.length)[0];
+    const bestPartial = partialMatches.sort((a: any, b: any) => a.name.length - b.name.length)[0];
     if (bestPartial) {
       const mapped = mapEntityToCountryBasicInfo(bestPartial);
       if (mapped) return { data: mapped };
@@ -195,7 +195,7 @@ export async function searchCountries(query: string): Promise<CountrySearchRespo
     });
     const mapped = results
       .map(mapEntityToCountryBasicInfo)
-      .filter((c): c is CountryBasicInfo => Boolean(c));
+      .filter((c: any): c is CountryBasicInfo => Boolean(c));
 
     return { data: mapped.slice(0, 10), total: mapped.length };
   } catch (error) {
