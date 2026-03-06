@@ -310,57 +310,116 @@ NO usar console.log, solo Pino. NO usar wildcard CORS.
 
 ---
 
-### FASE 2 — Base de datos + módulo de conflictos
+### FASE 2 — Modelos OSINT en Prisma + módulo de conflictos
 
-> *Persona A crea las tablas. Persona B crea la lógica de conflictos. B depende de que A termine primero el schema de Prisma.*
+> **Estado del schema:** El schema base de Prisma (Entity, Conflict, ConflictEvent, ConflictFaction, ConflictCasualty, ConflictNews, ConflictUpdate, ConflictFactionSupport, Indicator, IndicatorValue, User, etc.) **ya está implementado** en `apps/api/prisma/schema.prisma`. Esta fase ahora se centra en extenderlo con los modelos OSINT del scraper.
 
-> **Orden de merge:** Primero mergear la rama de A (prisma-schema), luego B puede empezar.
+> *Persona A extiende el schema con los modelos OSINT + crea rutas API OSINT. Persona B crea la lógica del módulo de conflictos curados. B depende de que A termine primero.*
 
-#### Persona A — Prisma schema + cliente BD
+> **Orden de merge:** Primero mergear la rama de A (prisma-osint), luego B puede empezar.
 
-**Qué haces:** Definir las tablas de la base de datos y conectar Prisma a la BD remota.
+#### Persona A — Modelos OSINT en Prisma + módulo API OSINT
+
+**Qué haces:** Añadir las tablas del scraper OSINT al schema de Prisma existente y crear las rutas API para que el frontend consuma esos datos. Las 12 categorías OSINT se agrupan en 5 macro-layers para el mapa (ver OSINT_FRONTEND_PLAN.md).
 
 **Archivos que tocas:**
 ```
-apps/api/prisma/schema.prisma
-apps/api/src/db/client.ts
-apps/api/src/db/index.ts
+apps/api/prisma/schema.prisma          (añadir modelos OSINT al final)
+apps/api/src/modules/osint/schemas.ts  (nuevo)
+apps/api/src/modules/osint/types.ts    (nuevo)
+apps/api/src/modules/osint/repo.ts     (nuevo)
+apps/api/src/modules/osint/service.ts  (nuevo)
+apps/api/src/modules/osint/controller.ts (nuevo)
+apps/api/src/routes/osint.routes.ts    (nuevo)
+apps/api/src/routes/index.ts           (añadir mount de osint)
 ```
 
-**Rama:** `feature/prisma-schema`
+**Rama:** `feature/prisma-osint`
 
 ```
 BLOQUE PARA LA IA:
 
-En apps/api/ del proyecto WorldLore, necesito configurar Prisma con PostgreSQL remoto:
+En apps/api/ del proyecto WorldLore, necesito EXTENDER el schema.prisma existente (NO reemplazarlo).
+El schema ya tiene modelos para Entity, Conflict, ConflictEvent, ConflictFaction, etc.
 
-1. Instalar: @prisma/client como dep, prisma como devDep
-2. npx prisma init (genera prisma/schema.prisma)
-3. Configurar schema.prisma con datasource postgresql usando env("DATABASE_URL")
+PARTE 1: Añadir al final de schema.prisma estos nuevos modelos y enums:
 
-Modelos necesarios:
+Enums:
+- OsintSeverity: CRITICAL, HIGH, ELEVATED, MODERATE, LOW
+- OsintMacroLayer: CONFLICT_SECURITY, GOVERNANCE_DIPLOMACY, ECONOMIC_COERCION, HUMANITARIAN_DISASTER, CYBER_INFO
 
-- User: id (uuid), email (unique), passwordHash, name, role (enum: ADMIN, ANALYST, VIEWER), createdAt, updatedAt
-- Entity: id (uuid), name, iso3 (unique, 3 chars), region, subregion, lat, lng, population?, gdp?, hdi?, createdAt, updatedAt
-- Conflict: id (uuid), name, description, region, severity (Int 1-5), startDate, endDate?, lat, lng, casualties (Int default 0), entityId (FK -> Entity), createdAt, updatedAt
-- ConflictEvent: id (uuid), conflictId (FK -> Conflict), date, description, source, eventType, casualties (Int default 0)
-- Indicator: id (uuid), code (unique), name, description, source (ej: "World Bank"), unit
-- IndicatorValue: id (uuid), indicatorId (FK -> Indicator), entityId (FK -> Entity), year (Int), value (Float)
+Modelos:
+- OsintEvent: id (uuid PK), source (text), sourceId (text?), category (text — una de 12 categorías),
+  macroLayer (OsintMacroLayer — precomputado desde category), title (text), summary (text?),
+  severity (OsintSeverity), countryIso3 (varchar 3?), countryIso2 (varchar 2?), countryName (text?),
+  region (text?), lat (float?), lng (float?), eventDate (timestamptz), url (text?),
+  rawData (jsonb?), tags (text[]), isAlert (boolean default false), hash (text unique — SHA256 dedup),
+  createdAt (timestamptz default now()).
+  Relación: hasMany OsintAlert.
+  Índices: (severity, eventDate), (countryIso3, category), (macroLayer, severity), (eventDate).
 
-Relaciones: Entity hasMany Conflict, Conflict hasMany ConflictEvent, Entity hasMany IndicatorValue, Indicator hasMany IndicatorValue.
-Indices: Conflict(entityId), Conflict(region), ConflictEvent(conflictId), IndicatorValue(entityId, indicatorId, year).
+- OsintAlert: id (uuid PK), eventId (uuid FK -> OsintEvent onDelete Cascade), alertType (text),
+  severity (OsintSeverity), title (text), description (text?), affectedCountries (text[]),
+  isActive (boolean default true), createdAt (timestamptz default now()), resolvedAt (timestamptz?).
+  Índices: (severity, isActive), (eventId).
 
-4. src/db/client.ts: singleton de PrismaClient (no crear múltiples instancias).
-5. src/db/index.ts: re-exporta el client + helper para transacciones con prisma.$transaction.
+- OsintSource: id (text PK — nombre de la fuente), lastFetch (timestamptz?), status (text default "ok"),
+  eventsCount (int default 0), errorLog (text?).
 
-Después de crear el schema: npx prisma migrate dev --name init
+- OsintScrapeLog: id (uuid PK), startedAt (timestamptz default now()), finishedAt (timestamptz?),
+  eventsFetched (int default 0), eventsInserted (int default 0), eventsDuplicated (int default 0),
+  errors (jsonb?).
+
+NO hay FK de OsintEvent a Conflict ni a Entity. La unión es por countryIso3 en queries.
+
+Después de añadir: npx prisma migrate dev --name add-osint-models
+
+PARTE 2: Crear módulo API OSINT en apps/api/src/modules/osint/ con patrón CQS:
+
+1. modules/osint/schemas.ts: Zod schemas para:
+   - osintEventFiltersSchema: macroLayer? (enum), severity? (enum o array), countryIso3? (string),
+     region? (string), from? (date ISO), to? (date ISO), bounds? ({ north, south, east, west } para viewport)
+   - osintAlertFiltersSchema: isActive? (boolean), severity? (enum)
+   - osintEventParamsSchema: id (uuid)
+
+2. modules/osint/types.ts: tipos TS derivados de los schemas.
+
+3. modules/osint/repo.ts: funciones Prisma:
+   - findEvents(filters): query con where condicional por macroLayer, severity, country, dateRange,
+     bounds (lat/lng entre north/south/east/west). OrderBy eventDate desc. Limit 200.
+   - findEventById(id): findUnique.
+   - findAlerts(filters): query osintAlerts con where isActive, severity. Include event. OrderBy createdAt desc.
+   - getSourcesHealth(): findMany de OsintSource.
+
+4. modules/osint/service.ts: llama al repo, transforma datos.
+
+5. modules/osint/controller.ts:
+   - listEvents(req, res): valida query, llama service, responde JSON.
+   - getEvent(req, res): valida params, llama service, 404 si no existe.
+   - listAlerts(req, res): alertas activas.
+   - sourcesHealth(req, res): estado de las fuentes del scraper.
+
+6. routes/osint.routes.ts: Router Express:
+   - GET /api/osint/events -> controller.listEvents
+   - GET /api/osint/events/:id -> controller.getEvent
+   - GET /api/osint/alerts -> controller.listAlerts
+   - GET /api/osint/sources -> controller.sourcesHealth
+
+7. Registrar en routes/index.ts (montar /api/osint).
+
+Mapeo de categorías a macro-layers (para el campo macroLayer precomputado):
+- CONFLICT_SECURITY: COUP_REGIME_CHANGE, MILITARY_MOVEMENT, TERRORISM, BORDER_INCIDENT
+- GOVERNANCE_DIPLOMACY: ELECTION, TREATY, OFFICIAL_DECLARATION
+- ECONOMIC_COERCION: SANCTIONS, EMBARGO
+- HUMANITARIAN_DISASTER: NATURAL_DISASTER, HUMANITARIAN_CRISIS
+- CYBER_INFO: CYBER_ATTACK
 ```
 
 ---
 
-#### Persona B — Módulo conflicts (lógica + rutas)
+#### Persona B — Módulo conflicts curados (lógica + rutas)
 
-**Qué haces:** Crear toda la lógica para listar y ver conflictos.
+**Qué haces:** Crear la lógica para listar y ver los conflictos curados (guerras con facciones, aliados, timeline). Estos son los conflictos editoriales de WorldLore, NO los eventos automáticos del scraper. Los datos OSINT del scraper se pueden vincular opcionalmente por `countryIso3` para enriquecer la vista de detalle.
 
 **Archivos que tocas:**
 ```
@@ -374,35 +433,51 @@ apps/api/src/routes/conflicts.routes.ts
 
 **Rama:** `feature/conflicts-module`
 
-> Esperar a que A haya mergeado `feature/prisma-schema` antes de empezar.
+> Esperar a que A haya mergeado `feature/prisma-osint` antes de empezar.
 
 ```
 BLOQUE PARA LA IA:
 
-En apps/api/src/ del proyecto WorldLore, crear el módulo de conflictos con patrón CQS:
+En apps/api/src/ del proyecto WorldLore, crear el módulo de conflictos curados con patrón CQS.
+
+IMPORTANTE: El schema de Prisma ya tiene estos modelos (NO crearlos, solo usarlos):
+- Conflict: slug, name, country, region, conflictType, description, status (WAR/WARM/IMPROVING/RESOLVED/FROZEN),
+  startDate, escalationDate?, endDate?, coordinates (Json {lat,lng}), involvedISO (String[]), sources (String[])
+- ConflictCasualty: date, military?, civilian?, total, source?, notes?
+- ConflictFaction: name, color?, goals (String[]), allies (String[])
+- ConflictFactionSupport: supporterISO, supportType, weapons (String[]), aidValue?, strategicAssets (String[])
+- ConflictEvent: title, date, description?, eventType?, location?, coordinates? (Json)
+- ConflictUpdate: date, status?, description, source?
+- ConflictNews: title, source, url, publishedAt, description?, imageUrl?
 
 1. modules/conflicts/schemas.ts: Zod schemas para:
-   - conflictFiltersSchema: region? (string), from? (date string ISO), to? (date string ISO), severity? (1-5 int)
-   - conflictParamsSchema: id (uuid string)
-   Importar tipos de @worldlore/contracts si están disponibles.
+   - conflictFiltersSchema: region? (string), status? (ConflictStatus enum), country? (string),
+     from? (date ISO), to? (date ISO)
+   - conflictParamsSchema: id o slug (string)
 
 2. modules/conflicts/types.ts: tipos TS derivados de los schemas + tipos de respuesta.
 
-3. modules/conflicts/repo.ts: funciones que usan Prisma client (importar de ../../db):
-   - findMany(filters): query con where condicional por region, dateRange, severity. Include entity. OrderBy startDate desc.
-   - findById(id): findUnique con include de events ordenados por date, y entity.
+3. modules/conflicts/repo.ts: funciones Prisma:
+   - findMany(filters): query Conflict con where condicional por region, status, country, dateRange.
+     Include: { casualties: true, factions: { include: { support: true } }, _count: { select: { events: true } } }.
+     OrderBy startDate desc.
+   - findBySlug(slug): findUnique con include COMPLETO: casualties, factions (con support),
+     events (orderBy date desc), updates (orderBy date desc), news (orderBy publishedAt desc, take 20).
+   - findById(id): igual que findBySlug pero por id.
 
-4. modules/conflicts/service.ts: capa de dominio que llama al repo y transforma datos al formato de ConflictSummary / ConflictDetail del contrato.
+4. modules/conflicts/service.ts: capa de dominio que llama al repo y transforma datos.
+   - Para el detalle: opcionalmente enriquecer con OsintEvents vinculados por countryIso3
+     (query a OsintEvent WHERE countryIso3 IN conflict.involvedISO, macroLayer = CONFLICT_SECURITY).
 
-5. modules/conflicts/controller.ts: funciones que reciben req/res:
-   - list(req, res): valida query con conflictFiltersSchema, llama service, responde JSON.
-   - getById(req, res): valida params, llama service, 404 si no existe.
+5. modules/conflicts/controller.ts:
+   - list(req, res): valida query, llama service, responde JSON.
+   - getBySlug(req, res): valida params, llama service, 404 si no existe.
 
-6. routes/conflicts.routes.ts: Router de Express:
-   - GET /api/conflicts -> controller.list (usa middleware validate para query)
-   - GET /api/conflicts/:id -> controller.getById (usa middleware validate para params)
+6. routes/conflicts.routes.ts: Router Express:
+   - GET /api/conflicts -> controller.list
+   - GET /api/conflicts/:slug -> controller.getBySlug
 
-Registrar en routes/index.ts.
+Registrar en routes/index.ts (A ya habrá montado /api/osint, tú montas /api/conflicts).
 
 Patrón: controller (thin HTTP mapping) -> service (lógica de dominio) -> repo (queries Prisma).
 Validar con Zod en cada endpoint, devolver 400 si falla.
@@ -744,8 +819,8 @@ Configurar en GitHub: Settings -> Branches -> Require status checks to pass -> s
 | 2 | README + .gitignore | B | 0 |
 | 3 | Contratos Zod + .env.examples | A | 1 |
 | 4 | Express scaffold + middleware | B | 1 |
-| 5 | Prisma schema + cliente BD | A | 2 |
-| 6 | Módulo conflicts (rutas + lógica) | B | 2 |
+| 5 | ~~Prisma schema base~~ (HECHO) + Modelos OSINT en Prisma + módulo API OSINT | A | 2 |
+| 6 | Módulo conflicts curados (rutas + lógica con schema real) | B | 2 |
 | 7 | Módulo countries | A | 3 |
 | 8 | Módulo auth (JWT) | A | 3 |
 | 9 | Módulo insights | B | 3 |
