@@ -109,11 +109,7 @@ const dataCache = new Map<string, DataCacheEntry>();
 const DATA_TTL = 30 * 60 * 1000; // 30 minutes
 
 function cacheKey(params: FetchEventsParams): string {
-  const ordered: Record<string, unknown> = {};
-  for (const k of Object.keys(params).sort()) {
-    ordered[k] = (params as Record<string, unknown>)[k];
-  }
-  return JSON.stringify(ordered);
+  return JSON.stringify(params);
 }
 
 // ── Main fetch function ─────────────────────────────────────────────────────

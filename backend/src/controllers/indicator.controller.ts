@@ -7,7 +7,6 @@ export const getGdpLatest: RequestHandler = async (_req: Request, res: Response)
     const data = await getGdpLatestByIso3();
     const count = Object.keys(data).length;
     console.log(`GDP API: Returning ${count} countries with GDP data`);
-    res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
     res.json(data);
   } catch (error) {
     console.error('getGdpLatest error:', error);
@@ -45,7 +44,6 @@ export const getGdpPerCapitaLatest: RequestHandler = async (_req: Request, res: 
     const data = await getGdpPerCapitaLatestByIso3();
     const count = Object.keys(data).length;
     console.log(`GDP Per Capita API: Returning ${count} countries with GDP per capita data`);
-    res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
     res.json(data);
   } catch (error) {
     console.error('getGdpPerCapitaLatest error:', error);
@@ -83,7 +81,6 @@ export const getInflationLatest: RequestHandler = async (_req: Request, res: Res
     const data = await getInflationLatestByIso3();
     const count = Object.keys(data).length;
     console.log(`Inflation API: Returning ${count} countries with inflation data`);
-    res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
     res.json(data);
   } catch (error) {
     console.error('getInflationLatest error:', error);
@@ -128,7 +125,6 @@ export const getIndicatorLatest: RequestHandler = async (req: Request, res: Resp
     const data = await getIndicatorLatestBySlug(slug);
     const count = Object.keys(data).length;
     console.log(`Indicator API (${slug}): Returning ${count} countries with data`);
-    res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
     res.json(data);
   } catch (error) {
     console.error(`getIndicatorLatest error (${req.params.slug}):`, error);

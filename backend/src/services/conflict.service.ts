@@ -153,22 +153,27 @@ export async function getAllConflicts(filters?: ConflictFilters) {
     prisma.conflict.count({ where })
   ]);
 
+  // Filter by casualties if needed (post-query filtering since we need to calculate totals)
   let filteredConflicts = conflicts;
   if (filters?.casualtiesMin !== undefined || filters?.casualtiesMax !== undefined) {
-    const conflictIds = conflicts.map(c => c.id);
-    const casualtySums = await prisma.conflictCasualty.groupBy({
-      by: ['conflictId'],
-      where: { conflictId: { in: conflictIds } },
-      _sum: { total: true }
-    });
-    const casualtyMap = new Map(casualtySums.map(r => [r.conflictId, r._sum.total || 0]));
+    const conflictsWithCasualties = await Promise.all(
+      conflicts.map(async (conflict) => {
+        const totalCasualties = await getTotalCasualties(conflict.id);
+        return { conflict, totalCasualties };
+      })
+    );
 
-    filteredConflicts = conflicts.filter(conflict => {
-      const total = casualtyMap.get(conflict.id) || 0;
-      if (filters.casualtiesMin !== undefined && total < filters.casualtiesMin) return false;
-      if (filters.casualtiesMax !== undefined && total > filters.casualtiesMax) return false;
-      return true;
-    });
+    filteredConflicts = conflictsWithCasualties
+      .filter(({ totalCasualties }) => {
+        if (filters.casualtiesMin !== undefined && totalCasualties < filters.casualtiesMin) {
+          return false;
+        }
+        if (filters.casualtiesMax !== undefined && totalCasualties > filters.casualtiesMax) {
+          return false;
+        }
+        return true;
+      })
+      .map(({ conflict }) => conflict);
   }
 
   return {
