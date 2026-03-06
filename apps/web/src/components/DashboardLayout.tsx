@@ -2,13 +2,13 @@ import type { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { User, Star, LogOut, Globe, TrendingUp } from 'lucide-react';
+import { User, Star, LogOut, Globe, TrendingUp, LayoutDashboard } from 'lucide-react';
 import '../styles/dashboard.css';
 
 interface DashboardLayoutProps {
   children: ReactNode;
-  activeSection: 'profile' | 'favorites' | 'predictions';
-  onSectionChange: (section: 'profile' | 'favorites' | 'predictions') => void;
+  activeSection: 'overview' | 'profile' | 'favorites' | 'predictions';
+  onSectionChange: (section: 'overview' | 'profile' | 'favorites' | 'predictions') => void;
 }
 
 export default function DashboardLayout({ children, activeSection, onSectionChange }: DashboardLayoutProps) {
@@ -40,6 +40,16 @@ export default function DashboardLayout({ children, activeSection, onSectionChan
         </div>
 
         <nav className="dashboard-nav">
+          <motion.button
+            onClick={() => onSectionChange('overview')}
+            className={`dashboard-nav-item ${activeSection === 'overview' ? 'active' : ''}`}
+            whileHover={{ x: 4 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <LayoutDashboard className="w-5 h-5" />
+            <span>Overview</span>
+          </motion.button>
+
           <motion.button
             onClick={() => onSectionChange('profile')}
             className={`dashboard-nav-item ${activeSection === 'profile' ? 'active' : ''}`}
