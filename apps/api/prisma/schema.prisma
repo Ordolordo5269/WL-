@@ -560,6 +560,93 @@ model Favorite {
 }
 
 // ============================
+// OSINT Scraper Models
+// ============================
+
+enum OsintSeverity {
+  CRITICAL
+  HIGH
+  ELEVATED
+  MODERATE
+  LOW
+}
+
+enum OsintMacroLayer {
+  CONFLICT_SECURITY
+  GOVERNANCE_DIPLOMACY
+  ECONOMIC_COERCION
+  HUMANITARIAN_DISASTER
+  CYBER_INFO
+}
+
+model OsintEvent {
+  id          String          @id @default(uuid()) @db.Uuid
+  source      String          @db.Text
+  sourceId    String?         @db.Text
+  category    String          @db.Text
+  macroLayer  OsintMacroLayer
+  title       String          @db.Text
+  summary     String?         @db.Text
+  severity    OsintSeverity
+  countryIso3 String?         @db.VarChar(3)
+  countryIso2 String?         @db.VarChar(2)
+  countryName String?         @db.Text
+  region      String?         @db.Text
+  lat         Float?
+  lng         Float?
+  eventDate   DateTime        @db.Timestamptz()
+  url         String?         @db.Text
+  rawData     Json?
+  tags        String[]
+  isAlert     Boolean         @default(false)
+  hash        String          @unique @db.Text
+  createdAt   DateTime        @default(now()) @db.Timestamptz()
+
+  alerts      OsintAlert[]
+
+  @@index([severity, eventDate])
+  @@index([countryIso3, category])
+  @@index([macroLayer, severity])
+  @@index([eventDate])
+}
+
+model OsintAlert {
+  id                String        @id @default(uuid()) @db.Uuid
+  eventId           String        @db.Uuid
+  alertType         String        @db.Text
+  severity          OsintSeverity
+  title             String        @db.Text
+  description       String?       @db.Text
+  affectedCountries String[]
+  isActive          Boolean       @default(true)
+  createdAt         DateTime      @default(now()) @db.Timestamptz()
+  resolvedAt        DateTime?     @db.Timestamptz()
+
+  event             OsintEvent    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([severity, isActive])
+  @@index([eventId])
+}
+
+model OsintSource {
+  id          String    @id @db.Text
+  lastFetch   DateTime? @db.Timestamptz()
+  status      String    @default("ok") @db.Text
+  eventsCount Int       @default(0)
+  errorLog    String?   @db.Text
+}
+
+model OsintScrapeLog {
+  id               String    @id @default(uuid()) @db.Uuid
+  startedAt        DateTime  @default(now()) @db.Timestamptz()
+  finishedAt       DateTime? @db.Timestamptz()
+  eventsFetched    Int       @default(0)
+  eventsInserted   Int       @default(0)
+  eventsDuplicated Int       @default(0)
+  errors           Json?
+}
+
+// ============================
 // GeoDB Cities API Cache
 // ============================
 

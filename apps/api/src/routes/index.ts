@@ -20,6 +20,7 @@ import userRoutes from './user.routes';
 import predictionRoutes from './prediction.routes';
 import newsRoutes from './news.routes';
 import acledRoutes from './acled.routes';
+import osintRoutes from './osint.routes';
 
 const router = Router();
 
@@ -43,5 +44,8 @@ router.use('/user', userRoutes);
 router.use('/prediction', predictionRoutes);
 router.use('/news', newsRoutes);
 router.use('/acled', acledRoutes);
+
+// OSINT scraper routes
+router.use('/osint', osintRoutes);
 
 export default router;
