@@ -23,8 +23,8 @@ pnpm-debug.log*
 Thumbs.db
 
 # Prisma local artifacts (if any)
-backend/prisma/dev.db
-backend/prisma/dev.db-journal
+apps/api/prisma/dev.db
+apps/api/prisma/dev.db-journal
 
 # Local Postgres volume/data (do not version)
 pgdata/
@@ -60,7 +60,7 @@ build/
 *~
 
 # Local ingestion logs
-backend/ingestion-log.txt
+apps/api/ingestion-log.txt
 
 # OS files
 .DS_Store
@@ -147,7 +147,7 @@ dist
 # Gatsby files
 .cache/
 public
-!frontend/public/
+!apps/web/public/
 !landing/public/
 
 # Storybook build outputs

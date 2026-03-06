@@ -1,4 +1,4 @@
-import { memo, useMemo, useState, useEffect, useRef } from 'react';
+import { memo, useMemo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 type ScenarioKey = 'spainRent';

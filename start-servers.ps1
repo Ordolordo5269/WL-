@@ -31,30 +31,30 @@ if (-not (Test-Npm)) {
 }
 
 # Verificar que existan los directorios
-if (-not (Test-Path "backend")) {
-    Write-Host "Error: Directorio 'backend' no encontrado" -ForegroundColor Red
+if (-not (Test-Path "apps/api")) {
+    Write-Host "Error: Directorio 'apps/api' no encontrado" -ForegroundColor Red
     exit 1
 }
 
-if (-not (Test-Path "frontend")) {
-    Write-Host "Error: Directorio 'frontend' no encontrado" -ForegroundColor Red
+if (-not (Test-Path "apps/web")) {
+    Write-Host "Error: Directorio 'apps/web' no encontrado" -ForegroundColor Red
     exit 1
 }
 
 # Verificar dependencias del backend
-if (-not (Test-Path "backend/node_modules")) {
+if (-not (Test-Path "apps/api/node_modules")) {
     Write-Host "Instalando dependencias del backend..." -ForegroundColor Cyan
-    Set-Location backend
+    Set-Location apps/api
     npm install
-    Set-Location ..
+    Set-Location ../..
 }
 
 # Verificar dependencias del frontend
-if (-not (Test-Path "frontend/node_modules")) {
+if (-not (Test-Path "apps/web/node_modules")) {
     Write-Host "Instalando dependencias del frontend..." -ForegroundColor Cyan
-    Set-Location frontend
+    Set-Location apps/web
     npm install
-    Set-Location ..
+    Set-Location ../..
 }
 
 # Verificar dependencias del landing
@@ -95,7 +95,7 @@ if (Test-Port 3001) {
     Write-Host "Puerto 3001 ya esta en uso. El backend puede estar ejecutandose." -ForegroundColor Yellow
 } else {
     Write-Host "Iniciando backend en puerto 3001..." -ForegroundColor Cyan
-    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd backend; npm run dev" -WindowStyle Normal
+    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd apps/api; npm run dev" -WindowStyle Normal
     Start-Sleep -Seconds 5
 }
 
@@ -104,7 +104,7 @@ if (Test-Port 5173) {
     Write-Host "Puerto 5173 ya esta en uso. El frontend puede estar ejecutandose." -ForegroundColor Yellow
 } else {
     Write-Host "Iniciando frontend en puerto 5173..." -ForegroundColor Cyan
-    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd frontend; npm run dev" -WindowStyle Normal
+    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd apps\web; npm run dev" -WindowStyle Normal
     Start-Sleep -Seconds 3
 }
 

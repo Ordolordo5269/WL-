@@ -2,8 +2,7 @@
   "files": [],
   "include": [],
   "references": [
-    { "path": "./backend" },
-    { "path": "./frontend" },
-    { "path": "./landing" }
+    { "path": "./apps/api" },
+    { "path": "./packages/contracts" }
   ]
 }

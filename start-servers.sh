@@ -31,30 +31,30 @@ if ! check_npm; then
 fi
 
 # Verificar que existan los directorios
-if [ ! -d "backend" ]; then
-    echo "❌ Error: Directorio 'backend' no encontrado"
+if [ ! -d "apps/api" ]; then
+    echo "❌ Error: Directorio 'apps/api' no encontrado"
     exit 1
 fi
 
-if [ ! -d "frontend" ]; then
-    echo "❌ Error: Directorio 'frontend' no encontrado"
+if [ ! -d "apps/web" ]; then
+    echo "❌ Error: Directorio 'apps/web' no encontrado"
     exit 1
 fi
 
 # Verificar dependencias del backend
-if [ ! -d "backend/node_modules" ]; then
+if [ ! -d "apps/api/node_modules" ]; then
     echo "📦 Instalando dependencias del backend..."
-    cd backend
+    cd apps/api
     npm install
-    cd ..
+    cd ../..
 fi
 
 # Verificar dependencias del frontend
-if [ ! -d "frontend/node_modules" ]; then
+if [ ! -d "apps/web/node_modules" ]; then
     echo "📦 Instalando dependencias del frontend..."
-    cd frontend
+    cd apps/web
     npm install
-    cd ..
+    cd ../..
 fi
 
 # Verificar dependencias del landing
@@ -93,9 +93,9 @@ if check_port 3001; then
     echo "⚠️  Puerto 3001 ya está en uso. El backend puede estar ejecutándose."
 else
     echo "📡 Iniciando backend en puerto 3001..."
-    cd backend
+    cd apps/api
     npm run dev &
-    cd ..
+    cd ../..
     sleep 5  # Dar más tiempo para que el backend se inicie
 fi
 
@@ -104,9 +104,9 @@ if check_port 5173; then
     echo "⚠️  Puerto 5173 ya está en uso. El frontend puede estar ejecutándose."
 else
     echo "🌐 Iniciando frontend en puerto 5173..."
-    cd frontend
+    cd apps/web
     npm run dev &
-    cd ..
+    cd ../..
     sleep 3
 fi
 
@@ -139,4 +139,4 @@ echo "🔧 Para detener los servidores, presiona Ctrl+C"
 echo ""
 
 # Mantener el script ejecutándose para mostrar los logs
-wait 
+wait

@@ -22,10 +22,10 @@ export default defineConfig({
     minify: 'terser',
     terserOptions: {
       compress: {
-        drop_console: true, // Remover console.logs en producción
+        drop_console: true,
         drop_debugger: true
       }
-    },
+    } as any,
     // Aumentar el límite de advertencia de chunk size
     chunkSizeWarningLimit: 1000
   },

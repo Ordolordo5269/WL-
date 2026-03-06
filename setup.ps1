@@ -55,15 +55,15 @@ npm install
 
 # Instalar dependencias del backend
 Write-Host "Instalando dependencias del backend..." -ForegroundColor White
-Set-Location backend
+Set-Location apps/api
 npm install
-Set-Location ..
+Set-Location ../..
 
 # Instalar dependencias del frontend
 Write-Host "Instalando dependencias del frontend..." -ForegroundColor White
-Set-Location frontend
+Set-Location apps/web
 npm install
-Set-Location ..
+Set-Location ../..
 
 # Instalar dependencias del landing
 if (Test-Path "landing") {
@@ -95,8 +95,8 @@ CORS_ORIGIN=http://localhost:5173
 # Base de datos (PostgreSQL + Prisma)
 DATABASE_URL=postgresql://worldlore:worldlore@localhost:5432/worldlore?schema=public
 "@
-$backendEnvContent | Out-File -FilePath "backend\.env" -Encoding UTF8
-Write-Host "   backend/.env creado (puerto 3001)" -ForegroundColor Gray
+$backendEnvContent | Out-File -FilePath "apps\api\.env" -Encoding UTF8
+Write-Host "   apps/api/.env creado (puerto 3001)" -ForegroundColor Gray
 
 # Crear archivo .env del frontend
 $frontendEnvContent = @"
@@ -104,8 +104,8 @@ VITE_MAPBOX_TOKEN=$MAPBOX_TOKEN
 VITE_API_URL=http://localhost:3001
 NODE_ENV=development
 "@
-$frontendEnvContent | Out-File -FilePath "frontend\.env" -Encoding UTF8
-Write-Host "   frontend/.env creado" -ForegroundColor Gray
+$frontendEnvContent | Out-File -FilePath "apps\web\.env" -Encoding UTF8
+Write-Host "   apps/web/.env creado" -ForegroundColor Gray
 
 # Crear archivo .env raíz
 $rootEnvContent = @"

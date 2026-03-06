@@ -47,21 +47,9 @@ fi
 echo ""
 echo "📦 Instalando dependencias..."
 
-# Instalar dependencias del proyecto principal
-echo "Instalando dependencias principales..."
+# Instalar todas las dependencias via workspaces
+echo "Instalando dependencias (npm workspaces)..."
 npm install
-
-# Instalar dependencias del backend
-echo "Instalando dependencias del backend..."
-cd backend
-npm install
-cd ..
-
-# Instalar dependencias del frontend
-echo "Instalando dependencias del frontend..."
-cd frontend
-npm install
-cd ..
 
 echo ""
 echo "🔧 Configurando variables de entorno..."
@@ -71,28 +59,26 @@ echo "MAPBOX_TOKEN=$MAPBOX_TOKEN" > .env
 echo "PORT=3000" >> .env
 echo "NODE_ENV=development" >> .env
 
-echo "VITE_MAPBOX_TOKEN=$MAPBOX_TOKEN" > frontend/.env
-echo "VITE_API_URL=http://localhost:3000" >> frontend/.env
-echo "NODE_ENV=development" >> frontend/.env
+echo "VITE_MAPBOX_TOKEN=$MAPBOX_TOKEN" > apps/web/.env
+echo "VITE_API_URL=http://localhost:3001" >> apps/web/.env
+echo "NODE_ENV=development" >> apps/web/.env
 
-echo "MAPBOX_TOKEN=$MAPBOX_TOKEN" > backend/.env
-echo "PORT=3000" >> backend/.env
-echo "NODE_ENV=development" >> backend/.env
-echo "CORS_ORIGIN=http://localhost:5173" >> backend/.env
+echo "MAPBOX_TOKEN=$MAPBOX_TOKEN" > apps/api/.env
+echo "PORT=3001" >> apps/api/.env
+echo "NODE_ENV=development" >> apps/api/.env
+echo "CORS_ORIGIN=http://localhost:5173" >> apps/api/.env
 
 echo ""
 echo "✅ Configuración completada exitosamente!"
 echo ""
 echo "🚀 Para ejecutar el proyecto:"
 echo ""
-echo "Terminal 1 (Backend):"
-echo "  npm run dev"
-echo ""
-echo "Terminal 2 (Frontend):"
-echo "  npm run client"
+echo "  npm run dev          # Inicia backend + frontend"
+echo "  npm run dev:api      # Solo backend"
+echo "  npm run dev:web      # Solo frontend"
 echo ""
 echo "🌐 URLs:"
 echo "  Frontend: http://localhost:5173"
-echo "  Backend:  http://localhost:3000"
+echo "  Backend:  http://localhost:3001"
 echo ""
-echo "📚 Para más información, consulta el README.md" 
+echo "📚 Para más información, consulta el README.md"

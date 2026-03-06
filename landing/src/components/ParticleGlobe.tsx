@@ -2,8 +2,6 @@ import React, { useRef, useMemo, useEffect, useState, memo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Points, PointMaterial } from '@react-three/drei';
 import * as THREE from 'three';
-import * as d3 from 'd3-geo';
-
 // Declaración de módulo para d3-geo
 declare module 'd3-geo' {
   export function geoOrthographic(): any;
@@ -185,8 +183,6 @@ const ParticleGlobe: React.FC<ParticleGlobeProps> = memo(() => {
     
     // Rotación automática base
     const autoRotationY = time * 0.03;
-    const autoRotationX = Math.sin(time * 0.2) * 0.05;
-    
     // Animación de la esfera de fondo - Movimiento muy sutil
     if (sphereRef.current) {
       sphereRef.current.rotation.y = autoRotationY * 0.6 + currentRotation.current.y;
