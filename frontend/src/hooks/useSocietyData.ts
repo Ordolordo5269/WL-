@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { societyService, TSocietyIndicators } from '../services/society-service';
 
 export interface SocietySeriesData {
@@ -23,12 +23,15 @@ export function useSocietyData(iso3: string | null, enabled: boolean = true): Us
   const [series, setSeries] = useState<SocietySeriesData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
 
   const fetchData = useCallback(async (code3: string) => {
+    const currentRequestId = ++requestIdRef.current;
     setIsLoading(true);
     setError(null);
     try {
       const result = await societyService.getSocietyIndicatorsByISO3(code3);
+      if (currentRequestId !== requestIdRef.current) return;
       setData(result);
       const [populationSeries, populationGrowthSeries, birthSeries, deathSeries] = await Promise.all([
         societyService.fetchWorldBankSeries(code3, 'SP.POP.TOTL', 20),
@@ -36,14 +39,16 @@ export function useSocietyData(iso3: string | null, enabled: boolean = true): Us
         societyService.fetchWorldBankSeries(code3, 'SP.DYN.CBRT.IN', 20),
         societyService.fetchWorldBankSeries(code3, 'SP.DYN.CDRT.IN', 20)
       ]);
+      if (currentRequestId !== requestIdRef.current) return;
       setSeries({ populationSeries, populationGrowthSeries, birthSeries, deathSeries });
     } catch (err) {
+      if (currentRequestId !== requestIdRef.current) return;
       const message = err instanceof Error ? err.message : 'Failed to load society indicators';
       setError(message);
       setData(null);
       setSeries(null);
     } finally {
-      setIsLoading(false);
+      if (currentRequestId === requestIdRef.current) setIsLoading(false);
     }
   }, []);
 
@@ -69,9 +74,9 @@ export function useSocietyData(iso3: string | null, enabled: boolean = true): Us
     if (iso3 && enabled) {
       fetchData(iso3);
     } else if (!enabled) {
-      // Don't clear data when disabled, just don't fetch
       setIsLoading(false);
     } else {
+      requestIdRef.current++;
       setData(null);
       setError(null);
       setIsLoading(false);

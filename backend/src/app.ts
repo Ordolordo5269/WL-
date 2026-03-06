@@ -1,4 +1,5 @@
 import express from 'express';
+import compression from 'compression';
 import morgan from 'morgan';
 import cors from 'cors';
 import countryRoutes from './routes/country.routes';
@@ -39,6 +40,7 @@ if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'));
 }
 
+app.use(compression());
 app.use(express.json());
 
 // Enable CORS for frontend

@@ -96,6 +96,7 @@ export const getEconomyByIso3: RequestHandler = async (req: Request, res: Respon
       gdp_year: gdp.year ?? null
     };
 
+    res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
     res.json(response);
   } catch (error) {
     console.error('getEconomyByIso3 error:', error);

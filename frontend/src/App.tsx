@@ -47,9 +47,6 @@ interface CountrySelectorCountry {
   flagUrl?: string;
 }
 
-interface WindowWithResetMapView extends Window {
-  resetMapView?: () => void;
-}
 
 function WorldMapView() {
   const [countries, setCountries] = useState<Country[]>([]);
@@ -76,26 +73,30 @@ const mapRef = useRef<{ easeTo: (options: MapEaseToOptionsApp) => void; getMap: 
     conflict: false // conflict tracker
   });
 
-  const [gdpEnabled, setGdpEnabled] = useState<boolean>(false);
-  const [gdpLegend, setGdpLegend] = useState<Array<{ color: string; min?: number; max?: number }>>([]);
-  const [gdpPerCapitaEnabled, setGdpPerCapitaEnabled] = useState<boolean>(false);
-  const [gdpPerCapitaLegend, setGdpPerCapitaLegend] = useState<Array<{ color: string; min?: number; max?: number }>>([]);
-  const [inflationEnabled, setInflationEnabled] = useState<boolean>(false);
-  const [inflationLegend, setInflationLegend] = useState<Array<{ color: string; min?: number; max?: number }>>([]);
-  const [giniEnabled, setGiniEnabled] = useState<boolean>(false);
-  const [giniLegend, setGiniLegend] = useState<Array<{ color: string; min?: number; max?: number }>>([]);
-  const [exportsEnabled, setExportsEnabled] = useState<boolean>(false);
-  const [exportsLegend, setExportsLegend] = useState<Array<{ color: string; min?: number; max?: number }>>([]);
-  
-  // New indicators
-  const [lifeExpectancyEnabled, setLifeExpectancyEnabled] = useState<boolean>(false);
-  const [lifeExpectancyLegend, setLifeExpectancyLegend] = useState<Array<{ color: string; min?: number; max?: number }>>([]);
-  const [militaryExpenditureEnabled, setMilitaryExpenditureEnabled] = useState<boolean>(false);
-  const [militaryExpenditureLegend, setMilitaryExpenditureLegend] = useState<Array<{ color: string; min?: number; max?: number }>>([]);
-  const [democracyIndexEnabled, setDemocracyIndexEnabled] = useState<boolean>(false);
-  const [democracyIndexLegend, setDemocracyIndexLegend] = useState<Array<{ color: string; min?: number; max?: number }>>([]);
-  const [tradeGdpEnabled, setTradeGdpEnabled] = useState<boolean>(false);
-  const [tradeGdpLegend, setTradeGdpLegend] = useState<Array<{ color: string; min?: number; max?: number }>>([]);
+  const [activeChoropleth, setActiveChoropleth] = useState<MetricId | null>(null);
+  const [choroplethLegend, setChoroplethLegend] = useState<Array<{ color: string; min?: number; max?: number }>>([]);
+  const prevChoroplethRef = useRef<MetricId | null>(null);
+
+  const gdpEnabled = activeChoropleth === 'gdp';
+  const gdpPerCapitaEnabled = activeChoropleth === 'gdp-per-capita';
+  const inflationEnabled = activeChoropleth === 'inflation';
+  const giniEnabled = activeChoropleth === 'gini';
+  const exportsEnabled = activeChoropleth === 'exports';
+  const lifeExpectancyEnabled = activeChoropleth === 'life-expectancy';
+  const militaryExpenditureEnabled = activeChoropleth === 'military-expenditure';
+  const democracyIndexEnabled = activeChoropleth === 'democracy-index';
+  const tradeGdpEnabled = activeChoropleth === 'trade-gdp';
+
+  const EMPTY_LEGEND: Array<{ color: string; min?: number; max?: number }> = [];
+  const gdpLegend = gdpEnabled ? choroplethLegend : EMPTY_LEGEND;
+  const gdpPerCapitaLegend = gdpPerCapitaEnabled ? choroplethLegend : EMPTY_LEGEND;
+  const inflationLegend = inflationEnabled ? choroplethLegend : EMPTY_LEGEND;
+  const giniLegend = giniEnabled ? choroplethLegend : EMPTY_LEGEND;
+  const exportsLegend = exportsEnabled ? choroplethLegend : EMPTY_LEGEND;
+  const lifeExpectancyLegend = lifeExpectancyEnabled ? choroplethLegend : EMPTY_LEGEND;
+  const militaryExpenditureLegend = militaryExpenditureEnabled ? choroplethLegend : EMPTY_LEGEND;
+  const democracyIndexLegend = democracyIndexEnabled ? choroplethLegend : EMPTY_LEGEND;
+  const tradeGdpLegend = tradeGdpEnabled ? choroplethLegend : EMPTY_LEGEND;
 
   // History Mode state
   const [historyEnabled, setHistoryEnabled] = useState<boolean>(false);
@@ -181,273 +182,105 @@ const mapRef = useRef<{ easeTo: (options: MapEaseToOptionsApp) => void; getMap: 
     // No prefetch here — keeps initial load fast and network free for map tiles.
   }, []);
 
-  // GDP layer management
   useEffect(() => {
     let cancelled = false;
-    const run = async () => {
-      if (!gdpEnabled) {
-        // Ensure spec is cleared so style reloads don't recreate the layer
-        mapRef.current?.setChoropleth?.('gdp', null);
-        if (gdpPerCapitaEnabled) mapRef.current?.setActiveChoropleth?.('gdp-per-capita');
-        else if (inflationEnabled) mapRef.current?.setActiveChoropleth?.('inflation');
-        else if (giniEnabled) mapRef.current?.setActiveChoropleth?.('gini');
-        else if (exportsEnabled) mapRef.current?.setActiveChoropleth?.('exports');
-        else mapRef.current?.setActiveChoropleth?.(null);
-        setGdpLegend([]);
-        return;
-      }
-      const byIso3 = await fetchGdpLatestByIso3();
-      if (cancelled) return;
-      const spec = buildGdpChoropleth(byIso3, { buckets: 7 });
-      setGdpLegend(spec.legend.map(l => ({ color: l.color, min: l.min, max: l.max })));
-      mapRef.current?.setChoropleth?.('gdp', spec as any);
-      mapRef.current?.setActiveChoropleth?.('gdp');
+
+    if (prevChoroplethRef.current && prevChoroplethRef.current !== activeChoropleth) {
+      mapRef.current?.setChoropleth?.(prevChoroplethRef.current, null);
+    }
+    prevChoroplethRef.current = activeChoropleth;
+
+    if (!activeChoropleth) {
+      mapRef.current?.setActiveChoropleth?.(null);
+      setChoroplethLegend([]);
+      return;
+    }
+
+    const fmtCurrency = (value: number): string => {
+      if (value >= 1e12) return `$${(value / 1e12).toFixed(2)}T`;
+      if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
+      if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
+      if (value >= 1e3) return `$${(value / 1e3).toFixed(2)}K`;
+      return `$${value.toFixed(2)}`;
     };
-    run();
-    return () => { cancelled = true; };
-  }, [gdpEnabled, gdpPerCapitaEnabled, inflationEnabled]);
 
-  // GDP per capita layer management
-  useEffect(() => {
-    let cancelled = false;
     const run = async () => {
-      if (!gdpPerCapitaEnabled) {
-        // Clear spec when toggled off
-        mapRef.current?.setChoropleth?.('gdp-per-capita', null);
-        if (gdpEnabled) mapRef.current?.setActiveChoropleth?.('gdp');
-        else if (inflationEnabled) mapRef.current?.setActiveChoropleth?.('inflation');
-        else if (giniEnabled) mapRef.current?.setActiveChoropleth?.('gini');
-        else if (exportsEnabled) mapRef.current?.setActiveChoropleth?.('exports');
-        else mapRef.current?.setActiveChoropleth?.(null);
-        setGdpPerCapitaLegend([]);
-        return;
-      }
-      const byIso3 = await fetchGdpPerCapitaLatestByIso3();
-      if (cancelled) return;
-      const spec = buildGdpPerCapitaChoropleth(byIso3, { buckets: 7 });
-      setGdpPerCapitaLegend(spec.legend.map(l => ({ color: l.color, min: l.min, max: l.max })));
-      mapRef.current?.setChoropleth?.('gdp-per-capita', spec as any);
-      mapRef.current?.setActiveChoropleth?.('gdp-per-capita');
-    };
-    run();
-    return () => { cancelled = true; };
-  }, [gdpPerCapitaEnabled, gdpEnabled, inflationEnabled]);
+      let spec: any;
 
-  // Inflation layer management
-  useEffect(() => {
-    let cancelled = false;
-    const run = async () => {
-      if (!inflationEnabled) {
-        // Clear spec when toggled off
-        mapRef.current?.setChoropleth?.('inflation', null);
-        if (gdpEnabled) mapRef.current?.setActiveChoropleth?.('gdp');
-        else if (gdpPerCapitaEnabled) mapRef.current?.setActiveChoropleth?.('gdp-per-capita');
-        else if (giniEnabled) mapRef.current?.setActiveChoropleth?.('gini');
-        else if (exportsEnabled) mapRef.current?.setActiveChoropleth?.('exports');
-        else mapRef.current?.setActiveChoropleth?.(null);
-        return;
-      }
-      const byIso3 = await fetchInflationLatestByIso3({ yearWindow: '1960:2050' });
-      if (cancelled) return;
-      const spec = buildInflationChoropleth(byIso3, { buckets: 7 });
-      setInflationLegend(spec.legend.map(l => ({ color: l.color, min: l.min, max: l.max })));
-      mapRef.current?.setChoropleth?.('inflation', spec as any);
-      mapRef.current?.setActiveChoropleth?.('inflation');
-    };
-    run();
-    return () => { cancelled = true; };
-  }, [inflationEnabled, gdpEnabled, gdpPerCapitaEnabled, giniEnabled, exportsEnabled]);
-
-  // GINI layer management (0-100, linear) - Red (high inequality) to Green (low inequality)
-  useEffect(() => {
-    let cancelled = false;
-    const run = async () => {
-      if (!giniEnabled) {
-        mapRef.current?.setChoropleth?.('gini', null);
-        if (gdpEnabled) mapRef.current?.setActiveChoropleth?.('gdp');
-        else if (gdpPerCapitaEnabled) mapRef.current?.setActiveChoropleth?.('gdp-per-capita');
-        else if (inflationEnabled) mapRef.current?.setActiveChoropleth?.('inflation');
-        else if (exportsEnabled) mapRef.current?.setActiveChoropleth?.('exports');
-        else mapRef.current?.setActiveChoropleth?.(null);
-        setGiniLegend([]);
-        return;
-      }
-      const byIso3 = await fetchIndicatorLatestByIso3FromDb('gini');
-      if (cancelled) return;
-      // GINI: Green (low inequality) to Red (high inequality)
-      const giniPalette = ['#16a34a', '#4ade80', '#86efac', '#fca5a5', '#f87171', '#ef4444', '#dc2626'];
-      const spec = buildQuantileChoropleth(byIso3, { buckets: 7, useLog: false, formatter: (v) => v.toFixed(1), palette: giniPalette });
-      setGiniLegend(spec.legend.map(l => ({ color: l.color, min: l.min, max: l.max })));
-      mapRef.current?.setChoropleth?.('gini', spec as any);
-      mapRef.current?.setActiveChoropleth?.('gini');
-    };
-    run();
-    return () => { cancelled = true; };
-  }, [giniEnabled, gdpEnabled, gdpPerCapitaEnabled, inflationEnabled, exportsEnabled]);
-
-  // Exports (USD, log)
-  useEffect(() => {
-    let cancelled = false;
-    const run = async () => {
-      if (!exportsEnabled) {
-        mapRef.current?.setChoropleth?.('exports', null);
-        if (gdpEnabled) mapRef.current?.setActiveChoropleth?.('gdp');
-        else if (gdpPerCapitaEnabled) mapRef.current?.setActiveChoropleth?.('gdp-per-capita');
-        else if (inflationEnabled) mapRef.current?.setActiveChoropleth?.('inflation');
-        else if (giniEnabled) mapRef.current?.setActiveChoropleth?.('gini');
-        else mapRef.current?.setActiveChoropleth?.(null);
-        setExportsLegend([]);
-        return;
-      }
-      const byIso3 = await fetchIndicatorLatestByIso3FromDb('exports');
-      if (cancelled) return;
-      const fmtCurrency = (value: number): string => {
-        if (value >= 1e12) return `$${(value / 1e12).toFixed(2)}T`;
-        if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
-        if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
-        if (value >= 1e3) return `$${(value / 1e3).toFixed(2)}K`;
-        return `$${value.toFixed(2)}`;
-      };
-      // Exports: Blue to Purple gradient
-      const exportsPalette = ['#dbeafe', '#bfdbfe', '#93c5fd', '#60a5fa', '#3b82f6', '#6366f1', '#4f46e5'];
-      const spec = buildQuantileChoropleth(byIso3, { buckets: 7, useLog: true, formatter: fmtCurrency, palette: exportsPalette });
-      setExportsLegend(spec.legend.map(l => ({ color: l.color, min: l.min, max: l.max })));
-      mapRef.current?.setChoropleth?.('exports', spec as any);
-      mapRef.current?.setActiveChoropleth?.('exports');
-    };
-    run();
-    return () => { cancelled = true; };
-  }, [exportsEnabled, gdpEnabled, gdpPerCapitaEnabled, inflationEnabled, giniEnabled]);
-
-  // Life Expectancy layer (years, linear)
-  useEffect(() => {
-    let cancelled = false;
-    const run = async () => {
-      if (!lifeExpectancyEnabled) {
-        mapRef.current?.setChoropleth?.('life-expectancy', null);
-        if (gdpEnabled) mapRef.current?.setActiveChoropleth?.('gdp');
-        else if (gdpPerCapitaEnabled) mapRef.current?.setActiveChoropleth?.('gdp-per-capita');
-        else if (inflationEnabled) mapRef.current?.setActiveChoropleth?.('inflation');
-        else if (giniEnabled) mapRef.current?.setActiveChoropleth?.('gini');
-        else if (exportsEnabled) mapRef.current?.setActiveChoropleth?.('exports');
-        else mapRef.current?.setActiveChoropleth?.(null);
-        setLifeExpectancyLegend([]);
-        return;
-      }
-      const byIso3 = await fetchIndicatorLatestByIso3FromDb('life-expectancy');
-      if (cancelled) return;
-      // Life Expectancy: Green gradient (health indicator)
-      const lifeExpectancyPalette = ['#dcfce7', '#bbf7d0', '#86efac', '#4ade80', '#22c55e', '#16a34a', '#15803d'];
-      const spec = buildQuantileChoropleth(byIso3, { buckets: 7, useLog: false, formatter: (v) => `${v.toFixed(1)} yrs`, palette: lifeExpectancyPalette });
-      setLifeExpectancyLegend(spec.legend.map(l => ({ color: l.color, min: l.min, max: l.max })));
-      mapRef.current?.setChoropleth?.('life-expectancy', spec as any);
-      mapRef.current?.setActiveChoropleth?.('life-expectancy');
-    };
-    run();
-    return () => { cancelled = true; };
-  }, [lifeExpectancyEnabled, gdpEnabled, gdpPerCapitaEnabled, inflationEnabled, giniEnabled, exportsEnabled]);
-
-
-  // Military Expenditure layer (% GDP, linear)
-  useEffect(() => {
-    let cancelled = false;
-    const run = async () => {
-      if (!militaryExpenditureEnabled) {
-        mapRef.current?.setChoropleth?.('military-expenditure', null);
-        if (gdpEnabled) mapRef.current?.setActiveChoropleth?.('gdp');
-        else if (gdpPerCapitaEnabled) mapRef.current?.setActiveChoropleth?.('gdp-per-capita');
-        else if (inflationEnabled) mapRef.current?.setActiveChoropleth?.('inflation');
-        else if (giniEnabled) mapRef.current?.setActiveChoropleth?.('gini');
-        else if (exportsEnabled) mapRef.current?.setActiveChoropleth?.('exports');
-        else if (lifeExpectancyEnabled) mapRef.current?.setActiveChoropleth?.('life-expectancy');
-        else mapRef.current?.setActiveChoropleth?.(null);
-        setMilitaryExpenditureLegend([]);
-        return;
-      }
-      const byIso3 = await fetchIndicatorLatestByIso3FromDb('military-expenditure');
-      if (cancelled) return;
-      // Military Expenditure: Orange/Red gradient (military spending)
-      const militaryPalette = ['#fff7ed', '#ffedd5', '#fed7aa', '#fdba74', '#fb923c', '#f97316', '#ea580c'];
-      const spec = buildQuantileChoropleth(byIso3, { buckets: 7, useLog: false, formatter: (v) => `${v.toFixed(2)}%`, palette: militaryPalette });
-      setMilitaryExpenditureLegend(spec.legend.map(l => ({ color: l.color, min: l.min, max: l.max })));
-      mapRef.current?.setChoropleth?.('military-expenditure', spec as any);
-      mapRef.current?.setActiveChoropleth?.('military-expenditure');
-    };
-    run();
-    return () => { cancelled = true; };
-  }, [militaryExpenditureEnabled, gdpEnabled, gdpPerCapitaEnabled, inflationEnabled, giniEnabled, exportsEnabled, lifeExpectancyEnabled]);
-
-  // Democracy Index layer (0-10, linear)
-  useEffect(() => {
-    let cancelled = false;
-    const run = async () => {
-      if (!democracyIndexEnabled) {
-        mapRef.current?.setChoropleth?.('democracy-index', null);
-        if (gdpEnabled) mapRef.current?.setActiveChoropleth?.('gdp');
-        else if (gdpPerCapitaEnabled) mapRef.current?.setActiveChoropleth?.('gdp-per-capita');
-        else if (inflationEnabled) mapRef.current?.setActiveChoropleth?.('inflation');
-        else if (giniEnabled) mapRef.current?.setActiveChoropleth?.('gini');
-        else if (exportsEnabled) mapRef.current?.setActiveChoropleth?.('exports');
-        else if (lifeExpectancyEnabled) mapRef.current?.setActiveChoropleth?.('life-expectancy');
-        else if (militaryExpenditureEnabled) mapRef.current?.setActiveChoropleth?.('military-expenditure');
-        else mapRef.current?.setActiveChoropleth?.(null);
-        setDemocracyIndexLegend([]);
-        return;
-      }
-      const byIso3Raw = await fetchIndicatorLatestByIso3FromDb('democracy-index');
-      if (cancelled) return;
-      // Normalize VA.EST (-2.5 to 2.5) to 0-10 scale
-      const byIso3: Record<string, { iso3: string; value: number | null; year: number | null }> = {};
-      Object.entries(byIso3Raw).forEach(([iso, entry]) => {
-        if (entry.value !== null) {
-          const normalized = ((entry.value + 2.5) / 5) * 10;
-          const clamped = Math.max(0, Math.min(10, normalized));
-          byIso3[iso] = { ...entry, value: Number(clamped.toFixed(2)) };
-        } else {
-          byIso3[iso] = entry;
+      switch (activeChoropleth) {
+        case 'gdp': {
+          const byIso3 = await fetchGdpLatestByIso3();
+          if (cancelled) return;
+          spec = buildGdpChoropleth(byIso3, { buckets: 7 });
+          break;
         }
-      });
-      // Democracy Index: Red (low) to Green (high) - inverted palette
-      const democracyPalette = ['#fee2e2', '#fecaca', '#fca5a5', '#f87171', '#86efac', '#4ade80', '#16a34a'];
-      const spec = buildQuantileChoropleth(byIso3, { buckets: 7, useLog: false, formatter: (v) => v.toFixed(1), palette: democracyPalette });
-      setDemocracyIndexLegend(spec.legend.map(l => ({ color: l.color, min: l.min, max: l.max })));
-      mapRef.current?.setChoropleth?.('democracy-index', spec as any);
-      mapRef.current?.setActiveChoropleth?.('democracy-index');
-    };
-    run();
-    return () => { cancelled = true; };
-  }, [democracyIndexEnabled, gdpEnabled, gdpPerCapitaEnabled, inflationEnabled, giniEnabled, exportsEnabled, lifeExpectancyEnabled, militaryExpenditureEnabled]);
-
-  // Trade % GDP layer (percent, linear)
-  useEffect(() => {
-    let cancelled = false;
-    const run = async () => {
-      if (!tradeGdpEnabled) {
-        mapRef.current?.setChoropleth?.('trade-gdp', null);
-        if (gdpEnabled) mapRef.current?.setActiveChoropleth?.('gdp');
-        else if (gdpPerCapitaEnabled) mapRef.current?.setActiveChoropleth?.('gdp-per-capita');
-        else if (inflationEnabled) mapRef.current?.setActiveChoropleth?.('inflation');
-        else if (giniEnabled) mapRef.current?.setActiveChoropleth?.('gini');
-        else if (exportsEnabled) mapRef.current?.setActiveChoropleth?.('exports');
-        else if (lifeExpectancyEnabled) mapRef.current?.setActiveChoropleth?.('life-expectancy');
-        else if (militaryExpenditureEnabled) mapRef.current?.setActiveChoropleth?.('military-expenditure');
-        else if (democracyIndexEnabled) mapRef.current?.setActiveChoropleth?.('democracy-index');
-        else mapRef.current?.setActiveChoropleth?.(null);
-        setTradeGdpLegend([]);
-        return;
+        case 'gdp-per-capita': {
+          const byIso3 = await fetchGdpPerCapitaLatestByIso3();
+          if (cancelled) return;
+          spec = buildGdpPerCapitaChoropleth(byIso3, { buckets: 7 });
+          break;
+        }
+        case 'inflation': {
+          const byIso3 = await fetchInflationLatestByIso3({ yearWindow: '1960:2050' });
+          if (cancelled) return;
+          spec = buildInflationChoropleth(byIso3, { buckets: 7 });
+          break;
+        }
+        case 'gini': {
+          const byIso3 = await fetchIndicatorLatestByIso3FromDb('gini');
+          if (cancelled) return;
+          spec = buildQuantileChoropleth(byIso3, { buckets: 7, useLog: false, formatter: (v: number) => v.toFixed(1), palette: ['#16a34a', '#4ade80', '#86efac', '#fca5a5', '#f87171', '#ef4444', '#dc2626'] });
+          break;
+        }
+        case 'exports': {
+          const byIso3 = await fetchIndicatorLatestByIso3FromDb('exports');
+          if (cancelled) return;
+          spec = buildQuantileChoropleth(byIso3, { buckets: 7, useLog: true, formatter: fmtCurrency, palette: ['#dbeafe', '#bfdbfe', '#93c5fd', '#60a5fa', '#3b82f6', '#6366f1', '#4f46e5'] });
+          break;
+        }
+        case 'life-expectancy': {
+          const byIso3 = await fetchIndicatorLatestByIso3FromDb('life-expectancy');
+          if (cancelled) return;
+          spec = buildQuantileChoropleth(byIso3, { buckets: 7, useLog: false, formatter: (v: number) => `${v.toFixed(1)} yrs`, palette: ['#dcfce7', '#bbf7d0', '#86efac', '#4ade80', '#22c55e', '#16a34a', '#15803d'] });
+          break;
+        }
+        case 'military-expenditure': {
+          const byIso3 = await fetchIndicatorLatestByIso3FromDb('military-expenditure');
+          if (cancelled) return;
+          spec = buildQuantileChoropleth(byIso3, { buckets: 7, useLog: false, formatter: (v: number) => `${v.toFixed(2)}%`, palette: ['#fff7ed', '#ffedd5', '#fed7aa', '#fdba74', '#fb923c', '#f97316', '#ea580c'] });
+          break;
+        }
+        case 'democracy-index': {
+          const byIso3Raw = await fetchIndicatorLatestByIso3FromDb('democracy-index');
+          if (cancelled) return;
+          const byIso3: Record<string, { iso3: string; value: number | null; year: number | null }> = {};
+          Object.entries(byIso3Raw).forEach(([iso, entry]) => {
+            if (entry.value !== null) {
+              const normalized = ((entry.value + 2.5) / 5) * 10;
+              byIso3[iso] = { ...entry, value: Number(Math.max(0, Math.min(10, normalized)).toFixed(2)) };
+            } else {
+              byIso3[iso] = entry;
+            }
+          });
+          spec = buildQuantileChoropleth(byIso3, { buckets: 7, useLog: false, formatter: (v: number) => v.toFixed(1), palette: ['#fee2e2', '#fecaca', '#fca5a5', '#f87171', '#86efac', '#4ade80', '#16a34a'] });
+          break;
+        }
+        case 'trade-gdp': {
+          const byIso3 = await fetchIndicatorLatestByIso3FromDb('trade-gdp');
+          if (cancelled) return;
+          spec = buildQuantileChoropleth(byIso3, { buckets: 7, useLog: false, formatter: (v: number) => `${v.toFixed(1)}%`, palette: ['#e0f2fe', '#bae6fd', '#7dd3fc', '#38bdf8', '#0ea5e9', '#06b6d4', '#0891b2'] });
+          break;
+        }
       }
-      const byIso3 = await fetchIndicatorLatestByIso3FromDb('trade-gdp');
-      if (cancelled) return;
-      // Trade % GDP: Blue to Cyan gradient (trade/commerce)
-      const tradePalette = ['#e0f2fe', '#bae6fd', '#7dd3fc', '#38bdf8', '#0ea5e9', '#06b6d4', '#0891b2'];
-      const spec = buildQuantileChoropleth(byIso3, { buckets: 7, useLog: false, formatter: (v) => `${v.toFixed(1)}%`, palette: tradePalette });
-      setTradeGdpLegend(spec.legend.map(l => ({ color: l.color, min: l.min, max: l.max })));
-      mapRef.current?.setChoropleth?.('trade-gdp', spec as any);
-      mapRef.current?.setActiveChoropleth?.('trade-gdp');
+
+      if (cancelled || !spec) return;
+      setChoroplethLegend(spec.legend.map((l: any) => ({ color: l.color, min: l.min, max: l.max })));
+      mapRef.current?.setChoropleth?.(activeChoropleth, spec as any);
+      mapRef.current?.setActiveChoropleth?.(activeChoropleth);
     };
     run();
     return () => { cancelled = true; };
-  }, [tradeGdpEnabled, gdpEnabled, gdpPerCapitaEnabled, inflationEnabled, giniEnabled, exportsEnabled, lifeExpectancyEnabled, militaryExpenditureEnabled, democracyIndexEnabled]);
+  }, [activeChoropleth]);
 
   // Country selection handler
   const handleCountrySelect = useCallback((countryName: string) => {
@@ -460,13 +293,7 @@ const mapRef = useRef<{ easeTo: (options: MapEaseToOptionsApp) => void; getMap: 
     setSelectedCountry(null);
     // Hide city markers
     mapRef.current?.setCitiesVisible?.(false);
-    // Reset map view back to the globe
-    (window as WindowWithResetMapView).resetMapView?.();
   }, [toggleSidebar]);
-
-  const handleResetView = useCallback(() => {
-    // Esta función se pasa al WorldMap para exponer resetMapView
-  }, []);
 
   // Left sidebar handlers
   const handleToggleLeftSidebar = useCallback(() => {
@@ -479,13 +306,12 @@ const mapRef = useRef<{ easeTo: (options: MapEaseToOptionsApp) => void; getMap: 
 
   const handleOpenConflictTracker = useCallback(() => {
     toggleSidebar('conflict', true);
-    // Close History Mode to avoid interaction overlap
     if (historyEnabled) {
       setHistoryEnabled(false);
       mapRef.current?.setHistoryEnabled?.(false);
       mapRef.current?.setMinimalMode?.(false);
     }
-  }, [toggleSidebar]);
+  }, [toggleSidebar, historyEnabled]);
 
   const handleCloseConflictTracker = useCallback(() => {
     toggleSidebar('conflict', false);
@@ -539,131 +365,39 @@ const mapRef = useRef<{ easeTo: (options: MapEaseToOptionsApp) => void; getMap: 
   }, []);
 
   const handleToggleGdpLayer = useCallback((enabled: boolean) => {
-    setGdpEnabled(enabled);
-    if (enabled) {
-      setGdpPerCapitaEnabled(false);
-      setInflationEnabled(false);
-      setGiniEnabled(false);
-      setExportsEnabled(false);
-      setLifeExpectancyEnabled(false);
-      setMilitaryExpenditureEnabled(false);
-      setDemocracyIndexEnabled(false);
-      setTradeGdpEnabled(false);
-    }
+    setActiveChoropleth(enabled ? 'gdp' : null);
   }, []);
 
   const handleToggleGdpPerCapitaLayer = useCallback((enabled: boolean) => {
-    setGdpPerCapitaEnabled(enabled);
-    if (enabled) {
-      setGdpEnabled(false);
-      setInflationEnabled(false);
-      setGiniEnabled(false);
-      setExportsEnabled(false);
-      setLifeExpectancyEnabled(false);
-      setMilitaryExpenditureEnabled(false);
-      setDemocracyIndexEnabled(false);
-      setTradeGdpEnabled(false);
-    }
+    setActiveChoropleth(enabled ? 'gdp-per-capita' : null);
   }, []);
 
   const handleToggleInflationLayer = useCallback((enabled: boolean) => {
-    setInflationEnabled(enabled);
-    if (enabled) {
-      setGdpEnabled(false);
-      setGdpPerCapitaEnabled(false);
-      setGiniEnabled(false);
-      setExportsEnabled(false);
-      setLifeExpectancyEnabled(false);
-      setMilitaryExpenditureEnabled(false);
-      setDemocracyIndexEnabled(false);
-      setTradeGdpEnabled(false);
-    }
+    setActiveChoropleth(enabled ? 'inflation' : null);
   }, []);
 
   const handleToggleGiniLayer = useCallback((enabled: boolean) => {
-    setGiniEnabled(enabled);
-    if (enabled) {
-      setGdpEnabled(false);
-      setGdpPerCapitaEnabled(false);
-      setInflationEnabled(false);
-      setExportsEnabled(false);
-      setLifeExpectancyEnabled(false);
-      setMilitaryExpenditureEnabled(false);
-      setDemocracyIndexEnabled(false);
-      setTradeGdpEnabled(false);
-    }
+    setActiveChoropleth(enabled ? 'gini' : null);
   }, []);
 
   const handleToggleExportsLayer = useCallback((enabled: boolean) => {
-    setExportsEnabled(enabled);
-    if (enabled) {
-      setGdpEnabled(false);
-      setGdpPerCapitaEnabled(false);
-      setInflationEnabled(false);
-      setGiniEnabled(false);
-      setLifeExpectancyEnabled(false);
-      setMilitaryExpenditureEnabled(false);
-      setDemocracyIndexEnabled(false);
-      setTradeGdpEnabled(false);
-    }
+    setActiveChoropleth(enabled ? 'exports' : null);
   }, []);
 
-  // New indicator handlers
   const handleToggleLifeExpectancyLayer = useCallback((enabled: boolean) => {
-    setLifeExpectancyEnabled(enabled);
-    if (enabled) {
-      setGdpEnabled(false);
-      setGdpPerCapitaEnabled(false);
-      setInflationEnabled(false);
-      setGiniEnabled(false);
-      setExportsEnabled(false);
-      setMilitaryExpenditureEnabled(false);
-      setDemocracyIndexEnabled(false);
-      setTradeGdpEnabled(false);
-    }
+    setActiveChoropleth(enabled ? 'life-expectancy' : null);
   }, []);
-
 
   const handleToggleMilitaryExpenditureLayer = useCallback((enabled: boolean) => {
-    setMilitaryExpenditureEnabled(enabled);
-    if (enabled) {
-      setGdpEnabled(false);
-      setGdpPerCapitaEnabled(false);
-      setInflationEnabled(false);
-      setGiniEnabled(false);
-      setExportsEnabled(false);
-      setLifeExpectancyEnabled(false);
-      setDemocracyIndexEnabled(false);
-      setTradeGdpEnabled(false);
-    }
+    setActiveChoropleth(enabled ? 'military-expenditure' : null);
   }, []);
 
   const handleToggleDemocracyIndexLayer = useCallback((enabled: boolean) => {
-    setDemocracyIndexEnabled(enabled);
-    if (enabled) {
-      setGdpEnabled(false);
-      setGdpPerCapitaEnabled(false);
-      setInflationEnabled(false);
-      setGiniEnabled(false);
-      setExportsEnabled(false);
-      setLifeExpectancyEnabled(false);
-      setMilitaryExpenditureEnabled(false);
-      setTradeGdpEnabled(false);
-    }
+    setActiveChoropleth(enabled ? 'democracy-index' : null);
   }, []);
 
   const handleToggleTradeGdpLayer = useCallback((enabled: boolean) => {
-    setTradeGdpEnabled(enabled);
-    if (enabled) {
-      setGdpEnabled(false);
-      setGdpPerCapitaEnabled(false);
-      setInflationEnabled(false);
-      setGiniEnabled(false);
-      setExportsEnabled(false);
-      setLifeExpectancyEnabled(false);
-      setMilitaryExpenditureEnabled(false);
-      setDemocracyIndexEnabled(false);
-    }
+    setActiveChoropleth(enabled ? 'trade-gdp' : null);
   }, []);
 
   const handleSetOrganizationIsoFilter = useCallback((iso3: string[], color?: string) => {
@@ -841,7 +575,6 @@ const mapRef = useRef<{ easeTo: (options: MapEaseToOptionsApp) => void; getMap: 
         ref={mapRefCallback}
         onCountrySelect={handleCountrySelect}
         selectedCountry={selectedCountry}
-        onResetView={handleResetView}
         conflicts={conflictsForMap}
         onConflictClick={handleConflictClick}
         selectedConflictId={selectedConflictId}
@@ -866,15 +599,6 @@ const mapRef = useRef<{ easeTo: (options: MapEaseToOptionsApp) => void; getMap: 
         isOpen={sidebars.country}
         onClose={handleCloseSidebar}
         countryName={selectedCountry}
-        onNavigateToCity={(lat, lng, cityName) => {
-          mapRef.current?.flyToCity?.(lat, lng, cityName);
-        }}
-        onCitiesLoaded={(cities) => {
-          if (cities.length > 0) {
-            mapRef.current?.setCitiesData?.(cities);
-            mapRef.current?.setCitiesVisible?.(true);
-          }
-        }}
       />
       
       {/* Global loading overlay */}

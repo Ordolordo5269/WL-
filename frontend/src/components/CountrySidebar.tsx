@@ -33,7 +33,7 @@ interface CategoryGroupProps {
   searchTerm: string;
 }
 
-function CategoryGroup({ icon, title, items, isOpen, onToggle, searchTerm }: CategoryGroupProps) {
+const CategoryGroup = React.memo(function CategoryGroup({ icon, title, items, isOpen, onToggle, searchTerm }: CategoryGroupProps) {
   // Filter items based on the search term
   const filteredItems = useMemo(() => 
     items.filter(item => 
@@ -99,7 +99,7 @@ function CategoryGroup({ icon, title, items, isOpen, onToggle, searchTerm }: Cat
       )}
     </div>
   );
-}
+});
 
 interface CountrySidebarProps {
   isOpen: boolean;
