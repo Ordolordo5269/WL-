@@ -6,6 +6,7 @@ const router = Router();
 // Keep compatibility: '/' previously returned cached/all; we will return all with cache
 router.get('/', ctrl.list);
 router.get('/all', ctrl.list);
+router.get('/entities', ctrl.entities);
 router.get('/search', ctrl.searchByName);
 router.get('/code/:code', ctrl.byCode);
 router.get('/:iso3/overview', ctrl.getCountryOverview);
