@@ -25,7 +25,7 @@ export function validate(schemas: ValidationSchemas) {
       if (!result.success) {
         errors.push({ location: 'query', issues: result.error.issues });
       } else {
-        req.query = result.data;
+        req.query = result.data as typeof req.query;
       }
     }
 
@@ -34,7 +34,7 @@ export function validate(schemas: ValidationSchemas) {
       if (!result.success) {
         errors.push({ location: 'params', issues: result.error.issues });
       } else {
-        req.params = result.data;
+        req.params = result.data as typeof req.params;
       }
     }
 

@@ -4,7 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [tailwindcss(), react()],
+  plugins: [tailwindcss() as any, react() as any],
   build: {
     // Optimizaciones de rendimiento
     rollupOptions: {
@@ -18,14 +18,6 @@ export default defineConfig({
         }
       }
     },
-    // Optimizar el tamaño del bundle
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true,
-        drop_debugger: true
-      }
-    } as any,
     // Aumentar el límite de advertencia de chunk size
     chunkSizeWarningLimit: 1000
   },

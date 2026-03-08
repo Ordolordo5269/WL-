@@ -1,6 +1,7 @@
+// @ts-expect-error no type declarations available
 import swaggerJsdoc from 'swagger-jsdoc';
 
-const options: swaggerJsdoc.Options = {
+const options = {
   definition: {
     openapi: '3.0.3',
     info: {

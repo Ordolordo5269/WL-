@@ -40,7 +40,7 @@ const Hero = memo(() => {
     
     // Start animation after initial delay
     const startAnimation = () => {
-      intervalRef.current = setInterval(animateText, 3000);
+      intervalRef.current = window.setInterval(animateText, 3000);
     };
     
     const timer = setTimeout(startAnimation, 3000);
