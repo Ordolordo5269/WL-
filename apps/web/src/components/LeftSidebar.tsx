@@ -68,6 +68,9 @@ interface LeftSidebarProps {
   countries?: Array<{ iso3: string; name: string; flagUrl?: string }>;
   countriesLoading?: boolean;
   onOpenCompareCountries?: () => void;
+  // Geo Data Layers
+  onToggleGeoLayer?: (layerType: string, enabled: boolean) => void;
+  geoLayersState?: Record<string, boolean>;
 }
 
 interface MenuItem {
@@ -78,7 +81,7 @@ interface MenuItem {
   iconBg?: string;
 }
 
-export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictTracker, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, onToggleGdpLayer, gdpEnabled = false, gdpLegend = [], onToggleGdpPerCapitaLayer, gdpPerCapitaEnabled = false, gdpPerCapitaLegend = [], onToggleInflationLayer, inflationEnabled = false, inflationLegend = [], onToggleGiniLayer, giniEnabled = false, giniLegend = [], onToggleExportsLayer, exportsEnabled = false, exportsLegend = [], onToggleLifeExpectancyLayer, lifeExpectancyEnabled = false, lifeExpectancyLegend = [], onToggleMilitaryExpenditureLayer, militaryExpenditureEnabled = false, militaryExpenditureLegend = [], onToggleDemocracyIndexLayer, democracyIndexEnabled = false, democracyIndexLegend = [], onToggleTradeGdpLayer, tradeGdpEnabled = false, tradeGdpLegend = [], onToggleHistoryMode, onSetHistoryYear, historyEnabled: _historyEnabled = false, historyYear = 1880, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, naturalLod = 'auto', onSetNaturalLod }: LeftSidebarProps) {
+export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictTracker, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, onToggleGdpLayer, gdpEnabled = false, gdpLegend = [], onToggleGdpPerCapitaLayer, gdpPerCapitaEnabled = false, gdpPerCapitaLegend = [], onToggleInflationLayer, inflationEnabled = false, inflationLegend = [], onToggleGiniLayer, giniEnabled = false, giniLegend = [], onToggleExportsLayer, exportsEnabled = false, exportsLegend = [], onToggleLifeExpectancyLayer, lifeExpectancyEnabled = false, lifeExpectancyLegend = [], onToggleMilitaryExpenditureLayer, militaryExpenditureEnabled = false, militaryExpenditureLegend = [], onToggleDemocracyIndexLayer, democracyIndexEnabled = false, democracyIndexLegend = [], onToggleTradeGdpLayer, tradeGdpEnabled = false, tradeGdpLegend = [], onToggleHistoryMode, onSetHistoryYear, historyEnabled: _historyEnabled = false, historyYear = 1880, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, naturalLod = 'auto', onSetNaturalLod, onToggleGeoLayer, geoLayersState = {} }: LeftSidebarProps) {
   const [activeItem, setActiveItem] = useState<string>('home');
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
@@ -319,6 +322,110 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
                               </div>
                               <div className="stats-subtitle">Major elevation points with modern markers.</div>
                             </div>
+                          </div>
+                          {/* Divider */}
+                          <div style={{ height: 1, background: 'rgba(71,85,105,0.35)', margin: '12px 0' }} />
+                          {/* ── Geo Data Layers ── */}
+                          <div className="settings-title" style={{ marginBottom: 8 }}>Geological</div>
+                          <div>
+                            {/* Tectonic Plates */}
+                            <div className="stats-header">
+                              <div className="stats-title"><span style={{ color: '#ff6b35', marginRight: 6 }}>&#9644;</span>Tectonic Plates</div>
+                              <div className="chip-group">
+                                <button className={`chip ${geoLayersState['tectonic-plates'] ? 'active' : ''}`}
+                                  onClick={() => onToggleGeoLayer?.('tectonic-plates', true)}>Show</button>
+                                <button className={`chip ${!geoLayersState['tectonic-plates'] ? 'active' : ''}`}
+                                  onClick={() => onToggleGeoLayer?.('tectonic-plates', false)}>Hide</button>
+                              </div>
+                            </div>
+                            <div className="stats-subtitle">Plate boundaries (Bird 2003).</div>
+                            {/* Volcanoes */}
+                            <div className="stats-header" style={{ marginTop: 8 }}>
+                              <div className="stats-title"><span style={{ color: '#ff4444', marginRight: 6 }}>&#9679;</span>Volcanoes</div>
+                              <div className="chip-group">
+                                <button className={`chip ${geoLayersState['volcanoes'] ? 'active' : ''}`}
+                                  onClick={() => onToggleGeoLayer?.('volcanoes', true)}>Show</button>
+                                <button className={`chip ${!geoLayersState['volcanoes'] ? 'active' : ''}`}
+                                  onClick={() => onToggleGeoLayer?.('volcanoes', false)}>Hide</button>
+                              </div>
+                            </div>
+                            <div className="stats-subtitle">Global volcanic activity.</div>
+                            {/* Coastlines */}
+                            <div className="stats-header" style={{ marginTop: 8 }}>
+                              <div className="stats-title"><span style={{ color: '#4aa3df', marginRight: 6 }}>&#9644;</span>Coastlines</div>
+                              <div className="chip-group">
+                                <button className={`chip ${geoLayersState['coastlines'] ? 'active' : ''}`}
+                                  onClick={() => onToggleGeoLayer?.('coastlines', true)}>Show</button>
+                                <button className={`chip ${!geoLayersState['coastlines'] ? 'active' : ''}`}
+                                  onClick={() => onToggleGeoLayer?.('coastlines', false)}>Hide</button>
+                              </div>
+                            </div>
+                            <div className="stats-subtitle">Global coastline detail (10m).</div>
+                          </div>
+                          {/* Divider */}
+                          <div style={{ height: 1, background: 'rgba(71,85,105,0.35)', margin: '12px 0' }} />
+                          <div className="settings-title" style={{ marginBottom: 8 }}>Energy &amp; Resources</div>
+                          <div>
+                            {/* Oil Pipelines */}
+                            <div className="stats-header">
+                              <div className="stats-title"><span style={{ color: '#ffd700', marginRight: 6 }}>&#9644;</span>Oil Pipelines</div>
+                              <div className="chip-group">
+                                <button className={`chip ${geoLayersState['pipelines'] ? 'active' : ''}`}
+                                  onClick={() => onToggleGeoLayer?.('pipelines', true)}>Show</button>
+                                <button className={`chip ${!geoLayersState['pipelines'] ? 'active' : ''}`}
+                                  onClick={() => onToggleGeoLayer?.('pipelines', false)}>Hide</button>
+                              </div>
+                            </div>
+                            <div className="stats-subtitle">Major global oil pipeline routes.</div>
+                            {/* Gas Flaring */}
+                            <div className="stats-header" style={{ marginTop: 8 }}>
+                              <div className="stats-title"><span style={{ color: '#ff8c00', marginRight: 6 }}>&#9679;</span>Gas Flaring</div>
+                              <div className="chip-group">
+                                <button className={`chip ${geoLayersState['gas-flaring'] ? 'active' : ''}`}
+                                  onClick={() => onToggleGeoLayer?.('gas-flaring', true)}>Show</button>
+                                <button className={`chip ${!geoLayersState['gas-flaring'] ? 'active' : ''}`}
+                                  onClick={() => onToggleGeoLayer?.('gas-flaring', false)}>Hide</button>
+                              </div>
+                            </div>
+                            <div className="stats-subtitle">Global gas flaring sites.</div>
+                            {/* Mineral Deposits */}
+                            <div className="stats-header" style={{ marginTop: 8 }}>
+                              <div className="stats-title"><span style={{ color: '#ffd700', marginRight: 6 }}>&#9670;</span>Mineral Deposits</div>
+                              <div className="chip-group">
+                                <button className={`chip ${geoLayersState['minerals'] ? 'active' : ''}`}
+                                  onClick={() => onToggleGeoLayer?.('minerals', true)}>Show</button>
+                                <button className={`chip ${!geoLayersState['minerals'] ? 'active' : ''}`}
+                                  onClick={() => onToggleGeoLayer?.('minerals', false)}>Hide</button>
+                              </div>
+                            </div>
+                            <div className="stats-subtitle">Gold, Silver, Copper, Iron, Lithium, Cobalt, Uranium, Platinum.</div>
+                          </div>
+                          {/* Divider */}
+                          <div style={{ height: 1, background: 'rgba(71,85,105,0.35)', margin: '12px 0' }} />
+                          <div className="settings-title" style={{ marginBottom: 8 }}>Boundaries</div>
+                          <div>
+                            {/* Maritime EEZ */}
+                            <div className="stats-header">
+                              <div className="stats-title"><span style={{ color: '#4169e1', marginRight: 6 }}>&#9644;</span>Maritime EEZ</div>
+                              <div className="chip-group">
+                                <button className={`chip ${geoLayersState['eez'] ? 'active' : ''}`}
+                                  onClick={() => onToggleGeoLayer?.('eez', true)}>Show</button>
+                                <button className={`chip ${!geoLayersState['eez'] ? 'active' : ''}`}
+                                  onClick={() => onToggleGeoLayer?.('eez', false)}>Hide</button>
+                              </div>
+                            </div>
+                            <div className="stats-subtitle">Exclusive Economic Zones (200NM).</div>
+                            {/* Protected Areas */}
+                            <div className="stats-header" style={{ marginTop: 8 }}>
+                              <div className="stats-title"><span style={{ color: '#22c55e', marginRight: 6 }}>&#9632;</span>Protected Areas</div>
+                              <div className="chip-group">
+                                <button className={`chip ${geoLayersState['protected-areas'] ? 'active' : ''}`}
+                                  onClick={() => onToggleGeoLayer?.('protected-areas', true)}>Show</button>
+                                <button className={`chip ${!geoLayersState['protected-areas'] ? 'active' : ''}`}
+                                  onClick={() => onToggleGeoLayer?.('protected-areas', false)}>Hide</button>
+                              </div>
+                            </div>
+                            <div className="stats-subtitle">WDPA protected areas worldwide.</div>
                           </div>
                           {/* Divider */}
                           <div style={{ height: 1, background: 'rgba(71,85,105,0.35)', margin: '12px 0' }} />

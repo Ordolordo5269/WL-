@@ -6,18 +6,41 @@ import ConflictFilters from '../features/conflicts/ConflictFilters';
 import ConflictList from '../features/conflicts/ConflictList';
 import { useConflicts } from '../features/conflicts/useConflicts';
 import type { ConflictFiltersParams } from '../features/conflicts/types';
+import UcdpEventFilters from '../features/ucdp/UcdpEventFilters';
+import UcdpConflictList from '../features/ucdp/UcdpConflictList';
+import { useUcdpEvents } from '../features/ucdp/useUcdpEvents';
+import { useUcdpConflicts } from '../features/ucdp/useUcdpConflicts';
+import { useUcdpStats } from '../features/ucdp/useUcdpStats';
+import type { UcdpEventFilters as UcdpEventFiltersType } from '../features/ucdp/types';
+
+type Tab = 'ucdp' | 'curated';
 
 export default function Conflicts() {
-  const [filters, setFilters] = useState<ConflictFiltersParams>({});
-  const { data, isLoading } = useConflicts(filters);
-  const navigate = useNavigate();
+  const [tab, setTab] = useState<Tab>('ucdp');
 
-  const conflicts = data?.conflicts ?? [];
+  // Curated conflicts state
+  const [curatedFilters, setCuratedFilters] = useState<ConflictFiltersParams>({});
+  const { data: curatedData, isLoading: curatedLoading } = useConflicts(curatedFilters);
+  const curatedConflicts = curatedData?.conflicts ?? [];
+
+  // UCDP state
+  const [ucdpFilters, setUcdpFilters] = useState<UcdpEventFiltersType>({});
+  const { data: ucdpGeoJson, isLoading: ucdpEventsLoading } = useUcdpEvents(ucdpFilters);
+  const { data: ucdpConflictsData, isLoading: ucdpConflictsLoading } = useUcdpConflicts({
+    year: ucdpFilters.year,
+    region: ucdpFilters.region ? undefined : undefined,
+  });
+  const { data: ucdpStats } = useUcdpStats();
+
+  const navigate = useNavigate();
 
   const handleConflictClick = useCallback(
     (slug: string) => navigate(`/conflicts/${slug}`),
     [navigate]
   );
+
+  const ucdpConflicts = ucdpConflictsData?.data ?? [];
+  const ucdpConflictCount = ucdpConflictsData?.count ?? 0;
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -37,13 +60,75 @@ export default function Conflicts() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
-        <p className="text-sm text-slate-400">
-          {data?.count ?? '—'} conflicts tracked worldwide
-        </p>
+        {/* Stats summary */}
+        <div className="flex flex-wrap items-center gap-4">
+          <p className="text-sm text-slate-400">
+            {curatedData?.count ?? '—'} curated conflicts
+          </p>
+          {ucdpStats && (
+            <>
+              <span className="text-slate-600">|</span>
+              <p className="text-sm text-slate-400">
+                {ucdpStats.totalEvents.toLocaleString()} UCDP events
+              </p>
+            </>
+          )}
+          {ucdpConflictCount > 0 && (
+            <>
+              <span className="text-slate-600">|</span>
+              <p className="text-sm text-slate-400">
+                {ucdpConflictCount} active UCDP conflicts
+              </p>
+            </>
+          )}
+          {ucdpEventsLoading && (
+            <span className="text-xs text-slate-500">Loading events...</span>
+          )}
+        </div>
 
-        <ConflictMap conflicts={conflicts} onConflictClick={handleConflictClick} />
-        <ConflictFilters filters={filters} onChange={setFilters} />
-        <ConflictList conflicts={conflicts} isLoading={isLoading} />
+        {/* Map with UCDP GeoJSON */}
+        <ConflictMap
+          conflicts={tab === 'curated' ? curatedConflicts : []}
+          onConflictClick={handleConflictClick}
+          ucdpGeoJson={tab === 'ucdp' ? ucdpGeoJson ?? undefined : undefined}
+        />
+
+        {/* Tab toggle */}
+        <div className="flex gap-1 rounded-xl border border-slate-700/50 bg-slate-800/60 p-1 w-fit">
+          <button
+            onClick={() => setTab('ucdp')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              tab === 'ucdp'
+                ? 'bg-slate-700 text-white'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            UCDP Events
+          </button>
+          <button
+            onClick={() => setTab('curated')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              tab === 'curated'
+                ? 'bg-slate-700 text-white'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            Curated Conflicts
+          </button>
+        </div>
+
+        {/* Tab content */}
+        {tab === 'ucdp' ? (
+          <>
+            <UcdpEventFilters filters={ucdpFilters} onChange={setUcdpFilters} />
+            <UcdpConflictList conflicts={ucdpConflicts} isLoading={ucdpConflictsLoading} />
+          </>
+        ) : (
+          <>
+            <ConflictFilters filters={curatedFilters} onChange={setCuratedFilters} />
+            <ConflictList conflicts={curatedConflicts} isLoading={curatedLoading} />
+          </>
+        )}
       </div>
     </div>
   );

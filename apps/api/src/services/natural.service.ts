@@ -1,6 +1,6 @@
 import { prisma } from '../db/client';
 
-type NaturalType = 'rivers' | 'peaks' | 'mountain-ranges';
+type NaturalType = 'rivers' | 'peaks' | 'mountain-ranges' | 'tectonic-plates' | 'volcanoes' | 'coastlines' | 'eez' | 'protected-areas' | 'admin-boundaries';
 type NaturalLod = 'auto' | 'low' | 'med' | 'high';
 
 interface GetNaturalParams {
@@ -79,10 +79,16 @@ export async function searchNatural(q: string): Promise<Array<{ type: NaturalTyp
 }
 
 function normalizeType(t: string): NaturalType {
-  const v = t.toLowerCase();
+  const v = t.toLowerCase().replace(/_/g, '-');
   if (v === 'rivers') return 'rivers';
   if (v === 'peaks') return 'peaks';
-  if (v === 'mountain-ranges' || v === 'ranges' || v === 'mountain_ranges') return 'mountain-ranges';
+  if (v === 'mountain-ranges' || v === 'ranges') return 'mountain-ranges';
+  if (v === 'tectonic-plates' || v === 'tectonic' || v === 'plates') return 'tectonic-plates';
+  if (v === 'volcanoes' || v === 'volcano') return 'volcanoes';
+  if (v === 'coastlines' || v === 'coastline') return 'coastlines';
+  if (v === 'eez' || v === 'maritime' || v === 'exclusive-economic-zones') return 'eez';
+  if (v === 'protected-areas' || v === 'protected' || v === 'wdpa') return 'protected-areas';
+  if (v === 'admin-boundaries' || v === 'admin1' || v === 'states' || v === 'provinces') return 'admin-boundaries';
   return 'rivers';
 }
 
@@ -92,17 +98,34 @@ function resolveLod(lod?: NaturalLod): Exclude<NaturalLod, 'auto'> {
   return 'med';
 }
 
-function toDbFeatureType(t: NaturalType): 'RIVER' | 'MOUNTAIN_RANGE' | 'PEAK' {
-  if (t === 'rivers') return 'RIVER';
-  if (t === 'peaks') return 'PEAK';
-  return 'MOUNTAIN_RANGE';
+function toDbFeatureType(t: NaturalType): string {
+  const map: Record<NaturalType, string> = {
+    'rivers': 'RIVER',
+    'peaks': 'PEAK',
+    'mountain-ranges': 'MOUNTAIN_RANGE',
+    'tectonic-plates': 'TECTONIC_PLATE',
+    'volcanoes': 'VOLCANO',
+    'coastlines': 'COASTLINE',
+    'eez': 'EEZ',
+    'protected-areas': 'PROTECTED_AREA',
+    'admin-boundaries': 'ADMIN_BOUNDARY',
+  };
+  return map[t] || 'RIVER';
 }
 
 function fromDbFeatureType(t: string): NaturalType {
-  const v = String(t || '').toUpperCase();
-  if (v === 'RIVER') return 'rivers';
-  if (v === 'PEAK') return 'peaks';
-  return 'mountain-ranges';
+  const map: Record<string, NaturalType> = {
+    'RIVER': 'rivers',
+    'PEAK': 'peaks',
+    'MOUNTAIN_RANGE': 'mountain-ranges',
+    'TECTONIC_PLATE': 'tectonic-plates',
+    'VOLCANO': 'volcanoes',
+    'COASTLINE': 'coastlines',
+    'EEZ': 'eez',
+    'PROTECTED_AREA': 'protected-areas',
+    'ADMIN_BOUNDARY': 'admin-boundaries',
+  };
+  return map[String(t || '').toUpperCase()] || 'rivers';
 }
 
 function toDbLod(lod: Exclude<NaturalLod, 'auto'>): 'LOW' | 'MED' | 'HIGH' {

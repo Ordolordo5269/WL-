@@ -1187,6 +1187,126 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     },
     setRotateSpeed: (degPerSec: number) => {
       rotationSpeedRef.current = Math.max(0, Number.isFinite(degPerSec) ? degPerSec : 0);
+    },
+    // ── Geo Data Layers toggle ──
+    setGeoLayerEnabled: (layerType: string, enabled: boolean) => {
+      const map = mapRef.current;
+      if (!map) return;
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      // Map layerType to source/layer definitions
+      const layerDefs: Record<string, { sourceUrl: string; layers: Array<{ id: string; spec: any }> }> = {
+        'tectonic-plates': {
+          sourceUrl: `${API_BASE}/api/natural/tectonic-plates?lod=med&limit=5000`,
+          layers: [{
+            id: 'geo-tectonic-line', spec: {
+              type: 'line', paint: {
+                'line-color': '#ff6b35', 'line-width': ['interpolate', ['linear'], ['zoom'], 0, 0.5, 3, 1, 6, 2],
+                'line-opacity': 0.7, 'line-dasharray': [3, 2]
+              }
+            }
+          }]
+        },
+        'volcanoes': {
+          sourceUrl: `${API_BASE}/api/natural/volcanoes?lod=med&limit=5000`,
+          layers: [{
+            id: 'geo-volcanoes-circle', spec: {
+              type: 'circle', paint: {
+                'circle-radius': ['interpolate', ['linear'], ['zoom'], 0, 2, 5, 4, 10, 7],
+                'circle-color': '#ff4444', 'circle-stroke-color': '#cc0000',
+                'circle-stroke-width': 1, 'circle-opacity': 0.8
+              }
+            }
+          }]
+        },
+        'pipelines': {
+          sourceUrl: `${API_BASE}/api/geo-layers/pipelines?limit=5000`,
+          layers: [{
+            id: 'geo-pipelines-line', spec: {
+              type: 'line', paint: {
+                'line-color': '#ffd700', 'line-width': ['interpolate', ['linear'], ['zoom'], 0, 0.3, 4, 1, 8, 2.5],
+                'line-opacity': 0.75
+              }
+            }
+          }]
+        },
+        'gas-flaring': {
+          sourceUrl: `${API_BASE}/api/geo-layers/gas-flaring?limit=5000`,
+          layers: [{
+            id: 'geo-flaring-circle', spec: {
+              type: 'circle', paint: {
+                'circle-radius': ['interpolate', ['linear'], ['zoom'], 0, 2, 5, 5, 10, 8],
+                'circle-color': '#ff8c00', 'circle-blur': 0.4, 'circle-opacity': 0.7
+              }
+            }
+          }]
+        },
+        'minerals': {
+          sourceUrl: `${API_BASE}/api/geo-layers/minerals?limit=10000`,
+          layers: [{
+            id: 'geo-minerals-circle', spec: {
+              type: 'circle', paint: {
+                'circle-radius': ['interpolate', ['linear'], ['zoom'], 0, 1.5, 5, 3, 10, 6],
+                'circle-color': ['match', ['get', 'commodity'],
+                  'Gold', '#ffd700', 'Silver', '#c0c0c0', 'Copper', '#b87333',
+                  'Iron', '#8b4513', 'Lithium', '#00ff88', 'Cobalt', '#0047ab',
+                  'Uranium', '#39ff14', 'Platinum', '#e5e4e2', '#888888'
+                ],
+                'circle-stroke-color': '#000', 'circle-stroke-width': 0.5, 'circle-opacity': 0.8
+              }
+            }
+          }]
+        },
+        'eez': {
+          sourceUrl: `${API_BASE}/api/natural/eez?lod=med&limit=5000`,
+          layers: [
+            { id: 'geo-eez-fill', spec: { type: 'fill', paint: { 'fill-color': '#4169e1', 'fill-opacity': 0.08 } } },
+            { id: 'geo-eez-line', spec: { type: 'line', paint: { 'line-color': '#4169e1', 'line-width': ['interpolate', ['linear'], ['zoom'], 0, 0.3, 4, 1, 8, 2], 'line-opacity': 0.6, 'line-dasharray': [4, 3] } } }
+          ]
+        },
+        'protected-areas': {
+          sourceUrl: `${API_BASE}/api/natural/protected-areas?lod=med&limit=5000`,
+          layers: [
+            { id: 'geo-protected-fill', spec: { type: 'fill', paint: { 'fill-color': '#22c55e', 'fill-opacity': 0.2 } } },
+            { id: 'geo-protected-line', spec: { type: 'line', paint: { 'line-color': '#16a34a', 'line-width': 1, 'line-opacity': 0.6 } } }
+          ]
+        },
+        'coastlines': {
+          sourceUrl: `${API_BASE}/api/natural/coastlines?lod=med&limit=5000`,
+          layers: [{
+            id: 'geo-coastlines-line', spec: {
+              type: 'line', paint: {
+                'line-color': '#4aa3df', 'line-width': ['interpolate', ['linear'], ['zoom'], 0, 0.3, 3, 0.6, 6, 1.2],
+                'line-opacity': 0.6
+              }
+            }
+          }]
+        }
+      };
+      const def = layerDefs[layerType];
+      if (!def) return;
+      const sourceId = `geo-${layerType}-source`;
+      if (enabled) {
+        // Ensure source exists
+        if (!map.getSource(sourceId)) {
+          try { map.addSource(sourceId, { type: 'geojson', data: def.sourceUrl } as any); } catch {}
+        }
+        // Ensure layers exist
+        for (const l of def.layers) {
+          if (!map.getLayer(l.id)) {
+            try {
+              map.addLayer({ id: l.id, source: sourceId, layout: { visibility: 'visible' }, ...l.spec } as any);
+            } catch {}
+          } else {
+            try { map.setLayoutProperty(l.id, 'visibility', 'visible'); } catch {}
+          }
+        }
+      } else {
+        for (const l of def.layers) {
+          if (map.getLayer(l.id)) {
+            try { map.setLayoutProperty(l.id, 'visibility', 'none'); } catch {}
+          }
+        }
+      }
     }
   }), [easeTo, applyFog, applyPhysicalModeTweaks, styleKey, setBaseFeaturesVisibility, updateOrgHighlightFilter, terrainOn, terrainExaggeration]);
 

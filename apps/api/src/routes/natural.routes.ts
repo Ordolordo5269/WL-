@@ -5,7 +5,7 @@ const router = Router();
 
 // GET /api/natural/:type
 // Params:
-//   type: rivers | peaks | mountain-ranges
+//   type: rivers | peaks | mountain-ranges | tectonic-plates | volcanoes | coastlines | eez | protected-areas | admin-boundaries
 // Query:
 //   lod=auto|low|med|high
 //   bbox=minx,miny,maxx,maxy

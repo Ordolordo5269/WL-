@@ -297,13 +297,19 @@ model InfrastructureEdge {
 }
 
 // ============================
-// Natural features (rivers, ranges, peaks)
+// Natural features (rivers, ranges, peaks, tectonic plates, volcanoes, etc.)
 // ============================
 
 enum NaturalFeatureType {
   RIVER
   MOUNTAIN_RANGE
   PEAK
+  TECTONIC_PLATE
+  VOLCANO
+  COASTLINE
+  EEZ
+  PROTECTED_AREA
+  ADMIN_BOUNDARY
 }
 
 enum NaturalLod {
@@ -662,5 +668,168 @@ model GeoCache {
   @@index([iso2])
   @@index([type])
   @@index([expiresAt])
+}
+
+// ============================
+// UCDP Uppsala Conflict Data
+// ============================
+
+model UcdpGedEvent {
+  id                Int      @id // UCDP internal event ID (unique per event)
+  relid             String   @unique // UCDP relational ID e.g. "MEX-2024-2-5262-250"
+  year              Int
+  activeYear        Boolean  @default(true)
+  typeOfViolence    Int      // 1=state-based, 2=non-state, 3=one-sided
+  conflictNewId     Int?
+  conflictName      String   @db.Text
+  dyadName          String?  @db.Text
+  sideA             String   @db.Text
+  sideB             String   @db.Text
+  country           String
+  countryId         Int      // Gleditsch-Ward code
+  region            String
+  latitude          Float
+  longitude         Float
+  geomWkt           String?  @db.Text
+  wherePrecision    Int?
+  whereDescription  String?  @db.Text
+  adm1              String?
+  adm2              String?
+  dateStart         DateTime @db.Date
+  dateEnd           DateTime @db.Date
+  deathsA           Int      @default(0)
+  deathsB           Int      @default(0)
+  deathsCivilians   Int      @default(0)
+  deathsUnknown     Int      @default(0)
+  bestEstimate      Int      @default(0)
+  highEstimate      Int      @default(0)
+  lowEstimate       Int      @default(0)
+  sourceArticle     String?  @db.Text
+  sourceOriginal    String?  @db.Text
+  isCandidate       Boolean  @default(false) // true for Candidate Events (v26.0.X)
+  ucdpVersion       String   @default("25.1")
+  syncedAt          DateTime @default(now()) @db.Timestamptz()
+
+  @@index([latitude, longitude])
+  @@index([country, year])
+  @@index([typeOfViolence, dateStart])
+  @@index([year])
+  @@index([region])
+  @@index([conflictNewId])
+  @@index([dateStart])
+}
+
+model UcdpConflict {
+  id                   String   @id @default(uuid()) @db.Uuid
+  ucdpConflictId       String   // conflict_id from UCDP e.g. "1-1"
+  location             String   // country name
+  sideA                String
+  sideAId              String?
+  sideA2nd             String?  @db.Text
+  sideB                String
+  sideBId              String?
+  sideB2nd             String?  @db.Text
+  incompatibility      Int      // 1=territory, 2=government
+  territoryName        String?
+  year                 Int
+  intensityLevel       Int      // 1=minor (25-999 deaths), 2=war (1000+)
+  cumulativeIntensity  Int      @default(0) // 0=never war, 1=reached war
+  typeOfConflict       Int      // 1=extrasystemic, 2=interstate, 3=intrastate, 4=internationalized
+  startDate            DateTime @db.Date
+  startDate2           DateTime? @db.Date // current episode start
+  epEnd                Boolean  @default(false) // episode ended?
+  epEndDate            DateTime? @db.Date
+  region               Int      // 1=Europe, 2=MiddleEast, 3=Asia, 4=Africa, 5=Americas
+  gwnoA                String?
+  gwnoLoc              String?
+  ucdpVersion          String   @default("25.1")
+  syncedAt             DateTime @default(now()) @db.Timestamptz()
+
+  @@unique([ucdpConflictId, year])
+  @@index([location])
+  @@index([year])
+  @@index([intensityLevel])
+  @@index([region])
+  @@index([typeOfConflict])
+}
+
+model UcdpBattleDeaths {
+  id                String   @id @default(uuid()) @db.Uuid
+  ucdpConflictId    String
+  dyadId            String
+  location          String
+  sideA             String
+  sideB             String
+  year              Int
+  bdBest            Int
+  bdLow             Int
+  bdHigh            Int
+  typeOfConflict    Int
+  battleLocation    String?
+  region            Int
+  ucdpVersion       String   @default("25.1")
+  syncedAt          DateTime @default(now()) @db.Timestamptz()
+
+  @@unique([ucdpConflictId, dyadId, year])
+  @@index([year])
+  @@index([ucdpConflictId])
+  @@index([location])
+}
+
+model UcdpNonState {
+  id                    String   @id @default(uuid()) @db.Uuid
+  ucdpConflictId        String
+  dyadId                String
+  sideAName             String
+  sideBName             String
+  year                  Int
+  bestFatalityEstimate  Int      @default(0)
+  lowFatalityEstimate   Int      @default(0)
+  highFatalityEstimate  Int      @default(0)
+  location              String
+  region                Int
+  epEnd                 Boolean  @default(false)
+  startDate             DateTime? @db.Date
+  ucdpVersion           String   @default("25.1")
+  syncedAt              DateTime @default(now()) @db.Timestamptz()
+
+  @@unique([ucdpConflictId, dyadId, year])
+  @@index([year])
+  @@index([location])
+}
+
+model UcdpOneSided {
+  id                    String   @id @default(uuid()) @db.Uuid
+  ucdpConflictId        String
+  actorId               String
+  actorName             String
+  year                  Int
+  bestFatalityEstimate  Int      @default(0)
+  lowFatalityEstimate   Int      @default(0)
+  highFatalityEstimate  Int      @default(0)
+  isGovernmentActor     Boolean  @default(false)
+  location              String
+  region                Int
+  ucdpVersion           String   @default("25.1")
+  syncedAt              DateTime @default(now()) @db.Timestamptz()
+
+  @@unique([ucdpConflictId, actorId, year])
+  @@index([year])
+  @@index([location])
+}
+
+model UcdpSyncLog {
+  id              String    @id @default(uuid()) @db.Uuid
+  dataset         String    // gedevents, ucdpprioconflict, battledeaths, nonstate, onesided, candidate
+  version         String    // e.g. "25.1"
+  startedAt       DateTime  @default(now()) @db.Timestamptz()
+  finishedAt      DateTime? @db.Timestamptz()
+  recordsFetched  Int       @default(0)
+  recordsInserted Int       @default(0)
+  recordsUpdated  Int       @default(0)
+  errors          Json?
+  status          String    @default("running") // running, completed, failed
+
+  @@index([dataset, startedAt])
 }
 

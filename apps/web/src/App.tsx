@@ -106,6 +106,18 @@ const mapRef = useRef<{ easeTo: (options: MapEaseToOptionsApp) => void; getMap: 
   const [peaksEnabled, setPeaksEnabled] = useState<boolean>(false);
   const [naturalLod, setNaturalLod] = useState<'auto' | 'low' | 'med' | 'high'>('auto');
   
+  // Geo Data Layers state
+  const [geoLayers, setGeoLayers] = useState<Record<string, boolean>>({
+    'tectonic-plates': false,
+    'volcanoes': false,
+    'pipelines': false,
+    'gas-flaring': false,
+    'minerals': false,
+    'eez': false,
+    'protected-areas': false,
+    'coastlines': false,
+  });
+
   // Compare Countries state
   const [compareCountries, setCompareCountries] = useState({
     popupOpen: false,
@@ -529,6 +541,12 @@ const mapRef = useRef<{ easeTo: (options: MapEaseToOptionsApp) => void; getMap: 
     (document as any).__wl_map_comp?.setNaturalLod?.(lod);
   }, []);
 
+  // Geo Data Layers handler
+  const handleToggleGeoLayer = useCallback((layerType: string, enabled: boolean) => {
+    setGeoLayers(prev => ({ ...prev, [layerType]: enabled }));
+    (document as any).__wl_map_comp?.setGeoLayerEnabled?.(layerType, enabled);
+  }, []);
+
   const handleSetAutoRotate = useCallback((v: boolean) => {
     mapRef.current?.setAutoRotate?.(v);
   }, []);
@@ -818,6 +836,9 @@ const mapRef = useRef<{ easeTo: (options: MapEaseToOptionsApp) => void; getMap: 
         countries={countriesForSelector}
         countriesLoading={countriesLoading}
         onOpenCompareCountries={handleOpenComparePopup}
+        // Geo Data Layers
+        onToggleGeoLayer={handleToggleGeoLayer}
+        geoLayersState={geoLayers}
       />
       
       {/* Left sidebar overlay */}

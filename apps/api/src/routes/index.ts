@@ -50,8 +50,16 @@ router.use('/prediction', predictionRoutes);
 router.use('/news', newsRoutes);
 router.use('/acled', acledRoutes);
 
+// Geo data layers (minerals, pipelines, infrastructure)
+import geoLayersRoutes from './geo-layers.routes';
+router.use('/geo-layers', geoLayersRoutes);
+
 // OSINT scraper routes
 router.use('/osint', osintRoutes);
+
+// UCDP Uppsala Conflict Data module
+import ucdpRoutes from './ucdp.routes';
+router.use('/ucdp', ucdpRoutes);
 
 // Insights module (protected — requires auth)
 import insightsRoutes from './insights.routes';
