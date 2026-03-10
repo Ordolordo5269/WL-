@@ -6,9 +6,9 @@ const router = Router();
 const getSummary: RequestHandler = async (_req, res) => {
   try {
     const [totalConflicts, activeConflicts, countriesAffected] = await Promise.all([
-      prisma.conflict.count(),
-      prisma.conflict.count({ where: { status: { in: ['WAR', 'WARM'] } } }),
-      prisma.conflict.findMany({
+      prisma.acledConflict.count(),
+      prisma.acledConflict.count({ where: { status: { in: ['WAR', 'WARM'] } } }),
+      prisma.acledConflict.findMany({
         select: { involvedISO: true },
       }),
     ]);
@@ -25,7 +25,7 @@ const getSummary: RequestHandler = async (_req, res) => {
     const severityMap: Record<string, number> = {
       WAR: 5, WARM: 4, FROZEN: 3, IMPROVING: 2, RESOLVED: 1,
     };
-    const allConflicts = await prisma.conflict.findMany({ select: { status: true } });
+    const allConflicts = await prisma.acledConflict.findMany({ select: { status: true } });
     const avgSeverity = allConflicts.length > 0
       ? +(allConflicts.reduce((sum, c) => sum + (severityMap[c.status] ?? 0), 0) / allConflicts.length).toFixed(2)
       : 0;

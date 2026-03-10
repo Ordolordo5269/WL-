@@ -1,418 +1,121 @@
-// Conflict Tracker Service
-// This file contains all the business logic and data operations for the conflict tracker
+// Conflict Service — thin wrapper over conflict-api with formatting helpers
 
-import type { Conflict } from '../../../data/conflicts-data';
-import {
-  conflictsDatabase,
-  getConflictsByRegion,
-  getConflictsByStatus,
-  getAllRegions,
-  getConflictById,
-  getNewsForConflict
-} from '../../../data/conflicts-data';
-import { ErrorHandler } from '../../../utils/errorHandler.js';
-import NewsAPIService from '../../news/news-api';
-import type { NewsArticle } from '../../news/news-api';
-import ConflictAPIService from './conflict-api';
-
-// Cache for API conflicts to avoid repeated calls
-let cachedApiConflicts: Conflict[] | null = null;
-let cacheTimestamp: number = 0;
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+import * as api from './conflict-api';
+export type { ConflictListFilters, EventFilters } from './conflict-api';
 
 export class ConflictService {
-  // Get all conflicts - tries API first, falls back to static data
-  static async getAllConflicts(): Promise<Conflict[]> {
-    // Check cache first
-    if (cachedApiConflicts && Date.now() - cacheTimestamp < CACHE_TTL) {
-      return cachedApiConflicts;
-    }
+  // ── Data fetching (delegates to api) ──
 
-    try {
-      const result = await ConflictAPIService.getAllConflicts();
-      cachedApiConflicts = result.data;
-      cacheTimestamp = Date.now();
-      return result.data;
-    } catch (error) {
-      ErrorHandler.logServiceError('ConflictService', 'getAllConflicts (API fallback)', error);
-      // Fallback to static data
-      return conflictsDatabase;
-    }
-  }
-  
-  // Get conflicts with pagination
-  static async getConflictsPaginated(filters?: any): Promise<{ data: Conflict[]; pagination: any }> {
-    try {
-      return await ConflictAPIService.getAllConflicts(filters);
-    } catch (error) {
-      ErrorHandler.logServiceError('ConflictService', 'getConflictsPaginated (API fallback)', error);
-      // Fallback to static data
-      const filtered = this.getFilteredConflictsSync(filters?.region, filters?.status);
-      return {
-        data: filtered,
-        pagination: {
-          page: 1,
-          limit: filtered.length,
-          total: filtered.length,
-          totalPages: 1,
-          hasMore: false
-        }
-      };
-    }
+  static async getAllConflicts(filters?: api.ConflictListFilters) {
+    return api.getConflicts(filters);
   }
 
-  // Synchronous version for backward compatibility (uses static data)
-  static getAllConflictsSync(): Conflict[] {
-    return conflictsDatabase;
+  static async getConflictBySlug(slug: string) {
+    return api.getConflictBySlug(slug);
   }
 
-  // Get all news articles from NewsAPI
-  static async getAllNews(): Promise<NewsArticle[]> {
-    return await NewsAPIService.getConflictNews(20);
+  static async getConflictEvents(slug: string, filters?: api.EventFilters) {
+    return api.getConflictEvents(slug, filters);
   }
 
-  // Get news for specific conflict (with caching)
-  static async getNewsForConflict(conflictId: string): Promise<NewsArticle[]> {
-    try {
-      // Try to get from cache first
-      const cachedResponse = await fetch(`/api/conflicts/${conflictId}/news?limit=10`);
-      if (cachedResponse.ok) {
-        const cachedNews = await cachedResponse.json();
-        if (cachedNews.length >= 5) {
-          // Return cached news if we have enough
-          return cachedNews.map((n: any) => ({
-            id: n.id,
-            title: n.title,
-            source: n.source,
-            date: n.publishedAt,
-            url: n.url,
-            conflictId,
-            description: n.description,
-            imageUrl: n.imageUrl
-          }));
-        }
-      }
-
-      // If not enough cached news, fetch from NewsAPI
-      const conflict = getConflictById(conflictId);
-      if (!conflict) return [];
-
-      const freshNews = await NewsAPIService.getNewsForConflict(
-        conflictId, 
-        conflict.country, 
-        conflict.conflictType
-      );
-
-      // Cache the fresh news
-      if (freshNews.length > 0) {
-        try {
-          await fetch(`/api/conflicts/${conflictId}/news`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(freshNews.map(n => ({
-              title: n.title,
-              source: n.source,
-              url: n.url,
-              publishedAt: n.date,
-              description: n.description,
-              imageUrl: n.imageUrl
-            })))
-          });
-        } catch (e) {
-          // Silently fail caching - not critical
-          console.warn('Failed to cache news:', e);
-        }
-      }
-
-      return freshNews;
-    } catch (error) {
-      ErrorHandler.logServiceError('ConflictService', 'getNewsForConflict', error);
-      // Fallback to NewsAPI directly
-      const conflict = getConflictById(conflictId);
-      if (!conflict) return [];
-      return await NewsAPIService.getNewsForConflict(conflictId, conflict.country, conflict.conflictType);
-    }
+  static async getGlobalStats() {
+    return api.getGlobalStats();
   }
 
-  // Get top conflict headlines
-  static async getTopConflictHeadlines(): Promise<NewsArticle[]> {
-    return await NewsAPIService.getTopConflictHeadlines(10);
+  static async searchConflicts(q: string) {
+    return api.searchConflicts(q);
   }
 
-  // Get conflicts filtered by region and status
-  static async getFilteredConflicts(
-    region?: string,
-    status?: 'War' | 'Warm' | 'Improving' | 'All'
-  ): Promise<Conflict[]> {
-    try {
-      const filters: any = {};
-      if (region && region !== 'All') filters.region = region;
-      if (status && status !== 'All') filters.status = status;
-
-      const result = await ConflictAPIService.getAllConflicts(filters);
-      return result.data;
-    } catch (error) {
-      ErrorHandler.logServiceError('ConflictService', 'getFilteredConflicts (API fallback)', error);
-      // Fallback to static data
-      let filtered = conflictsDatabase;
-
-      if (region && region !== 'All') {
-        filtered = getConflictsByRegion(region);
-      }
-
-      if (status && status !== 'All') {
-        filtered = filtered.filter(conflict => conflict.status === status);
-      }
-
-      return filtered;
-    }
+  static async getTimeline(slug: string, params?: Parameters<typeof api.getConflictTimeline>[1]) {
+    return api.getConflictTimeline(slug, params);
   }
 
-  // Synchronous version for backward compatibility
-  static getFilteredConflictsSync(
-    region?: string,
-    status?: 'War' | 'Warm' | 'Improving' | 'All'
-  ): Conflict[] {
-    let filtered = conflictsDatabase;
-
-    if (region && region !== 'All') {
-      filtered = getConflictsByRegion(region);
-    }
-
-    if (status && status !== 'All') {
-      filtered = filtered.filter(conflict => conflict.status === status);
-    }
-
-    return filtered;
+  static async getHeatmap(slug: string) {
+    return api.getConflictHeatmap(slug);
   }
 
-  // Get available regions
-  static getAvailableRegions(): string[] {
-    return ['All', ...getAllRegions()];
+  // ── Formatting ──
+
+  static formatFatalities(n: number): string {
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+    return n.toString();
   }
 
-  // Get available statuses
-  static getAvailableStatuses(): string[] {
-    return ['All', 'War', 'Warm', 'Improving'];
-  }
-
-  // Get conflict statistics
-  static async getConflictStatistics() {
-    try {
-      const stats = await ConflictAPIService.getConflictStats();
-      // Transform API stats to match expected format
-      return {
-        total: stats.total,
-        warCount: stats.byStatus.WAR || 0,
-        warmCount: stats.byStatus.WARM || 0,
-        improvingCount: stats.byStatus.IMPROVING || 0,
-        totalCasualties: 0, // Would need to calculate from conflicts
-        regionDistribution: stats.byRegion
-      };
-    } catch (error) {
-      ErrorHandler.logServiceError('ConflictService', 'getConflictStatistics (API fallback)', error);
-      // Fallback to static data
-      const total = conflictsDatabase.length;
-      const warCount = getConflictsByStatus('War').length;
-      const warmCount = getConflictsByStatus('Warm').length;
-      const improvingCount = getConflictsByStatus('Improving').length;
-      const totalCasualties = conflictsDatabase.reduce((sum, conflict) => sum + conflict.casualties, 0);
-
-      return {
-        total,
-        warCount,
-        warmCount,
-        improvingCount,
-        totalCasualties,
-        regionDistribution: this.getRegionDistribution()
-      };
-    }
-  }
-
-  // Synchronous version for backward compatibility
-  static getConflictStatisticsSync() {
-    const total = conflictsDatabase.length;
-    const warCount = getConflictsByStatus('War').length;
-    const warmCount = getConflictsByStatus('Warm').length;
-    const improvingCount = getConflictsByStatus('Improving').length;
-    const totalCasualties = conflictsDatabase.reduce((sum, conflict) => sum + conflict.casualties, 0);
-
-    return {
-      total,
-      warCount,
-      warmCount,
-      improvingCount,
-      totalCasualties,
-      regionDistribution: this.getRegionDistribution()
+  static statusLabel(status: string): string {
+    const map: Record<string, string> = {
+      WAR: 'War',
+      WARM: 'Warm',
+      IMPROVING: 'Improving',
+      RESOLVED: 'Resolved',
+      FROZEN: 'Frozen',
     };
+    return map[status] || status;
   }
 
-  // Get region distribution
-  private static getRegionDistribution() {
-    const regions = getAllRegions();
-    return regions.map(region => ({
-      region,
-      count: getConflictsByRegion(region).length
-    }));
+  static statusColor(status: string): string {
+    const map: Record<string, string> = {
+      WAR: '#ef4444',
+      WARM: '#f59e0b',
+      IMPROVING: '#22c55e',
+      RESOLVED: '#6b7280',
+      FROZEN: '#3b82f6',
+    };
+    return map[status] || '#6b7280';
   }
 
-  // Get news related to a specific conflict
-  static getConflictNews(conflictId: string): NewsArticle[] {
-    return getNewsForConflict(conflictId);
+  static eventTypeColor(eventType: string): string {
+    const map: Record<string, string> = {
+      'Battles': '#ef4444',
+      'Explosions/Remote violence': '#f97316',
+      'Violence against civilians': '#dc2626',
+      'Riots': '#eab308',
+      'Protests': '#3b82f6',
+      'Strategic developments': '#8b5cf6',
+    };
+    return map[eventType] || '#6b7280';
   }
 
-  // Get news for a specific country
-  static async getNewsForCountry(country: string): Promise<NewsArticle[]> {
-    return await NewsAPIService.getNewsForCountry(country, 15);
+  static interLabel(inter: number): string {
+    const map: Record<number, string> = {
+      1: 'State forces',
+      2: 'Rebel forces',
+      3: 'Political militia',
+      4: 'Identity militia',
+      5: 'Rioters',
+      6: 'Protesters',
+      7: 'Civilians',
+      8: 'External/other',
+    };
+    return map[inter] || 'Unknown';
   }
 
-  // Get recent conflicts (last 2 years)
-  static getRecentConflicts(): Conflict[] {
-    const twoYearsAgo = new Date();
-    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+  // ── Available filter options (ACLED regions) ──
 
-    return conflictsDatabase.filter(conflict => {
-      const conflictDate = new Date(conflict.date);
-      return conflictDate >= twoYearsAgo;
-    });
+  static getAvailableRegions(): string[] {
+    return [
+      'Western Africa', 'Middle Africa', 'Eastern Africa', 'Southern Africa', 'Northern Africa',
+      'South Asia', 'Southeast Asia', 'East Asia',
+      'Middle East',
+      'Europe', 'Caucasus and Central Asia',
+      'Central America', 'South America', 'Caribbean', 'North America',
+      'Oceania',
+    ];
   }
 
-  // Get conflicts by severity (based on casualties)
-  static getConflictsBySeverity(): {
-    high: Conflict[];
-    medium: Conflict[];
-    low: Conflict[];
-  } {
-    const high = conflictsDatabase.filter(c => c.casualties >= 100000);
-    const medium = conflictsDatabase.filter(c => c.casualties >= 10000 && c.casualties < 100000);
-    const low = conflictsDatabase.filter(c => c.casualties < 10000);
-
-    return { high, medium, low };
+  static getAvailableStatuses(): string[] {
+    return ['WAR', 'WARM', 'IMPROVING', 'RESOLVED', 'FROZEN'];
   }
 
-  // Search conflicts by keyword
-  static async searchConflicts(keyword: string): Promise<Conflict[]> {
-    try {
-      return await ConflictAPIService.searchConflicts(keyword);
-    } catch (error) {
-      ErrorHandler.logServiceError('ConflictService', 'searchConflicts (API fallback)', error);
-      // Fallback to static data
-      const searchTerm = keyword.toLowerCase();
-      return conflictsDatabase.filter(conflict => 
-        conflict.country.toLowerCase().includes(searchTerm) ||
-        conflict.description.toLowerCase().includes(searchTerm) ||
-        conflict.conflictType.toLowerCase().includes(searchTerm)
-      );
-    }
-  }
-
-  // Synchronous version for backward compatibility
-  static searchConflictsSync(keyword: string): Conflict[] {
-    const searchTerm = keyword.toLowerCase();
-    return conflictsDatabase.filter(conflict => 
-      conflict.country.toLowerCase().includes(searchTerm) ||
-      conflict.description.toLowerCase().includes(searchTerm) ||
-      conflict.conflictType.toLowerCase().includes(searchTerm)
-    );
-  }
-
-  // Get conflict details with related news
-  static async getConflictDetails(conflictId: string): Promise<{
-    conflict: Conflict | null | undefined;
-    relatedNews: NewsArticle[];
-  }> {
-    try {
-      // Try to get from API first (by slug)
-      let conflict = await ConflictAPIService.getConflictBySlug(conflictId);
-      
-      // If not found by slug, try by ID
-      if (!conflict) {
-        conflict = await ConflictAPIService.getConflictById(conflictId);
-      }
-
-      // Fallback to static data
-      if (!conflict) {
-        conflict = getConflictById(conflictId) ?? null;
-      }
-
-      const relatedNews = await ConflictService.getNewsForConflict(conflictId);
-
-      return {
-        conflict,
-        relatedNews
-      };
-    } catch (error) {
-      ErrorHandler.logServiceError('ConflictService', 'getConflictDetails (API fallback)', error);
-      // Fallback to static data
-      const conflict = getConflictById(conflictId);
-      const relatedNews = await this.getNewsForConflict(conflictId);
-
-      return {
-        conflict,
-        relatedNews
-      };
-    }
-  }
-
-  // Fetch latest conflict data with real news from NewsAPI
-  static async fetchLatestConflictData(): Promise<{
-    conflicts: Conflict[];
-    news: NewsArticle[];
-  }> {
-    try {
-      const [conflicts, news] = await Promise.all([
-        this.getAllConflicts(),
-        NewsAPIService.getConflictNews(15)
-      ]);
-      return {
-        conflicts,
-        news
-      };
-    } catch (error) {
-      ErrorHandler.logServiceError('ConflictService', 'fetchLatestData', error);
-      return {
-        conflicts: conflictsDatabase,
-        news: []
-      };
-    }
-  }
-
-  // Format casualty numbers for display
-  static formatCasualties(casualties: number): string {
-    if (casualties >= 1000000) {
-      return `${(casualties / 1000000).toFixed(1)}M`;
-    } else if (casualties >= 1000) {
-      return `${(casualties / 1000).toFixed(1)}K`;
-    }
-    return casualties.toString();
-  }
-
-  // Get status color for UI
-  static getStatusColor(status: 'War' | 'Warm' | 'Improving'): string {
-    switch (status) {
-      case 'War':
-        return '#8B0000'; // dark red
-      case 'Warm':
-        return '#B8860B'; // dark goldenrod
-      case 'Improving':
-        return '#556B2F'; // dark olive green
-      default:
-        return '#6b7280'; // gray-500
-    }
-  }
-
-  // Get status icon for UI
-  static getStatusIcon(status: 'War' | 'Warm' | 'Improving'): string {
-    switch (status) {
-      case 'War':
-        return '🔴';
-      case 'Warm':
-        return '🟡';
-      case 'Improving':
-        return '🟢';
-      default:
-        return '⚪';
-    }
+  static getEventTypes(): string[] {
+    return [
+      'Battles',
+      'Explosions/Remote violence',
+      'Violence against civilians',
+      'Riots',
+      'Protests',
+      'Strategic developments',
+    ];
   }
 }
 

@@ -8,7 +8,6 @@ import CountryCard from './features/country/CountryCard';
 import MenuToggleButton from './features/world-map/MenuToggleButton';
 import CompareCountriesPopup from './features/compare/CompareCountriesPopup';
 import CompareCountriesView from './features/compare/CompareCountriesView';
-import { conflictsDatabase } from './data/conflicts-data';
 import { useChoropleth } from './features/world-map/useChoropleth';
 import { useMapControls } from './features/world-map/useMapControls';
 import type { MapRefType } from './features/world-map/types';
@@ -186,14 +185,10 @@ function WorldMapView() {
     }
   };
 
-  const handleConflictClick = (conflictId: string) => {
-    const conflict = conflictsDatabase.find(c => c.id === conflictId);
-    if (conflict) {
-      setSelectedCountry(null);
-      setSelectedConflictId(conflictId);
-      handleCenterMapOnConflict(conflict.coordinates);
-      toggleSidebar('conflict', true);
-    }
+  const handleConflictClick = (_conflictId: string) => {
+    // Conflict clicks from the map are no longer driven by static data.
+    // The ConflictTracker component handles selection via API.
+    toggleSidebar('conflict', true);
   };
 
   const handleConflictSelect = (conflictId: string | null) => {
@@ -233,10 +228,9 @@ function WorldMapView() {
     ), [countries, selectedCountry]
   );
 
-  const conflictsForMap = useMemo(() =>
-    sidebars.conflict ? conflictsDatabase : [],
-    [sidebars.conflict]
-  );
+  // Conflicts for map — static data removed; pass empty array for now.
+  // Future: fetch conflict coordinates from API for map markers.
+  const conflictsForMap = useMemo(() => [] as any[], []);
 
   return (
     <div className="relative w-full h-full overflow-hidden">
