@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Conflict } from '../types';
+import type { Conflict } from '../../types';
 
 interface ConflictFactionsProps {
   conflict: Conflict;

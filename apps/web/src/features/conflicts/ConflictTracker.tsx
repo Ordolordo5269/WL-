@@ -1,14 +1,14 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { AlertTriangle, TrendingUp, Calendar, Users, MapPin, ExternalLink, X } from 'lucide-react';
-import type { Conflict } from '../types';
-import ConflictService from '../services/conflict-service';
-import type { NewsArticle } from '../types';
+import type { Conflict } from '../../types';
+import ConflictService from '../../services/conflict-service';
+import type { NewsArticle } from '../../types';
 import ConflictDetailCard from './ConflictDetailCard';
 import ConflictSearchBar from './ConflictSearchBar';
-import ConflictFilters, { type AdvancedFilters } from './ConflictFilters';
-import ConflictAPIService, { type ConflictFilters as APIFilters } from '../services/conflict-api';
-import { useConflictWebSocket } from '../hooks/useConflictWebSocket';
+import ConflictFilters, { type AdvancedFilters } from '../../components/ConflictFilters';
+import ConflictAPIService, { type ConflictFilters as APIFilters } from '../../services/conflict-api';
+import { useConflictWebSocket } from './useConflictWebSocket';
 
 interface ConflictTrackerProps {
   onBack: () => void;

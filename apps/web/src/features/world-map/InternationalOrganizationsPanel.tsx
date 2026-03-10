@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
-import { ORGANIZATIONS, type OrgMeta } from '../services/orgs-config';
-import { buildOrgHighlight } from '../services/orgs-service';
+import { ORGANIZATIONS, type OrgMeta } from './services/orgs-config';
+import { buildOrgHighlight } from './services/orgs-service';
 
 interface Props {
   onSetOrganizationIsoFilter?: (iso3: string[], colorHex?: string) => void;

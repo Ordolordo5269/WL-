@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { AlertCircle } from 'lucide-react';
-import TimeSeriesChart from './TimeSeriesChart';
-import { historicalIndicatorsService } from '../services/historical-indicators.service';
-import type { TimeSeriesPoint } from '../services/historical-indicators.service';
+import TimeSeriesChart from '../../../components/TimeSeriesChart';
+import { historicalIndicatorsService } from '../../../services/historical-indicators.service';
+import type { TimeSeriesPoint } from '../../../services/historical-indicators.service';
 import { societyService } from '../services/society-service';
 
 interface HistoricalTrendsSectionProps {

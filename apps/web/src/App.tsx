@@ -7,8 +7,8 @@ import { fetchGdpPerCapitaLatestByIso3, buildGdpPerCapitaChoropleth } from './se
 import { fetchInflationLatestByIso3, buildInflationChoropleth } from './services/worldbank-inflation';
 import { buildQuantileChoropleth } from './services/indicator-generic';
 import { fetchIndicatorLatestByIso3FromDb } from './services/indicators-db';
-import CountrySidebar from './components/CountrySidebar';
-import ConflictTracker from './components/ConflictTracker';
+import CountrySidebar from './features/country-sidebar/CountrySidebar';
+import ConflictTracker from './features/conflicts/ConflictTracker';
 import CountryCard from './components/CountryCard';
 import MenuToggleButton from './components/MenuToggleButton';
 import CompareCountriesPopup from './components/CompareCountriesPopup';
