@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import * as geoService from '../services/geodb.service';
-import { logger } from '../core/logger';
+import { logger } from '../config/logger.js';
 
 /**
  * GET /api/geo/debug
@@ -40,9 +40,9 @@ export async function getCitiesByCountry(
     const cities = await geoService.getCitiesByCountry(iso2, limit);
     res.json({ data: cities, count: cities.length });
   } catch (error) {
-    logger.error('Error in getCitiesByCountry', {
+    logger.error({
       error: error instanceof Error ? error.message : 'Unknown error',
-    });
+    }, 'Error in getCitiesByCountry');
     next(error);
   }
 }
@@ -67,9 +67,9 @@ export async function getRegionsByCountry(
     const regions = await geoService.getRegionsByCountry(iso2);
     res.json({ data: regions, count: regions.length });
   } catch (error) {
-    logger.error('Error in getRegionsByCountry', {
+    logger.error({
       error: error instanceof Error ? error.message : 'Unknown error',
-    });
+    }, 'Error in getRegionsByCountry');
     next(error);
   }
 }
@@ -100,9 +100,9 @@ export async function getPlaceDetails(
 
     res.json({ data: place });
   } catch (error) {
-    logger.error('Error in getPlaceDetails', {
+    logger.error({
       error: error instanceof Error ? error.message : 'Unknown error',
-    });
+    }, 'Error in getPlaceDetails');
     next(error);
   }
 }
@@ -133,9 +133,9 @@ export async function searchPlaces(
 
     res.json({ data: places, count: places.length });
   } catch (error) {
-    logger.error('Error in searchPlaces', {
+    logger.error({
       error: error instanceof Error ? error.message : 'Unknown error',
-    });
+    }, 'Error in searchPlaces');
     next(error);
   }
 }
@@ -163,9 +163,9 @@ export async function refreshGeoCache(
       ...result,
     });
   } catch (error) {
-    logger.error('Error in refreshGeoCache', {
+    logger.error({
       error: error instanceof Error ? error.message : 'Unknown error',
-    });
+    }, 'Error in refreshGeoCache');
     next(error);
   }
 }
@@ -183,9 +183,9 @@ export async function getCacheStatus(
     const status = await geoService.getCacheStatus();
     res.json(status);
   } catch (error) {
-    logger.error('Error in getCacheStatus', {
+    logger.error({
       error: error instanceof Error ? error.message : 'Unknown error',
-    });
+    }, 'Error in getCacheStatus');
     next(error);
   }
 }

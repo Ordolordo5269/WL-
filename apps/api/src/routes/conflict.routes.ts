@@ -12,7 +12,7 @@ import {
   cacheConflictNewsController,
   deleteConflictNewsController
 } from '../controllers/conflict.controller';
-import { validate } from '../core/validation/validate';
+import { validate } from '../middleware/validate.js';
 import {
   getConflictsSchema,
   getConflictByIdSchema,

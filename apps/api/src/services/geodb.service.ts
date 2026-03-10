@@ -1,5 +1,5 @@
 import { prisma } from '../db/client';
-import { logger } from '../core/logger';
+import { logger } from '../config/logger.js';
 
 // ============================
 // Types
@@ -111,10 +111,10 @@ async function fetchFromGeoDB<T>(endpoint: string): Promise<T | null> {
     const data = await response.json();
     return data as T;
   } catch (error) {
-    logger.error('Failed to fetch from GeoDB API', {
+    logger.error({
       endpoint,
       error: error instanceof Error ? error.message : 'Unknown error',
-    });
+    }, 'Failed to fetch from GeoDB API');
     return null;
   }
 }
@@ -139,10 +139,10 @@ async function getCacheEntry(cacheId: string): Promise<GeoCacheEntry | null> {
 
     return entry as GeoCacheEntry;
   } catch (error) {
-    logger.error('Failed to read geo cache', {
+    logger.error({
       cacheId,
       error: error instanceof Error ? error.message : 'Unknown error',
-    });
+    }, 'Failed to read geo cache');
     return null;
   }
 }
@@ -173,10 +173,10 @@ async function setCacheEntry(
     });
     logger.debug(`Cache updated: ${cacheId}, expires at ${expiresAt.toISOString()}`);
   } catch (error) {
-    logger.error('Failed to write geo cache', {
+    logger.error({
       cacheId,
       error: error instanceof Error ? error.message : 'Unknown error',
-    });
+    }, 'Failed to write geo cache');
   }
 }
 

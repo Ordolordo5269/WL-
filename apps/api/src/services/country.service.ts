@@ -1,6 +1,6 @@
 import { prisma } from '../db/client';
 import { CountryBasicInfo, CountrySearchResponse, CountryBasicInfoResponse } from '../types/country.types';
-import { logger } from '../core/logger';
+import { logger } from '../config/logger.js';
 
 /**
  * ISO3 to ISO2 mapping for flag codes (common countries)
@@ -97,10 +97,10 @@ export async function getCountriesFromDatabase(): Promise<CountryBasicInfo[]> {
 
     return mapped;
   } catch (error) {
-    logger.error('Error fetching countries from database', {
+    logger.error({
       error: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
-    });
+    }, 'Error fetching countries from database');
     return [];
   }
 }
@@ -155,10 +155,10 @@ export async function getCountryBasicInfo(countryName: string): Promise<CountryB
     return { error: `Country '${countryName}' not found` };
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
-    logger.error('Error fetching country basic info from database', {
+    logger.error({
       countryName,
       error: msg,
-    });
+    }, 'Error fetching country basic info from database');
     // Include detail in dev for debugging (e.g. DB connection refused)
     const isDev = process.env.NODE_ENV !== 'production';
     return {
@@ -199,10 +199,10 @@ export async function searchCountries(query: string): Promise<CountrySearchRespo
 
     return { data: mapped.slice(0, 10), total: mapped.length };
   } catch (error) {
-    logger.error('Error searching countries in database', {
+    logger.error({
       query,
       error: error instanceof Error ? error.message : 'Unknown error',
-    });
+    }, 'Error searching countries in database');
     return { data: [], total: 0, error: 'Failed to search countries' };
   }
 }
@@ -232,10 +232,10 @@ export async function getCountryByCode(code: string): Promise<CountryBasicInfoRe
     const mapped = mapEntityToCountryBasicInfo(entity);
     return mapped ? { data: mapped } : { error: `Country with code '${code}' not found` };
   } catch (error) {
-    logger.error('Error fetching country by code from database', {
+    logger.error({
       code,
       error: error instanceof Error ? error.message : 'Unknown error',
-    });
+    }, 'Error fetching country by code from database');
     return { error: 'Failed to fetch country information' };
   }
 }
@@ -248,9 +248,9 @@ export async function getAllCountries(): Promise<CountrySearchResponse> {
       total: dbCountries.length
     };
   } catch (error) {
-    logger.error('Error fetching all countries from database', {
+    logger.error({
       error: error instanceof Error ? error.message : 'Unknown error',
-    });
+    }, 'Error fetching all countries from database');
     return { data: [], total: 0, error: 'Failed to fetch countries from database' };
   }
 }
