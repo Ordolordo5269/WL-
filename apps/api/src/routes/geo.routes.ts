@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import * as geoController from '../controllers/geo.controller';
+import * as geoController from '../modules/geo/controller';
 
 const router = Router();
 

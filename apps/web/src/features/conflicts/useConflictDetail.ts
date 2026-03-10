@@ -10,7 +10,7 @@ export function useConflictDetail(slug: string | undefined) {
   return useQuery({
     queryKey: ['conflict', slug],
     queryFn: () =>
-      http.get<ConflictDetailResponse>(`/api/conflicts/v2/${slug}`).then(r => r.data),
+      http.get<ConflictDetailResponse>(`/api/conflicts/${slug}`).then(r => r.data),
     enabled: !!slug,
   });
 }

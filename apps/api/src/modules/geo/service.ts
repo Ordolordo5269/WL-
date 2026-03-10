@@ -1,5 +1,5 @@
-import { prisma } from '../db/client';
-import { logger } from '../config/logger.js';
+import { prisma } from '../../db/client';
+import { logger } from '../../config/logger.js';
 
 // ============================
 // Types
@@ -72,7 +72,6 @@ async function fetchFromGeoDB<T>(endpoint: string): Promise<T | null> {
     let headers: Record<string, string> = {};
 
     if (isRapidApi) {
-      // RapidAPI version (more reliable, requires key)
       url = `${RAPIDAPI_URL}${endpoint}`;
       headers = {
         'X-RapidAPI-Key': apiKey,
@@ -80,7 +79,6 @@ async function fetchFromGeoDB<T>(endpoint: string): Promise<T | null> {
       };
       logger.debug(`Fetching from GeoDB (RapidAPI): ${endpoint}`);
     } else {
-      // Free tier (no API key, may be unavailable)
       url = `${GEODB_FREE_URL}${endpoint}`;
       logger.debug(`Fetching from GeoDB (Free): ${endpoint}`);
     }
@@ -91,7 +89,6 @@ async function fetchFromGeoDB<T>(endpoint: string): Promise<T | null> {
     });
 
     if (!response.ok) {
-      
       if (response.status === 429) {
         logger.warn('GeoDB API rate limit reached');
         return null;
@@ -131,7 +128,6 @@ async function getCacheEntry(cacheId: string): Promise<GeoCacheEntry | null> {
 
     if (!entry) return null;
 
-    // Check if expired
     if (new Date() > entry.expiresAt) {
       logger.debug(`Cache entry expired: ${cacheId}`);
       return null;
@@ -184,21 +180,16 @@ async function setCacheEntry(
 // Public API Functions
 // ============================
 
-/**
- * Get top cities for a country (cached)
- */
 export async function getCitiesByCountry(iso2: string, limit: number = 10): Promise<GeoCity[]> {
   const normalizedIso2 = iso2.toUpperCase();
   const cacheId = `cities:${normalizedIso2}`;
 
-  // Try cache first
   const cached = await getCacheEntry(cacheId);
   if (cached) {
     logger.debug(`Cache hit for cities: ${normalizedIso2}`);
     return (cached.data as GeoCity[]).slice(0, limit);
   }
 
-  // Fetch from API
   interface GeoDBPlacesResponse {
     data: Array<{
       id: number;
@@ -215,7 +206,6 @@ export async function getCitiesByCountry(iso2: string, limit: number = 10): Prom
     }>;
   }
 
-  // Free tier limit is 5, basic is 10
   const apiLimit = Math.min(limit, 5);
   const response = await fetchFromGeoDB<GeoDBPlacesResponse>(
     `/geo/countries/${normalizedIso2}/places?types=CITY&sort=-population&limit=${apiLimit}&offset=0`
@@ -240,27 +230,21 @@ export async function getCitiesByCountry(iso2: string, limit: number = 10): Prom
     elevationMeters: city.elevationMeters,
   }));
 
-  // Cache the result
   await setCacheEntry(cacheId, 'cities', normalizedIso2, cities, CITIES_TTL_MS);
 
   return cities;
 }
 
-/**
- * Get administrative regions for a country (cached)
- */
 export async function getRegionsByCountry(iso2: string): Promise<GeoRegion[]> {
   const normalizedIso2 = iso2.toUpperCase();
   const cacheId = `regions:${normalizedIso2}`;
 
-  // Try cache first
   const cached = await getCacheEntry(cacheId);
   if (cached) {
     logger.debug(`Cache hit for regions: ${normalizedIso2}`);
     return cached.data as GeoRegion[];
   }
 
-  // Fetch from API
   interface GeoDBRegionsResponse {
     data: Array<{
       isoCode: string;
@@ -288,15 +272,11 @@ export async function getRegionsByCountry(iso2: string): Promise<GeoRegion[]> {
     wikiDataId: region.wikiDataId,
   }));
 
-  // Cache the result
   await setCacheEntry(cacheId, 'regions', normalizedIso2, regions, REGIONS_TTL_MS);
 
   return regions;
 }
 
-/**
- * Get details for a specific place
- */
 export async function getPlaceDetails(placeId: string): Promise<GeoCity | null> {
   interface GeoDBPlaceResponse {
     data: {
@@ -336,9 +316,6 @@ export async function getPlaceDetails(placeId: string): Promise<GeoCity | null> 
   };
 }
 
-/**
- * Search places globally (with country filter for efficiency)
- */
 export async function searchPlaces(
   query: string,
   countryCode?: string,
@@ -347,7 +324,7 @@ export async function searchPlaces(
   if (!query || query.length < 2) return [];
 
   let endpoint = `/geo/places?namePrefix=${encodeURIComponent(query)}&types=CITY&sort=-population&limit=${limit}`;
-  
+
   if (countryCode) {
     endpoint += `&countryIds=${countryCode.toUpperCase()}`;
   }
@@ -389,18 +366,13 @@ export async function searchPlaces(
   }));
 }
 
-/**
- * Force refresh cache for a country
- */
 export async function refreshCache(iso2: string): Promise<{ cities: number; regions: number }> {
   const normalizedIso2 = iso2.toUpperCase();
 
-  // Delete existing cache entries
   await prisma.geoCache.deleteMany({
     where: { iso2: normalizedIso2 },
   });
 
-  // Fetch fresh data
   const cities = await getCitiesByCountry(normalizedIso2, 20);
   const regions = await getRegionsByCountry(normalizedIso2);
 
@@ -410,9 +382,6 @@ export async function refreshCache(iso2: string): Promise<{ cities: number; regi
   };
 }
 
-/**
- * Get cache status for monitoring
- */
 export async function getCacheStatus(): Promise<{
   totalEntries: number;
   expiredEntries: number;
@@ -433,5 +402,3 @@ export async function getCacheStatus(): Promise<{
     countriesCached: uniqueCountries,
   };
 }
-
-

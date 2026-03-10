@@ -7,7 +7,6 @@ import indicatorRoutes from './indicator.routes';
 import economyRoutes from './economy.routes';
 import naturalRoutes from './natural.routes';
 import historyRoutes from './history.routes';
-import conflictRoutes from './conflict.routes';
 import conflictsModuleRoutes from './conflicts.routes';
 import geoRoutes from './geo.routes';
 import politicsRoutes from './politics.routes';
@@ -25,17 +24,14 @@ import osintRoutes from './osint.routes';
 
 const router = Router();
 
-// Curated conflicts module (CQS — enriched with OSINT data)
-// Must be registered before legacy /conflicts to avoid /:id capturing "v2"
-router.use('/conflicts/v2', conflictsModuleRoutes);
+// Conflicts module (unified — CRUD + OSINT enrichment)
+router.use('/conflicts', conflictsModuleRoutes);
 
-// Legacy routes
 router.use('/countries', countryRoutes);
 router.use('/organizations', organizationRoutes);
 router.use('/indicators', indicatorRoutes);
 router.use('/natural', naturalRoutes);
 router.use('/history', historyRoutes);
-router.use('/conflicts', conflictRoutes);
 router.use('/geo', geoRoutes);
 router.use('/economy', economyRoutes);
 router.use('/politics', politicsRoutes);

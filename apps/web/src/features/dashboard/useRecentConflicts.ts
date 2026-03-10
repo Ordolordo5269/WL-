@@ -21,6 +21,6 @@ export function useRecentConflicts() {
   return useQuery({
     queryKey: ['conflicts', 'recent'],
     queryFn: () =>
-      http.get<{ data: ConflictSummary[]; count: number }>('/api/conflicts/v2').then(r => r.data),
+      http.get<{ data: ConflictSummary[]; count: number }>('/api/conflicts').then(r => r.data),
   });
 }

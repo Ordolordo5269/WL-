@@ -1,11 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import * as geoService from '../services/geodb.service';
-import { logger } from '../config/logger.js';
+import * as geoService from './service';
+import { logger } from '../../config/logger.js';
 
-/**
- * GET /api/geo/debug
- * Debug endpoint to check configuration
- */
 export async function debugConfig(
   req: Request,
   res: Response
@@ -19,10 +15,6 @@ export async function debugConfig(
   });
 }
 
-/**
- * GET /api/geo/countries/:iso2/cities
- * Get top cities for a country
- */
 export async function getCitiesByCountry(
   req: Request,
   res: Response,
@@ -47,10 +39,6 @@ export async function getCitiesByCountry(
   }
 }
 
-/**
- * GET /api/geo/countries/:iso2/regions
- * Get administrative regions for a country
- */
 export async function getRegionsByCountry(
   req: Request,
   res: Response,
@@ -74,10 +62,6 @@ export async function getRegionsByCountry(
   }
 }
 
-/**
- * GET /api/geo/places/:placeId
- * Get details for a specific place
- */
 export async function getPlaceDetails(
   req: Request,
   res: Response,
@@ -107,10 +91,6 @@ export async function getPlaceDetails(
   }
 }
 
-/**
- * GET /api/geo/search
- * Search places globally or within a country
- */
 export async function searchPlaces(
   req: Request,
   res: Response,
@@ -140,10 +120,6 @@ export async function searchPlaces(
   }
 }
 
-/**
- * POST /api/geo/refresh/:iso2
- * Force refresh cache for a country (admin use)
- */
 export async function refreshGeoCache(
   req: Request,
   res: Response,
@@ -170,10 +146,6 @@ export async function refreshGeoCache(
   }
 }
 
-/**
- * GET /api/geo/cache/status
- * Get cache status for monitoring
- */
 export async function getCacheStatus(
   req: Request,
   res: Response,
@@ -189,5 +161,3 @@ export async function getCacheStatus(
     next(error);
   }
 }
-
-
