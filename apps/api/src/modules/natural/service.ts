@@ -1,9 +1,9 @@
-import { prisma } from '../db/client';
+import { prisma } from '../../db/client';
 
 type NaturalType = 'rivers' | 'peaks' | 'mountain-ranges';
 type NaturalLod = 'auto' | 'low' | 'med' | 'high';
 
-interface GetNaturalParams {
+export interface GetNaturalParams {
   type: string;
   lod?: NaturalLod;
   bbox?: string;
@@ -18,11 +18,9 @@ export async function getNaturalLayer(params: GetNaturalParams): Promise<{ etag?
   const lod = resolveLod(params.lod);
   const limit = Number.isFinite(params.limit) && params.limit! > 0 ? Math.min(params.limit!, 5000) : 2000;
 
-  const dbType = toDbFeatureType(type); // 'RIVER' | 'MOUNTAIN_RANGE' | 'PEAK'
-  const dbLod = toDbLod(lod); // 'LOW' | 'MED' | 'HIGH'
+  const dbType = toDbFeatureType(type);
+  const dbLod = toDbLod(lod);
 
-  // Basic query: join feature + geometry per LOD
-  // Note: No PostGIS; bbox/region filters are omitted for now to keep it fast.
   const rows = await prisma.$queryRaw<Array<{
     id: string;
     name: string | null;
@@ -50,7 +48,6 @@ export async function getNaturalLayer(params: GetNaturalParams): Promise<{ etag?
     geometry: r.geojson
   }));
 
-  // ETag heuristic: combine type, lod and count
   const etag = `W/"nat-${type}-${lod}-${rows.length}"`;
   return {
     etag,
@@ -110,7 +107,3 @@ function toDbLod(lod: Exclude<NaturalLod, 'auto'>): 'LOW' | 'MED' | 'HIGH' {
   if (lod === 'high') return 'HIGH';
   return 'MED';
 }
-
-
-
-
