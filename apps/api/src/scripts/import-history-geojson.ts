@@ -290,7 +290,7 @@ async function importYear(year: number, filePath: string) {
 async function main() {
   await ensureSchema();
   const repoRoot = path.resolve(__dirname, '../../..');
-  const base = path.join(repoRoot, 'frontend', 'public', 'historical-basemaps', 'geojson');
+  const base = path.join(repoRoot, 'web', 'public', 'historical-basemaps', 'geojson');
   const candidates = await fs.readdir(base);
   const yearFiles = candidates
     .filter((n) => /^world_\d+\.geojson$/i.test(n))

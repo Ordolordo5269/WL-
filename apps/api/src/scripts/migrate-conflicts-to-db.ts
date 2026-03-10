@@ -1,5 +1,5 @@
 /**
- * Migration script to import conflicts from frontend static data to database
+ * Migration script to import conflicts from apps/web static data to database
  * 
  * Usage: npx ts-node backend/src/scripts/migrate-conflicts-to-db.ts
  */
@@ -60,7 +60,7 @@ interface StaticConflict {
   sources?: string[];
 }
 
-// Static conflicts data (copied from frontend/data/conflicts-data.ts)
+// Static conflicts data (copied from apps/web/data/conflicts-data.ts)
 const staticConflicts: StaticConflict[] = [
   {
     id: 'myanmar-civil-war',

@@ -1,60 +1,57 @@
 import { Router } from 'express';
 
-// Legacy routes (will be replaced module by module in later phases)
+// Módulos CQS (nuevos desde el inicio)
+import conflictsRoutes from './conflicts.routes';
+import osintRoutes from './osint.routes';
+import insightsRoutes from './insights.routes';
+import dashboardRoutes from './dashboard.routes';
+
+// Módulos migrados (cada route file importa de modules/)
 import countryRoutes from '../modules/countries/routes';
-import organizationRoutes from './organization.routes';
-import indicatorRoutes from './indicator.routes';
 import economyRoutes from './economy.routes';
-import naturalRoutes from './natural.routes';
-import historyRoutes from './history.routes';
-import conflictsModuleRoutes from './conflicts.routes';
-import geoRoutes from './geo.routes';
+import defenseRoutes from './defense.routes';
 import politicsRoutes from './politics.routes';
 import societyRoutes from './society.routes';
 import technologyRoutes from './technology.routes';
-import defenseRoutes from './defense.routes';
 import internationalRoutes from './international.routes';
-import authRoutes from './auth.routes';
-import favoritesRoutes from './favorites.routes';
-import userRoutes from './user.routes';
+import indicatorRoutes from './indicator.routes';
+import geoRoutes from './geo.routes';
+import historyRoutes from './history.routes';
+import naturalRoutes from './natural.routes';
 import predictionRoutes from './prediction.routes';
 import newsRoutes from './news.routes';
 import acledRoutes from './acled.routes';
-import osintRoutes from './osint.routes';
+import authRoutes from './auth.routes';
+import userRoutes from './user.routes';
+import favoritesRoutes from './favorites.routes';
+import organizationRoutes from './organization.routes';
 
 const router = Router();
 
-// Conflicts module (unified — CRUD + OSINT enrichment)
-router.use('/conflicts', conflictsModuleRoutes);
+// Módulos CQS
+router.use('/conflicts', conflictsRoutes);
+router.use('/osint', osintRoutes);
+router.use('/insights', insightsRoutes);
+router.use('/dashboard', dashboardRoutes);
 
+// Módulos migrados
 router.use('/countries', countryRoutes);
-router.use('/organizations', organizationRoutes);
-router.use('/indicators', indicatorRoutes);
-router.use('/natural', naturalRoutes);
-router.use('/history', historyRoutes);
-router.use('/geo', geoRoutes);
 router.use('/economy', economyRoutes);
+router.use('/defense', defenseRoutes);
 router.use('/politics', politicsRoutes);
 router.use('/society', societyRoutes);
 router.use('/technology', technologyRoutes);
-router.use('/defense', defenseRoutes);
 router.use('/international', internationalRoutes);
-router.use('/auth', authRoutes);
-router.use('/favorites', favoritesRoutes);
-router.use('/user', userRoutes);
+router.use('/indicators', indicatorRoutes);
+router.use('/geo', geoRoutes);
+router.use('/history', historyRoutes);
+router.use('/natural', naturalRoutes);
 router.use('/prediction', predictionRoutes);
 router.use('/news', newsRoutes);
 router.use('/acled', acledRoutes);
-
-// OSINT scraper routes
-router.use('/osint', osintRoutes);
-
-// Insights module (protected — requires auth)
-import insightsRoutes from './insights.routes';
-router.use('/insights', insightsRoutes);
-
-// Dashboard
-import dashboardRoutes from './dashboard.routes';
-router.use('/dashboard', dashboardRoutes);
+router.use('/auth', authRoutes);
+router.use('/user', userRoutes);
+router.use('/favorites', favoritesRoutes);
+router.use('/organizations', organizationRoutes);
 
 export default router;

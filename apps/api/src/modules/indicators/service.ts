@@ -2,7 +2,7 @@ import * as repo from './repo';
 import { SLUG_TO_CODE, toNumberOrNull } from './types';
 import type { GdpEntry, IndicatorPoint } from './types';
 
-// ── Simple in-module cache (replaces core/cache/memoryCache) ──
+// ── Simple in-module cache ──
 type CacheEntry<T> = { value: T; expiresAt: number };
 const cache = new Map<string, CacheEntry<unknown>>();
 
