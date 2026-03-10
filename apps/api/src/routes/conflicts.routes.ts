@@ -3,9 +3,6 @@ import { validate } from '../middleware/validate.js';
 import {
   conflictFiltersSchema,
   conflictParamsSchema,
-  getConflictsSchema,
-  getConflictByIdSchema,
-  getConflictBySlugSchema,
   createConflictSchema,
   updateConflictSchema,
   deleteConflictSchema,
@@ -18,16 +15,11 @@ import * as ctrl from '../modules/conflicts/controller.js';
 
 const router = Router();
 
-// V2 endpoints (list with OSINT enrichment)
-router.get('/v2', validate({ query: conflictFiltersSchema }), ctrl.list);
-router.get('/v2/:slug', validate({ params: conflictParamsSchema }), ctrl.getBySlug);
-
-// Legacy CRUD endpoints (now unified under /api/conflicts)
+// Read endpoints (V2 handlers — return { data, count } format expected by frontend)
 router.get('/stats', ctrl.getConflictStats);
 router.get('/search', validate(searchConflictsSchema), ctrl.searchConflictsController);
-router.get('/slug/:slug', validate(getConflictBySlugSchema), ctrl.getConflictBySlug);
-router.get('/:id', validate(getConflictByIdSchema), ctrl.getConflictById);
-router.get('/', validate(getConflictsSchema), ctrl.getAllConflicts);
+router.get('/', validate({ query: conflictFiltersSchema }), ctrl.list);
+router.get('/:slug', validate({ params: conflictParamsSchema }), ctrl.getBySlug);
 
 router.post('/', validate(createConflictSchema), ctrl.createConflict);
 router.put('/:id', validate(updateConflictSchema), ctrl.updateConflict);

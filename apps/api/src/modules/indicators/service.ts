@@ -260,18 +260,18 @@ export async function getSocietyData(iso3: string) {
     primaryNetEnrollment, populationTotal, populationGrowth, crudeBirthRate,
     crudeDeathRate, urbanPopulationPercent, ruralPopulationPercent, populationDensity
   ] = await Promise.all([
-    getLatestIndicatorValueForIso3(countryIso3, 'SP.DYN.LE00.IN'),
-    getLatestIndicatorValueForIso3(countryIso3, 'SE.ADT.LITR.ZS'),
-    getLatestIndicatorValueForIso3(countryIso3, 'SI.POV.DDAY'),
-    getLatestIndicatorValueForIso3(countryIso3, 'SH.UHC.SRVS.CV.XD'),
-    getLatestIndicatorValueForIso3(countryIso3, 'SE.PRM.NENR'),
-    getLatestIndicatorValueForIso3(countryIso3, 'SP.POP.TOTL'),
-    getLatestIndicatorValueForIso3(countryIso3, 'SP.POP.GROW'),
-    getLatestIndicatorValueForIso3(countryIso3, 'SP.DYN.CBRT.IN'),
-    getLatestIndicatorValueForIso3(countryIso3, 'SP.DYN.CDRT.IN'),
-    getLatestIndicatorValueForIso3(countryIso3, 'SP.URB.TOTL.IN.ZS'),
-    getLatestIndicatorValueForIso3(countryIso3, 'SP.RUR.TOTL.ZS'),
-    getLatestIndicatorValueForIso3(countryIso3, 'SP.POP.DNST'),
+    getLatestIndicatorValueForIso3(countryIso3, 'LIFE_EXPECTANCY'),
+    getLatestIndicatorValueForIso3(countryIso3, 'LITERACY_RATE_ADULT'),
+    getLatestIndicatorValueForIso3(countryIso3, 'POVERTY_EXTREME_215'),
+    getLatestIndicatorValueForIso3(countryIso3, 'UHC_SERVICE_COVERAGE_INDEX'),
+    getLatestIndicatorValueForIso3(countryIso3, 'PRIMARY_NET_ENROLLMENT'),
+    getLatestIndicatorValueForIso3(countryIso3, 'POPULATION_TOTAL'),
+    getLatestIndicatorValueForIso3(countryIso3, 'POPULATION_GROWTH'),
+    getLatestIndicatorValueForIso3(countryIso3, 'CRUDE_BIRTH_RATE'),
+    getLatestIndicatorValueForIso3(countryIso3, 'CRUDE_DEATH_RATE'),
+    getLatestIndicatorValueForIso3(countryIso3, 'URBAN_POPULATION_PERCENT'),
+    getLatestIndicatorValueForIso3(countryIso3, 'RURAL_POPULATION_PERCENT'),
+    getLatestIndicatorValueForIso3(countryIso3, 'POPULATION_DENSITY'),
   ]);
 
   return {
@@ -301,11 +301,11 @@ export async function getTechnologyData(iso3: string) {
 
   const [rndExpenditurePctGdp, highTechExportsUsd, researchersPerMillion, patentApplicationsResidents, scientificJournalArticles] =
     await Promise.all([
-      getLatestIndicatorValueForIso3(countryIso3, 'GB.XPD.RSDV.GD.ZS'),
-      getLatestIndicatorValueForIso3(countryIso3, 'TX.VAL.TECH.CD'),
-      getLatestIndicatorValueForIso3(countryIso3, 'SP.POP.SCIE.RD.P6'),
-      getLatestIndicatorValueForIso3(countryIso3, 'IP.PAT.RESD'),
-      getLatestIndicatorValueForIso3(countryIso3, 'IP.JRN.ARTC.SC'),
+      getLatestIndicatorValueForIso3(countryIso3, 'RND_EXPENDITURE_PCT_GDP'),
+      getLatestIndicatorValueForIso3(countryIso3, 'HIGH_TECH_EXPORTS_USD'),
+      getLatestIndicatorValueForIso3(countryIso3, 'RESEARCHERS_PER_MILLION'),
+      getLatestIndicatorValueForIso3(countryIso3, 'PATENT_APPLICATIONS_RESIDENTS'),
+      getLatestIndicatorValueForIso3(countryIso3, 'SCIENTIFIC_JOURNAL_ARTICLES'),
     ]);
 
   return {
@@ -330,12 +330,12 @@ export async function getInternationalData(iso3: string) {
 
   const [odaReceivedUsd, tradePercentGdp, currentAccountUsd, fdiNetInflowsUsd, fdiNetOutflowsUsd, remittancesUsd] =
     await Promise.all([
-      getLatestIndicatorValueForIso3(countryIso3, 'DT.ODA.ALLD.CD'),
-      getLatestIndicatorValueForIso3(countryIso3, 'NE.TRD.GNFS.ZS'),
-      getLatestIndicatorValueForIso3(countryIso3, 'BN.CAB.XOKA.CD'),
-      getLatestIndicatorValueForIso3(countryIso3, 'BX.KLT.DINV.CD.WD'),
-      getLatestIndicatorValueForIso3(countryIso3, 'BM.KLT.DINV.CD.WD'),
-      getLatestIndicatorValueForIso3(countryIso3, 'BX.TRF.PWKR.CD.DT'),
+      getLatestIndicatorValueForIso3(countryIso3, 'ODA_RECEIVED_USD'),
+      getLatestIndicatorValueForIso3(countryIso3, 'TRADE_PERCENT_GDP'),
+      getLatestIndicatorValueForIso3(countryIso3, 'CURRENT_ACCOUNT_USD'),
+      getLatestIndicatorValueForIso3(countryIso3, 'FDI_NET_INFLOWS_USD'),
+      getLatestIndicatorValueForIso3(countryIso3, 'FDI_NET_OUTFLOWS_USD'),
+      getLatestIndicatorValueForIso3(countryIso3, 'REMITTANCES_USD'),
     ]);
 
   return {
