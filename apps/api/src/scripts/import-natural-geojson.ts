@@ -208,7 +208,7 @@ async function main() {
   `);
   // Resolve paths relative to repo root
   const repoRoot = path.resolve(__dirname, '../../..');
-  const base = path.join(repoRoot, 'frontend', 'public', 'natural');
+  const base = path.join(repoRoot, 'web', 'public', 'natural');
   const specs: Array<{ folder: 'rivers' | 'mountain_ranges' | 'peaks'; lod: 'low' | 'med' | 'high' }> = [
     { folder: 'rivers', lod: 'low' },
     { folder: 'rivers', lod: 'med' },

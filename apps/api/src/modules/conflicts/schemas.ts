@@ -17,7 +17,7 @@ export const conflictParamsSchema = z.object({
   slug: z.string().min(1),
 });
 
-// ── Common schemas (absorbed from core/validation/schemas/common.ts) ──
+// ── Common schemas ──
 
 const paginationSchema = z.object({
   page: z.string().transform(Number).pipe(z.number().int().positive()).optional(),
@@ -37,7 +37,7 @@ const coordinatesSchema = z.object({
   lng: z.number().min(-180).max(180),
 });
 
-// ── Legacy CRUD schemas (absorbed from core/validation/schemas/conflict.schemas.ts) ──
+// ── CRUD schemas ──
 
 interface ValidationSchemas {
   body?: z.ZodSchema;
