@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getTechnologyByIso3 } from '../controllers/technology.controller';
+import { getTechnologyByIso3 } from '../modules/indicators/controller';
 
 const router = Router();
 

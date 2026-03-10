@@ -246,3 +246,117 @@ export async function getPoliticsData(iso3: string) {
     },
   };
 }
+
+// ── Society ──
+
+export async function getSocietyData(iso3: string) {
+  const entity = await repo.findCountryEntity(iso3);
+  if (!entity) return null;
+
+  const countryIso3 = entity.iso3 as string;
+
+  const [
+    lifeExpectancy, literacyRateAdult, povertyExtreme215, uhcServiceCoverageIndex,
+    primaryNetEnrollment, populationTotal, populationGrowth, crudeBirthRate,
+    crudeDeathRate, urbanPopulationPercent, ruralPopulationPercent, populationDensity
+  ] = await Promise.all([
+    getLatestIndicatorValueForIso3(countryIso3, 'SP.DYN.LE00.IN'),
+    getLatestIndicatorValueForIso3(countryIso3, 'SE.ADT.LITR.ZS'),
+    getLatestIndicatorValueForIso3(countryIso3, 'SI.POV.DDAY'),
+    getLatestIndicatorValueForIso3(countryIso3, 'SH.UHC.SRVS.CV.XD'),
+    getLatestIndicatorValueForIso3(countryIso3, 'SE.PRM.NENR'),
+    getLatestIndicatorValueForIso3(countryIso3, 'SP.POP.TOTL'),
+    getLatestIndicatorValueForIso3(countryIso3, 'SP.POP.GROW'),
+    getLatestIndicatorValueForIso3(countryIso3, 'SP.DYN.CBRT.IN'),
+    getLatestIndicatorValueForIso3(countryIso3, 'SP.DYN.CDRT.IN'),
+    getLatestIndicatorValueForIso3(countryIso3, 'SP.URB.TOTL.IN.ZS'),
+    getLatestIndicatorValueForIso3(countryIso3, 'SP.RUR.TOTL.ZS'),
+    getLatestIndicatorValueForIso3(countryIso3, 'SP.POP.DNST'),
+  ]);
+
+  return {
+    countryCode3: countryIso3,
+    lifeExpectancy: { value: toNumberOrNull(lifeExpectancy.value), year: lifeExpectancy.year },
+    literacyRateAdult: { value: toNumberOrNull(literacyRateAdult.value), year: literacyRateAdult.year },
+    povertyExtreme215: { value: toNumberOrNull(povertyExtreme215.value), year: povertyExtreme215.year },
+    uhcServiceCoverageIndex: { value: toNumberOrNull(uhcServiceCoverageIndex.value), year: uhcServiceCoverageIndex.year },
+    primaryNetEnrollment: { value: toNumberOrNull(primaryNetEnrollment.value), year: primaryNetEnrollment.year },
+    populationTotal: { value: toNumberOrNull(populationTotal.value), year: populationTotal.year },
+    populationGrowth: { value: toNumberOrNull(populationGrowth.value), year: populationGrowth.year },
+    crudeBirthRate: { value: toNumberOrNull(crudeBirthRate.value), year: crudeBirthRate.year },
+    crudeDeathRate: { value: toNumberOrNull(crudeDeathRate.value), year: crudeDeathRate.year },
+    urbanPopulationPercent: { value: toNumberOrNull(urbanPopulationPercent.value), year: urbanPopulationPercent.year },
+    ruralPopulationPercent: { value: toNumberOrNull(ruralPopulationPercent.value), year: ruralPopulationPercent.year },
+    populationDensity: { value: toNumberOrNull(populationDensity.value), year: populationDensity.year },
+  };
+}
+
+// ── Technology ──
+
+export async function getTechnologyData(iso3: string) {
+  const entity = await repo.findCountryEntity(iso3);
+  if (!entity) return null;
+
+  const countryIso3 = entity.iso3 as string;
+
+  const [rndExpenditurePctGdp, highTechExportsUsd, researchersPerMillion, patentApplicationsResidents, scientificJournalArticles] =
+    await Promise.all([
+      getLatestIndicatorValueForIso3(countryIso3, 'GB.XPD.RSDV.GD.ZS'),
+      getLatestIndicatorValueForIso3(countryIso3, 'TX.VAL.TECH.CD'),
+      getLatestIndicatorValueForIso3(countryIso3, 'SP.POP.SCIE.RD.P6'),
+      getLatestIndicatorValueForIso3(countryIso3, 'IP.PAT.RESD'),
+      getLatestIndicatorValueForIso3(countryIso3, 'IP.JRN.ARTC.SC'),
+    ]);
+
+  return {
+    countryCode3: countryIso3,
+    countryName: entity.name,
+    rndExpenditurePctGdp: { value: toNumberOrNull(rndExpenditurePctGdp.value), year: rndExpenditurePctGdp.year },
+    highTechExportsUsd: { value: toNumberOrNull(highTechExportsUsd.value), year: highTechExportsUsd.year },
+    researchersPerMillion: { value: toNumberOrNull(researchersPerMillion.value), year: researchersPerMillion.year },
+    patentApplicationsResidents: { value: toNumberOrNull(patentApplicationsResidents.value), year: patentApplicationsResidents.year },
+    scientificJournalArticles: { value: toNumberOrNull(scientificJournalArticles.value), year: scientificJournalArticles.year },
+    sources: { worldBank: 'https://api.worldbank.org/v2/' },
+  };
+}
+
+// ── International ──
+
+export async function getInternationalData(iso3: string) {
+  const entity = await repo.findCountryEntity(iso3);
+  if (!entity) return null;
+
+  const countryIso3 = entity.iso3 as string;
+
+  const [odaReceivedUsd, tradePercentGdp, currentAccountUsd, fdiNetInflowsUsd, fdiNetOutflowsUsd, remittancesUsd] =
+    await Promise.all([
+      getLatestIndicatorValueForIso3(countryIso3, 'DT.ODA.ALLD.CD'),
+      getLatestIndicatorValueForIso3(countryIso3, 'NE.TRD.GNFS.ZS'),
+      getLatestIndicatorValueForIso3(countryIso3, 'BN.CAB.XOKA.CD'),
+      getLatestIndicatorValueForIso3(countryIso3, 'BX.KLT.DINV.CD.WD'),
+      getLatestIndicatorValueForIso3(countryIso3, 'BM.KLT.DINV.CD.WD'),
+      getLatestIndicatorValueForIso3(countryIso3, 'BX.TRF.PWKR.CD.DT'),
+    ]);
+
+  return {
+    countryCode3: countryIso3,
+    countryName: entity.name,
+    odaReceivedUsd: { value: toNumberOrNull(odaReceivedUsd.value), year: odaReceivedUsd.year },
+    tradePercentGdp: { value: toNumberOrNull(tradePercentGdp.value), year: tradePercentGdp.year },
+    currentAccountUsd: { value: toNumberOrNull(currentAccountUsd.value), year: currentAccountUsd.year },
+    fdiNetInflowsUsd: { value: toNumberOrNull(fdiNetInflowsUsd.value), year: fdiNetInflowsUsd.year },
+    fdiNetOutflowsUsd: { value: toNumberOrNull(fdiNetOutflowsUsd.value), year: fdiNetOutflowsUsd.year },
+    remittancesUsd: { value: toNumberOrNull(remittancesUsd.value), year: remittancesUsd.year },
+    sources: { worldBank: 'https://api.worldbank.org/v2/' },
+  };
+}
+
+// ── World Bank Series (raw indicator code) ──
+
+export async function getWorldBankSeriesData(
+  iso3: string,
+  indicatorCode: string,
+  limitYears?: number
+): Promise<Array<{ year: number; value: number | null }>> {
+  return repo.findSeriesByRawCode(iso3, indicatorCode, limitYears);
+}

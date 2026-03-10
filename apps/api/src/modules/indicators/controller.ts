@@ -230,6 +230,84 @@ export const getIndicatorTimeSeriesController: RequestHandler = async (req: Requ
   }
 };
 
+// ── Society ──
+
+export const getSocietyByIso3: RequestHandler = async (req: Request, res: Response) => {
+  try {
+    const iso3Param = String(req.params.iso3 || '').toUpperCase();
+    if (!iso3Param || iso3Param.length !== 3) {
+      return res.status(400).json({ error: 'Invalid ISO3 code' });
+    }
+    const data = await service.getSocietyData(iso3Param);
+    if (!data) {
+      return res.status(404).json({ error: 'Country not found' });
+    }
+    res.json(data);
+  } catch (error) {
+    console.error('getSocietyByIso3 error:', error);
+    res.status(500).json({ error: 'Failed to fetch society data from database' });
+  }
+};
+
+export const getWorldBankSeries: RequestHandler = async (req: Request, res: Response) => {
+  try {
+    const iso3Param = String(req.params.iso3 || '').toUpperCase();
+    const indicatorCode = String(req.params.indicator || '').trim();
+    const limitYears = req.query.limitYears ? parseInt(String(req.query.limitYears), 10) : undefined;
+
+    if (!iso3Param || iso3Param.length !== 3) {
+      return res.status(400).json({ error: 'Invalid ISO3 code' });
+    }
+    if (!indicatorCode) {
+      return res.status(400).json({ error: 'Indicator code is required' });
+    }
+
+    const data = await service.getWorldBankSeriesData(iso3Param, indicatorCode, limitYears);
+    res.json(data);
+  } catch (error) {
+    console.error('getWorldBankSeries DB fallback error:', error);
+    res.json([]);
+  }
+};
+
+// ── Technology ──
+
+export const getTechnologyByIso3: RequestHandler = async (req: Request, res: Response) => {
+  try {
+    const iso3Param = String(req.params.iso3 || '').toUpperCase();
+    if (!iso3Param || iso3Param.length !== 3) {
+      return res.status(400).json({ error: 'Invalid ISO3 code' });
+    }
+    const data = await service.getTechnologyData(iso3Param);
+    if (!data) {
+      return res.status(404).json({ error: 'Country not found' });
+    }
+    res.json(data);
+  } catch (error) {
+    console.error('getTechnologyByIso3 error:', error);
+    res.status(500).json({ error: 'Failed to fetch technology data from database' });
+  }
+};
+
+// ── International ──
+
+export const getInternationalByIso3: RequestHandler = async (req: Request, res: Response) => {
+  try {
+    const iso3Param = String(req.params.iso3 || '').toUpperCase();
+    if (!iso3Param || iso3Param.length !== 3) {
+      return res.status(400).json({ error: 'Invalid ISO3 code' });
+    }
+    const data = await service.getInternationalData(iso3Param);
+    if (!data) {
+      return res.status(404).json({ error: 'Country not found' });
+    }
+    res.json(data);
+  } catch (error) {
+    console.error('getInternationalByIso3 error:', error);
+    res.status(500).json({ error: 'Failed to fetch international data from database' });
+  }
+};
+
 // ── Batch ──
 
 export const getIndicatorBatch: RequestHandler = async (req: Request, res: Response) => {

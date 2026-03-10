@@ -262,3 +262,37 @@ export async function findCountryEntity(iso3: string) {
     select: { id: true, name: true, region: true, props: true, iso3: true }
   });
 }
+
+/**
+ * Fetch time series by raw indicator code (e.g. 'SP.DYN.LE00.IN') with optional limitYears.
+ * Used by the /society/:iso3/worldbank/:indicator endpoint.
+ */
+export async function findSeriesByRawCode(
+  iso3: string,
+  indicatorCode: string,
+  limitYears?: number
+): Promise<Array<{ year: number; value: number | null }>> {
+  try {
+    const entity = await prisma.entity.findFirst({
+      where: { type: 'COUNTRY', iso3: iso3.toUpperCase() },
+      select: { id: true }
+    });
+    if (!entity) return [];
+
+    const series = await prisma.indicatorValue.findMany({
+      where: { entityId: entity.id, indicatorCode },
+      orderBy: { year: 'asc' },
+      select: { year: true, value: true }
+    });
+
+    const normalized = series.map((row) => ({
+      year: row.year,
+      value: row.value !== null && row.value !== undefined ? Number(row.value.toString()) : null
+    }));
+
+    return limitYears && limitYears > 0 ? normalized.slice(-limitYears) : normalized;
+  } catch (error) {
+    console.error(`Error fetching series for ${indicatorCode} (${iso3}):`, error);
+    return [];
+  }
+}

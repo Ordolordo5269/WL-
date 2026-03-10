@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getSocietyByIso3, getWorldBankSeries } from '../controllers/society.controller';
+import { getSocietyByIso3, getWorldBankSeries } from '../modules/indicators/controller';
 
 const router = Router();
 

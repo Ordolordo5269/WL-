@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getInternationalByIso3 } from '../controllers/international.controller';
+import { getInternationalByIso3 } from '../modules/indicators/controller';
 
 const router = Router();
 
