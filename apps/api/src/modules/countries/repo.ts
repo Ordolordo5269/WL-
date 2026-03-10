@@ -25,7 +25,7 @@ export async function listCountryEntities() {
 }
 
 export async function countConflictsByIso3(iso3: string) {
-  return prisma.conflict.count({
+  return prisma.acledConflict.count({
     where: {
       OR: [
         { country: { contains: iso3, mode: 'insensitive' } },

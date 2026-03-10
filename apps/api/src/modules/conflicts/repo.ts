@@ -1,217 +1,258 @@
 import { prisma } from '../../db/client';
 import type { Prisma } from '@prisma/client';
-import type { ConflictFilters, LegacyConflictFilters, CreateConflictData } from './types.js';
+import type { ConflictListFilters, EventFilters, TimelineParams } from './types.js';
 
-// ── V2 queries (list + detail with OSINT enrichment) ──
+// ── AcledConflict queries ──
 
-export async function findMany(filters: ConflictFilters) {
-  const where: Prisma.ConflictWhereInput = {};
+export async function findManyConflicts(filters: ConflictListFilters) {
+  const where: Prisma.AcledConflictWhereInput = {};
 
-  if (filters.region) {
-    where.region = { contains: filters.region, mode: 'insensitive' };
-  }
-
-  if (filters.status) {
-    where.status = filters.status;
-  }
-
-  if (filters.country) {
-    where.country = { contains: filters.country, mode: 'insensitive' };
-  }
-
-  if (filters.from || filters.to) {
-    where.startDate = {};
-    if (filters.from) where.startDate.gte = new Date(filters.from);
-    if (filters.to) where.startDate.lte = new Date(filters.to);
-  }
-
-  return prisma.conflict.findMany({
-    where,
-    include: {
-      casualties: true,
-      factions: { include: { support: true } },
-      _count: { select: { events: true } },
-    },
-    orderBy: { startDate: 'desc' },
-  });
-}
-
-export async function findBySlug(slug: string) {
-  return prisma.conflict.findUnique({
-    where: { slug },
-    include: {
-      casualties: true,
-      factions: { include: { support: true } },
-      events: { orderBy: { date: 'desc' } },
-      updates: { orderBy: { date: 'desc' } },
-      news: { orderBy: { publishedAt: 'desc' }, take: 20 },
-    },
-  });
-}
-
-export async function findById(id: string) {
-  return prisma.conflict.findUnique({
-    where: { id },
-    include: {
-      casualties: true,
-      factions: { include: { support: true } },
-      events: { orderBy: { date: 'desc' } },
-      updates: { orderBy: { date: 'desc' } },
-      news: { orderBy: { publishedAt: 'desc' }, take: 20 },
-    },
-  });
-}
-
-// ── Legacy CRUD queries ──
-
-export async function findAllWithFilters(filters: LegacyConflictFilters) {
-  const where: any = {};
-
-  if (filters.region) where.region = filters.region;
+  if (filters.region) where.region = { contains: filters.region, mode: 'insensitive' };
   if (filters.status) where.status = filters.status;
   if (filters.country) where.country = { contains: filters.country, mode: 'insensitive' };
-  if (filters.conflictType) where.conflictType = { contains: filters.conflictType, mode: 'insensitive' };
-
-  if (filters.startDateFrom || filters.startDateTo) {
-    where.startDate = {};
-    if (filters.startDateFrom) where.startDate.gte = new Date(filters.startDateFrom);
-    if (filters.startDateTo) where.startDate.lte = new Date(filters.startDateTo);
-  }
-
-  if (filters.escalationDateFrom || filters.escalationDateTo) {
-    where.escalationDate = {};
-    if (filters.escalationDateFrom) where.escalationDate.gte = new Date(filters.escalationDateFrom);
-    if (filters.escalationDateTo) where.escalationDate.lte = new Date(filters.escalationDateTo);
-  }
-
-  if (filters.activeOnly) where.endDate = null;
-
   if (filters.search) {
     where.OR = [
       { name: { contains: filters.search, mode: 'insensitive' } },
       { country: { contains: filters.search, mode: 'insensitive' } },
       { description: { contains: filters.search, mode: 'insensitive' } },
-      { conflictType: { contains: filters.search, mode: 'insensitive' } }
     ];
   }
 
-  const sortBy = filters.sortBy || 'startDate';
-  const sortOrder = filters.sortOrder || 'desc';
-  const orderBy: any = { [sortBy]: sortOrder };
-
-  const page = filters.page || 1;
-  const limit = filters.limit || 20;
+  const page = filters.page ?? 1;
+  const limit = filters.limit ?? 50;
   const skip = (page - 1) * limit;
 
-  const [conflicts, total] = await Promise.all([
-    prisma.conflict.findMany({
+  const [data, total] = await Promise.all([
+    prisma.acledConflict.findMany({
       where,
-      include: {
-        factions: { include: { support: true } },
-        events: { orderBy: { date: 'asc' } },
-        casualties: { orderBy: { date: 'desc' }, take: 10 },
-        updates: { orderBy: { date: 'desc' }, take: 5 },
-        news: { orderBy: { publishedAt: 'desc' }, take: 10 }
-      },
-      orderBy,
+      orderBy: { totalFatalities: 'desc' },
       skip,
-      take: limit
+      take: limit,
     }),
-    prisma.conflict.count({ where })
+    prisma.acledConflict.count({ where }),
   ]);
 
-  return { conflicts, total, page, limit };
+  return { data, total, page, limit };
 }
 
-export async function aggregateCasualties(conflictId: string): Promise<number> {
-  const result = await prisma.conflictCasualty.aggregate({
+export async function findConflictBySlug(slug: string) {
+  return prisma.acledConflict.findUnique({
+    where: { slug },
+  });
+}
+
+export async function findConflictById(id: string) {
+  return prisma.acledConflict.findUnique({ where: { id } });
+}
+
+// ── AcledEvent queries ──
+
+export async function findEventsByConflict(conflictId: string, filters: EventFilters) {
+  const where: Prisma.AcledEventWhereInput = { conflictId };
+
+  if (filters.eventType) where.eventType = filters.eventType;
+  if (filters.subEventType) where.subEventType = filters.subEventType;
+  if (filters.actor) {
+    where.OR = [
+      { actor1: { contains: filters.actor, mode: 'insensitive' } },
+      { actor2: { contains: filters.actor, mode: 'insensitive' } },
+    ];
+  }
+  if (filters.minFatalities) where.fatalities = { gte: filters.minFatalities };
+  if (filters.timePrecision) where.timePrecision = filters.timePrecision;
+
+  if (filters.dateFrom || filters.dateTo) {
+    where.eventDate = {};
+    if (filters.dateFrom) where.eventDate.gte = new Date(filters.dateFrom);
+    if (filters.dateTo) where.eventDate.lte = new Date(filters.dateTo);
+  }
+
+  const page = filters.page ?? 1;
+  const limit = filters.limit ?? 50;
+  const skip = (page - 1) * limit;
+
+  const [data, total] = await Promise.all([
+    prisma.acledEvent.findMany({
+      where,
+      orderBy: { eventDate: 'desc' },
+      skip,
+      take: limit,
+    }),
+    prisma.acledEvent.count({ where }),
+  ]);
+
+  return { data, total, page, limit };
+}
+
+export async function findRecentEvents(conflictId: string, take: number = 20) {
+  return prisma.acledEvent.findMany({
     where: { conflictId },
-    _sum: { total: true }
+    orderBy: { eventDate: 'desc' },
+    take,
   });
-  return result._sum.total || 0;
 }
 
-export async function create(data: CreateConflictData) {
-  return prisma.conflict.create({
-    data: {
-      slug: data.slug,
-      name: data.name,
-      country: data.country,
-      region: data.region,
-      conflictType: data.conflictType,
-      description: data.description,
-      status: data.status,
-      startDate: data.startDate,
-      escalationDate: data.escalationDate,
-      endDate: data.endDate,
-      coordinates: data.coordinates,
-      involvedISO: data.involvedISO,
-      sources: data.sources || []
+export async function getEventHeatmap(conflictId: string) {
+  return prisma.acledEvent.findMany({
+    where: { conflictId },
+    select: {
+      latitude: true,
+      longitude: true,
+      fatalities: true,
+      eventType: true,
+      eventDate: true,
     },
-    include: {
-      factions: true,
-      events: true,
-      casualties: true,
-      updates: true,
-      news: true
-    }
   });
 }
 
-export async function update(id: string, data: Partial<CreateConflictData>) {
-  const updateData: any = {};
+// ── Timeline aggregation ──
 
-  if (data.name) updateData.name = data.name;
-  if (data.country) updateData.country = data.country;
-  if (data.region) updateData.region = data.region;
-  if (data.conflictType) updateData.conflictType = data.conflictType;
-  if (data.description) updateData.description = data.description;
-  if (data.status) updateData.status = data.status;
-  if (data.startDate) updateData.startDate = data.startDate;
-  if (data.escalationDate !== undefined) updateData.escalationDate = data.escalationDate;
-  if (data.endDate !== undefined) updateData.endDate = data.endDate;
-  if (data.coordinates) updateData.coordinates = data.coordinates;
-  if (data.involvedISO) updateData.involvedISO = data.involvedISO;
-  if (data.sources) updateData.sources = data.sources;
+export async function getTimeline(conflictId: string, params: TimelineParams) {
+  const where: Prisma.AcledEventWhereInput = { conflictId };
 
-  return prisma.conflict.update({
-    where: { id },
-    data: updateData,
-    include: {
-      factions: { include: { support: true } },
-      events: true,
-      casualties: true,
-      updates: true,
-      news: true
-    }
-  });
+  if (params.eventType) where.eventType = params.eventType;
+  if (params.dateFrom || params.dateTo) {
+    where.eventDate = {};
+    if (params.dateFrom) where.eventDate.gte = new Date(params.dateFrom);
+    if (params.dateTo) where.eventDate.lte = new Date(params.dateTo);
+  }
+
+  const granularity = params.granularity ?? 'month';
+
+  // Use raw SQL for date_trunc aggregation
+  const truncExpr =
+    granularity === 'day' ? `date_trunc('day', "eventDate")`
+    : granularity === 'week' ? `date_trunc('week', "eventDate")`
+    : granularity === 'year' ? `date_trunc('year', "eventDate")`
+    : `date_trunc('month', "eventDate")`;
+
+  const dateConditions: string[] = [`"conflictId" = '${conflictId}'`];
+  if (params.eventType) dateConditions.push(`"eventType" = '${params.eventType}'`);
+  if (params.dateFrom) dateConditions.push(`"eventDate" >= '${params.dateFrom}'`);
+  if (params.dateTo) dateConditions.push(`"eventDate" <= '${params.dateTo}'`);
+
+  const whereClause = dateConditions.join(' AND ');
+
+  const result = await prisma.$queryRawUnsafe<
+    Array<{ period: Date; events: bigint; fatalities: bigint }>
+  >(
+    `SELECT ${truncExpr} as period, COUNT(*)::bigint as events, COALESCE(SUM(fatalities), 0)::bigint as fatalities
+     FROM "AcledEvent"
+     WHERE ${whereClause}
+     GROUP BY period
+     ORDER BY period ASC`
+  );
+
+  return result.map((r) => ({
+    period: r.period.toISOString().split('T')[0],
+    events: Number(r.events),
+    fatalities: Number(r.fatalities),
+  }));
 }
 
-export async function remove(id: string) {
-  return prisma.conflict.delete({ where: { id } });
+// ── Stats ──
+
+export async function getGlobalStats() {
+  const [totalConflicts, totalEvents, totalFatalities, byStatus, byRegion, byEventType] =
+    await Promise.all([
+      prisma.acledConflict.count(),
+      prisma.acledEvent.count(),
+      prisma.acledEvent.aggregate({ _sum: { fatalities: true } }),
+      prisma.acledConflict.groupBy({ by: ['status'], _count: true }),
+      prisma.acledConflict.groupBy({ by: ['region'], _count: true }),
+      prisma.acledEvent.groupBy({ by: ['eventType'], _count: true, _sum: { fatalities: true } }),
+    ]);
+
+  return {
+    totalConflicts,
+    totalEvents,
+    totalFatalities: totalFatalities._sum.fatalities ?? 0,
+    byStatus: byStatus.map((s) => ({ status: s.status, count: s._count })),
+    byRegion: byRegion.map((r) => ({ region: r.region, count: r._count })),
+    byEventType: byEventType.map((e) => ({
+      eventType: e.eventType,
+      count: e._count,
+      fatalities: e._sum.fatalities ?? 0,
+    })),
+  };
 }
 
-export async function getStats() {
-  const [total, byStatus, byRegion] = await Promise.all([
-    prisma.conflict.count(),
-    prisma.conflict.groupBy({ by: ['status'], _count: true }),
-    prisma.conflict.groupBy({ by: ['region'], _count: true })
-  ]);
-
-  return { total, byStatus, byRegion };
-}
-
-export async function search(query: string, limit: number = 20) {
-  return prisma.conflict.findMany({
+export async function searchConflicts(query: string, limit: number = 20) {
+  return prisma.acledConflict.findMany({
     where: {
       OR: [
         { name: { contains: query, mode: 'insensitive' } },
         { country: { contains: query, mode: 'insensitive' } },
         { description: { contains: query, mode: 'insensitive' } },
-        { conflictType: { contains: query, mode: 'insensitive' } }
-      ]
+      ],
     },
     take: limit,
-    orderBy: { startDate: 'desc' }
+    orderBy: { totalFatalities: 'desc' },
+  });
+}
+
+// ── Sync helpers ──
+
+export async function upsertEvent(data: Prisma.AcledEventCreateInput) {
+  return prisma.acledEvent.upsert({
+    where: { eventIdCnty: data.eventIdCnty },
+    update: { ...data, syncedAt: new Date() },
+    create: data,
+  });
+}
+
+export async function upsertManyEvents(
+  events: Array<Omit<Prisma.AcledEventUncheckedCreateInput, 'id'>>
+) {
+  // Batch upsert using transaction
+  const BATCH_SIZE = 500;
+  let upserted = 0;
+
+  for (let i = 0; i < events.length; i += BATCH_SIZE) {
+    const batch = events.slice(i, i + BATCH_SIZE);
+    await prisma.$transaction(
+      batch.map((e) =>
+        prisma.acledEvent.upsert({
+          where: { eventIdCnty: e.eventIdCnty },
+          update: { ...e, syncedAt: new Date() },
+          create: e,
+        })
+      )
+    );
+    upserted += batch.length;
+  }
+
+  return upserted;
+}
+
+export async function refreshConflictAggregates(conflictId: string) {
+  const agg = await prisma.acledEvent.aggregate({
+    where: { conflictId },
+    _count: true,
+    _sum: { fatalities: true },
+    _max: { eventDate: true },
+  });
+
+  return prisma.acledConflict.update({
+    where: { id: conflictId },
+    data: {
+      totalEvents: agg._count,
+      totalFatalities: agg._sum.fatalities ?? 0,
+      lastEventDate: agg._max.eventDate,
+    },
+  });
+}
+
+export async function findAllConflictsForSync() {
+  return prisma.acledConflict.findMany({
+    select: {
+      id: true,
+      slug: true,
+      filterCountry: true,
+      filterIso: true,
+      filterActors: true,
+      filterDateFrom: true,
+      filterDateTo: true,
+    },
   });
 }
