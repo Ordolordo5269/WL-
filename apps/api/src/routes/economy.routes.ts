@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getEconomyByIso3 } from '../controllers/economy.controller';
+import { getEconomyByIso3 } from '../modules/indicators/controller';
 
 const router = Router();
 

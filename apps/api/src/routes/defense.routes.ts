@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getDefenseByIso3 } from '../controllers/defense.controller';
+import { getDefenseByIso3 } from '../modules/indicators/controller';
 
 const router = Router();
 

@@ -1,6 +1,6 @@
 import { Request, Response, RequestHandler } from 'express';
 import { prisma } from '../db/client';
-import { getLatestIndicatorValueForIso3 } from '../services/indicator.service';
+import { getLatestIndicatorValueForIso3 } from '../modules/indicators/service';
 
 type LatestPoint = { value: number | null; year: number | null };
 

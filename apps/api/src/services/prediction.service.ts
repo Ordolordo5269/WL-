@@ -1,4 +1,4 @@
-import { getIndicatorTimeSeries } from './indicator.service';
+import { getIndicatorTimeSeries } from '../modules/indicators/service';
 import { linearRegression, standardDeviation } from 'simple-statistics';
 
 export interface PredictionPoint {

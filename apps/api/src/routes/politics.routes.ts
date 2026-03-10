@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getPoliticsByIso3 } from '../controllers/politics.controller';
+import { getPoliticsByIso3 } from '../modules/indicators/controller';
 
 const router = Router();
 

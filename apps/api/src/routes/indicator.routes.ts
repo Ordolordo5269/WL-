@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getGdpLatest, getGdpByCountry, getGdpPerCapitaLatest, getGdpPerCapitaByCountry, getInflationLatest, getInflationByCountry, getIndicatorLatest, getIndicatorTimeSeriesController, getIndicatorBatch } from '../controllers/indicator.controller';
+import { getGdpLatest, getGdpByCountry, getGdpPerCapitaLatest, getGdpPerCapitaByCountry, getInflationLatest, getInflationByCountry, getIndicatorLatest, getIndicatorTimeSeriesController, getIndicatorBatch } from '../modules/indicators/controller';
 
 const router = Router();
 
