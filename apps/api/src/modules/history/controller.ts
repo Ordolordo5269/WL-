@@ -1,5 +1,5 @@
 import { Request, Response, RequestHandler } from 'express';
-import { getHistoryLayer } from '../services/history.service';
+import { getHistoryLayer } from './service';
 
 export const getHistoryLayerController: RequestHandler = async (req: Request, res: Response) => {
   const { year } = req.query as Record<string, string | undefined>;
@@ -23,25 +23,3 @@ export const getHistoryLayerController: RequestHandler = async (req: Request, re
     res.status(501).json({ error: (e as Error).message || 'Failed to fetch history layer' });
   }
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

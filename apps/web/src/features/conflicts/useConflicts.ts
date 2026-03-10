@@ -24,7 +24,7 @@ export function useConflicts(filters: ConflictFiltersParams = {}) {
       if (filters.to) params.set('to', filters.to);
 
       const qs = params.toString();
-      const res = await http.get<ApiResponse>(`/api/conflicts/v2${qs ? `?${qs}` : ''}`);
+      const res = await http.get<ApiResponse>(`/api/conflicts${qs ? `?${qs}` : ''}`);
       return { conflicts: res.data, count: res.count };
     },
   });

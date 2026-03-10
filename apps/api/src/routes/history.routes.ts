@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getHistoryLayerController } from '../controllers/history.controller';
+import { getHistoryLayerController } from '../modules/history/controller';
 
 const router = Router();
 

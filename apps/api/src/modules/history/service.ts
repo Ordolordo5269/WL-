@@ -1,4 +1,4 @@
-import { prisma } from '../db/client';
+import { prisma } from '../../db/client';
 
 type HistoryLod = 'auto' | 'low' | 'med' | 'high';
 
@@ -36,7 +36,6 @@ export async function getHistoryLayer(params: GetHistoryParams): Promise<{ etag?
   const lod = resolveLod(params.lod);
   const limit = Number.isFinite(params.limit) && params.limit! > 0 ? Math.min(params.limit!, 100000) : 50000;
 
-  // Join areas for the given year to their polity and geometry at requested LOD
   const rows = await prisma.$queryRaw<Array<{
     id: string;
     name: string | null;
@@ -84,25 +83,3 @@ export async function getHistoryLayer(params: GetHistoryParams): Promise<{ etag?
   const etag = `W/"hist-${year}-${lod}-${features.length}"`;
   return { etag, body: { type: 'FeatureCollection', features } };
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
