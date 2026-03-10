@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getPrediction, getInsights } from '../controllers/prediction.controller';
+import { getPrediction, getInsights } from '../modules/predictions/controller';
 import { authenticate } from '../middleware/auth';
 
 const router = Router();

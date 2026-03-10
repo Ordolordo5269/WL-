@@ -177,7 +177,7 @@ export const getConflictNews: RequestHandler = async (req: Request, res: Respons
     const { id } = req.params;
     const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
 
-    const { getCachedNews } = await import('../../services/news-cache.service');
+    const { getCachedNews } = await import('../news/service');
     const news = await getCachedNews(id, limit);
 
     res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
@@ -198,7 +198,7 @@ export const cacheConflictNews: RequestHandler = async (req: Request, res: Respo
       return;
     }
 
-    const { cacheNewsArticles } = await import('../../services/news-cache.service');
+    const { cacheNewsArticles } = await import('../news/service');
     const cached = await cacheNewsArticles(id, articles);
 
     res.status(201).json({ cached: cached.length, total: articles.length });

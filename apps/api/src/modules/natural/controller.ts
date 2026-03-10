@@ -1,5 +1,5 @@
 import { Request, Response, RequestHandler } from 'express';
-import { getNaturalLayer, searchNatural } from '../services/natural.service';
+import { getNaturalLayer, searchNatural } from './service';
 
 export const getNaturalLayerController: RequestHandler = async (req: Request, res: Response) => {
   const { type } = req.params as { type: string };
@@ -14,7 +14,6 @@ export const getNaturalLayerController: RequestHandler = async (req: Request, re
       minElevation: minElevation ? Number(minElevation) : undefined,
       limit: limit ? Number(limit) : undefined
     });
-    // Either returns FeatureCollection or throws
     res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
     res.setHeader('X-WorldLore-Source', 'db');
     if (data.etag) res.setHeader('ETag', data.etag);
@@ -34,7 +33,3 @@ export const searchNaturalController: RequestHandler = async (req: Request, res:
     res.status(501).json({ error: (e as Error).message || 'Search not implemented' });
   }
 };
-
-
-
-

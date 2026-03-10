@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getFavorites, addFavorite, removeFavorite } from '../controllers/favorites.controller';
+import { getFavorites, addFavorite, removeFavorite } from '../modules/users/controller';
 import { authenticate } from '../middleware/auth';
 
 const router = Router();

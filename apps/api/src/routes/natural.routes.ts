@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getNaturalLayerController, searchNaturalController } from '../controllers/natural.controller';
+import { getNaturalLayerController, searchNaturalController } from '../modules/natural/controller';
 
 const router = Router();
 
