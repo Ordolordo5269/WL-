@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import TimeSeriesChartRecharts from './TimeSeriesChartRecharts';
 import { historicalIndicatorsService } from '../services/historical-indicators.service';
 import type { TimeSeriesPoint } from '../services/historical-indicators.service';
-import { societyService } from '../services/society-service';
+import { societyService } from '../features/country-sidebar/services/society-service';
 
 interface SelectableComparisonChartProps {
   country1Iso3: string;

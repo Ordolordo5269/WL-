@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Conflict } from '../types';
+import type { Conflict } from '../../types';
 import { Users, Home, Calendar, Link, Shield } from 'lucide-react';
 
 interface ConflictStatsProps {

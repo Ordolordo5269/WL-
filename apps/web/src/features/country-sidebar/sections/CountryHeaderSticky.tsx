@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Star } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { favoritesService } from '../services/favorites.service';
+import { useAuth } from '../../../contexts/AuthContext';
+import { favoritesService } from '../../../services/favorites.service';
 import type { CountryBasicInfo } from '../services/country-basic-info.service';
 
 interface CountryHeaderStickyProps {

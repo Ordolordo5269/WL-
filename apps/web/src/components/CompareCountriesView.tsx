@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2 } from 'lucide-react';
-import { useCountryBasicInfo } from '../hooks/useCountryBasicInfo';
-import { useEconomyData } from '../hooks/useEconomyData';
-import { useSocietyData } from '../hooks/useSocietyData';
-import { usePoliticsData } from '../hooks/usePoliticsData';
+import { useCountryBasicInfo } from '../features/country-sidebar/hooks/useCountryBasicInfo';
+import { useEconomyData } from '../features/country-sidebar/hooks/useEconomyData';
+import { useSocietyData } from '../features/country-sidebar/hooks/useSocietyData';
+import { usePoliticsData } from '../features/country-sidebar/hooks/usePoliticsData';
 import { historicalIndicatorsService } from '../services/historical-indicators.service';
 import RadarChartRecharts from './RadarChartRecharts';
 import SelectableComparisonChart from './SelectableComparisonChart';

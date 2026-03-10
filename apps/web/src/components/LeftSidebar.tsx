@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import InternationalOrganizationsPanel from './InternationalOrganizationsPanel';
+import InternationalOrganizationsPanel from '../features/world-map/InternationalOrganizationsPanel';
 import { AVAILABLE_HISTORY_YEARS, snapToAvailableYear } from '../utils/historical-years';
 import { Crosshair, Settings, Info, Globe, Users, BarChart3, Map, User, GitCompare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
