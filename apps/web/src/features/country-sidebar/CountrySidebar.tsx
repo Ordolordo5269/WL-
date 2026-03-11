@@ -22,7 +22,7 @@ import CountryHeaderSticky from './sections/CountryHeaderSticky';
 import CountryKPIs from './sections/CountryKPIs';
 import CountryStaticData from './sections/CountryStaticData';
 import { useAuth } from '../../contexts/AuthContext';
-import { favoritesService } from '../../services/favorites.service';
+import { favoritesService } from '../dashboard/favorites.service';
 
 interface CategoryGroupProps {
   icon: React.ReactNode;

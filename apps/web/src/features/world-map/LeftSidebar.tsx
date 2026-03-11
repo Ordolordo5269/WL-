@@ -1,9 +1,9 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import InternationalOrganizationsPanel from '../features/world-map/InternationalOrganizationsPanel';
-import { AVAILABLE_HISTORY_YEARS, snapToAvailableYear } from '../utils/historical-years';
+import InternationalOrganizationsPanel from './InternationalOrganizationsPanel';
+import { AVAILABLE_HISTORY_YEARS, snapToAvailableYear } from '../../utils/historical-years';
 import { Crosshair, Settings, Info, Globe, Users, BarChart3, Map, User, GitCompare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 const LANDING_ABOUT_URL = `${import.meta.env.VITE_LANDING_URL ?? (import.meta.env.DEV ? 'http://localhost:5174' : '')}/about`;
 

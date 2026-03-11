@@ -4,7 +4,7 @@ import { AlertCircle, HeartPulse, GraduationCap, Activity, Users, MapPin, Trendi
 import { societyService } from '../services/society-service';
 import type { TSocietyIndicators } from '../services/society-service';
 import type { SocietySeriesData } from '../hooks/useSocietyData';
-import TimeSeriesChart from '../../../components/TimeSeriesChart';
+import TimeSeriesChart from '../../../components/ui/TimeSeriesChart';
 
 interface SocietySectionProps {
   data: TSocietyIndicators | null;

@@ -2,7 +2,7 @@
 // Handles all API calls to the backend conflict endpoints
 
 import type { Conflict } from '../types';
-import { ErrorHandler } from '../utils/errorHandler';
+import { ErrorHandler } from '../../../utils/errorHandler';
 
 export interface ConflictFilters {
   region?: string;

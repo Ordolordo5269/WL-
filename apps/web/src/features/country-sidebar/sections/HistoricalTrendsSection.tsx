@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { AlertCircle } from 'lucide-react';
-import TimeSeriesChart from '../../../components/TimeSeriesChart';
+import TimeSeriesChart from '../../../components/ui/TimeSeriesChart';
 import { historicalIndicatorsService } from '../../world-map/services/historical-indicators.service';
 import type { TimeSeriesPoint } from '../../world-map/services/historical-indicators.service';
 import { societyService } from '../services/society-service';

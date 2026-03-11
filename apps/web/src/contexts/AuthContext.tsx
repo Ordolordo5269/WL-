@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { authService } from '../services/auth.service';
+import { authService } from '../features/auth/auth.service';
 
 // Import types separately to avoid module resolution issues
 type User = {

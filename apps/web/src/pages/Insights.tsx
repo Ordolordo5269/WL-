@@ -1,4 +1,4 @@
-import { ProtectedRoute } from '../components/ProtectedRoute';
+import { ProtectedRoute } from '../features/auth/ProtectedRoute';
 import InsightForm from '../features/insights/InsightForm';
 import InsightResult from '../features/insights/InsightResult';
 import { useGenerateInsight } from '../features/insights/useGenerateInsight';

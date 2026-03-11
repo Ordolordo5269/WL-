@@ -10,8 +10,8 @@ import {
   ComposedChart
 } from 'recharts';
 import { Loader2 } from 'lucide-react';
-import type { TimeSeriesPoint } from '../features/world-map/services/historical-indicators.service';
-import type { ScenarioProjection } from '../services/prediction.service';
+import type { TimeSeriesPoint } from '../../features/world-map/services/historical-indicators.service';
+import type { ScenarioProjection } from '../../features/dashboard/prediction.service';
 
 interface TimeSeriesChartProps {
   data: TimeSeriesPoint[];

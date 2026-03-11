@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, FileText, Calendar, Users, Link, Shield, Zap, MapPin, AlertTriangle } from 'lucide-react';
 import type { Conflict } from '../../types';
 import ConflictFactions from './ConflictFactions';
-import ConflictTimeline from '../../components/ConflictTimeline';
+import ConflictTrackerTimeline from './ConflictTrackerTimeline';
 import ConflictStats from './ConflictStats';
 import {
   fetchConflictEvents,
@@ -14,7 +14,7 @@ import {
   type AcledEvent,
   type AcledEventType,
   type AcledTimelineBucket,
-} from '../../services/acled-api';
+} from './services/acled-api';
 
 interface ConflictDetailCardProps {
   conflict: Conflict;
@@ -254,7 +254,7 @@ const ConflictDetailCard: React.FC<ConflictDetailCardProps> = ({ conflict, onBac
 
             {activeTab === 'timeline' && (
               <div className="timeline-section">
-                <ConflictTimeline conflict={conflict} />
+                <ConflictTrackerTimeline conflict={conflict} />
               </div>
             )}
 

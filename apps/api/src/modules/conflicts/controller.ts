@@ -8,21 +8,31 @@ import { prisma } from '../../db/client';
 // ── V2 endpoints (list + detail with OSINT) ──
 
 export const list: RequestHandler = async (req: Request, res: Response) => {
-  const filters = req.query as unknown as ConflictFilters;
-  const conflicts = await service.listConflicts(filters);
-  res.json({ data: conflicts, count: conflicts.length });
+  try {
+    const filters = req.query as unknown as ConflictFilters;
+    const conflicts = await service.listConflicts(filters);
+    res.json({ data: conflicts, count: conflicts.length });
+  } catch (error) {
+    console.error('list conflicts error:', error);
+    res.status(500).json({ error: 'Failed to fetch conflicts' });
+  }
 };
 
 export const getBySlug: RequestHandler = async (req: Request, res: Response) => {
-  const { slug } = req.params as { slug: string };
-  const conflict = await service.getConflictBySlug(slug);
+  try {
+    const { slug } = req.params as { slug: string };
+    const conflict = await service.getConflictBySlug(slug);
 
-  if (!conflict) {
-    res.status(404).json({ error: 'Conflict not found' });
-    return;
+    if (!conflict) {
+      res.status(404).json({ error: 'Conflict not found' });
+      return;
+    }
+
+    res.json({ data: conflict });
+  } catch (error) {
+    console.error('getBySlug error:', error);
+    res.status(500).json({ error: 'Failed to fetch conflict' });
   }
-
-  res.json({ data: conflict });
 };
 
 // ── Legacy CRUD endpoints ──

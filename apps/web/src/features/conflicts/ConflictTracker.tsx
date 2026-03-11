@@ -2,12 +2,12 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { AlertTriangle, TrendingUp, Calendar, Users, MapPin, ExternalLink, X } from 'lucide-react';
 import type { Conflict } from '../../types';
-import ConflictService from '../../services/conflict-service';
+import ConflictService from './services/conflict-service';
 import type { NewsArticle } from '../../types';
 import ConflictDetailCard from './ConflictDetailCard';
 import ConflictSearchBar from './ConflictSearchBar';
-import ConflictFilters, { type AdvancedFilters } from '../../components/ConflictFilters';
-import ConflictAPIService, { type ConflictFilters as APIFilters } from '../../services/conflict-api';
+import ConflictTrackerFilters, { type AdvancedFilters } from './ConflictTrackerFilters';
+import ConflictAPIService, { type ConflictFilters as APIFilters } from './services/conflict-api';
 import { useConflictWebSocket } from './useConflictWebSocket';
 
 interface ConflictTrackerProps {
@@ -291,7 +291,7 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect 
           {/* Advanced Filters */}
           {activeTab === 'conflicts' && (
             <div style={{ padding: '0 16px 8px' }}>
-              <ConflictFilters
+              <ConflictTrackerFilters
                 filters={advancedFilters}
                 onFiltersChange={setAdvancedFilters}
                 availableConflictTypes={availableConflictTypes}

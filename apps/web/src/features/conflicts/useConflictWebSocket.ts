@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { conflictWebSocketService, type ConflictUpdateMessage } from '../../services/conflict-websocket';
+import { conflictWebSocketService, type ConflictUpdateMessage } from './services/conflict-websocket';
 
 export function useConflictWebSocket(onUpdate: (update: ConflictUpdateMessage) => void) {
   // Keep a stable ref to the latest callback so the socket never needs to reconnect
