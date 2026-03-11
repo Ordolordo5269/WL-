@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useAuth } from '../contexts/AuthContext';
-import { authService } from '../services/auth.service';
+import { useAuth } from '../../contexts/AuthContext';
+import { authService } from '../../services/auth.service';
 import { User, Mail, Save } from 'lucide-react';
 
 export default function ProfileSection() {

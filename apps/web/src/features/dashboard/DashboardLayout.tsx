@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { User, Star, LogOut, Globe, TrendingUp, LayoutDashboard, Swords, Lightbulb } from 'lucide-react';
-import '../styles/dashboard.css';
+import '../../styles/dashboard.css';
 
 interface DashboardLayoutProps {
   children: ReactNode;

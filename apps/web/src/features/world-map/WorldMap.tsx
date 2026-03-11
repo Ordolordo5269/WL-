@@ -2,14 +2,14 @@ import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef, useSta
 import mapboxgl from 'mapbox-gl';
 import { applyFog as appearanceApplyFog, setBaseFeaturesVisibility as appearanceSetBaseFeaturesVisibility, applyPhysicalModeTweaks as appearanceApplyPhysical, MAP_STYLES, type StyleKey, type PlanetPreset } from './map/mapAppearance';
 import { applyTerrain, reapplyAfterStyleChange, loadPersistedTerrain, persistTerrain } from './map/terrain';
-import type { ChoroplethSpec } from '../services/worldbank-gdp';
-import type { ChoroplethSpec as GdpPerCapitaChoroplethSpec } from '../services/worldbank-gdp-per-capita';
+import type { ChoroplethSpec } from './services/worldbank-gdp';
+import type { ChoroplethSpec as GdpPerCapitaChoroplethSpec } from './services/worldbank-gdp-per-capita';
 import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
-import '../styles/geocoder.css';
-import { ConflictVisualization } from '../services/conflict-tracker/conflict-visualization';
-import { AVAILABLE_HISTORY_YEARS, snapToAvailableYear } from '../utils/historical-years';
-import { ConflictDataManager, type ConflictData } from '../services/conflict-tracker/conflict-data-manager';
+import '../../styles/geocoder.css';
+import { ConflictVisualization } from '../../services/conflict-tracker/conflict-visualization';
+import { AVAILABLE_HISTORY_YEARS, snapToAvailableYear } from '../../utils/historical-years';
+import { ConflictDataManager, type ConflictData } from '../../services/conflict-tracker/conflict-data-manager';
 
 // Mapbox token from environment variable (see frontend/.env)
 const _mbToken = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
