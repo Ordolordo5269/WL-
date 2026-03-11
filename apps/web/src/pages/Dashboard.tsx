@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { ProtectedRoute } from '../components/ProtectedRoute';
-import DashboardLayout from '../components/DashboardLayout';
-import ProfileSection from '../components/ProfileSection';
-import FavoritesSection from '../components/FavoritesSection';
-import PredictiveAnalysisSection from '../components/PredictiveAnalysisSection';
+import DashboardLayout from '../features/dashboard/DashboardLayout';
+import ProfileSection from '../features/dashboard/ProfileSection';
+import FavoritesSection from '../features/dashboard/FavoritesSection';
+import PredictiveAnalysisSection from '../features/dashboard/PredictiveAnalysisSection';
 import DashboardStats from '../features/dashboard/DashboardStats';
 import RecentConflicts from '../features/dashboard/RecentConflicts';
 

@@ -3,8 +3,8 @@ import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import type { CountryBasicInfo } from '../services/country-basic-info.service';
 import { countryBasicInfoService } from '../services/country-basic-info.service';
 import { economyService } from '../services/economy-service.ts';
-import { historicalIndicatorsService } from '../../../services/historical-indicators.service';
-import type { TimeSeriesPoint } from '../../../services/historical-indicators.service';
+import { historicalIndicatorsService } from '../../world-map/services/historical-indicators.service';
+import type { TimeSeriesPoint } from '../../world-map/services/historical-indicators.service';
 import { societyService } from '../services/society-service';
 
 interface CountryKPIsProps {

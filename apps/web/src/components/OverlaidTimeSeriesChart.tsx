@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
-import type { TimeSeriesPoint } from '../services/historical-indicators.service';
+import type { TimeSeriesPoint } from '../features/world-map/services/historical-indicators.service';
 
 interface OverlaidTimeSeriesChartProps {
   data1: TimeSeriesPoint[];

@@ -5,7 +5,7 @@ import { useCountryBasicInfo } from '../features/country-sidebar/hooks/useCountr
 import { useEconomyData } from '../features/country-sidebar/hooks/useEconomyData';
 import { useSocietyData } from '../features/country-sidebar/hooks/useSocietyData';
 import { usePoliticsData } from '../features/country-sidebar/hooks/usePoliticsData';
-import { historicalIndicatorsService } from '../services/historical-indicators.service';
+import { historicalIndicatorsService } from '../features/world-map/services/historical-indicators.service';
 import RadarChartRecharts from './RadarChartRecharts';
 import SelectableComparisonChart from './SelectableComparisonChart';
 import type { Country } from './CountrySelector';

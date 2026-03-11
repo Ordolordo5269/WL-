@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Loader2, Maximize2 } from 'lucide-react';
-import type { TimeSeriesPoint } from '../services/historical-indicators.service';
+import type { TimeSeriesPoint } from '../features/world-map/services/historical-indicators.service';
 import FullscreenChartModal from './FullscreenChartModal';
 
 interface TimeSeriesChartRechartsProps {
