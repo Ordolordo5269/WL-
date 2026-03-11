@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import TimeSeriesChartRecharts from './TimeSeriesChartRecharts';
-import { historicalIndicatorsService } from '../features/world-map/services/historical-indicators.service';
-import type { TimeSeriesPoint } from '../features/world-map/services/historical-indicators.service';
-import { societyService } from '../features/country-sidebar/services/society-service';
+import { historicalIndicatorsService } from '../world-map/services/historical-indicators.service';
+import type { TimeSeriesPoint } from '../world-map/services/historical-indicators.service';
+import { societyService } from '../country-sidebar/services/society-service';
 
 interface SelectableComparisonChartProps {
   country1Iso3: string;

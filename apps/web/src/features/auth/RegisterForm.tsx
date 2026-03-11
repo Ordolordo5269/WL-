@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { UserPlus, Mail, Lock, User, AlertCircle, X } from 'lucide-react';
-import '../styles/auth-forms.css';
+import '../../styles/auth-forms.css';
 
 export default function RegisterForm() {
   const [name, setName] = useState('');

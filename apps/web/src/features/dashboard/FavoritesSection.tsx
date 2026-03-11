@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { favoritesService } from '../../services/favorites.service';
-import type { Favorite } from '../../services/favorites.service';
+import { favoritesService } from './favorites.service';
+import type { Favorite } from './favorites.service';
 import { Star, X, Globe } from 'lucide-react';
 
 export default function FavoritesSection() {

@@ -5,8 +5,8 @@ import Country from './pages/Country';
 import Conflicts from './pages/Conflicts';
 import ConflictDetail from './pages/ConflictDetail';
 import Insights from './pages/Insights';
-import LoginForm from './components/LoginForm';
-import RegisterForm from './components/RegisterForm';
+import LoginForm from './features/auth/LoginForm';
+import RegisterForm from './features/auth/RegisterForm';
 
 export default function AppRouter() {
   return (

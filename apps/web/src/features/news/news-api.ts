@@ -1,8 +1,8 @@
 // News API integration service
 // Now proxied through the backend to keep the API key secure
-import type { NewsAPIArticle, NewsArticle } from '../types/index';
+import type { NewsAPIArticle, NewsArticle } from '../../types/index';
 export type { NewsArticle };
-import { ErrorHandler } from '../utils/errorHandler.js';
+import { ErrorHandler } from '../../utils/errorHandler.js';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 

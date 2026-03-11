@@ -7,11 +7,11 @@ import {
   UserMinus, MapPin, Users2, HeartPulse, GraduationCap, Scale, Shield,
   X, ChevronRight, BarChart3, Zap, Target, Award
 } from 'lucide-react';
-import { predictionService } from '../../services/prediction.service';
-import type { PredictionResult, DeepSeekInsight } from '../../services/prediction.service';
-import TimeSeriesChart from '../../components/TimeSeriesChart';
-import CountrySelector from '../../components/CountrySelector';
-import type { Country as CountrySelectorCountry } from '../../components/CountrySelector';
+import { predictionService } from './prediction.service';
+import type { PredictionResult, DeepSeekInsight } from './prediction.service';
+import TimeSeriesChart from '../../components/ui/TimeSeriesChart';
+import CountrySelector from '../../components/ui/CountrySelector';
+import type { Country as CountrySelectorCountry } from '../../components/ui/CountrySelector';
 import '../../styles/predictive-analysis.css';
 
 interface PredictiveAnalysisSectionProps {

@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import WorldMap from './features/world-map/WorldMap';
-import LeftSidebar from './components/LeftSidebar';
+import LeftSidebar from './features/world-map/LeftSidebar';
 import CountrySidebar from './features/country-sidebar/CountrySidebar';
 import ConflictTracker from './features/conflicts/ConflictTracker';
-import CountryCard from './components/CountryCard';
-import MenuToggleButton from './components/MenuToggleButton';
-import CompareCountriesPopup from './components/CompareCountriesPopup';
-import CompareCountriesView from './components/CompareCountriesView';
+import CountryCard from './features/country/CountryCard';
+import MenuToggleButton from './features/world-map/MenuToggleButton';
+import CompareCountriesPopup from './features/compare/CompareCountriesPopup';
+import CompareCountriesView from './features/compare/CompareCountriesView';
 import { conflictsDatabase } from './data/conflicts-data';
 import { useChoropleth } from './features/world-map/useChoropleth';
 import { useMapControls } from './features/world-map/useMapControls';

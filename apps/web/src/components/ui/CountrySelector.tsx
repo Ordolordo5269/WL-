@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, Star, Globe, AlertCircle, Loader2 } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { favoritesService } from '../services/favorites.service';
+import { useAuth } from '../../contexts/AuthContext';
+import { favoritesService } from '../../features/dashboard/favorites.service';
 
 export interface Country {
   iso3: string;

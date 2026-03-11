@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, GitCompare } from 'lucide-react';
-import CountrySelector from './CountrySelector';
-import type { Country } from './CountrySelector';
+import CountrySelector from '../../components/ui/CountrySelector';
+import type { Country } from '../../components/ui/CountrySelector';
 
 interface CompareCountriesPopupProps {
   isOpen: boolean;

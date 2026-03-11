@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, ResponsiveContainer } from 'recharts';
 import { Loader2, Maximize2 } from 'lucide-react';
-import FullscreenChartModal from './FullscreenChartModal';
+import FullscreenChartModal from '../../components/ui/FullscreenChartModal';
 
 interface RadarChartRechartsProps {
   data1: Record<string, number>;

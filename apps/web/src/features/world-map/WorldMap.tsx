@@ -7,9 +7,9 @@ import type { ChoroplethSpec as GdpPerCapitaChoroplethSpec } from './services/wo
 import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
 import '../../styles/geocoder.css';
-import { ConflictVisualization } from '../../services/conflict-tracker/conflict-visualization';
+import { ConflictVisualization } from '../conflicts/services/conflict-tracker/conflict-visualization';
 import { AVAILABLE_HISTORY_YEARS, snapToAvailableYear } from '../../utils/historical-years';
-import { ConflictDataManager, type ConflictData } from '../../services/conflict-tracker/conflict-data-manager';
+import { ConflictDataManager, type ConflictData } from '../conflicts/services/conflict-tracker/conflict-data-manager';
 
 // Mapbox token from environment variable (see frontend/.env)
 const _mbToken = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;

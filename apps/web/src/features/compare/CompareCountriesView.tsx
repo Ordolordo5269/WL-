@@ -1,14 +1,14 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2 } from 'lucide-react';
-import { useCountryBasicInfo } from '../features/country-sidebar/hooks/useCountryBasicInfo';
-import { useEconomyData } from '../features/country-sidebar/hooks/useEconomyData';
-import { useSocietyData } from '../features/country-sidebar/hooks/useSocietyData';
-import { usePoliticsData } from '../features/country-sidebar/hooks/usePoliticsData';
-import { historicalIndicatorsService } from '../features/world-map/services/historical-indicators.service';
+import { useCountryBasicInfo } from '../country-sidebar/hooks/useCountryBasicInfo';
+import { useEconomyData } from '../country-sidebar/hooks/useEconomyData';
+import { useSocietyData } from '../country-sidebar/hooks/useSocietyData';
+import { usePoliticsData } from '../country-sidebar/hooks/usePoliticsData';
+import { historicalIndicatorsService } from '../world-map/services/historical-indicators.service';
 import RadarChartRecharts from './RadarChartRecharts';
 import SelectableComparisonChart from './SelectableComparisonChart';
-import type { Country } from './CountrySelector';
+import type { Country } from '../../components/ui/CountrySelector';
 
 interface CompareCountriesViewProps {
   isOpen: boolean;

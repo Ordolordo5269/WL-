@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ProtectedRoute } from '../components/ProtectedRoute';
+import { ProtectedRoute } from '../features/auth/ProtectedRoute';
 import DashboardLayout from '../features/dashboard/DashboardLayout';
 import ProfileSection from '../features/dashboard/ProfileSection';
 import FavoritesSection from '../features/dashboard/FavoritesSection';

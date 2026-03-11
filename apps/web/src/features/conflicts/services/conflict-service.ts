@@ -1,7 +1,7 @@
 // Conflict Tracker Service
 // This file contains all the business logic and data operations for the conflict tracker
 
-import type { Conflict } from '../data/conflicts-data';
+import type { Conflict } from '../../../data/conflicts-data';
 import {
   conflictsDatabase,
   getConflictsByRegion,
@@ -9,10 +9,10 @@ import {
   getAllRegions,
   getConflictById,
   getNewsForConflict
-} from '../data/conflicts-data';
-import { ErrorHandler } from '../utils/errorHandler.js';
-import NewsAPIService from './news-api';
-import type { NewsArticle } from './news-api';
+} from '../../../data/conflicts-data';
+import { ErrorHandler } from '../../../utils/errorHandler.js';
+import NewsAPIService from '../../news/news-api';
+import type { NewsArticle } from '../../news/news-api';
 import ConflictAPIService from './conflict-api';
 
 // Cache for API conflicts to avoid repeated calls
