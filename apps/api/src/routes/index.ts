@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { dataLimiter } from '../middleware/rate-limit.js';
 
 // Módulos CQS (nuevos desde el inicio)
 import conflictsRoutes from './conflicts.routes';
@@ -34,8 +35,8 @@ router.use('/osint', osintRoutes);
 router.use('/insights', insightsRoutes);
 router.use('/dashboard', dashboardRoutes);
 
-// Módulos migrados
-router.use('/countries', countryRoutes);
+// Módulos migrados — country/geo data get a dedicated high-volume limiter
+router.use('/countries', dataLimiter, countryRoutes);
 router.use('/economy', economyRoutes);
 router.use('/defense', defenseRoutes);
 router.use('/politics', politicsRoutes);
@@ -43,7 +44,7 @@ router.use('/society', societyRoutes);
 router.use('/technology', technologyRoutes);
 router.use('/international', internationalRoutes);
 router.use('/indicators', indicatorRoutes);
-router.use('/geo', geoRoutes);
+router.use('/geo', dataLimiter, geoRoutes);
 router.use('/history', historyRoutes);
 router.use('/natural', naturalRoutes);
 router.use('/prediction', predictionRoutes);
