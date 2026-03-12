@@ -12,8 +12,10 @@ interface LeftSidebarProps {
   onClose: () => void;
   onCenterMap?: (coordinates: { lat: number; lng: number }) => void;
   onOpenConflictTracker?: () => void;
-  onSetBaseMapStyle?: (next: 'night' | 'light' | 'outdoors') => void;
-  onSetPlanetPreset?: (preset: 'default' | 'nebula' | 'sunset' | 'dawn') => void;
+  onSetBaseMapStyle?: (next: 'night' | 'light' | 'outdoors' | 'dark' | 'satellite' | 'satellite-streets') => void;
+  onSetPlanetPreset?: (preset: 'default' | 'nebula' | 'sunset' | 'dawn' | 'arctic' | 'volcanic' | 'emerald' | 'midnight' | 'aurora' | 'sahara' | 'storm' | 'crimson' | 'rose' | 'void' | 'coral' | 'violet') => void;
+  onSetStarIntensity?: (v: number) => void;
+  onSetSpacePreset?: (preset: 'void' | 'deep' | 'nebula' | 'galaxy' | 'crimson') => void;
   // Terrain removido
   onSetTerrain?: (v: boolean) => void;
   onSetTerrainExaggeration?: (n: number) => void;
@@ -78,7 +80,7 @@ interface MenuItem {
   iconBg?: string;
 }
 
-export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictTracker, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, onToggleGdpLayer, gdpEnabled = false, gdpLegend = [], onToggleGdpPerCapitaLayer, gdpPerCapitaEnabled = false, gdpPerCapitaLegend = [], onToggleInflationLayer, inflationEnabled = false, inflationLegend = [], onToggleGiniLayer, giniEnabled = false, giniLegend = [], onToggleExportsLayer, exportsEnabled = false, exportsLegend = [], onToggleLifeExpectancyLayer, lifeExpectancyEnabled = false, lifeExpectancyLegend = [], onToggleMilitaryExpenditureLayer, militaryExpenditureEnabled = false, militaryExpenditureLegend = [], onToggleDemocracyIndexLayer, democracyIndexEnabled = false, democracyIndexLegend = [], onToggleTradeGdpLayer, tradeGdpEnabled = false, tradeGdpLegend = [], onToggleHistoryMode, onSetHistoryYear, historyEnabled: _historyEnabled = false, historyYear = 1880, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, naturalLod = 'auto', onSetNaturalLod }: LeftSidebarProps) {
+export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictTracker, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, onToggleGdpLayer, gdpEnabled = false, gdpLegend = [], onToggleGdpPerCapitaLayer, gdpPerCapitaEnabled = false, gdpPerCapitaLegend = [], onToggleInflationLayer, inflationEnabled = false, inflationLegend = [], onToggleGiniLayer, giniEnabled = false, giniLegend = [], onToggleExportsLayer, exportsEnabled = false, exportsLegend = [], onToggleLifeExpectancyLayer, lifeExpectancyEnabled = false, lifeExpectancyLegend = [], onToggleMilitaryExpenditureLayer, militaryExpenditureEnabled = false, militaryExpenditureLegend = [], onToggleDemocracyIndexLayer, democracyIndexEnabled = false, democracyIndexLegend = [], onToggleTradeGdpLayer, tradeGdpEnabled = false, tradeGdpLegend = [], onToggleHistoryMode, onSetHistoryYear, historyEnabled: _historyEnabled = false, historyYear = 1880, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, naturalLod = 'auto', onSetNaturalLod }: LeftSidebarProps) {
   const [activeItem, setActiveItem] = useState<string>('home');
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
@@ -86,6 +88,7 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
   const [terrainEnabled, setTerrainEnabled] = useState<boolean>(false);
   const [terrainEx, setTerrainEx] = useState<number>(1);
   const [autoRotate, setAutoRotate] = useState<boolean>(false);
+  const [starIntensity, setStarIntensityLocal] = useState<number>(0.6);
   const yearScrollRef = useRef<HTMLDivElement | null>(null);
   const wheelRafRef = useRef<number | null>(null);
   const [_orgQuery, _setOrgQuery] = useState<string>('');
@@ -726,6 +729,9 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
                               <button className="settings-chip" onClick={() => onSetBaseMapStyle?.('night')}>Night</button>
                               <button className="settings-chip" onClick={() => onSetBaseMapStyle?.('light')}>Light</button>
                               <button className="settings-chip" onClick={() => onSetBaseMapStyle?.('outdoors')}>Outdoors</button>
+                              <button className="settings-chip" onClick={() => onSetBaseMapStyle?.('dark')}>Dark</button>
+                              <button className="settings-chip" onClick={() => onSetBaseMapStyle?.('satellite')}>Satellite</button>
+                              <button className="settings-chip" onClick={() => onSetBaseMapStyle?.('satellite-streets')}>Sat+Streets</button>
                             </div>
                           </div>
                           
@@ -737,7 +743,7 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
                             </div>
                             <div className="settings-group-description">Atmospheric and lighting mood for the globe.</div>
                             <div className="settings-row settings-row-2col">
-                              {['default','nebula','sunset','dawn'].map(preset => (
+                              {['default','nebula','sunset','dawn','arctic','volcanic','emerald','midnight','aurora','sahara','storm','crimson','rose','void','coral','violet'].map(preset => (
                                 <button
                                   key={preset}
                                   className="settings-chip"
@@ -747,6 +753,44 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
                             </div>
                           </div>
                           
+                          {/* Space */}
+                          <div className="settings-group">
+                            <div className="settings-group-header">
+                              <div className="settings-group-title">Space</div>
+                              <div className="settings-group-meta">Background</div>
+                            </div>
+                            <div className="settings-group-description">Space background color and star brightness.</div>
+                            <div className="settings-row settings-row-2col">
+                              {(['void','deep','nebula','galaxy','crimson'] as const).map(preset => (
+                                <button
+                                  key={preset}
+                                  className="settings-chip"
+                                  onClick={() => onSetSpacePreset?.(preset)}
+                                >{preset[0].toUpperCase() + preset.slice(1)}</button>
+                              ))}
+                            </div>
+                            <div className="settings-slider-block">
+                              <div className="settings-slider-header">
+                                <span>Star intensity</span>
+                                <span className="settings-slider-value">{starIntensity.toFixed(2)}</span>
+                              </div>
+                              <input
+                                type="range"
+                                min={0}
+                                max={1}
+                                step={0.01}
+                                value={starIntensity}
+                                onChange={(e) => {
+                                  const v = Number(e.target.value);
+                                  setStarIntensityLocal(v);
+                                  onSetStarIntensity?.(v);
+                                }}
+                                className="settings-slider"
+                                aria-label="Star intensity"
+                              />
+                            </div>
+                          </div>
+
                           {/* Terrain */}
                           <div className="settings-group">
                             <div className="settings-group-header">

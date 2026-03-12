@@ -262,6 +262,8 @@ function WorldMapView() {
         onSetNaturalLod={mapControls.handleSetNaturalLod}
         onSetBaseMapStyle={mapControls.handleSetBaseMapStyle}
         onSetPlanetPreset={mapControls.handleSetPlanetPreset}
+        onSetStarIntensity={mapControls.handleSetStarIntensity}
+        onSetSpacePreset={mapControls.handleSetSpacePreset}
         onSetTerrain={mapControls.handleSetTerrain}
         onSetTerrainExaggeration={mapControls.handleSetTerrainExaggeration}
         onSetBuildings3D={mapControls.handleSetBuildings3D}

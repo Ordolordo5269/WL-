@@ -11,12 +11,20 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
   const [peaksEnabled, setPeaksEnabled] = useState(false);
   const [naturalLod, setNaturalLod] = useState<'auto' | 'low' | 'med' | 'high'>('auto');
 
-  const handleSetBaseMapStyle = useCallback((next: 'night' | 'light' | 'outdoors') => {
+  const handleSetBaseMapStyle = useCallback((next: 'night' | 'light' | 'outdoors' | 'dark' | 'satellite' | 'satellite-streets') => {
     mapRef.current?.setBaseMapStyle?.(next);
   }, []);
 
-  const handleSetPlanetPreset = useCallback((preset: 'default' | 'nebula' | 'sunset' | 'dawn') => {
+  const handleSetPlanetPreset = useCallback((preset: 'default' | 'nebula' | 'sunset' | 'dawn' | 'arctic' | 'volcanic' | 'emerald' | 'midnight' | 'aurora' | 'sahara' | 'storm' | 'crimson' | 'rose' | 'void' | 'coral' | 'violet') => {
     mapRef.current?.setPlanetPreset?.(preset);
+  }, []);
+
+  const handleSetStarIntensity = useCallback((v: number) => {
+    mapRef.current?.setStarIntensity?.(v);
+  }, []);
+
+  const handleSetSpacePreset = useCallback((preset: 'void' | 'deep' | 'nebula' | 'galaxy' | 'crimson') => {
+    mapRef.current?.setSpacePreset?.(preset);
   }, []);
 
   const handleSetTerrain = useCallback((v: boolean) => {
@@ -87,6 +95,7 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
     historyEnabled, historyYear,
     riversEnabled, mountainRangesEnabled, peaksEnabled, naturalLod,
     handleSetBaseMapStyle, handleSetPlanetPreset,
+    handleSetStarIntensity, handleSetSpacePreset,
     handleSetTerrain, handleSetTerrainExaggeration,
     handleSetBuildings3D, handleSetMinimalMode,
     handleSetAutoRotate, handleSetRotateSpeed,

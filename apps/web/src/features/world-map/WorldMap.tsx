@@ -1,6 +1,6 @@
 import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
-import { applyFog as appearanceApplyFog, setBaseFeaturesVisibility as appearanceSetBaseFeaturesVisibility, applyPhysicalModeTweaks as appearanceApplyPhysical, MAP_STYLES, type StyleKey, type PlanetPreset } from './map/mapAppearance';
+import { applyFog as appearanceApplyFog, setBaseFeaturesVisibility as appearanceSetBaseFeaturesVisibility, applyPhysicalModeTweaks as appearanceApplyPhysical, MAP_STYLES, type StyleKey, type PlanetPreset, applyStarIntensity as appearanceApplyStarIntensity, applySpacePreset as appearanceApplySpacePreset, type SpacePreset } from './map/mapAppearance';
 import { applyTerrain, reapplyAfterStyleChange, loadPersistedTerrain, persistTerrain } from './map/terrain';
 import type { ChoroplethSpec } from './services/worldbank-gdp';
 import type { ChoroplethSpec as GdpPerCapitaChoroplethSpec } from './services/worldbank-gdp-per-capita';
@@ -112,6 +112,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   
   // Presets de planeta (atmósfera)
   const [planetPreset, setPlanetPreset] = useState<PlanetPreset>('default');
+  const [starIntensity, setStarIntensityState] = useState<number>(0.6);
   // Ocultar nombres/carreteras/fronteras
   const [minimalModeOn, setMinimalModeOn] = useState(false);
   // Natural layers: state refs
@@ -1082,6 +1083,14 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     setPlanetPreset: (preset: PlanetPreset) => {
       setPlanetPreset(preset);
       applyFog(preset);
+    },
+    setStarIntensity: (v: number) => {
+      const clamped = Math.min(1, Math.max(0, v));
+      setStarIntensityState(clamped);
+      if (mapRef.current) appearanceApplyStarIntensity(mapRef.current, clamped);
+    },
+    setSpacePreset: (preset: SpacePreset) => {
+      if (mapRef.current) appearanceApplySpacePreset(mapRef.current, preset);
     },
     // Terrain API
     setTerrainEnabled: (v: boolean) => {
