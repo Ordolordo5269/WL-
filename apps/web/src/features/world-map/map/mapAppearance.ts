@@ -19,22 +19,22 @@ export function applyFog(map: mapboxgl.Map, preset: PlanetPreset) {
     nebula: {
       color: 'rgb(180, 200, 255)',
       'high-color': 'rgb(120, 80, 200)',
-      'horizon-blend': 0,
-      'space-color': 'rgb(11, 11, 25)',
+      'horizon-blend': 0.045,
+      'space-color': 'rgb(8, 10, 20)',
       'star-intensity': 0.8
     },
     sunset: {
       color: 'rgb(240, 190, 150)',
       'high-color': 'rgb(200, 90, 60)',
-      'horizon-blend': 0,
-      'space-color': 'rgb(11, 11, 25)',
+      'horizon-blend': 0.06,
+      'space-color': 'rgb(14, 8, 10)',
       'star-intensity': 0.5
     },
     dawn: {
       color: 'rgb(210, 225, 240)',
       'high-color': 'rgb(120, 170, 230)',
-      'horizon-blend': 0,
-      'space-color': 'rgb(11, 11, 25)',
+      'horizon-blend': 0.035,
+      'space-color': 'rgb(10, 12, 22)',
       'star-intensity': 0.7
     }
   };
