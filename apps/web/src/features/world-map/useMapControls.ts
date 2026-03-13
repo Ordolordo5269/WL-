@@ -1,14 +1,29 @@
 import { useState, useCallback } from 'react';
 import type { MapRefType } from './types';
 
+const NL_KEY = 'wl-natural-layers';
+function getNL(key: string): boolean {
+  try { return JSON.parse(localStorage.getItem(NL_KEY) || '{}')[key] ?? false; } catch { return false; }
+}
+function saveNL(key: string, value: boolean) {
+  try {
+    const prev = JSON.parse(localStorage.getItem(NL_KEY) || '{}');
+    localStorage.setItem(NL_KEY, JSON.stringify({ ...prev, [key]: value }));
+  } catch {}
+}
+
 export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
   const [historyEnabled, setHistoryEnabled] = useState(false);
   const [historyYear, setHistoryYear] = useState(1880);
   const [_orgIsoFilter, setOrgIsoFilter] = useState<string[]>([]);
   const [_orgColor, setOrgColor] = useState<string | null>(null);
-  const [riversEnabled, setRiversEnabled] = useState(false);
-  const [mountainRangesEnabled, setMountainRangesEnabled] = useState(false);
-  const [peaksEnabled, setPeaksEnabled] = useState(false);
+  const [riversEnabled, setRiversEnabled] = useState(() => getNL('rivers'));
+  const [mountainRangesEnabled, setMountainRangesEnabled] = useState(() => getNL('ranges'));
+  const [peaksEnabled, setPeaksEnabled] = useState(() => getNL('peaks'));
+  const [lakesEnabled, setLakesEnabled] = useState(() => getNL('lakes'));
+  const [volcanoesEnabled, setVolcanoesEnabled] = useState(() => getNL('volcanoes'));
+  const [faultLinesEnabled, setFaultLinesEnabled] = useState(() => getNL('fault-lines'));
+  const [desertsEnabled, setDesertsEnabled] = useState(() => getNL('deserts'));
   const [naturalLod, setNaturalLod] = useState<'auto' | 'low' | 'med' | 'high'>('auto');
 
   const handleSetBaseMapStyle = useCallback((next: 'night' | 'light' | 'outdoors' | 'dark' | 'satellite' | 'satellite-streets') => {
@@ -53,17 +68,44 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
 
   const handleToggleRiversLayer = useCallback((enabled: boolean) => {
     setRiversEnabled(enabled);
+    saveNL('rivers', enabled);
     (document as any).__wl_map_comp?.setNaturalLayerEnabled?.('rivers', enabled);
   }, []);
 
   const handleToggleMountainRangesLayer = useCallback((enabled: boolean) => {
     setMountainRangesEnabled(enabled);
+    saveNL('ranges', enabled);
     (document as any).__wl_map_comp?.setNaturalLayerEnabled?.('ranges', enabled);
   }, []);
 
   const handleTogglePeaksLayer = useCallback((enabled: boolean) => {
     setPeaksEnabled(enabled);
+    saveNL('peaks', enabled);
     (document as any).__wl_map_comp?.setNaturalLayerEnabled?.('peaks', enabled);
+  }, []);
+
+  const handleToggleLakesLayer = useCallback((enabled: boolean) => {
+    setLakesEnabled(enabled);
+    saveNL('lakes', enabled);
+    (document as any).__wl_map_comp?.setNaturalLayerEnabled?.('lakes', enabled);
+  }, []);
+
+  const handleToggleVolcanoesLayer = useCallback((enabled: boolean) => {
+    setVolcanoesEnabled(enabled);
+    saveNL('volcanoes', enabled);
+    (document as any).__wl_map_comp?.setNaturalLayerEnabled?.('volcanoes', enabled);
+  }, []);
+
+  const handleToggleFaultLinesLayer = useCallback((enabled: boolean) => {
+    setFaultLinesEnabled(enabled);
+    saveNL('fault-lines', enabled);
+    (document as any).__wl_map_comp?.setNaturalLayerEnabled?.('fault-lines', enabled);
+  }, []);
+
+  const handleToggleDesertsLayer = useCallback((enabled: boolean) => {
+    setDesertsEnabled(enabled);
+    saveNL('deserts', enabled);
+    (document as any).__wl_map_comp?.setNaturalLayerEnabled?.('deserts', enabled);
   }, []);
 
   const handleSetNaturalLod = useCallback((lod: 'auto' | 'low' | 'med' | 'high') => {
@@ -93,7 +135,9 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
 
   return {
     historyEnabled, historyYear,
-    riversEnabled, mountainRangesEnabled, peaksEnabled, naturalLod,
+    riversEnabled, mountainRangesEnabled, peaksEnabled,
+    lakesEnabled, volcanoesEnabled, faultLinesEnabled, desertsEnabled,
+    naturalLod,
     handleSetBaseMapStyle, handleSetPlanetPreset,
     handleSetStarIntensity, handleSetSpacePreset,
     handleSetTerrain, handleSetTerrainExaggeration,
@@ -101,6 +145,8 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
     handleSetAutoRotate, handleSetRotateSpeed,
     handleToggleRiversLayer, handleToggleMountainRangesLayer,
     handleTogglePeaksLayer, handleSetNaturalLod,
+    handleToggleLakesLayer, handleToggleVolcanoesLayer,
+    handleToggleFaultLinesLayer, handleToggleDesertsLayer,
     handleSetOrganizationIsoFilter,
     handleToggleHistoryMode, handleSetHistoryYear,
   };

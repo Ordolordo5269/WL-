@@ -1,6 +1,6 @@
 import { prisma } from '../../db/client';
 
-type NaturalType = 'rivers' | 'peaks' | 'mountain-ranges';
+type NaturalType = 'rivers' | 'peaks' | 'mountain-ranges' | 'lakes' | 'volcanoes' | 'fault-lines' | 'deserts';
 type NaturalLod = 'auto' | 'low' | 'med' | 'high';
 
 export interface GetNaturalParams {
@@ -80,6 +80,10 @@ function normalizeType(t: string): NaturalType {
   if (v === 'rivers') return 'rivers';
   if (v === 'peaks') return 'peaks';
   if (v === 'mountain-ranges' || v === 'ranges' || v === 'mountain_ranges') return 'mountain-ranges';
+  if (v === 'lakes') return 'lakes';
+  if (v === 'volcanoes') return 'volcanoes';
+  if (v === 'fault-lines' || v === 'fault_lines' || v === 'faultlines') return 'fault-lines';
+  if (v === 'deserts') return 'deserts';
   return 'rivers';
 }
 
@@ -89,9 +93,13 @@ function resolveLod(lod?: NaturalLod): Exclude<NaturalLod, 'auto'> {
   return 'med';
 }
 
-function toDbFeatureType(t: NaturalType): 'RIVER' | 'MOUNTAIN_RANGE' | 'PEAK' {
+function toDbFeatureType(t: NaturalType): 'RIVER' | 'MOUNTAIN_RANGE' | 'PEAK' | 'LAKE' | 'VOLCANO' | 'FAULT_LINE' | 'DESERT' {
   if (t === 'rivers') return 'RIVER';
   if (t === 'peaks') return 'PEAK';
+  if (t === 'lakes') return 'LAKE';
+  if (t === 'volcanoes') return 'VOLCANO';
+  if (t === 'fault-lines') return 'FAULT_LINE';
+  if (t === 'deserts') return 'DESERT';
   return 'MOUNTAIN_RANGE';
 }
 
@@ -99,6 +107,10 @@ function fromDbFeatureType(t: string): NaturalType {
   const v = String(t || '').toUpperCase();
   if (v === 'RIVER') return 'rivers';
   if (v === 'PEAK') return 'peaks';
+  if (v === 'LAKE') return 'lakes';
+  if (v === 'VOLCANO') return 'volcanoes';
+  if (v === 'FAULT_LINE') return 'fault-lines';
+  if (v === 'DESERT') return 'deserts';
   return 'mountain-ranges';
 }
 

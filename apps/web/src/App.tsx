@@ -258,6 +258,14 @@ function WorldMapView() {
         mountainRangesEnabled={mapControls.mountainRangesEnabled}
         onTogglePeaksLayer={mapControls.handleTogglePeaksLayer}
         peaksEnabled={mapControls.peaksEnabled}
+        onToggleLakesLayer={mapControls.handleToggleLakesLayer}
+        lakesEnabled={mapControls.lakesEnabled}
+        onToggleVolcanoesLayer={mapControls.handleToggleVolcanoesLayer}
+        volcanoesEnabled={mapControls.volcanoesEnabled}
+        onToggleFaultLinesLayer={mapControls.handleToggleFaultLinesLayer}
+        faultLinesEnabled={mapControls.faultLinesEnabled}
+        onToggleDesertsLayer={mapControls.handleToggleDesertsLayer}
+        desertsEnabled={mapControls.desertsEnabled}
         naturalLod={mapControls.naturalLod}
         onSetNaturalLod={mapControls.handleSetNaturalLod}
         onSetBaseMapStyle={mapControls.handleSetBaseMapStyle}

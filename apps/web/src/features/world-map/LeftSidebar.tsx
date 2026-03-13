@@ -65,6 +65,14 @@ interface LeftSidebarProps {
   mountainRangesEnabled?: boolean;
   onTogglePeaksLayer?: (enabled: boolean) => void;
   peaksEnabled?: boolean;
+  onToggleLakesLayer?: (enabled: boolean) => void;
+  lakesEnabled?: boolean;
+  onToggleVolcanoesLayer?: (enabled: boolean) => void;
+  volcanoesEnabled?: boolean;
+  onToggleFaultLinesLayer?: (enabled: boolean) => void;
+  faultLinesEnabled?: boolean;
+  onToggleDesertsLayer?: (enabled: boolean) => void;
+  desertsEnabled?: boolean;
   naturalLod?: 'auto' | 'low' | 'med' | 'high';
   onSetNaturalLod?: (lod: 'auto' | 'low' | 'med' | 'high') => void;
   countries?: Array<{ iso3: string; name: string; flagUrl?: string }>;
@@ -80,7 +88,7 @@ interface MenuItem {
   iconBg?: string;
 }
 
-export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictTracker, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, onToggleGdpLayer, gdpEnabled = false, gdpLegend = [], onToggleGdpPerCapitaLayer, gdpPerCapitaEnabled = false, gdpPerCapitaLegend = [], onToggleInflationLayer, inflationEnabled = false, inflationLegend = [], onToggleGiniLayer, giniEnabled = false, giniLegend = [], onToggleExportsLayer, exportsEnabled = false, exportsLegend = [], onToggleLifeExpectancyLayer, lifeExpectancyEnabled = false, lifeExpectancyLegend = [], onToggleMilitaryExpenditureLayer, militaryExpenditureEnabled = false, militaryExpenditureLegend = [], onToggleDemocracyIndexLayer, democracyIndexEnabled = false, democracyIndexLegend = [], onToggleTradeGdpLayer, tradeGdpEnabled = false, tradeGdpLegend = [], onToggleHistoryMode, onSetHistoryYear, historyEnabled: _historyEnabled = false, historyYear = 1880, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, naturalLod = 'auto', onSetNaturalLod }: LeftSidebarProps) {
+export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictTracker, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, onToggleGdpLayer, gdpEnabled = false, gdpLegend = [], onToggleGdpPerCapitaLayer, gdpPerCapitaEnabled = false, gdpPerCapitaLegend = [], onToggleInflationLayer, inflationEnabled = false, inflationLegend = [], onToggleGiniLayer, giniEnabled = false, giniLegend = [], onToggleExportsLayer, exportsEnabled = false, exportsLegend = [], onToggleLifeExpectancyLayer, lifeExpectancyEnabled = false, lifeExpectancyLegend = [], onToggleMilitaryExpenditureLayer, militaryExpenditureEnabled = false, militaryExpenditureLegend = [], onToggleDemocracyIndexLayer, democracyIndexEnabled = false, democracyIndexLegend = [], onToggleTradeGdpLayer, tradeGdpEnabled = false, tradeGdpLegend = [], onToggleHistoryMode, onSetHistoryYear, historyEnabled: _historyEnabled = false, historyYear = 1880, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, naturalLod = 'auto', onSetNaturalLod }: LeftSidebarProps) {
   const [activeItem, setActiveItem] = useState<string>('home');
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
@@ -321,6 +329,50 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
                                 </div>
                               </div>
                               <div className="stats-subtitle">Major elevation points with modern markers.</div>
+                            </div>
+                            {/* Lakes card */}
+                            <div className="section-card" style={{ marginBottom: 0 }}>
+                              <div className="stats-header" style={{ marginBottom: 6 }}>
+                                <div className="stats-title">Lakes</div>
+                                <div className="chip-group">
+                                  <button className={`chip ${lakesEnabled ? 'active' : ''}`} onClick={() => onToggleLakesLayer?.(true)} aria-pressed={lakesEnabled} aria-label="Show lakes">Show</button>
+                                  <button className={`chip ${!lakesEnabled ? 'active' : ''}`} onClick={() => onToggleLakesLayer?.(false)} aria-pressed={!lakesEnabled} aria-label="Hide lakes">Hide</button>
+                                </div>
+                              </div>
+                              <div className="stats-subtitle">Major lakes and inland water bodies.</div>
+                            </div>
+                            {/* Volcanoes card */}
+                            <div className="section-card" style={{ marginBottom: 0 }}>
+                              <div className="stats-header" style={{ marginBottom: 6 }}>
+                                <div className="stats-title">Volcanoes</div>
+                                <div className="chip-group">
+                                  <button className={`chip ${volcanoesEnabled ? 'active' : ''}`} onClick={() => onToggleVolcanoesLayer?.(true)} aria-pressed={volcanoesEnabled} aria-label="Show volcanoes">Show</button>
+                                  <button className={`chip ${!volcanoesEnabled ? 'active' : ''}`} onClick={() => onToggleVolcanoesLayer?.(false)} aria-pressed={!volcanoesEnabled} aria-label="Hide volcanoes">Hide</button>
+                                </div>
+                              </div>
+                              <div className="stats-subtitle">Holocene volcanoes (Smithsonian GVP).</div>
+                            </div>
+                            {/* Fault Lines card */}
+                            <div className="section-card" style={{ marginBottom: 0 }}>
+                              <div className="stats-header" style={{ marginBottom: 6 }}>
+                                <div className="stats-title">Fault Lines</div>
+                                <div className="chip-group">
+                                  <button className={`chip ${faultLinesEnabled ? 'active' : ''}`} onClick={() => onToggleFaultLinesLayer?.(true)} aria-pressed={faultLinesEnabled} aria-label="Show fault lines">Show</button>
+                                  <button className={`chip ${!faultLinesEnabled ? 'active' : ''}`} onClick={() => onToggleFaultLinesLayer?.(false)} aria-pressed={!faultLinesEnabled} aria-label="Hide fault lines">Hide</button>
+                                </div>
+                              </div>
+                              <div className="stats-subtitle">Tectonic plate boundaries worldwide.</div>
+                            </div>
+                            {/* Deserts card */}
+                            <div className="section-card" style={{ marginBottom: 0 }}>
+                              <div className="stats-header" style={{ marginBottom: 6 }}>
+                                <div className="stats-title">Deserts</div>
+                                <div className="chip-group">
+                                  <button className={`chip ${desertsEnabled ? 'active' : ''}`} onClick={() => onToggleDesertsLayer?.(true)} aria-pressed={desertsEnabled} aria-label="Show deserts">Show</button>
+                                  <button className={`chip ${!desertsEnabled ? 'active' : ''}`} onClick={() => onToggleDesertsLayer?.(false)} aria-pressed={!desertsEnabled} aria-label="Hide deserts">Hide</button>
+                                </div>
+                              </div>
+                              <div className="stats-subtitle">Major desert regions by Natural Earth.</div>
                             </div>
                           </div>
                           {/* Divider */}

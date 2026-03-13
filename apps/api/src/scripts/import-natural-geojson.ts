@@ -23,7 +23,7 @@ interface FeatureCollection {
 
 const prisma = new PrismaClient();
 type NaturalLodStr = 'LOW' | 'MED' | 'HIGH';
-type NaturalFeatureTypeStr = 'RIVER' | 'MOUNTAIN_RANGE' | 'PEAK';
+type NaturalFeatureTypeStr = 'RIVER' | 'MOUNTAIN_RANGE' | 'PEAK' | 'LAKE' | 'VOLCANO' | 'FAULT_LINE' | 'DESERT';
 
 function normalizeName(s: string | null | undefined): string | null {
   if (!s || typeof s !== 'string') return null;
@@ -86,9 +86,13 @@ function toLod(lod: 'low' | 'med' | 'high'): NaturalLodStr {
   return 'HIGH';
 }
 
-function toType(folder: 'rivers' | 'mountain_ranges' | 'peaks'): NaturalFeatureTypeStr {
+function toType(folder: 'rivers' | 'mountain_ranges' | 'peaks' | 'lakes' | 'volcanoes' | 'fault_lines' | 'deserts'): NaturalFeatureTypeStr {
   if (folder === 'rivers') return 'RIVER';
   if (folder === 'mountain_ranges') return 'MOUNTAIN_RANGE';
+  if (folder === 'lakes') return 'LAKE';
+  if (folder === 'volcanoes') return 'VOLCANO';
+  if (folder === 'fault_lines') return 'FAULT_LINE';
+  if (folder === 'deserts') return 'DESERT';
   return 'PEAK';
 }
 
@@ -100,16 +104,20 @@ function buildSlug(type: NaturalFeatureTypeStr, name: string | null, geom: GeoJS
   return `${type.toLowerCase()}:${n}:${ry}_${rx}`;
 }
 
-async function importCollection(folder: 'rivers' | 'mountain_ranges' | 'peaks', lod: 'low' | 'med' | 'high', filePath: string) {
+async function importCollection(folder: 'rivers' | 'mountain_ranges' | 'peaks' | 'lakes' | 'volcanoes' | 'fault_lines' | 'deserts', lod: 'low' | 'med' | 'high', filePath: string) {
   const data = JSON.parse(await fs.readFile(filePath, 'utf-8')) as FeatureCollection;
   const type = toType(folder);
   const lodEnum = toLod(lod);
-  const sourceLabel =
-    folder === 'rivers'
-      ? `natural-earth rivers ${lod}`
-      : folder === 'mountain_ranges'
-      ? `natural-earth ranges ${lod}`
-      : `natural-earth peaks ${lod}`;
+  const sourceLabelMap: Record<string, string> = {
+    rivers: `natural-earth rivers ${lod}`,
+    mountain_ranges: `natural-earth ranges ${lod}`,
+    peaks: `natural-earth peaks ${lod}`,
+    lakes: `natural-earth lakes ${lod}`,
+    volcanoes: `smithsonian volcanoes ${lod}`,
+    fault_lines: `tectonicplates boundaries ${lod}`,
+    deserts: `natural-earth deserts ${lod}`,
+  };
+  const sourceLabel = sourceLabelMap[folder] ?? `${folder} ${lod}`;
 
   let created = 0;
   let updated = 0;
@@ -167,6 +175,11 @@ async function main() {
   try {
     await prisma.$executeRawUnsafe(`CREATE TYPE "NaturalFeatureType" AS ENUM ('RIVER','MOUNTAIN_RANGE','PEAK');`);
   } catch {}
+  // Add new enum values if not present
+  try { await prisma.$executeRawUnsafe(`ALTER TYPE "NaturalFeatureType" ADD VALUE IF NOT EXISTS 'LAKE'`); } catch {}
+  try { await prisma.$executeRawUnsafe(`ALTER TYPE "NaturalFeatureType" ADD VALUE IF NOT EXISTS 'VOLCANO'`); } catch {}
+  try { await prisma.$executeRawUnsafe(`ALTER TYPE "NaturalFeatureType" ADD VALUE IF NOT EXISTS 'FAULT_LINE'`); } catch {}
+  try { await prisma.$executeRawUnsafe(`ALTER TYPE "NaturalFeatureType" ADD VALUE IF NOT EXISTS 'DESERT'`); } catch {}
   try {
     await prisma.$executeRawUnsafe(`CREATE TYPE "NaturalLod" AS ENUM ('LOW','MED','HIGH');`);
   } catch {}
@@ -209,7 +222,7 @@ async function main() {
   // Resolve paths relative to repo root
   const repoRoot = path.resolve(__dirname, '../../..');
   const base = path.join(repoRoot, 'web', 'public', 'natural');
-  const specs: Array<{ folder: 'rivers' | 'mountain_ranges' | 'peaks'; lod: 'low' | 'med' | 'high' }> = [
+  const specs: Array<{ folder: 'rivers' | 'mountain_ranges' | 'peaks' | 'lakes' | 'volcanoes' | 'fault_lines' | 'deserts'; lod: 'low' | 'med' | 'high' }> = [
     { folder: 'rivers', lod: 'low' },
     { folder: 'rivers', lod: 'med' },
     { folder: 'rivers', lod: 'high' },
@@ -218,7 +231,19 @@ async function main() {
     { folder: 'mountain_ranges', lod: 'high' },
     { folder: 'peaks', lod: 'low' },
     { folder: 'peaks', lod: 'med' },
-    { folder: 'peaks', lod: 'high' }
+    { folder: 'peaks', lod: 'high' },
+    { folder: 'lakes', lod: 'low' },
+    { folder: 'lakes', lod: 'med' },
+    { folder: 'lakes', lod: 'high' },
+    { folder: 'volcanoes', lod: 'low' },
+    { folder: 'volcanoes', lod: 'med' },
+    { folder: 'volcanoes', lod: 'high' },
+    { folder: 'fault_lines', lod: 'low' },
+    { folder: 'fault_lines', lod: 'med' },
+    { folder: 'fault_lines', lod: 'high' },
+    { folder: 'deserts', lod: 'low' },
+    { folder: 'deserts', lod: 'med' },
+    { folder: 'deserts', lod: 'high' },
   ];
 
   for (const s of specs) {

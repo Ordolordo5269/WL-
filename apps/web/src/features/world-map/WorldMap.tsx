@@ -117,8 +117,8 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   const [minimalModeOn, setMinimalModeOn] = useState(false);
   // Natural layers: state refs
   type NaturalLod = 'auto' | 'low' | 'med' | 'high';
-  type NaturalLayerType = 'rivers' | 'ranges' | 'peaks';
-  const naturalEnabledRef = useRef<{ rivers: boolean; ranges: boolean; peaks: boolean }>({ rivers: false, ranges: false, peaks: false });
+  type NaturalLayerType = 'rivers' | 'ranges' | 'peaks' | 'lakes' | 'volcanoes' | 'fault-lines' | 'deserts';
+  const naturalEnabledRef = useRef<{ rivers: boolean; ranges: boolean; peaks: boolean; lakes: boolean; volcanoes: boolean; 'fault-lines': boolean; deserts: boolean }>({ rivers: false, ranges: false, peaks: false, lakes: false, volcanoes: false, 'fault-lines': false, deserts: false });
   const naturalLodRef = useRef<NaturalLod>('auto');
   const peaksIconLoadedRef = useRef<boolean>(false);
   
@@ -436,12 +436,17 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   }, []);
   const getNaturalGeoJsonUrl = useCallback((type: NaturalLayerType, lod: NaturalLod): string => {
     const map = mapRef.current;
-    const eff: Exclude<NaturalLod,'auto'> = lod === 'auto' && map ? selectLodByZoom(map.getZoom()) : (lod === 'auto' ? 'med' : lod);
+    let eff: Exclude<NaturalLod,'auto'> = lod === 'auto' && map ? selectLodByZoom(map.getZoom()) : (lod === 'auto' ? 'med' : lod);
+    // Volcanoes, fault-lines, deserts: never drop to 'low' (sparse data or same across all LODs)
+    if ((type === 'volcanoes' || type === 'fault-lines' || type === 'deserts') && eff === 'low') eff = 'med';
     // API base (fallback to 3001 where backend dev listens)
     const API_BASE = (import.meta as any)?.env?.VITE_API_URL || 'http://localhost:3001';
-    // API type mapping: ranges -> mountain-ranges
-    const apiType = type === 'ranges' ? 'mountain-ranges' : type;
-    // Keep it simple; server defaults limit, but we can pass a modest cap
+    // API type mapping
+    const apiTypeMap: Record<NaturalLayerType, string> = {
+      rivers: 'rivers', ranges: 'mountain-ranges', peaks: 'peaks',
+      lakes: 'lakes', volcanoes: 'volcanoes', 'fault-lines': 'fault-lines', deserts: 'deserts'
+    };
+    const apiType = apiTypeMap[type] ?? type;
     const limit = eff === 'low' ? 1000 : eff === 'med' ? 2000 : 5000;
     return `${API_BASE}/api/natural/${apiType}?lod=${eff}&limit=${limit}`;
   }, [selectLodByZoom]);
@@ -592,6 +597,118 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     }
   }, []);
 
+  const ensureLakesLayer = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const fillId = 'lakes-fill';
+    const lineId = 'lakes-line';
+    if (!map.getLayer(fillId)) {
+      try {
+        const beforeId = map.getLayer('country-highlight') ? 'country-highlight' : undefined;
+        map.addLayer({
+          id: fillId,
+          type: 'fill',
+          source: 'lakes-source',
+          paint: { 'fill-color': '#5b9bd5', 'fill-opacity': 0.45 }
+        } as any, beforeId);
+      } catch {}
+    }
+    if (!map.getLayer(lineId)) {
+      try {
+        const beforeId = map.getLayer('country-highlight') ? 'country-highlight' : undefined;
+        map.addLayer({
+          id: lineId,
+          type: 'line',
+          source: 'lakes-source',
+          paint: {
+            'line-color': '#2e78c4',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 0, 0.3, 5, 0.8],
+            'line-opacity': 0.7
+          }
+        } as any, beforeId);
+      } catch {}
+    }
+  }, []);
+
+  const ensureVolcanoesLayer = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const layerId = 'volcanoes-circle';
+    if (!map.getLayer(layerId)) {
+      try {
+        const beforeId = map.getLayer('country-highlight') ? 'country-highlight' : undefined;
+        map.addLayer({
+          id: layerId,
+          type: 'circle',
+          source: 'volcanoes-source',
+          paint: {
+            'circle-color': '#e84b1a',
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 0, 3, 2, 4, 5, 6, 8, 8],
+            'circle-opacity': 0.9,
+            'circle-stroke-color': '#ff8c00',
+            'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 0, 0.5, 4, 1, 8, 1.5]
+          }
+        } as any, beforeId);
+      } catch {}
+    }
+  }, []);
+
+  const ensureFaultLinesLayer = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const layerId = 'fault-lines-line';
+    if (!map.getLayer(layerId)) {
+      try {
+        const beforeId = map.getLayer('country-highlight') ? 'country-highlight' : undefined;
+        map.addLayer({
+          id: layerId,
+          type: 'line',
+          source: 'fault-lines-source',
+          paint: {
+            'line-color': '#ff6b35',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 0, 1.2, 3, 1.5, 6, 2, 9, 2.5],
+            'line-opacity': ['interpolate', ['linear'], ['zoom'], 0, 0.9, 4, 0.8, 8, 0.7],
+            'line-dasharray': [3, 2]
+          }
+        } as any, beforeId);
+      } catch {}
+    }
+  }, []);
+
+  const ensureDesertsLayer = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const fillId = 'deserts-fill';
+    const lineId = 'deserts-line';
+    if (!map.getLayer(fillId)) {
+      try {
+        const beforeId = map.getLayer('country-highlight') ? 'country-highlight' : undefined;
+        map.addLayer({
+          id: fillId,
+          type: 'fill',
+          source: 'deserts-source',
+          paint: { 'fill-color': '#d4a853', 'fill-opacity': 0.28 }
+        } as any, beforeId);
+      } catch {}
+    }
+    if (!map.getLayer(lineId)) {
+      try {
+        const beforeId = map.getLayer('country-highlight') ? 'country-highlight' : undefined;
+        map.addLayer({
+          id: lineId,
+          type: 'line',
+          source: 'deserts-source',
+          paint: {
+            'line-color': '#b8860b',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 0, 0.3, 5, 0.7],
+            'line-opacity': 0.6,
+            'line-dasharray': [4, 3]
+          }
+        } as any, beforeId);
+      } catch {}
+    }
+  }, []);
+
   const updateNaturalVisibility = useCallback(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -601,6 +718,12 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       ['ranges-fill', cfg.ranges],
       ['ranges-line', cfg.ranges],
       ['peaks-symbol', cfg.peaks],
+      ['lakes-fill', cfg.lakes],
+      ['lakes-line', cfg.lakes],
+      ['volcanoes-circle', cfg.volcanoes],
+      ['fault-lines-line', cfg['fault-lines']],
+      ['deserts-fill', cfg.deserts],
+      ['deserts-line', cfg.deserts],
     ];
     pairs.forEach(([id, on]) => {
       if (!map.getLayer(id)) return;
@@ -624,8 +747,24 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       ensureNaturalSource('peaks', lod);
       ensurePeaksLayer();
     }
+    if (naturalEnabledRef.current.lakes) {
+      ensureNaturalSource('lakes', lod);
+      ensureLakesLayer();
+    }
+    if (naturalEnabledRef.current.volcanoes) {
+      ensureNaturalSource('volcanoes', lod);
+      ensureVolcanoesLayer();
+    }
+    if (naturalEnabledRef.current['fault-lines']) {
+      ensureNaturalSource('fault-lines', lod);
+      ensureFaultLinesLayer();
+    }
+    if (naturalEnabledRef.current.deserts) {
+      ensureNaturalSource('deserts', lod);
+      ensureDesertsLayer();
+    }
     updateNaturalVisibility();
-  }, [ensureNaturalSource, ensureRiversLayer, ensureRangesLayer, ensurePeaksLayer, updateNaturalVisibility]);
+  }, [ensureNaturalSource, ensureRiversLayer, ensureRangesLayer, ensurePeaksLayer, ensureLakesLayer, ensureVolcanoesLayer, ensureFaultLinesLayer, ensureDesertsLayer, updateNaturalVisibility]);
 
   const ensureNaturalInteractivity = useCallback(() => {
     const map = mapRef.current;
@@ -633,7 +772,11 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     const layers: Array<{ id: string; type: NaturalLayerType }> = [
       { id: 'rivers-line', type: 'rivers' },
       { id: 'ranges-line', type: 'ranges' },
-      { id: 'peaks-symbol', type: 'peaks' }
+      { id: 'peaks-symbol', type: 'peaks' },
+      { id: 'lakes-fill', type: 'lakes' },
+      { id: 'volcanoes-circle', type: 'volcanoes' },
+      { id: 'fault-lines-line', type: 'fault-lines' },
+      { id: 'deserts-fill', type: 'deserts' },
     ];
     layers.forEach(({ id, type }) => {
       if (!map.getLayer(id)) return;
@@ -650,7 +793,8 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         if (!feats || feats.length === 0) return;
         const f: any = feats[0];
         const props = f.properties || {};
-        let title = props.name || props.NAME || (type === 'peaks' ? 'Peak' : type === 'rivers' ? 'River' : 'Range');
+        const defaultTitle: Record<NaturalLayerType, string> = { rivers: 'River', ranges: 'Range', peaks: 'Peak', lakes: 'Lake', volcanoes: 'Volcano', 'fault-lines': 'Fault Line', deserts: 'Desert' };
+        let title = props.name || props.NAME || props.Volcano_Name || defaultTitle[type];
         const lines: string[] = [];
         if (type === 'peaks') {
           if (props.elevation_m) lines.push(`Elevation: ${props.elevation_m} m`);
@@ -658,6 +802,12 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         } else if (type === 'rivers') {
           if (props.class) lines.push(`Class: ${props.class}`);
           if (props.length_km) lines.push(`Length: ${props.length_km} km`);
+        } else if (type === 'volcanoes') {
+          if (props.Primary_Volcano_Type) lines.push(`Type: ${props.Primary_Volcano_Type}`);
+          if (props.Last_Known_Eruption) lines.push(`Last eruption: ${props.Last_Known_Eruption}`);
+          if (props.Country) lines.push(`Country: ${props.Country}`);
+        } else if (type === 'deserts') {
+          if (props.name_en || props.NAME_EN) lines.push(`Region: ${props.name_en || props.NAME_EN}`);
         }
         if (props.source_ref) lines.push(`Source: ${props.source_ref}`);
         const html = `
@@ -966,7 +1116,10 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         if (type === 'rivers') ensureRiversLayer();
         if (type === 'ranges') ensureRangesLayer();
         if (type === 'peaks') ensurePeaksLayer();
-        // Ensure interactivity hooks once layers exist
+        if (type === 'lakes') ensureLakesLayer();
+        if (type === 'volcanoes') ensureVolcanoesLayer();
+        if (type === 'fault-lines') ensureFaultLinesLayer();
+        if (type === 'deserts') ensureDesertsLayer();
         ensureNaturalInteractivity();
       }
       updateNaturalVisibility();
@@ -1336,18 +1489,13 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     updateOrgHighlightFilter(highlightedIsoOrgRef.current);
 
     // Re-ensure natural layers after style changes
-    if (naturalEnabledRef.current.rivers) {
-      ensureNaturalSource('rivers', naturalLodRef.current);
-      ensureRiversLayer();
-    }
-    if (naturalEnabledRef.current.ranges) {
-      ensureNaturalSource('ranges', naturalLodRef.current);
-      ensureRangesLayer();
-    }
-    if (naturalEnabledRef.current.peaks) {
-      ensureNaturalSource('peaks', naturalLodRef.current);
-      ensurePeaksLayer();
-    }
+    if (naturalEnabledRef.current.rivers) { ensureNaturalSource('rivers', naturalLodRef.current); ensureRiversLayer(); }
+    if (naturalEnabledRef.current.ranges) { ensureNaturalSource('ranges', naturalLodRef.current); ensureRangesLayer(); }
+    if (naturalEnabledRef.current.peaks) { ensureNaturalSource('peaks', naturalLodRef.current); ensurePeaksLayer(); }
+    if (naturalEnabledRef.current.lakes) { ensureNaturalSource('lakes', naturalLodRef.current); ensureLakesLayer(); }
+    if (naturalEnabledRef.current.volcanoes) { ensureNaturalSource('volcanoes', naturalLodRef.current); ensureVolcanoesLayer(); }
+    if (naturalEnabledRef.current['fault-lines']) { ensureNaturalSource('fault-lines', naturalLodRef.current); ensureFaultLinesLayer(); }
+    if (naturalEnabledRef.current.deserts) { ensureNaturalSource('deserts', naturalLodRef.current); ensureDesertsLayer(); }
     updateNaturalVisibility();
     ensureNaturalInteractivity();
 
@@ -1618,7 +1766,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     // Refresh natural layers LOD on move end (only when auto LOD is active)
     const handleMoveEnd = () => {
       try {
-        const anyEnabled = naturalEnabledRef.current.rivers || naturalEnabledRef.current.ranges || naturalEnabledRef.current.peaks;
+        const anyEnabled = naturalEnabledRef.current.rivers || naturalEnabledRef.current.ranges || naturalEnabledRef.current.peaks || naturalEnabledRef.current.lakes || naturalEnabledRef.current.volcanoes || naturalEnabledRef.current['fault-lines'] || naturalEnabledRef.current.deserts;
         if (anyEnabled && naturalLodRef.current === 'auto') {
           refreshNaturalByLod();
         }
@@ -1648,6 +1796,23 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       }
 
       // Conflict visualization is now handled by CountryConflictVisualization
+
+    // Restore persisted natural layer states before reinitializing
+    try {
+      const _nlStored = localStorage.getItem('wl-natural-layers');
+      if (_nlStored) {
+        const _nl = JSON.parse(_nlStored);
+        naturalEnabledRef.current = {
+          rivers: _nl.rivers ?? false,
+          ranges: _nl.ranges ?? false,
+          peaks: _nl.peaks ?? false,
+          lakes: _nl.lakes ?? false,
+          volcanoes: _nl.volcanoes ?? false,
+          'fault-lines': _nl['fault-lines'] ?? false,
+          deserts: _nl.deserts ?? false,
+        };
+      }
+    } catch {}
 
     // Reusar helper estándar
     reinitializeInteractiveLayers();
