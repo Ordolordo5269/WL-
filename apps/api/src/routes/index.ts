@@ -26,6 +26,7 @@ import authRoutes from './auth.routes';
 import userRoutes from './user.routes';
 import favoritesRoutes from './favorites.routes';
 import organizationRoutes from './organization.routes';
+import liveActivityRoutes from './live-activity.routes';
 
 const router = Router();
 
@@ -54,5 +55,6 @@ router.use('/auth', authRoutes);
 router.use('/user', userRoutes);
 router.use('/favorites', favoritesRoutes);
 router.use('/organizations', organizationRoutes);
+router.use('/live-activity', liveActivityRoutes);
 
 export default router;

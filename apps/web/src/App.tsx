@@ -10,6 +10,8 @@ import CompareCountriesPopup from './features/compare/CompareCountriesPopup';
 import CompareCountriesView from './features/compare/CompareCountriesView';
 import { useChoropleth } from './features/world-map/useChoropleth';
 import { useMapControls } from './features/world-map/useMapControls';
+import { useLiveActivity } from './features/live-activity/useLiveActivity';
+import LiveActivityLegend from './features/live-activity/LiveActivityLegend';
 import type { MapRefType } from './features/world-map/types';
 import './index.css';
 import './styles/sidebar.css';
@@ -64,6 +66,42 @@ function WorldMapView() {
   // Extracted hooks
   const choropleth = useChoropleth(mapRef);
   const mapControls = useMapControls(mapRef);
+  const liveActivity = useLiveActivity();
+
+  // Wire live-activity data to map layers
+  useEffect(() => {
+    mapRef.current?.setLiveActivityLayer?.('earthquakes', liveActivity.earthquakesEnabled, liveActivity.earthquakesData);
+  }, [liveActivity.earthquakesEnabled, liveActivity.earthquakesData]);
+
+  useEffect(() => {
+    mapRef.current?.setLiveActivityLayer?.('fires', liveActivity.firesEnabled, liveActivity.firesData);
+  }, [liveActivity.firesEnabled, liveActivity.firesData]);
+
+  useEffect(() => {
+    mapRef.current?.setLiveActivityLayer?.(
+      'radar', liveActivity.radarEnabled, null,
+      liveActivity.radarData ? { tileUrl: liveActivity.radarData.tileUrl } : undefined,
+    );
+  }, [liveActivity.radarEnabled, liveActivity.radarData]);
+
+  useEffect(() => {
+    mapRef.current?.setLiveActivityLayer?.('air-traffic', liveActivity.airTrafficEnabled, liveActivity.airTrafficData);
+  }, [liveActivity.airTrafficEnabled, liveActivity.airTrafficData]);
+
+  useEffect(() => {
+    mapRef.current?.setLiveActivityLayer?.('marine-traffic', liveActivity.marineTrafficEnabled, liveActivity.marineTrafficData);
+  }, [liveActivity.marineTrafficEnabled, liveActivity.marineTrafficData]);
+
+  useEffect(() => {
+    mapRef.current?.setLiveActivityLayer?.('satellites', liveActivity.satellitesEnabled, liveActivity.satellitesData);
+  }, [liveActivity.satellitesEnabled, liveActivity.satellitesData]);
+
+  useEffect(() => {
+    mapRef.current?.setLiveActivityLayer?.(
+      'weather', liveActivity.weatherEnabled, null,
+      { enabledSublayers: liveActivity.weatherLayers },
+    );
+  }, [liveActivity.weatherEnabled, liveActivity.weatherLayers]);
 
   // Unified sidebars state
   const [sidebars, setSidebars] = useState({
@@ -272,6 +310,8 @@ function WorldMapView() {
         onSetMinimalMode={mapControls.handleSetMinimalMode}
         onSetAutoRotate={mapControls.handleSetAutoRotate}
         onSetRotateSpeed={mapControls.handleSetRotateSpeed}
+        onSetLedHalo={mapControls.handleSetLedHalo}
+        onSetLedHaloSpeed={mapControls.handleSetLedHaloSpeed}
         onToggleGdpLayer={choropleth.handleToggleGdpLayer}
         gdpEnabled={choropleth.gdpEnabled}
         gdpLegend={choropleth.gdpLegend}
@@ -307,6 +347,23 @@ function WorldMapView() {
         countries={countriesForSelector}
         countriesLoading={countriesLoading}
         onOpenCompareCountries={handleOpenComparePopup}
+        // Live Activity
+        onToggleEarthquakes={liveActivity.handleToggleEarthquakes}
+        earthquakesEnabled={liveActivity.earthquakesEnabled}
+        onToggleFires={liveActivity.handleToggleFires}
+        firesEnabled={liveActivity.firesEnabled}
+        onToggleRadar={liveActivity.handleToggleRadar}
+        radarEnabled={liveActivity.radarEnabled}
+        onToggleAirTraffic={liveActivity.handleToggleAirTraffic}
+        airTrafficEnabled={liveActivity.airTrafficEnabled}
+        onToggleMarineTraffic={liveActivity.handleToggleMarineTraffic}
+        marineTrafficEnabled={liveActivity.marineTrafficEnabled}
+        onToggleSatellites={liveActivity.handleToggleSatellites}
+        satellitesEnabled={liveActivity.satellitesEnabled}
+        onToggleWeather={liveActivity.handleToggleWeather}
+        weatherEnabled={liveActivity.weatherEnabled}
+        weatherLayers={liveActivity.weatherLayers}
+        onToggleWeatherLayer={liveActivity.handleToggleWeatherLayer}
       />
 
       {/* Left sidebar overlay */}
@@ -334,6 +391,17 @@ function WorldMapView() {
         selectedConflictId={selectedConflictId}
         isLeftSidebarOpen={sidebars.menu}
         onMapReady={handleMapReady}
+      />
+
+      <LiveActivityLegend
+        earthquakesEnabled={liveActivity.earthquakesEnabled}
+        firesEnabled={liveActivity.firesEnabled}
+        radarEnabled={liveActivity.radarEnabled}
+        airTrafficEnabled={liveActivity.airTrafficEnabled}
+        marineTrafficEnabled={liveActivity.marineTrafficEnabled}
+        satellitesEnabled={liveActivity.satellitesEnabled}
+        weatherEnabled={liveActivity.weatherEnabled}
+        weatherLayers={liveActivity.weatherLayers}
       />
 
       {/* Country Sidebar */}

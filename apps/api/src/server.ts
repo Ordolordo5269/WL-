@@ -5,6 +5,7 @@ import { env } from './config/env.js';
 import { logger } from './config/logger.js';
 import { createConflictSocketServer } from './websocket/conflict-socket';
 import { setBroadcaster } from './websocket/broadcast';
+import { startAISStream } from './services/aisstream.js';
 
 const server = http.createServer(app);
 
@@ -14,4 +15,5 @@ setBroadcaster(conflictSocket.broadcastConflictUpdate);
 
 server.listen(env.PORT, () => {
   logger.info({ port: env.PORT, env: env.NODE_ENV }, 'Server started');
+  startAISStream();
 });
