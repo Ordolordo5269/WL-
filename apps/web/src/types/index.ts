@@ -1,4 +1,61 @@
-// Conflict type
+// ── ACLED-driven Conflict types ──
+
+export interface AcledConflict {
+  id: string;
+  slug: string;
+  name: string;
+  country: string;
+  region: string;
+  description: string;
+  status: 'WAR' | 'WARM' | 'IMPROVING' | 'RESOLVED' | 'FROZEN';
+  involvedISO: string[];
+  coordinates: { lat: number; lng: number };
+  startDate: string;
+  escalationDate?: string;
+  endDate?: string;
+  sources: string[];
+  totalEvents: number;
+  totalFatalities: number;
+  lastEventDate?: string;
+  // Populated on detail view
+  recentEvents?: AcledEvent[];
+}
+
+export interface AcledEvent {
+  id: string;
+  eventIdCnty: string;
+  eventDate: string;
+  year: number;
+  timePrecision: number;
+  disorderType?: string;
+  eventType: string;        // "Battles", "Explosions/Remote violence", etc.
+  subEventType: string;     // "Armed clash", "Shelling/artillery", etc.
+  actor1: string;           // Who did it
+  assocActor1?: string;
+  inter1: number;           // 1=State, 2=Rebel, 3=Political militia, etc.
+  actor2?: string;          // Against whom
+  assocActor2?: string;
+  inter2?: number;
+  interaction: number;
+  civilianTargeting?: string;
+  iso: number;
+  country: string;
+  region: string;
+  admin1?: string;
+  admin2?: string;
+  admin3?: string;
+  location?: string;
+  latitude: number;
+  longitude: number;
+  geoPrecision?: number;
+  source?: string;
+  sourceScale?: string;
+  notes?: string;           // What happened
+  fatalities: number;
+  tags?: string;
+}
+
+// Legacy alias for backward compatibility
 export interface Conflict {
   id: string;
   country: string;
@@ -9,10 +66,8 @@ export interface Conflict {
   casualties: number;
   status: 'War' | 'Warm' | 'Improving';
   coordinates: { lat: number; lng: number };
-  involvedISO?: string[]; // ISO 3166-1 alpha-3 codes for involved countries
+  involvedISO?: string[];
   alliesByFaction?: { [faction: string]: { isoCodes: string[]; color: string } };
-  
-  // New optional fields for expanded conflicts
   startDate?: string;
   escalationDate?: string;
   casualtiesDetailed?: {

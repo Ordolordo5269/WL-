@@ -50,12 +50,10 @@ export async function generateInsight(request: InsightRequest): Promise<InsightR
 }
 
 async function buildConflictContext(id: string, question?: string): Promise<LLMContext | null> {
-  const conflict = await prisma.conflict.findUnique({
+  const conflict = await prisma.acledConflict.findUnique({
     where: { id },
     include: {
-      events: { orderBy: { date: 'desc' }, take: 20 },
-      casualties: { orderBy: { date: 'desc' }, take: 5 },
-      updates: { orderBy: { date: 'desc' }, take: 10 },
+      events: { orderBy: { eventDate: 'desc' }, take: 20 },
     },
   });
 
@@ -72,15 +70,17 @@ async function buildConflictContext(id: string, question?: string): Promise<LLMC
       involvedISO: conflict.involvedISO,
     },
     recentEvents: conflict.events.map((e) => ({
-      title: e.title,
-      date: e.date.toISOString(),
-      description: e.description ?? undefined,
+      title: `[${e.eventType}] ${e.actor1}${e.actor2 ? ' vs ' + e.actor2 : ''}`,
+      date: e.eventDate.toISOString(),
+      description: e.notes ?? undefined,
     })),
-    indicators: conflict.casualties.map((c) => ({
-      name: 'casualties',
-      value: c.total,
-      year: c.date.getFullYear(),
-    })),
+    indicators: conflict.events
+      .filter((e) => e.fatalities > 0)
+      .map((e) => ({
+        name: 'fatalities',
+        value: e.fatalities,
+        year: e.year,
+      })),
     question,
   };
 }

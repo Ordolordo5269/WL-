@@ -113,6 +113,14 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
     (document as any).__wl_map_comp?.setNaturalLod?.(lod);
   }, []);
 
+  const handleSetLedHalo = useCallback((enabled: boolean) => {
+    mapRef.current?.setLedHalo?.(enabled);
+  }, []);
+
+  const handleSetLedHaloSpeed = useCallback((ms: number) => {
+    mapRef.current?.setLedHaloSpeed?.(ms);
+  }, []);
+
   const handleSetOrganizationIsoFilter = useCallback((iso3: string[], color?: string) => {
     setOrgIsoFilter(iso3);
     setOrgColor(color ?? null);
@@ -149,5 +157,6 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
     handleToggleFaultLinesLayer, handleToggleDesertsLayer,
     handleSetOrganizationIsoFilter,
     handleToggleHistoryMode, handleSetHistoryYear,
+    handleSetLedHalo, handleSetLedHaloSpeed,
   };
 }

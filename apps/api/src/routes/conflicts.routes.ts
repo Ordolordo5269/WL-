@@ -1,33 +1,29 @@
 import { Router } from 'express';
 import { validate } from '../middleware/validate.js';
 import {
-  conflictFiltersSchema,
-  conflictParamsSchema,
-  createConflictSchema,
-  updateConflictSchema,
-  deleteConflictSchema,
-  searchConflictsSchema,
-  getConflictNewsSchema,
-  cacheConflictNewsSchema,
-  deleteConflictNewsSchema
+  conflictListFiltersSchema,
+  slugParamSchema,
+  eventFiltersSchema,
+  timelineParamsSchema,
+  searchSchema,
 } from '../modules/conflicts/schemas.js';
 import * as ctrl from '../modules/conflicts/controller.js';
 
 const router = Router();
 
-// Read endpoints (V2 handlers — return { data, count } format expected by frontend)
-router.get('/stats', ctrl.getConflictStats);
-router.get('/search', validate(searchConflictsSchema), ctrl.searchConflictsController);
-router.get('/', validate({ query: conflictFiltersSchema }), ctrl.list);
-router.get('/:slug', validate({ params: conflictParamsSchema }), ctrl.getBySlug);
+// Global
+router.get('/stats', ctrl.getStats);
+router.get('/search', validate({ query: searchSchema }), ctrl.search);
+router.get('/', validate({ query: conflictListFiltersSchema }), ctrl.list);
 
-router.post('/', validate(createConflictSchema), ctrl.createConflict);
-router.put('/:id', validate(updateConflictSchema), ctrl.updateConflict);
-router.delete('/:id', validate(deleteConflictSchema), ctrl.deleteConflict);
+// Per-conflict
+router.get('/:slug', validate({ params: slugParamSchema }), ctrl.getBySlug);
+router.get('/:slug/events', validate({ params: slugParamSchema, query: eventFiltersSchema }), ctrl.getEvents);
+router.get('/:slug/heatmap', validate({ params: slugParamSchema }), ctrl.getHeatmap);
+router.get('/:slug/timeline', validate({ params: slugParamSchema, query: timelineParamsSchema }), ctrl.getTimeline);
 
-// News endpoints
-router.get('/:id/news', validate(getConflictNewsSchema), ctrl.getConflictNews);
-router.post('/:id/news', validate(cacheConflictNewsSchema), ctrl.cacheConflictNews);
-router.delete('/:id/news/:newsId', validate(deleteConflictNewsSchema), ctrl.deleteConflictNews);
+// Sync (admin)
+router.post('/sync', ctrl.syncAll);
+router.post('/:slug/sync', validate({ params: slugParamSchema }), ctrl.syncOne);
 
 export default router;

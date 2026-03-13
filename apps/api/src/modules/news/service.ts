@@ -1,5 +1,3 @@
-import { prisma } from '../../db/client';
-
 // ══════════════════════════════════════════════════════════════════════════════
 // NewsAPI proxy (keeps API key server-side)
 // ══════════════════════════════════════════════════════════════════════════════
@@ -176,117 +174,8 @@ export async function fetchTopConflictHeadlines(pageSize: number = 15): Promise<
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// News DB cache (Prisma-backed, 24h TTL)
+// News DB cache — removed (ConflictNews model replaced by ACLED integration)
 // ══════════════════════════════════════════════════════════════════════════════
-
-const DB_NEWS_CACHE_TTL = 24 * 60 * 60 * 1000;
-
-export async function getCachedNews(conflictId: string, limit: number = 10) {
-  const conflict = await prisma.conflict.findUnique({
-    where: { slug: conflictId },
-    select: { id: true }
-  });
-
-  if (!conflict) return [];
-
-  const cutoffDate = new Date(Date.now() - DB_NEWS_CACHE_TTL);
-
-  return prisma.conflictNews.findMany({
-    where: {
-      conflictId: conflict.id,
-      publishedAt: { gte: cutoffDate }
-    },
-    orderBy: { publishedAt: 'desc' },
-    take: limit
-  });
-}
-
-export async function cacheNewsArticles(conflictId: string, articles: Array<{
-  title: string;
-  source: string;
-  url: string;
-  publishedAt: Date | string;
-  description?: string;
-  imageUrl?: string;
-}>) {
-  const conflict = await prisma.conflict.findUnique({
-    where: { slug: conflictId },
-    select: { id: true }
-  });
-
-  if (!conflict) {
-    throw new Error(`Conflict not found: ${conflictId}`);
-  }
-
-  const results = [];
-  for (const article of articles) {
-    const existing = await prisma.conflictNews.findFirst({
-      where: { conflictId: conflict.id, url: article.url }
-    });
-
-    if (!existing) {
-      const cached = await prisma.conflictNews.create({
-        data: {
-          conflictId: conflict.id,
-          title: article.title,
-          source: article.source,
-          url: article.url,
-          publishedAt: new Date(article.publishedAt),
-          description: article.description || null,
-          imageUrl: article.imageUrl || null
-        }
-      });
-      results.push(cached);
-    }
-  }
-
-  return results;
-}
-
-export async function clearOldCachedNews() {
-  const cutoffDate = new Date(Date.now() - DB_NEWS_CACHE_TTL);
-  const result = await prisma.conflictNews.deleteMany({
-    where: { publishedAt: { lt: cutoffDate } }
-  });
-  return result.count;
-}
-
-export async function getOrFetchNews(
-  conflictId: string,
-  fetchFn: () => Promise<Array<{
-    title: string;
-    source: string;
-    url: string;
-    publishedAt: Date | string;
-    description?: string;
-    imageUrl?: string;
-  }>>,
-  limit: number = 10
-) {
-  const cached = await getCachedNews(conflictId, limit);
-
-  if (cached.length >= limit) return cached;
-
-  try {
-    const freshNews = await fetchFn();
-    if (freshNews.length > 0) {
-      await cacheNewsArticles(conflictId, freshNews);
-    }
-
-    const combined = [...cached, ...freshNews]
-      .sort((a, b) => {
-        const dateA = a.publishedAt instanceof Date ? a.publishedAt : new Date(a.publishedAt);
-        const dateB = b.publishedAt instanceof Date ? b.publishedAt : new Date(b.publishedAt);
-        return dateB.getTime() - dateA.getTime();
-      })
-      .slice(0, limit);
-
-    return combined;
-  } catch (error) {
-    console.error('Error fetching fresh news:', error);
-    return cached;
-  }
-}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ACLED (Armed Conflict Location & Event Data)

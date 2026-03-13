@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import InternationalOrganizationsPanel from './InternationalOrganizationsPanel';
 import { AVAILABLE_HISTORY_YEARS, snapToAvailableYear } from '../../utils/historical-years';
-import { Crosshair, Settings, Info, Globe, Users, BarChart3, Map, User, GitCompare } from 'lucide-react';
+import { Crosshair, Settings, Info, Globe, Users, BarChart3, Map, User, GitCompare, Radio } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -23,6 +23,8 @@ interface LeftSidebarProps {
   onSetMinimalMode?: (v: boolean) => void;
   onSetAutoRotate?: (v: boolean) => void;
   onSetRotateSpeed?: (degPerSec: number) => void;
+  onSetLedHalo?: (v: boolean) => void;
+  onSetLedHaloSpeed?: (ms: number) => void;
   onToggleGdpLayer?: (enabled: boolean) => void;
   gdpEnabled?: boolean;
   gdpLegend?: Array<{ color: string; min?: number; max?: number }>;
@@ -78,6 +80,23 @@ interface LeftSidebarProps {
   countries?: Array<{ iso3: string; name: string; flagUrl?: string }>;
   countriesLoading?: boolean;
   onOpenCompareCountries?: () => void;
+  // Live Activity layers
+  onToggleEarthquakes?: (enabled: boolean) => void;
+  earthquakesEnabled?: boolean;
+  onToggleFires?: (enabled: boolean) => void;
+  firesEnabled?: boolean;
+  onToggleRadar?: (enabled: boolean) => void;
+  radarEnabled?: boolean;
+  onToggleAirTraffic?: (enabled: boolean) => void;
+  airTrafficEnabled?: boolean;
+  onToggleMarineTraffic?: (enabled: boolean) => void;
+  marineTrafficEnabled?: boolean;
+  onToggleSatellites?: (enabled: boolean) => void;
+  satellitesEnabled?: boolean;
+  onToggleWeather?: (enabled: boolean) => void;
+  weatherEnabled?: boolean;
+  weatherLayers?: string[];
+  onToggleWeatherLayer?: (layer: string) => void;
 }
 
 interface MenuItem {
@@ -88,14 +107,17 @@ interface MenuItem {
   iconBg?: string;
 }
 
-export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictTracker, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, onToggleGdpLayer, gdpEnabled = false, gdpLegend = [], onToggleGdpPerCapitaLayer, gdpPerCapitaEnabled = false, gdpPerCapitaLegend = [], onToggleInflationLayer, inflationEnabled = false, inflationLegend = [], onToggleGiniLayer, giniEnabled = false, giniLegend = [], onToggleExportsLayer, exportsEnabled = false, exportsLegend = [], onToggleLifeExpectancyLayer, lifeExpectancyEnabled = false, lifeExpectancyLegend = [], onToggleMilitaryExpenditureLayer, militaryExpenditureEnabled = false, militaryExpenditureLegend = [], onToggleDemocracyIndexLayer, democracyIndexEnabled = false, democracyIndexLegend = [], onToggleTradeGdpLayer, tradeGdpEnabled = false, tradeGdpLegend = [], onToggleHistoryMode, onSetHistoryYear, historyEnabled: _historyEnabled = false, historyYear = 1880, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, naturalLod = 'auto', onSetNaturalLod }: LeftSidebarProps) {
+export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictTracker, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, onToggleGdpLayer, gdpEnabled = false, gdpLegend = [], onToggleGdpPerCapitaLayer, gdpPerCapitaEnabled = false, gdpPerCapitaLegend = [], onToggleInflationLayer, inflationEnabled = false, inflationLegend = [], onToggleGiniLayer, giniEnabled = false, giniLegend = [], onToggleExportsLayer, exportsEnabled = false, exportsLegend = [], onToggleLifeExpectancyLayer, lifeExpectancyEnabled = false, lifeExpectancyLegend = [], onToggleMilitaryExpenditureLayer, militaryExpenditureEnabled = false, militaryExpenditureLegend = [], onToggleDemocracyIndexLayer, democracyIndexEnabled = false, democracyIndexLegend = [], onToggleTradeGdpLayer, tradeGdpEnabled = false, tradeGdpLegend = [], onToggleHistoryMode, onSetHistoryYear, historyEnabled: _historyEnabled = false, historyYear = 1880, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, naturalLod = 'auto', onSetNaturalLod, onSetLedHalo, onSetLedHaloSpeed, onToggleEarthquakes, earthquakesEnabled = false, onToggleFires, firesEnabled = false, onToggleRadar, radarEnabled = false, onToggleAirTraffic, airTrafficEnabled = false, onToggleMarineTraffic, marineTrafficEnabled = false, onToggleSatellites, satellitesEnabled = false, onToggleWeather, weatherEnabled = false, weatherLayers = [], onToggleWeatherLayer }: LeftSidebarProps) {
   const [activeItem, setActiveItem] = useState<string>('home');
+  const [physicalSections, setPhysicalSections] = useState({ geo: true, climate: true, terrain: true });
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const [rotateSpeed, setRotateSpeed] = useState<number>(3);
   const [terrainEnabled, setTerrainEnabled] = useState<boolean>(false);
   const [terrainEx, setTerrainEx] = useState<number>(1);
   const [autoRotate, setAutoRotate] = useState<boolean>(false);
+  const [ledHaloEnabled, setLedHaloEnabled] = useState<boolean>(false);
+  const [ledHaloSpeed, setLedHaloSpeed] = useState<number>(50);
   const [starIntensity, setStarIntensityLocal] = useState<number>(0.6);
   const yearScrollRef = useRef<HTMLDivElement | null>(null);
   const wheelRafRef = useRef<number | null>(null);
@@ -135,6 +157,12 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
       label: 'History Mode',
       href: '#history',
       iconBg: 'rgba(6, 182, 212, 0.12)'
+    },
+    {
+      icon: <Radio className="h-5 w-5 text-orange-400" />,
+      label: 'Live Activity',
+      href: '#live',
+      iconBg: 'rgba(251, 146, 60, 0.12)'
     },
     {
       icon: <Map className="h-5 w-5 text-green-400" />,
@@ -257,138 +285,152 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
                         )}
                       </a>
 
+                      {item.label === 'Live Activity' && activeItem === 'live activity' && (
+                        <div className="mt-3 ml-12 mr-3 settings-panel" aria-label="Live Activity">
+                          <div className="settings-subtitle" style={{ marginBottom: 8 }}>
+                            Real-time tracking of moving objects.
+                          </div>
+                          <div className="layer-row">
+                            <span className={`layer-row-dot ${radarEnabled ? 'on' : ''}`} />
+                            <span className="layer-row-name">Weather Radar</span>
+                            <button className={`toggle-switch ${radarEnabled ? 'on' : ''}`} onClick={() => onToggleRadar?.(!radarEnabled)} aria-label="Toggle radar" />
+                          </div>
+                          <div className="layer-row">
+                            <span className={`layer-row-dot ${airTrafficEnabled ? 'on' : ''}`} />
+                            <span className="layer-row-name">Air Traffic</span>
+                            <button className={`toggle-switch ${airTrafficEnabled ? 'on' : ''}`} onClick={() => onToggleAirTraffic?.(!airTrafficEnabled)} aria-label="Toggle air traffic" />
+                          </div>
+                          <div className="layer-row">
+                            <span className={`layer-row-dot ${marineTrafficEnabled ? 'on' : ''}`} />
+                            <span className="layer-row-name">Marine Traffic</span>
+                            <button className={`toggle-switch ${marineTrafficEnabled ? 'on' : ''}`} onClick={() => onToggleMarineTraffic?.(!marineTrafficEnabled)} aria-label="Toggle marine traffic" />
+                          </div>
+                          <div className="layer-row">
+                            <span className={`layer-row-dot ${satellitesEnabled ? 'on' : ''}`} />
+                            <span className="layer-row-name">Satellites</span>
+                            <button className={`toggle-switch ${satellitesEnabled ? 'on' : ''}`} onClick={() => onToggleSatellites?.(!satellitesEnabled)} aria-label="Toggle satellites" />
+                          </div>
+                        </div>
+                      )}
+
                       {item.label === 'Physical Layers' && activeItem === 'physical layers' && (
                         <div className="mt-3 ml-12 mr-3 settings-panel" aria-label="Physical Layers">
-                          <div className="section-header" style={{ marginBottom: 8 }}>
-                            <h3>Physical Layers</h3>
+                          {/* ── GEOPHYSICAL ── */}
+                          <div className="layer-section">
+                            <div className="layer-section-header" onClick={() => setPhysicalSections(p => ({ ...p, geo: !p.geo }))}>
+                              <span className="layer-section-dot" style={{ background: '#ef4444', color: '#ef4444' }} />
+                              <span className="layer-section-label">Geophysical</span>
+                              <svg className={`layer-section-chevron ${physicalSections.geo ? 'open' : ''}`} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" /></svg>
+                            </div>
+                            {physicalSections.geo && (<>
+                              <div className="layer-row">
+                                <span className={`layer-row-dot ${earthquakesEnabled ? 'on' : ''}`} />
+                                <span className="layer-row-name">Earthquakes</span>
+                                <button className={`toggle-switch ${earthquakesEnabled ? 'on' : ''}`} onClick={() => onToggleEarthquakes?.(!earthquakesEnabled)} aria-label="Toggle earthquakes" />
+                              </div>
+                              <div className="layer-row">
+                                <span className={`layer-row-dot ${volcanoesEnabled ? 'on' : ''}`} />
+                                <span className="layer-row-name">Volcanoes</span>
+                                <button className={`toggle-switch ${volcanoesEnabled ? 'on' : ''}`} onClick={() => onToggleVolcanoesLayer?.(!volcanoesEnabled)} aria-label="Toggle volcanoes" />
+                              </div>
+                              <div className="layer-row">
+                                <span className={`layer-row-dot ${faultLinesEnabled ? 'on' : ''}`} />
+                                <span className="layer-row-name">Fault Lines</span>
+                                <button className={`toggle-switch ${faultLinesEnabled ? 'on' : ''}`} onClick={() => onToggleFaultLinesLayer?.(!faultLinesEnabled)} aria-label="Toggle fault lines" />
+                              </div>
+                            </>)}
                           </div>
-                          <div className="settings-subtitle" style={{ marginBottom: 12 }}>
-                            Toggle natural features layers and choose the detail level.
+
+                          {/* ── CLIMATE & WEATHER ── */}
+                          <div className="layer-section">
+                            <div className="layer-section-header" onClick={() => setPhysicalSections(p => ({ ...p, climate: !p.climate }))}>
+                              <span className="layer-section-dot" style={{ background: '#f59e0b', color: '#f59e0b' }} />
+                              <span className="layer-section-label">Climate & Weather</span>
+                              <svg className={`layer-section-chevron ${physicalSections.climate ? 'open' : ''}`} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" /></svg>
+                            </div>
+                            {physicalSections.climate && (<>
+                              <div className="layer-row">
+                                <span className={`layer-row-dot ${weatherEnabled ? 'on' : ''}`} />
+                                <span className="layer-row-name">Weather Overlay</span>
+                                <button className={`toggle-switch ${weatherEnabled ? 'on' : ''}`} onClick={() => onToggleWeather?.(!weatherEnabled)} aria-label="Toggle weather" />
+                              </div>
+                              {weatherEnabled && (
+                                <div className="layer-sub-chips">
+                                  {([['temp_new','Temp'],['clouds_new','Clouds'],['precipitation_new','Rain'],['wind_new','Wind'],['pressure_new','Pressure']] as [string,string][]).map(([id,label]) => (
+                                    <button key={id} className={`layer-sub-chip ${weatherLayers.includes(id) ? 'active' : ''}`} onClick={() => onToggleWeatherLayer?.(id)}>{label}</button>
+                                  ))}
+                                </div>
+                              )}
+                              <div className="layer-row">
+                                <span className={`layer-row-dot ${firesEnabled ? 'on' : ''}`} />
+                                <span className="layer-row-name">Active Fires</span>
+                                <button className={`toggle-switch ${firesEnabled ? 'on' : ''}`} onClick={() => onToggleFires?.(!firesEnabled)} aria-label="Toggle fires" />
+                              </div>
+                              <div className="layer-row">
+                                <span className={`layer-row-dot ${desertsEnabled ? 'on' : ''}`} />
+                                <span className="layer-row-name">Deserts</span>
+                                <button className={`toggle-switch ${desertsEnabled ? 'on' : ''}`} onClick={() => onToggleDesertsLayer?.(!desertsEnabled)} aria-label="Toggle deserts" />
+                              </div>
+                            </>)}
                           </div>
-                          {/* Layers grid */}
-                          <div className="settings-row" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
-                            {/* Rivers card */}
-                            <div className="section-card" style={{ marginBottom: 0 }}>
-                              <div className="stats-header" style={{ marginBottom: 6 }}>
-                                <div className="stats-title">Rivers</div>
-                                <div className="chip-group">
-                                  <button
-                                    className={`chip ${riversEnabled ? 'active' : ''}`}
-                                    onClick={() => onToggleRiversLayer?.(true)}
-                                    aria-pressed={riversEnabled}
-                                    aria-label="Show rivers"
-                                  >Show</button>
-                                  <button
-                                    className={`chip ${!riversEnabled ? 'active' : ''}`}
-                                    onClick={() => onToggleRiversLayer?.(false)}
-                                    aria-pressed={!riversEnabled}
-                                    aria-label="Hide rivers"
-                                  >Hide</button>
-                                </div>
-                              </div>
-                              <div className="stats-subtitle">Global rivers and lake centerlines.</div>
+
+                          {/* ── TERRAIN & WATER ── */}
+                          <div className="layer-section">
+                            <div className="layer-section-header" onClick={() => setPhysicalSections(p => ({ ...p, terrain: !p.terrain }))}>
+                              <span className="layer-section-dot" style={{ background: '#10b981', color: '#10b981' }} />
+                              <span className="layer-section-label">Terrain & Water</span>
+                              <svg className={`layer-section-chevron ${physicalSections.terrain ? 'open' : ''}`} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" /></svg>
                             </div>
-                            {/* Mountain Ranges card */}
-                            <div className="section-card" style={{ marginBottom: 0 }}>
-                              <div className="stats-header" style={{ marginBottom: 6 }}>
-                                <div className="stats-title">Mountain Ranges</div>
-                                <div className="chip-group">
-                                  <button
-                                    className={`chip ${mountainRangesEnabled ? 'active' : ''}`}
-                                    onClick={() => onToggleMountainRangesLayer?.(true)}
-                                    aria-pressed={mountainRangesEnabled}
-                                    aria-label="Show mountain ranges"
-                                  >Show</button>
-                                  <button
-                                    className={`chip ${!mountainRangesEnabled ? 'active' : ''}`}
-                                    onClick={() => onToggleMountainRangesLayer?.(false)}
-                                    aria-pressed={!mountainRangesEnabled}
-                                    aria-label="Hide mountain ranges"
-                                  >Hide</button>
-                                </div>
+                            {physicalSections.terrain && (<>
+                              <div className="layer-row">
+                                <span className={`layer-row-dot ${riversEnabled ? 'on' : ''}`} />
+                                <span className="layer-row-name">Rivers</span>
+                                <button className={`toggle-switch ${riversEnabled ? 'on' : ''}`} onClick={() => onToggleRiversLayer?.(!riversEnabled)} aria-label="Toggle rivers" />
                               </div>
-                              <div className="stats-subtitle">Range polygons with outline for visibility.</div>
-                            </div>
-                            {/* Peaks card */}
-                            <div className="section-card" style={{ marginBottom: 0 }}>
-                              <div className="stats-header" style={{ marginBottom: 6 }}>
-                                <div className="stats-title">Peaks</div>
-                                <div className="chip-group">
-                                  <button
-                                    className={`chip ${peaksEnabled ? 'active' : ''}`}
-                                    onClick={() => onTogglePeaksLayer?.(true)}
-                                    aria-pressed={peaksEnabled}
-                                    aria-label="Show peaks"
-                                  >Show</button>
-                                  <button
-                                    className={`chip ${!peaksEnabled ? 'active' : ''}`}
-                                    onClick={() => onTogglePeaksLayer?.(false)}
-                                    aria-pressed={!peaksEnabled}
-                                    aria-label="Hide peaks"
-                                  >Hide</button>
-                                </div>
+                              <div className="layer-row">
+                                <span className={`layer-row-dot ${lakesEnabled ? 'on' : ''}`} />
+                                <span className="layer-row-name">Lakes</span>
+                                <button className={`toggle-switch ${lakesEnabled ? 'on' : ''}`} onClick={() => onToggleLakesLayer?.(!lakesEnabled)} aria-label="Toggle lakes" />
                               </div>
-                              <div className="stats-subtitle">Major elevation points with modern markers.</div>
-                            </div>
-                            {/* Lakes card */}
-                            <div className="section-card" style={{ marginBottom: 0 }}>
-                              <div className="stats-header" style={{ marginBottom: 6 }}>
-                                <div className="stats-title">Lakes</div>
-                                <div className="chip-group">
-                                  <button className={`chip ${lakesEnabled ? 'active' : ''}`} onClick={() => onToggleLakesLayer?.(true)} aria-pressed={lakesEnabled} aria-label="Show lakes">Show</button>
-                                  <button className={`chip ${!lakesEnabled ? 'active' : ''}`} onClick={() => onToggleLakesLayer?.(false)} aria-pressed={!lakesEnabled} aria-label="Hide lakes">Hide</button>
-                                </div>
+                              <div className="layer-row">
+                                <span className={`layer-row-dot ${mountainRangesEnabled ? 'on' : ''}`} />
+                                <span className="layer-row-name">Mountain Ranges</span>
+                                <button className={`toggle-switch ${mountainRangesEnabled ? 'on' : ''}`} onClick={() => onToggleMountainRangesLayer?.(!mountainRangesEnabled)} aria-label="Toggle mountain ranges" />
                               </div>
-                              <div className="stats-subtitle">Major lakes and inland water bodies.</div>
-                            </div>
-                            {/* Volcanoes card */}
-                            <div className="section-card" style={{ marginBottom: 0 }}>
-                              <div className="stats-header" style={{ marginBottom: 6 }}>
-                                <div className="stats-title">Volcanoes</div>
-                                <div className="chip-group">
-                                  <button className={`chip ${volcanoesEnabled ? 'active' : ''}`} onClick={() => onToggleVolcanoesLayer?.(true)} aria-pressed={volcanoesEnabled} aria-label="Show volcanoes">Show</button>
-                                  <button className={`chip ${!volcanoesEnabled ? 'active' : ''}`} onClick={() => onToggleVolcanoesLayer?.(false)} aria-pressed={!volcanoesEnabled} aria-label="Hide volcanoes">Hide</button>
-                                </div>
+                              <div className="layer-row">
+                                <span className={`layer-row-dot ${peaksEnabled ? 'on' : ''}`} />
+                                <span className="layer-row-name">Peaks</span>
+                                <button className={`toggle-switch ${peaksEnabled ? 'on' : ''}`} onClick={() => onTogglePeaksLayer?.(!peaksEnabled)} aria-label="Toggle peaks" />
                               </div>
-                              <div className="stats-subtitle">Holocene volcanoes (Smithsonian GVP).</div>
-                            </div>
-                            {/* Fault Lines card */}
-                            <div className="section-card" style={{ marginBottom: 0 }}>
-                              <div className="stats-header" style={{ marginBottom: 6 }}>
-                                <div className="stats-title">Fault Lines</div>
-                                <div className="chip-group">
-                                  <button className={`chip ${faultLinesEnabled ? 'active' : ''}`} onClick={() => onToggleFaultLinesLayer?.(true)} aria-pressed={faultLinesEnabled} aria-label="Show fault lines">Show</button>
-                                  <button className={`chip ${!faultLinesEnabled ? 'active' : ''}`} onClick={() => onToggleFaultLinesLayer?.(false)} aria-pressed={!faultLinesEnabled} aria-label="Hide fault lines">Hide</button>
-                                </div>
-                              </div>
-                              <div className="stats-subtitle">Tectonic plate boundaries worldwide.</div>
-                            </div>
-                            {/* Deserts card */}
-                            <div className="section-card" style={{ marginBottom: 0 }}>
-                              <div className="stats-header" style={{ marginBottom: 6 }}>
-                                <div className="stats-title">Deserts</div>
-                                <div className="chip-group">
-                                  <button className={`chip ${desertsEnabled ? 'active' : ''}`} onClick={() => onToggleDesertsLayer?.(true)} aria-pressed={desertsEnabled} aria-label="Show deserts">Show</button>
-                                  <button className={`chip ${!desertsEnabled ? 'active' : ''}`} onClick={() => onToggleDesertsLayer?.(false)} aria-pressed={!desertsEnabled} aria-label="Hide deserts">Hide</button>
-                                </div>
-                              </div>
-                              <div className="stats-subtitle">Major desert regions by Natural Earth.</div>
-                            </div>
+                            </>)}
                           </div>
-                          {/* Divider */}
-                          <div style={{ height: 1, background: 'rgba(71,85,105,0.35)', margin: '12px 0' }} />
-                          {/* LOD controls */}
-                          <div className="settings-title" style={{ marginBottom: 6 }}>Detail level (LOD)</div>
-                          <div className="settings-row settings-row-2col">
-                            {(['auto','low','med','high'] as const).map(l => (
-                              <button
-                                key={l}
-                                className={`settings-chip ${naturalLod === l ? 'active' : ''}`}
-                                onClick={() => onSetNaturalLod?.(l)}
-                                aria-pressed={naturalLod === l}
-                                aria-label={`Set detail level ${l}`}
-                              >{l.toUpperCase()}</button>
-                            ))}
+
+                          {/* ── LOD Slider ── */}
+                          <div style={{ height: 1, background: 'rgba(71,85,105,0.25)', margin: '6px 0 8px' }} />
+                          <div className="lod-slider-block">
+                            <div className="lod-slider-header">
+                              <span className="lod-slider-label">Detail Level</span>
+                              <span className="lod-slider-value">{naturalLod}</span>
+                            </div>
+                            <input
+                              type="range"
+                              min={0}
+                              max={3}
+                              step={1}
+                              value={['auto','low','med','high'].indexOf(naturalLod)}
+                              onChange={(e) => {
+                                const lods = ['auto','low','med','high'] as const;
+                                onSetNaturalLod?.(lods[Number(e.target.value)]);
+                              }}
+                              className="lod-slider"
+                              aria-label="Detail level"
+                            />
+                            <div className="lod-ticks">
+                              <span className="lod-tick">Auto</span>
+                              <span className="lod-tick">Low</span>
+                              <span className="lod-tick">Med</span>
+                              <span className="lod-tick">High</span>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -841,6 +883,49 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
                                 aria-label="Star intensity"
                               />
                             </div>
+                          </div>
+
+                          {/* LED Halo */}
+                          <div className="settings-group">
+                            <div className="settings-group-header">
+                              <div className="settings-group-title">LED Halo</div>
+                              <div className="settings-group-meta">Glow</div>
+                            </div>
+                            <div className="settings-group-description">Cycle the globe atmosphere through rainbow colors like LED lights.</div>
+                            <div className="settings-row segmented">
+                              <button
+                                className={`settings-chip ${ledHaloEnabled ? 'active' : ''}`}
+                                onClick={() => { setLedHaloEnabled(true); onSetLedHalo?.(true); }}
+                                aria-pressed={ledHaloEnabled}
+                              >On</button>
+                              <button
+                                className={`settings-chip ${!ledHaloEnabled ? 'active' : ''}`}
+                                onClick={() => { setLedHaloEnabled(false); onSetLedHalo?.(false); }}
+                                aria-pressed={!ledHaloEnabled}
+                              >Off</button>
+                            </div>
+                            {ledHaloEnabled && (
+                              <div className="settings-slider-block">
+                                <div className="settings-slider-header">
+                                  <span>Speed</span>
+                                  <span className="settings-slider-value">{ledHaloSpeed}ms</span>
+                                </div>
+                                <input
+                                  type="range"
+                                  min={10}
+                                  max={200}
+                                  step={5}
+                                  value={ledHaloSpeed}
+                                  onChange={(e) => {
+                                    const v = Number(e.target.value);
+                                    setLedHaloSpeed(v);
+                                    onSetLedHaloSpeed?.(v);
+                                  }}
+                                  className="settings-slider"
+                                  aria-label="LED halo speed"
+                                />
+                              </div>
+                            )}
                           </div>
 
                           {/* Terrain */}
