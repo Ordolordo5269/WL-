@@ -1,6 +1,6 @@
 import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
-import { applyFog as appearanceApplyFog, setBaseFeaturesVisibility as appearanceSetBaseFeaturesVisibility, applyPhysicalModeTweaks as appearanceApplyPhysical, MAP_STYLES, type StyleKey, type PlanetPreset, applyStarIntensity as appearanceApplyStarIntensity, applySpacePreset as appearanceApplySpacePreset, type SpacePreset } from './map/mapAppearance';
+import { applyFog as appearanceApplyFog, setBaseFeaturesVisibility as appearanceSetBaseFeaturesVisibility, applyPhysicalModeTweaks as appearanceApplyPhysical, MAP_STYLES, type StyleKey, type PlanetPreset, applyStarIntensity as appearanceApplyStarIntensity, applySpacePreset as appearanceApplySpacePreset, applyHaloColor as appearanceApplyHaloColor, type SpacePreset } from './map/mapAppearance';
 import { applyTerrain, reapplyAfterStyleChange, loadPersistedTerrain, persistTerrain } from './map/terrain';
 import type { ChoroplethSpec } from './services/worldbank-gdp';
 import type { ChoroplethSpec as GdpPerCapitaChoroplethSpec } from './services/worldbank-gdp-per-capita';
@@ -10,6 +10,8 @@ import '../../styles/geocoder.css';
 import { ConflictVisualization } from '../conflicts/services/conflict-tracker/conflict-visualization';
 import { AVAILABLE_HISTORY_YEARS, snapToAvailableYear } from '../../utils/historical-years';
 import { ConflictDataManager, type ConflictData } from '../conflicts/services/conflict-tracker/conflict-data-manager';
+import { setLiveActivityLayer } from '../live-activity/live-activity-layers';
+import type { LiveActivityLayerId } from '../live-activity/types';
 
 // Mapbox token from environment variable (see frontend/.env)
 const _mbToken = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
@@ -117,6 +119,12 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   // Presets de planeta (atmósfera)
   const [planetPreset, setPlanetPreset] = useState<PlanetPreset>('default');
   const [starIntensity, setStarIntensityState] = useState<number>(0.6);
+  // LED Halo cycling
+  const ledHaloRef = useRef(false);
+  const ledHaloSpeedRef = useRef(50); // ms per hue step
+  const ledHaloIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const ledHaloHueRef = useRef(0);
+
   // Ocultar nombres/carreteras/fronteras
   const [minimalModeOn, setMinimalModeOn] = useState(false);
   // Natural layers: state refs
@@ -1261,6 +1269,34 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     setSpacePreset: (preset: SpacePreset) => {
       if (mapRef.current) appearanceApplySpacePreset(mapRef.current, preset);
     },
+    // LED Halo
+    setLedHalo: (enabled: boolean) => {
+      ledHaloRef.current = enabled;
+      if (enabled) {
+        if (ledHaloIntervalRef.current) clearInterval(ledHaloIntervalRef.current);
+        ledHaloIntervalRef.current = setInterval(() => {
+          if (!mapRef.current) return;
+          ledHaloHueRef.current = (ledHaloHueRef.current + 2) % 360;
+          appearanceApplyHaloColor(mapRef.current, ledHaloHueRef.current);
+        }, ledHaloSpeedRef.current);
+      } else {
+        if (ledHaloIntervalRef.current) { clearInterval(ledHaloIntervalRef.current); ledHaloIntervalRef.current = null; }
+        // Restore current planet preset fog
+        if (mapRef.current) appearanceApplyFog(mapRef.current, planetPreset);
+      }
+    },
+    setLedHaloSpeed: (ms: number) => {
+      ledHaloSpeedRef.current = ms;
+      // Restart interval if active
+      if (ledHaloRef.current && ledHaloIntervalRef.current) {
+        clearInterval(ledHaloIntervalRef.current);
+        ledHaloIntervalRef.current = setInterval(() => {
+          if (!mapRef.current) return;
+          ledHaloHueRef.current = (ledHaloHueRef.current + 2) % 360;
+          appearanceApplyHaloColor(mapRef.current, ledHaloHueRef.current);
+        }, ms);
+      }
+    },
     // Terrain API
     setTerrainEnabled: (v: boolean) => {
       const map = mapRef.current;
@@ -1365,7 +1401,12 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     },
     setRotateSpeed: (degPerSec: number) => {
       rotationSpeedRef.current = Math.max(0, Number.isFinite(degPerSec) ? degPerSec : 0);
-    }
+    },
+    setLiveActivityLayer: (id: LiveActivityLayerId, enabled: boolean, data?: GeoJSON.FeatureCollection | null, extra?: any) => {
+      const map = mapRef.current;
+      if (!map) return;
+      setLiveActivityLayer(map, id, enabled, data, extra);
+    },
   }), [easeTo, applyFog, applyPhysicalModeTweaks, styleKey, setBaseFeaturesVisibility, updateOrgHighlightFilter, terrainOn, terrainExaggeration]);
 
   // Helper para reinstalar fuentes/capas y eventos tras cambio de estilo
@@ -1893,6 +1934,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     );
     return () => {
       cleanupResources();
+      if (ledHaloIntervalRef.current) { clearInterval(ledHaloIntervalRef.current); ledHaloIntervalRef.current = null; }
       try { geocoder.off('result', handleGeocoderResult); geocoder.onRemove(); } catch {}
       try { conflictDataManager.current?.cleanup(); } catch {}
       if (mapRef.current) {

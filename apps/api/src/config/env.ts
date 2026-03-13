@@ -6,6 +6,8 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   CORS_ORIGIN: z.string().min(1, 'CORS_ORIGIN is required'),
   JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters'),
+  NASA_FIRMS_KEY: z.string().optional(),
+  AISSTREAM_KEY: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

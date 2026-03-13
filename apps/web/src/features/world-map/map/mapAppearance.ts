@@ -15,7 +15,7 @@ export function applyFog(map: mapboxgl.Map, preset: PlanetPreset) {
     default: {
       color: 'rgb(186, 210, 235)',
       'high-color': 'rgb(36, 92, 223)',
-      'horizon-blend': 0,
+      'horizon-blend': 0.02,
       'space-color': 'rgb(11, 11, 25)',
       'star-intensity': 0.6
     },
@@ -137,6 +137,17 @@ export const SPACE_PRESETS: Record<SpacePreset, { 'space-color': string; 'star-i
   galaxy:  { 'space-color': 'rgb(10, 25, 70)', 'star-intensity': 1.0 },
   crimson: { 'space-color': 'rgb(50, 8, 8)',   'star-intensity': 0.6 },
 };
+
+export function applyHaloColor(map: mapboxgl.Map, hue: number) {
+  try {
+    const current = (map as any).getFog?.() || {};
+    map.setFog({
+      ...current,
+      color: `hsl(${hue}, 70%, 75%)`,
+      'high-color': `hsl(${hue}, 80%, 45%)`,
+    } as any);
+  } catch {}
+}
 
 export function applyStarIntensity(map: mapboxgl.Map, value: number) {
   try {

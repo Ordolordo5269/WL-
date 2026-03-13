@@ -28,6 +28,7 @@ import favoritesRoutes from './favorites.routes';
 import organizationRoutes from './organization.routes';
 import commoditiesRoutes from './commodities.routes';
 import environmentRoutes from './environment.routes';
+import liveActivityRoutes from './live-activity.routes';
 
 const router = Router();
 
@@ -58,5 +59,6 @@ router.use('/favorites', favoritesRoutes);
 router.use('/organizations', organizationRoutes);
 router.use('/commodities', commoditiesRoutes);
 router.use('/environment', environmentRoutes);
+router.use('/live-activity', liveActivityRoutes);
 
 export default router;
