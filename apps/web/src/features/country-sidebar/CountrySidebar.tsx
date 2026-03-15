@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronDown, Globe, Banknote, Landmark, Shield, Users, Globe2, Cpu, Palette, X, Maximize2, Minimize2, TrendingUp, Star } from 'lucide-react';
+import { ChevronDown, Globe, Banknote, Landmark, Shield, Users, Globe2, Cpu, Palette, X, Maximize2, Minimize2, TrendingUp, Star, Gem, Leaf } from 'lucide-react';
 import { useEconomyData } from './hooks/useEconomyData';
 import { useCountryBasicInfo } from './hooks/useCountryBasicInfo';
 import EconomySection from './sections/EconomySection';
@@ -17,6 +17,10 @@ import { useTechnologyData } from './hooks/useTechnologyData';
 import TechnologySection from './sections/TechnologySection';
 import { useCultureData } from './hooks/useCultureData';
 import CultureSection from './sections/CultureSection';
+import { useCommoditiesData } from './hooks/useCommoditiesData';
+import CommoditiesSection from './sections/CommoditiesSection';
+import { useEnvironmentData } from './hooks/useEnvironmentData';
+import EnvironmentSection from './sections/EnvironmentSection';
 import HistoricalTrendsSection from './sections/HistoricalTrendsSection';
 import CountryHeaderSticky from './sections/CountryHeaderSticky';
 import CountryKPIs from './sections/CountryKPIs';
@@ -210,6 +214,8 @@ export default function CountrySidebar({ isOpen, onClose, countryName, onNavigat
   const shouldLoadDefense = expanded || openCategories.has('Defense');
   const shouldLoadInternational = expanded || openCategories.has('International');
   const shouldLoadTechnology = expanded || openCategories.has('Technology and National Assets');
+  const shouldLoadCommodities = expanded || openCategories.has('Raw Materials');
+  const shouldLoadEnvironment = expanded || openCategories.has('Environment');
   const shouldLoadCulture = expanded || openCategories.has('Culture');
   
   // Load data only when needed (lazy loading) - use debounced country name
@@ -219,6 +225,8 @@ export default function CountrySidebar({ isOpen, onClose, countryName, onNavigat
   const { data: defenseData, isLoading: isDefenseLoading, error: defenseError } = useDefenseData(iso3, debouncedCountryName, shouldLoadDefense);
   const { data: internationalData, isLoading: isInternationalLoading, error: internationalError } = useInternationalData(iso3, debouncedCountryName, shouldLoadInternational);
   const { data: technologyData, isLoading: isTechnologyLoading, error: technologyError } = useTechnologyData(iso3, debouncedCountryName, shouldLoadTechnology);
+  const { data: commoditiesData, isLoading: isCommoditiesLoading, error: commoditiesError } = useCommoditiesData(iso3, debouncedCountryName, shouldLoadCommodities);
+  const { data: environmentData, isLoading: isEnvironmentLoading, error: environmentError } = useEnvironmentData(iso3, debouncedCountryName, shouldLoadEnvironment);
   const { data: cultureData, isLoading: isCultureLoading, error: cultureError } = useCultureData(iso3, debouncedCountryName, shouldLoadCulture);
   
   // Search removed per UX request; keep invariant empty term so lists show all items
@@ -299,6 +307,24 @@ export default function CountrySidebar({ isOpen, onClose, countryName, onNavigat
         'R&D index', 'Tech exports', 'Major national companies',
         'State-owned enterprises', 'Strategic assets', 'Sovereign funds',
         'Strategic industries and specializations', 'Industrial policy', 'Critical minerals and global supply share'
+      ]
+    },
+    {
+      icon: <Gem className="text-amber-400" />,
+      title: 'Raw Materials',
+      items: [
+        'Fuel exports & imports', 'Energy dependency', 'Energy use per capita',
+        'Renewable electricity', 'Mineral rents', 'Ores & metals exports',
+        'Cereal production', 'Food trade', 'Arable land'
+      ]
+    },
+    {
+      icon: <Leaf className="text-emerald-400" />,
+      title: 'Environment',
+      items: [
+        'CO2 emissions', 'Air pollution (PM2.5)', 'Methane emissions',
+        'Forest area', 'Protected areas', 'Clean water access',
+        'Renewable energy', 'Renewable electricity', 'Energy transition'
       ]
     },
     {
@@ -542,6 +568,26 @@ export default function CountrySidebar({ isOpen, onClose, countryName, onNavigat
                       true
                     )}
                   </div>
+
+                  {/* Zone: Raw Materials (Full Width) */}
+                  <div className="bento-zone-commodities">
+                    {renderCategorySection(
+                      'Raw Materials',
+                      CommoditiesSection,
+                      { data: commoditiesData, isLoading: isCommoditiesLoading, error: commoditiesError },
+                      true
+                    )}
+                  </div>
+
+                  {/* Zone: Environment (Full Width) */}
+                  <div className="bento-zone-environment">
+                    {renderCategorySection(
+                      'Environment',
+                      EnvironmentSection,
+                      { data: environmentData, isLoading: isEnvironmentLoading, error: environmentError },
+                      true
+                    )}
+                  </div>
                 </div>
               </div>
             </>
@@ -692,6 +738,24 @@ export default function CountrySidebar({ isOpen, onClose, countryName, onNavigat
                     'Technology and National Assets',
                     TechnologySection,
                     { data: technologyData, isLoading: isTechnologyLoading, error: technologyError }
+                  );
+                }
+
+                // Special handling for Raw Materials category
+                if (category.title === 'Raw Materials') {
+                  return renderCategorySection(
+                    'Raw Materials',
+                    CommoditiesSection,
+                    { data: commoditiesData, isLoading: isCommoditiesLoading, error: commoditiesError }
+                  );
+                }
+
+                // Special handling for Environment category
+                if (category.title === 'Environment') {
+                  return renderCategorySection(
+                    'Environment',
+                    EnvironmentSection,
+                    { data: environmentData, isLoading: isEnvironmentLoading, error: environmentError }
                   );
                 }
 

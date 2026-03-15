@@ -29,7 +29,23 @@ const COUNTRY_SELECT_FIELDS = {
   props: true,
 };
 
+// ── Mapbox name → canonical DB name aliases ─────────────────────────────────
+// Mapbox vector tiles sometimes use variant names that don't match our Entity table.
+const MAPBOX_NAME_ALIASES: Record<string, string> = {
+  'Myanmar (Burma)': 'Myanmar',
+  'Congo (Kinshasa)': 'Congo, Dem. Rep.',
+  'Congo (Brazzaville)': 'Republic of the Congo',
+  'The Gambia': 'Gambia, The',
+  'Türkiye': 'Turkey',
+  'North Macedonia': 'Macedonia',
+};
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Strip parenthetical suffixes: "Myanmar (Burma)" → "Myanmar" */
+function stripParenthetical(name: string): string {
+  return name.replace(/\s*\(.*?\)\s*$/, '').trim();
+}
 
 function slugifyCountryName(input: string): string {
   return input
@@ -64,6 +80,9 @@ function mapEntityToCountryBasicInfo(entity: {
     area: typeof area === 'number' ? area : null,
     population: typeof population === 'number' ? population : null,
     capital: props.capital ? [props.capital] : undefined,
+    languages: props.languages || undefined,
+    currencies: props.currencies || undefined,
+    governmentType: props.governmentType || undefined,
     flags: {
       png: `https://flagcdn.com/w320/${iso2.toLowerCase()}.png`,
       svg: `https://flagcdn.com/${iso2.toLowerCase()}.svg`
@@ -178,44 +197,73 @@ export async function getCountryBasicInfoByName(name: string): Promise<CountryBa
   const query = (name || '').trim();
   if (!query) return { error: 'Country name required' };
 
-  const normalizedSlug = slugifyCountryName(query);
-  const normalizedUpper = query.toUpperCase();
+  // Build list of candidate names to try (in priority order)
+  const candidates: string[] = [query];
+  // 1. Check alias map (e.g. "Myanmar (Burma)" → "Myanmar")
+  const aliased = MAPBOX_NAME_ALIASES[query];
+  if (aliased) candidates.push(aliased);
+  // 2. Strip parenthetical suffix (e.g. "Congo (Kinshasa)" → "Congo")
+  const stripped = stripParenthetical(query);
+  if (stripped !== query && !candidates.includes(stripped)) candidates.push(stripped);
 
   try {
-    const exactEntity = await prisma.entity.findFirst({
-      where: {
-        type: 'COUNTRY',
-        OR: [
-          { name: { equals: query, mode: 'insensitive' } },
-          { slug: { equals: normalizedSlug } },
-          { iso3: { equals: normalizedUpper } },
-          { iso2: { equals: normalizedUpper } },
-        ],
-      },
-      select: COUNTRY_SELECT_FIELDS,
-    });
-
-    if (exactEntity) {
-      const mapped = mapEntityToCountryBasicInfo(exactEntity);
-      if (mapped) return { data: mapped };
+    // Stage 1: Exact match (name, slug, iso3, iso2) for each candidate
+    for (const candidate of candidates) {
+      const slug = slugifyCountryName(candidate);
+      const upper = candidate.toUpperCase();
+      const exactEntity = await prisma.entity.findFirst({
+        where: {
+          type: 'COUNTRY',
+          OR: [
+            { name: { equals: candidate, mode: 'insensitive' } },
+            { slug: { equals: slug } },
+            { iso3: { equals: upper } },
+            { iso2: { equals: upper } },
+          ],
+        },
+        select: COUNTRY_SELECT_FIELDS,
+      });
+      if (exactEntity) {
+        const mapped = mapEntityToCountryBasicInfo(exactEntity);
+        if (mapped) return { data: mapped };
+      }
     }
 
-    const partialMatches = await prisma.entity.findMany({
-      where: {
-        type: 'COUNTRY',
-        OR: [
-          { name: { contains: query, mode: 'insensitive' } },
-          { slug: { contains: normalizedSlug } },
-        ],
-      },
-      select: COUNTRY_SELECT_FIELDS,
-      orderBy: { name: 'asc' },
-      take: 5,
-    });
+    // Stage 2: Partial match — DB name contains candidate OR candidate contains DB name
+    for (const candidate of candidates) {
+      const slug = slugifyCountryName(candidate);
+      const partialMatches = await prisma.entity.findMany({
+        where: {
+          type: 'COUNTRY',
+          OR: [
+            { name: { contains: candidate, mode: 'insensitive' } },
+            { slug: { contains: slug } },
+          ],
+        },
+        select: COUNTRY_SELECT_FIELDS,
+        orderBy: { name: 'asc' },
+        take: 5,
+      });
 
-    const bestPartial = partialMatches.sort((a: any, b: any) => a.name.length - b.name.length)[0];
-    if (bestPartial) {
-      const mapped = mapEntityToCountryBasicInfo(bestPartial);
+      const bestPartial = partialMatches.sort((a: any, b: any) => a.name.length - b.name.length)[0];
+      if (bestPartial) {
+        const mapped = mapEntityToCountryBasicInfo(bestPartial);
+        if (mapped) return { data: mapped };
+      }
+    }
+
+    // Stage 3: Reverse-contains — find entities whose name is contained IN the query
+    // Handles: query="Myanmar (Burma)" matching entity name="Myanmar"
+    const allCountries = await prisma.entity.findMany({
+      where: { type: 'COUNTRY', iso3: { not: null } },
+      select: COUNTRY_SELECT_FIELDS,
+    });
+    const queryLower = query.toLowerCase();
+    const reverseMatches = allCountries
+      .filter(e => e.name && queryLower.includes(e.name.toLowerCase()))
+      .sort((a, b) => (b.name?.length || 0) - (a.name?.length || 0)); // prefer longest match
+    if (reverseMatches.length > 0) {
+      const mapped = mapEntityToCountryBasicInfo(reverseMatches[0]);
       if (mapped) return { data: mapped };
     }
 

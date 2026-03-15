@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { AlertCircle, HeartPulse, GraduationCap, Activity, Users, MapPin, TrendingUp } from 'lucide-react';
+import { AlertCircle, HeartPulse, GraduationCap, Activity, Users, MapPin, TrendingUp, Briefcase, ShieldAlert } from 'lucide-react';
 import { societyService } from '../services/society-service';
 import type { TSocietyIndicators } from '../services/society-service';
 import type { SocietySeriesData } from '../hooks/useSocietyData';
@@ -153,6 +153,12 @@ export default function SocietySection({ data, isLoading, error, series: _series
         <Metric icon={<MapPin className="w-4 h-4" />} label="Population density" value={s.formatNumber(data.populationDensity.value)} />
         <Metric icon={<GraduationCap className="w-4 h-4" />} label="Primary net enrollment" value={s.formatPercent(data.primaryNetEnrollment.value)} />
         <Metric icon={<Activity className="w-4 h-4" />} label="Extreme poverty ($2.15)" value={s.formatPercent(data.povertyExtreme215.value)} />
+        {data.youthUnemploymentPct?.value !== null && data.youthUnemploymentPct?.value !== undefined && (
+          <Metric icon={<Briefcase className="w-4 h-4" />} label="Youth unemployment (15-24)" value={s.formatPercent(data.youthUnemploymentPct.value)} />
+        )}
+        {data.intentionalHomicidesPer100k?.value !== null && data.intentionalHomicidesPer100k?.value !== undefined && (
+          <Metric icon={<ShieldAlert className="w-4 h-4" />} label="Homicides (per 100k)" value={s.formatNumber(data.intentionalHomicidesPer100k.value)} />
+        )}
       </div>
 
       {/* Historical Trends Section - Now in main Historical Trends zone, hidden here */}

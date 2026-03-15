@@ -51,6 +51,19 @@ interface LeftSidebarProps {
   onToggleTradeGdpLayer?: (enabled: boolean) => void;
   tradeGdpEnabled?: boolean;
   tradeGdpLegend?: Array<{ color: string; min?: number; max?: number }>;
+  // Raw Materials choropleths
+  onToggleFuelExportsLayer?: (enabled: boolean) => void;
+  fuelExportsEnabled?: boolean;
+  fuelExportsLegend?: Array<{ color: string; min?: number; max?: number }>;
+  onToggleMineralRentsLayer?: (enabled: boolean) => void;
+  mineralRentsEnabled?: boolean;
+  mineralRentsLegend?: Array<{ color: string; min?: number; max?: number }>;
+  onToggleEnergyImportsLayer?: (enabled: boolean) => void;
+  energyImportsEnabled?: boolean;
+  energyImportsLegend?: Array<{ color: string; min?: number; max?: number }>;
+  onToggleCerealProductionLayer?: (enabled: boolean) => void;
+  cerealProductionEnabled?: boolean;
+  cerealProductionLegend?: Array<{ color: string; min?: number; max?: number }>;
   // History Mode controls
   onToggleHistoryMode?: (enabled: boolean) => void;
   onSetHistoryYear?: (year: number) => void;
@@ -88,7 +101,7 @@ interface MenuItem {
   iconBg?: string;
 }
 
-export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictTracker, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, onToggleGdpLayer, gdpEnabled = false, gdpLegend = [], onToggleGdpPerCapitaLayer, gdpPerCapitaEnabled = false, gdpPerCapitaLegend = [], onToggleInflationLayer, inflationEnabled = false, inflationLegend = [], onToggleGiniLayer, giniEnabled = false, giniLegend = [], onToggleExportsLayer, exportsEnabled = false, exportsLegend = [], onToggleLifeExpectancyLayer, lifeExpectancyEnabled = false, lifeExpectancyLegend = [], onToggleMilitaryExpenditureLayer, militaryExpenditureEnabled = false, militaryExpenditureLegend = [], onToggleDemocracyIndexLayer, democracyIndexEnabled = false, democracyIndexLegend = [], onToggleTradeGdpLayer, tradeGdpEnabled = false, tradeGdpLegend = [], onToggleHistoryMode, onSetHistoryYear, historyEnabled: _historyEnabled = false, historyYear = 1880, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, naturalLod = 'auto', onSetNaturalLod }: LeftSidebarProps) {
+export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictTracker, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, onToggleGdpLayer, gdpEnabled = false, gdpLegend = [], onToggleGdpPerCapitaLayer, gdpPerCapitaEnabled = false, gdpPerCapitaLegend = [], onToggleInflationLayer, inflationEnabled = false, inflationLegend = [], onToggleGiniLayer, giniEnabled = false, giniLegend = [], onToggleExportsLayer, exportsEnabled = false, exportsLegend = [], onToggleLifeExpectancyLayer, lifeExpectancyEnabled = false, lifeExpectancyLegend = [], onToggleMilitaryExpenditureLayer, militaryExpenditureEnabled = false, militaryExpenditureLegend = [], onToggleDemocracyIndexLayer, democracyIndexEnabled = false, democracyIndexLegend = [], onToggleTradeGdpLayer, tradeGdpEnabled = false, tradeGdpLegend = [], onToggleFuelExportsLayer, fuelExportsEnabled = false, fuelExportsLegend = [], onToggleMineralRentsLayer, mineralRentsEnabled = false, mineralRentsLegend = [], onToggleEnergyImportsLayer, energyImportsEnabled = false, energyImportsLegend = [], onToggleCerealProductionLayer, cerealProductionEnabled = false, cerealProductionLegend = [], onToggleHistoryMode, onSetHistoryYear, historyEnabled: _historyEnabled = false, historyYear = 1880, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, naturalLod = 'auto', onSetNaturalLod }: LeftSidebarProps) {
   const [activeItem, setActiveItem] = useState<string>('home');
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
@@ -684,6 +697,91 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
                               <div className="legend-source">Source: World Bank (NE.TRD.GNFS.ZS)</div>
                             </div>
                           )}
+
+                          {/* Raw Materials Section */}
+                          <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                            <div style={{ fontSize: 11, fontWeight: 600, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Raw Materials</div>
+
+                            {/* Fuel Exports */}
+                            <div className="stats-header" style={{ marginTop: 8 }}>
+                              <div className="stats-title">Fuel Exports (% merch.)</div>
+                              <div className="chip-group">
+                                <button className={`chip ${fuelExportsEnabled ? 'active' : ''}`} onClick={() => onToggleFuelExportsLayer?.(true)} aria-pressed={fuelExportsEnabled}>Show</button>
+                                <button className={`chip ${!fuelExportsEnabled ? 'active' : ''}`} onClick={() => onToggleFuelExportsLayer?.(false)} aria-pressed={!fuelExportsEnabled}>Hide</button>
+                              </div>
+                            </div>
+                            <div className="stats-subtitle">Fuel exports as % of merchandise exports</div>
+                            {fuelExportsEnabled && fuelExportsLegend.length > 0 && (
+                              <div className="legend-card">
+                                <div className="legend-label">Legend</div>
+                                <div className="choropleth-legend-bar">
+                                  {fuelExportsLegend.map((b, i) => (<span key={i} className="choropleth-legend-swatch" style={{ backgroundColor: b.color }} />))}
+                                </div>
+                                <div className="choropleth-legend-scale"><span>low</span><span>high</span></div>
+                                <div className="legend-source">Source: World Bank (TX.VAL.FUEL.ZS.UN)</div>
+                              </div>
+                            )}
+
+                            {/* Mineral Rents */}
+                            <div className="stats-header" style={{ marginTop: 12 }}>
+                              <div className="stats-title">Mineral Rents (% GDP)</div>
+                              <div className="chip-group">
+                                <button className={`chip ${mineralRentsEnabled ? 'active' : ''}`} onClick={() => onToggleMineralRentsLayer?.(true)} aria-pressed={mineralRentsEnabled}>Show</button>
+                                <button className={`chip ${!mineralRentsEnabled ? 'active' : ''}`} onClick={() => onToggleMineralRentsLayer?.(false)} aria-pressed={!mineralRentsEnabled}>Hide</button>
+                              </div>
+                            </div>
+                            <div className="stats-subtitle">Mineral rents as % of GDP</div>
+                            {mineralRentsEnabled && mineralRentsLegend.length > 0 && (
+                              <div className="legend-card">
+                                <div className="legend-label">Legend</div>
+                                <div className="choropleth-legend-bar">
+                                  {mineralRentsLegend.map((b, i) => (<span key={i} className="choropleth-legend-swatch" style={{ backgroundColor: b.color }} />))}
+                                </div>
+                                <div className="choropleth-legend-scale"><span>low</span><span>high</span></div>
+                                <div className="legend-source">Source: World Bank (NY.GDP.MINR.RT.ZS)</div>
+                              </div>
+                            )}
+
+                            {/* Energy Imports */}
+                            <div className="stats-header" style={{ marginTop: 12 }}>
+                              <div className="stats-title">Energy Imports (% use)</div>
+                              <div className="chip-group">
+                                <button className={`chip ${energyImportsEnabled ? 'active' : ''}`} onClick={() => onToggleEnergyImportsLayer?.(true)} aria-pressed={energyImportsEnabled}>Show</button>
+                                <button className={`chip ${!energyImportsEnabled ? 'active' : ''}`} onClick={() => onToggleEnergyImportsLayer?.(false)} aria-pressed={!energyImportsEnabled}>Hide</button>
+                              </div>
+                            </div>
+                            <div className="stats-subtitle">Net energy imports as % of energy use</div>
+                            {energyImportsEnabled && energyImportsLegend.length > 0 && (
+                              <div className="legend-card">
+                                <div className="legend-label">Legend</div>
+                                <div className="choropleth-legend-bar">
+                                  {energyImportsLegend.map((b, i) => (<span key={i} className="choropleth-legend-swatch" style={{ backgroundColor: b.color }} />))}
+                                </div>
+                                <div className="choropleth-legend-scale"><span>low</span><span>high</span></div>
+                                <div className="legend-source">Source: World Bank (EG.IMP.CONS.ZS)</div>
+                              </div>
+                            )}
+
+                            {/* Cereal Production */}
+                            <div className="stats-header" style={{ marginTop: 12 }}>
+                              <div className="stats-title">Cereal Production</div>
+                              <div className="chip-group">
+                                <button className={`chip ${cerealProductionEnabled ? 'active' : ''}`} onClick={() => onToggleCerealProductionLayer?.(true)} aria-pressed={cerealProductionEnabled}>Show</button>
+                                <button className={`chip ${!cerealProductionEnabled ? 'active' : ''}`} onClick={() => onToggleCerealProductionLayer?.(false)} aria-pressed={!cerealProductionEnabled}>Hide</button>
+                              </div>
+                            </div>
+                            <div className="stats-subtitle">Total cereal production (metric tons) · log scale</div>
+                            {cerealProductionEnabled && cerealProductionLegend.length > 0 && (
+                              <div className="legend-card">
+                                <div className="legend-label">Legend</div>
+                                <div className="choropleth-legend-bar">
+                                  {cerealProductionLegend.map((b, i) => (<span key={i} className="choropleth-legend-swatch" style={{ backgroundColor: b.color }} />))}
+                                </div>
+                                <div className="choropleth-legend-scale"><span>low</span><span>high</span></div>
+                                <div className="legend-source">Source: World Bank (AG.PRD.CREL.MT)</div>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
 

@@ -61,7 +61,7 @@ interface ConflictGeoJSON {
   }>;
 }
 
-type MetricId = 'gdp' | 'inflation' | 'gdp-per-capita' | 'gini' | 'exports' | 'life-expectancy' | 'military-expenditure' | 'democracy-index' | 'trade-gdp';
+type MetricId = 'gdp' | 'inflation' | 'gdp-per-capita' | 'gini' | 'exports' | 'life-expectancy' | 'military-expenditure' | 'democracy-index' | 'trade-gdp' | 'fuel-exports' | 'mineral-rents' | 'energy-imports' | 'cereal-production';
 const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMap: () => mapboxgl.Map | null; setChoropleth?: (metric: MetricId, spec: ChoroplethSpec | GdpPerCapitaChoroplethSpec | null) => void; setActiveChoropleth?: (metric: MetricId | null) => void; setHistoryEnabled?: (enabled: boolean) => void; setHistoryYear?: (year: number) => void; highlightIso3List?: (iso: string[], colorHex?: string) => void; highlightIso3ToColorMap?: (isoToColor: Record<string,string>) => void; setTerrainEnabled?: (v: boolean) => void; setTerrainExaggeration?: (n: number) => void }, WorldMapProps>(({ onCountrySelect, selectedCountry, conflicts = [], selectedConflictId, isLeftSidebarOpen = false, onMapReady }, ref) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const geocoderContainer = useRef<HTMLDivElement>(null);
@@ -86,15 +86,19 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   const userInteractingRef = useRef<boolean>(false);
   const eventListenersRef = useRef<EventListenerRecord[]>([]);
   const choroplethSpecRef = useRef<Record<MetricId, ChoroplethSpec | GdpPerCapitaChoroplethSpec | null>>({ 
-    gdp: null, 
-    inflation: null, 
-    'gdp-per-capita': null, 
-    gini: null, 
+    gdp: null,
+    inflation: null,
+    'gdp-per-capita': null,
+    gini: null,
     exports: null,
     'life-expectancy': null,
     'military-expenditure': null,
     'democracy-index': null,
-    'trade-gdp': null
+    'trade-gdp': null,
+    'fuel-exports': null,
+    'mineral-rents': null,
+    'energy-imports': null,
+    'cereal-production': null
   });
   const activeChoroplethRef = useRef<MetricId | null>(null);
   const highlightedIsoOrgRef = useRef<string[]>([]);
@@ -237,7 +241,11 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       'life-expectancy': 'life-expectancy-fill',
       'military-expenditure': 'military-expenditure-fill',
       'democracy-index': 'democracy-index-fill',
-      'trade-gdp': 'trade-gdp-fill'
+      'trade-gdp': 'trade-gdp-fill',
+      'fuel-exports': 'fuel-exports-fill',
+      'mineral-rents': 'mineral-rents-fill',
+      'energy-imports': 'energy-imports-fill',
+      'cereal-production': 'cereal-production-fill'
     };
     const layerId = layerMap[metric];
     const sourceLayer = 'country_boundaries';
@@ -326,9 +334,13 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       'life-expectancy': 'life-expectancy-fill',
       'military-expenditure': 'military-expenditure-fill',
       'democracy-index': 'democracy-index-fill',
-      'trade-gdp': 'trade-gdp-fill'
+      'trade-gdp': 'trade-gdp-fill',
+      'fuel-exports': 'fuel-exports-fill',
+      'mineral-rents': 'mineral-rents-fill',
+      'energy-imports': 'energy-imports-fill',
+      'cereal-production': 'cereal-production-fill'
     };
-    
+
     Object.values(layerMap).forEach(layerId => {
       if (map.getLayer(layerId)) {
         try { map.setPaintProperty(layerId, 'fill-opacity', choroplethOpacity); } catch {}
@@ -1145,7 +1157,11 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         'life-expectancy': 'life-expectancy-fill',
         'military-expenditure': 'military-expenditure-fill',
         'democracy-index': 'democracy-index-fill',
-        'trade-gdp': 'trade-gdp-fill'
+        'trade-gdp': 'trade-gdp-fill',
+        'fuel-exports': 'fuel-exports-fill',
+        'mineral-rents': 'mineral-rents-fill',
+        'energy-imports': 'energy-imports-fill',
+        'cereal-production': 'cereal-production-fill'
       };
       (Object.keys(layers) as MetricId[]).forEach((m) => {
         const id = layers[m];
@@ -1372,7 +1388,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     }
 
     // Apply any existing choropleths and reassert visibility
-    (['gdp','gdp-per-capita','inflation','gini','exports','life-expectancy','military-expenditure','democracy-index','trade-gdp'] as MetricId[]).forEach((m) => {
+    (['gdp','gdp-per-capita','inflation','gini','exports','life-expectancy','military-expenditure','democracy-index','trade-gdp','fuel-exports','mineral-rents','energy-imports','cereal-production'] as MetricId[]).forEach((m) => {
       if (choroplethSpecRef.current[m]) applyChoropleth(m);
     });
 
@@ -1387,7 +1403,11 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         'life-expectancy': 'life-expectancy-fill',
         'military-expenditure': 'military-expenditure-fill',
         'democracy-index': 'democracy-index-fill',
-        'trade-gdp': 'trade-gdp-fill'
+        'trade-gdp': 'trade-gdp-fill',
+        'fuel-exports': 'fuel-exports-fill',
+        'mineral-rents': 'mineral-rents-fill',
+        'energy-imports': 'energy-imports-fill',
+        'cereal-production': 'cereal-production-fill'
       };
       (Object.keys(layers) as MetricId[]).forEach((m) => {
         const id = layers[m];

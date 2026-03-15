@@ -12,6 +12,11 @@ export interface InternationalData {
   fdiNetInflowsUsd: IndicatorPoint; // BX.KLT.DINV.CD.WD
   fdiNetOutflowsUsd: IndicatorPoint; // BM.KLT.DINV.CD.WD
   remittancesUsd: IndicatorPoint; // BX.TRF.PWKR.CD.DT (Personal remittances received)
+  // Expansion
+  refugeePopByOrigin: IndicatorPoint;
+  refugeePopByAsylum: IndicatorPoint;
+  logisticsPerformanceIndex: IndicatorPoint;
+  odaGivenPctGni: IndicatorPoint;
   sources: {
     worldBank: string;
   };
@@ -46,6 +51,10 @@ class InternationalService {
         fdiNetInflowsUsd: { value: null, year: null },
         fdiNetOutflowsUsd: { value: null, year: null },
         remittancesUsd: { value: null, year: null },
+        refugeePopByOrigin: { value: null, year: null },
+        refugeePopByAsylum: { value: null, year: null },
+        logisticsPerformanceIndex: { value: null, year: null },
+        odaGivenPctGni: { value: null, year: null },
         sources: { worldBank: 'https://api.worldbank.org/v2/' }
       };
     }

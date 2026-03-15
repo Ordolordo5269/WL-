@@ -13,6 +13,7 @@ export interface CountryBasicInfo {
   region: string;
   subregion?: string;
   languages?: { [key: string]: string };
+  governmentType?: string;
   latlng?: [number, number];
   borders?: string[];
   area: number;

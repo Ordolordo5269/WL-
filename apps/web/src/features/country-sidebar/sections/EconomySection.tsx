@@ -1,13 +1,17 @@
-import { 
-  DollarSign, 
-  PieChart, 
-  Globe, 
+import {
+  DollarSign,
+  PieChart,
+  Globe,
   AlertTriangle,
   Activity,
   Target,
   Briefcase,
   Users,
-  ArrowRightLeft
+  ArrowRightLeft,
+  TrendingUp,
+  Landmark,
+  Wallet,
+  Factory
 } from 'lucide-react';
 import { economyService } from '../services/economy-service';
 import type { EconomyData } from '../services/economy-service';
@@ -155,6 +159,32 @@ export default function EconomySection({ economyData, isLoading, error }: Econom
             </div>
           </div>
 
+          {economyData.gdp_growth_annual_pct !== null && (
+            <div className="metric-item">
+              <div className="metric-icon small">
+                <TrendingUp className="h-4 w-4" />
+              </div>
+              <div className="metric-content">
+                <div className="metric-label">GDP Growth</div>
+                <div className={`metric-value ${economyData.gdp_growth_annual_pct > 0 ? 'value-positive' : 'value-negative'}`}>
+                  {economyService.formatPercentage(economyData.gdp_growth_annual_pct)}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {economyData.gni_per_capita_ppp !== null && (
+            <div className="metric-item">
+              <div className="metric-icon small">
+                <Wallet className="h-4 w-4" />
+              </div>
+              <div className="metric-content">
+                <div className="metric-label">GNI per Capita (PPP)</div>
+                <div className="metric-value">{economyService.formatCurrency(economyData.gni_per_capita_ppp)}</div>
+              </div>
+            </div>
+          )}
+
           {economyData.inflation_rate_percent !== null && (
             <div className="metric-item">
               <div className="metric-icon small">
@@ -234,6 +264,93 @@ export default function EconomySection({ economyData, isLoading, error }: Econom
           <div className="metric-content">
             <div className="metric-label">External Debt</div>
             <div className="metric-value">{economyService.formatCurrency(economyData.external_debt_usd)}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Fiscal & Financial Health */}
+      {(economyData.govt_debt_pct_gdp !== null || economyData.tax_revenue_pct_gdp !== null ||
+        economyData.gross_savings_pct_gdp !== null || economyData.total_reserves_usd !== null) && (
+        <div className="section-card">
+          <div className="section-header">
+            <Landmark className="h-4 w-4" />
+            <h3>Fiscal & Financial Health</h3>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {economyData.govt_debt_pct_gdp !== null && (
+              <div className="metric-item">
+                <div className="metric-icon small"><Landmark className="h-4 w-4" /></div>
+                <div className="metric-content">
+                  <div className="metric-label">Govt Debt (% GDP)</div>
+                  <div className={`metric-value ${economyData.govt_debt_pct_gdp > 60 ? 'value-negative' : 'value-neutral'}`}>
+                    {economyService.formatPercentage(economyData.govt_debt_pct_gdp)}
+                  </div>
+                </div>
+              </div>
+            )}
+            {economyData.tax_revenue_pct_gdp !== null && (
+              <div className="metric-item">
+                <div className="metric-icon small"><DollarSign className="h-4 w-4" /></div>
+                <div className="metric-content">
+                  <div className="metric-label">Tax Revenue (% GDP)</div>
+                  <div className="metric-value">{economyService.formatPercentage(economyData.tax_revenue_pct_gdp)}</div>
+                </div>
+              </div>
+            )}
+            {economyData.gross_savings_pct_gdp !== null && (
+              <div className="metric-item">
+                <div className="metric-icon small"><Wallet className="h-4 w-4" /></div>
+                <div className="metric-content">
+                  <div className="metric-label">Gross Savings (% GDP)</div>
+                  <div className="metric-value">{economyService.formatPercentage(economyData.gross_savings_pct_gdp)}</div>
+                </div>
+              </div>
+            )}
+            {economyData.total_reserves_usd !== null && (
+              <div className="metric-item">
+                <div className="metric-icon small"><Globe className="h-4 w-4" /></div>
+                <div className="metric-content">
+                  <div className="metric-label">Total Reserves (incl. gold)</div>
+                  <div className="metric-value">{economyService.formatCurrency(economyData.total_reserves_usd)}</div>
+                </div>
+              </div>
+            )}
+            {economyData.gross_capital_formation_pct_gdp !== null && (
+              <div className="metric-item">
+                <div className="metric-icon small"><Factory className="h-4 w-4" /></div>
+                <div className="metric-content">
+                  <div className="metric-label">Capital Formation (% GDP)</div>
+                  <div className="metric-value">{economyService.formatPercentage(economyData.gross_capital_formation_pct_gdp)}</div>
+                </div>
+              </div>
+            )}
+            {economyData.manufacturing_pct_gdp !== null && (
+              <div className="metric-item">
+                <div className="metric-icon small"><Factory className="h-4 w-4" /></div>
+                <div className="metric-content">
+                  <div className="metric-label">Manufacturing (% GDP)</div>
+                  <div className="metric-value">{economyService.formatPercentage(economyData.manufacturing_pct_gdp)}</div>
+                </div>
+              </div>
+            )}
+            {economyData.fdi_net_inflows_pct_gdp !== null && (
+              <div className="metric-item">
+                <div className="metric-icon small"><ArrowRightLeft className="h-4 w-4" /></div>
+                <div className="metric-content">
+                  <div className="metric-label">FDI Inflows (% GDP)</div>
+                  <div className="metric-value">{economyService.formatPercentage(economyData.fdi_net_inflows_pct_gdp)}</div>
+                </div>
+              </div>
+            )}
+            {economyData.remittances_received_pct_gdp !== null && (
+              <div className="metric-item">
+                <div className="metric-icon small"><Globe className="h-4 w-4" /></div>
+                <div className="metric-content">
+                  <div className="metric-label">Remittances (% GDP)</div>
+                  <div className="metric-value">{economyService.formatPercentage(economyData.remittances_received_pct_gdp)}</div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

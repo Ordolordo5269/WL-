@@ -16,6 +16,7 @@ export interface CountryBasicInfo {
   region: string;
   subregion?: string;
   languages?: { [key: string]: string };
+  governmentType?: string;
   latlng?: [number, number];
   borders?: string[];
   area: number;
@@ -124,10 +125,8 @@ class CountryBasicInfoService {
     return parts.length > 0 ? parts.join(', ') : 'N/A';
   }
 
-  getGovernmentType(_country: CountryBasicInfo): string {
-    // REST Countries v3.1 dataset does not provide a direct government type consistently.
-    // Return N/A to avoid misleading information; can be enhanced later with a mapping source.
-    return 'N/A';
+  getGovernmentType(country: CountryBasicInfo): string {
+    return country.governmentType || 'N/A';
   }
 }
 

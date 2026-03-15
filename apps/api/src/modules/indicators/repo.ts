@@ -7,29 +7,22 @@ import type { GdpEntry } from './types';
  */
 export async function findLatestIndicator(iso3: string, indicatorCode: string): Promise<{ value: number | null; year: number | null }> {
   try {
-    const country = await prisma.entity.findFirst({
+    // Query IndicatorValue directly across ALL entities with this iso3
+    // to handle duplicate entity records for the same country.
+    const row = await prisma.indicatorValue.findFirst({
       where: {
-        type: 'COUNTRY',
-        iso3: iso3.toUpperCase()
+        indicatorCode,
+        value: { not: null },
+        entity: { type: 'COUNTRY', iso3: iso3.toUpperCase() }
       },
-      select: {
-        indicators: {
-          where: { indicatorCode, value: { not: null } },
-          orderBy: { year: 'desc' },
-          take: 1,
-          select: { value: true, year: true }
-        }
-      }
+      orderBy: { year: 'desc' },
+      select: { value: true, year: true }
     });
-    if (!country || !country.indicators || country.indicators.length === 0) {
-      return { value: null, year: null };
-    }
-    const indicator = country.indicators[0];
-    const value = indicator.value !== null && indicator.value !== undefined
-      ? Number(indicator.value.toString())
+    if (!row) return { value: null, year: null };
+    const value = row.value !== null && row.value !== undefined
+      ? Number(row.value.toString())
       : null;
-    const year = indicator.year ?? null;
-    return { value, year };
+    return { value, year: row.year ?? null };
   } catch (error) {
     console.error(`Error fetching latest indicator ${indicatorCode} for ${iso3} from database:`, error);
     return { value: null, year: null };
@@ -143,34 +136,22 @@ export async function findAllLatestInflation(): Promise<Record<string, GdpEntry>
  */
 export async function findInflationByIso3(iso3: string): Promise<GdpEntry | null> {
   try {
-    const country = await prisma.entity.findFirst({
-      where: { type: 'COUNTRY', iso3: iso3.toUpperCase() },
-      select: {
-        iso3: true,
-        indicators: {
-          where: {
-            indicatorCode: { in: ['INFLATION_PCT', 'INFLATION_CPI_YOY_PCT'] },
-            value: { not: null }
-          },
-          orderBy: [
-            { indicatorCode: 'asc' },
-            { year: 'desc' }
-          ],
-          take: 2,
-          select: { indicatorCode: true, value: true, year: true }
-        }
-      }
+    const rows = await prisma.indicatorValue.findMany({
+      where: {
+        indicatorCode: { in: ['INFLATION_PCT', 'INFLATION_CPI_YOY_PCT'] },
+        value: { not: null },
+        entity: { type: 'COUNTRY', iso3: iso3.toUpperCase() }
+      },
+      orderBy: [{ indicatorCode: 'asc' }, { year: 'desc' }],
+      take: 2,
+      select: { indicatorCode: true, value: true, year: true }
     });
-    if (!country || !country.indicators || country.indicators.length === 0) {
-      return null;
-    }
-    const rows = (country as any).indicators as Array<{ indicatorCode: string; value: Prisma.Decimal | null; year: number | null }>;
+    if (rows.length === 0) return null;
     const preferred = rows.find(r => r.indicatorCode === 'INFLATION_PCT') ?? rows[0];
     const value = preferred.value !== null && preferred.value !== undefined
       ? Number(preferred.value.toString())
       : null;
-    const year = preferred.year ?? null;
-    return { iso3: country.iso3!.toUpperCase(), value, year };
+    return { iso3: iso3.toUpperCase(), value, year: preferred.year ?? null };
   } catch (error) {
     console.error(`Error fetching Inflation for ${iso3} from database:`, error);
     return null;
@@ -182,27 +163,20 @@ export async function findInflationByIso3(iso3: string): Promise<GdpEntry | null
  */
 export async function findByIso3AndCode(iso3: string, indicatorCode: string): Promise<GdpEntry | null> {
   try {
-    const country = await prisma.entity.findFirst({
-      where: { type: 'COUNTRY', iso3: iso3.toUpperCase() },
-      select: {
-        iso3: true,
-        indicators: {
-          where: { indicatorCode, value: { not: null } },
-          orderBy: { year: 'desc' },
-          take: 1,
-          select: { value: true, year: true }
-        }
-      }
+    const row = await prisma.indicatorValue.findFirst({
+      where: {
+        indicatorCode,
+        value: { not: null },
+        entity: { type: 'COUNTRY', iso3: iso3.toUpperCase() }
+      },
+      orderBy: { year: 'desc' },
+      select: { value: true, year: true }
     });
-    if (!country || !country.indicators || country.indicators.length === 0) {
-      return null;
-    }
-    const indicator = country.indicators[0];
-    const value = indicator.value !== null && indicator.value !== undefined
-      ? Number(indicator.value.toString())
+    if (!row) return null;
+    const value = row.value !== null && row.value !== undefined
+      ? Number(row.value.toString())
       : null;
-    const year = indicator.year ?? null;
-    return { iso3: country.iso3!.toUpperCase(), value, year };
+    return { iso3: iso3.toUpperCase(), value, year: row.year ?? null };
   } catch (error) {
     console.error(`Error fetching ${indicatorCode} for ${iso3} from database:`, error);
     return null;
@@ -219,29 +193,21 @@ export async function findTimeSeries(
   endYear?: number
 ): Promise<Array<{ year: number; value: number | null }>> {
   try {
-    const country = await prisma.entity.findFirst({
-      where: { type: 'COUNTRY', iso3: iso3.toUpperCase() },
-      select: {
-        id: true,
-        indicators: {
-          where: {
-            indicatorCode,
-            ...(startYear || endYear ? {
-              year: {
-                ...(startYear ? { gte: startYear } : {}),
-                ...(endYear ? { lte: endYear } : {})
-              }
-            } : {})
-          },
-          orderBy: { year: 'asc' },
-          select: { year: true, value: true }
-        }
-      }
+    const series = await prisma.indicatorValue.findMany({
+      where: {
+        indicatorCode,
+        entity: { type: 'COUNTRY', iso3: iso3.toUpperCase() },
+        ...(startYear || endYear ? {
+          year: {
+            ...(startYear ? { gte: startYear } : {}),
+            ...(endYear ? { lte: endYear } : {})
+          }
+        } : {})
+      },
+      orderBy: { year: 'asc' },
+      select: { year: true, value: true }
     });
-    if (!country || !country.indicators || country.indicators.length === 0) {
-      return [];
-    }
-    return country.indicators.map(ind => ({
+    return series.map(ind => ({
       year: ind.year,
       value: ind.value !== null && ind.value !== undefined
         ? Number(ind.value.toString())
@@ -257,10 +223,17 @@ export async function findTimeSeries(
  * Find a country entity by ISO3.
  */
 export async function findCountryEntity(iso3: string) {
-  return prisma.entity.findFirst({
+  // When duplicate entities exist for the same iso3, prefer the one that
+  // actually has indicator data attached. Fall back to any match.
+  const candidates = await prisma.entity.findMany({
     where: { type: 'COUNTRY', iso3: iso3.toUpperCase() },
-    select: { id: true, name: true, region: true, props: true, iso3: true }
+    select: { id: true, name: true, region: true, props: true, iso3: true, _count: { select: { indicators: true } } }
   });
+  if (candidates.length === 0) return null;
+  // Pick the entity with the most indicator data
+  candidates.sort((a, b) => b._count.indicators - a._count.indicators);
+  const { _count, ...entity } = candidates[0];
+  return entity;
 }
 
 /**
@@ -273,14 +246,12 @@ export async function findSeriesByRawCode(
   limitYears?: number
 ): Promise<Array<{ year: number; value: number | null }>> {
   try {
-    const entity = await prisma.entity.findFirst({
-      where: { type: 'COUNTRY', iso3: iso3.toUpperCase() },
-      select: { id: true }
-    });
-    if (!entity) return [];
-
+    // Query across ALL entities with this iso3 to handle duplicates
     const series = await prisma.indicatorValue.findMany({
-      where: { entityId: entity.id, indicatorCode },
+      where: {
+        indicatorCode,
+        entity: { type: 'COUNTRY', iso3: iso3.toUpperCase() }
+      },
       orderBy: { year: 'asc' },
       select: { year: true, value: true }
     });

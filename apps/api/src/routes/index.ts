@@ -26,6 +26,8 @@ import authRoutes from './auth.routes';
 import userRoutes from './user.routes';
 import favoritesRoutes from './favorites.routes';
 import organizationRoutes from './organization.routes';
+import commoditiesRoutes from './commodities.routes';
+import environmentRoutes from './environment.routes';
 
 const router = Router();
 
@@ -54,5 +56,7 @@ router.use('/auth', authRoutes);
 router.use('/user', userRoutes);
 router.use('/favorites', favoritesRoutes);
 router.use('/organizations', organizationRoutes);
+router.use('/commodities', commoditiesRoutes);
+router.use('/environment', environmentRoutes);
 
 export default router;

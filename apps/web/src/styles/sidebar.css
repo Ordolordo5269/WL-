@@ -2400,6 +2400,16 @@
   box-sizing: border-box;
 }
 
+/* Zone 9: Raw Materials (Full Width) */
+.bento-zone-commodities {
+  grid-column: 1 / -1;
+  background: #1A1A1A;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
 /* Bento Zone Base Styles */
 .bento-zone-kpis,
 .bento-zone-static,
@@ -2408,7 +2418,8 @@
 .bento-zone-society,
 .bento-zone-politics,
 .bento-zone-defense,
-.bento-zone-international {
+.bento-zone-international,
+.bento-zone-commodities {
   min-width: 0;
   box-sizing: border-box;
 }
@@ -2476,10 +2487,11 @@
   .bento-zone-society,
   .bento-zone-politics,
   .bento-zone-defense,
-  .bento-zone-international {
+  .bento-zone-international,
+  .bento-zone-commodities {
     grid-column: 1 / -1;
   }
-  
+
   .country-kpis-zone {
     grid-template-columns: 1fr;
   }

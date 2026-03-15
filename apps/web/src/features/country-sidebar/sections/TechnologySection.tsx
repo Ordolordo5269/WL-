@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { AlertCircle, Cpu, DollarSign, FlaskConical, Users, BookOpenCheck, FileCode2 } from 'lucide-react';
+import { AlertCircle, Cpu, DollarSign, FlaskConical, Users, BookOpenCheck, FileCode2, Wifi, Percent } from 'lucide-react';
 import { technologyService } from '../services/technology-service';
 import type { TTechnologyData } from '../services/technology-service';
 
@@ -74,6 +74,24 @@ export default function TechnologySection({ data, isLoading, error }: Technology
               <div className="metric-value">{s.formatNumber(data.scientificJournalArticles.value)}</div>
             </div>
           </div>
+          {data.fixedBroadbandPer100?.value !== null && data.fixedBroadbandPer100?.value !== undefined && (
+            <div className="metric-item">
+              <div className="metric-icon small"><Wifi className="w-4 h-4" /></div>
+              <div className="metric-content">
+                <div className="metric-label">Broadband (per 100 people) {data.fixedBroadbandPer100.year ? <span className="ml-2 text-[10px] text-slate-400">{data.fixedBroadbandPer100.year}</span> : null}</div>
+                <div className="metric-value">{s.formatNumber(data.fixedBroadbandPer100.value)}</div>
+              </div>
+            </div>
+          )}
+          {data.highTechExportsPctManuf?.value !== null && data.highTechExportsPctManuf?.value !== undefined && (
+            <div className="metric-item">
+              <div className="metric-icon small"><Percent className="w-4 h-4" /></div>
+              <div className="metric-content">
+                <div className="metric-label">High-tech exports (% manuf.) {data.highTechExportsPctManuf.year ? <span className="ml-2 text-[10px] text-slate-400">{data.highTechExportsPctManuf.year}</span> : null}</div>
+                <div className="metric-value">{s.formatPercent(data.highTechExportsPctManuf.value)}</div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </motion.div>

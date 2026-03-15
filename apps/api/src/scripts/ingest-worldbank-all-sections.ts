@@ -1,17 +1,17 @@
 import axios from 'axios';
 import { PrismaClient, Prisma } from '@prisma/client';
+import { randomUUID } from 'crypto';
 
 const prisma = new PrismaClient();
 
 const WB_BASE = 'https://api.worldbank.org/v2';
 const CURRENT_YEAR = new Date().getUTCFullYear();
 const TARGET_LATEST_YEAR = CURRENT_YEAR - 1;
-
-type SeriesPoint = { date: string; value: number | null };
+const BATCH_SIZE = 500; // rows per INSERT statement
 
 // Complete list of all indicators across all sections
 const ALL_INDICATORS: Array<{ code: string; wb: string; name: string; unit?: string | null; section: string }> = [
-  // ===== ECONOMY (11) - Already in DB but included for completeness =====
+  // ===== ECONOMY (11) =====
   { section: 'Economy', code: 'GDP_USD', wb: 'NY.GDP.MKTP.CD', name: 'GDP (current US$)', unit: 'USD' },
   { section: 'Economy', code: 'GDP_PC_USD', wb: 'NY.GDP.PCAP.CD', name: 'GDP per capita (current US$)', unit: 'USD' },
   { section: 'Economy', code: 'INFLATION_CPI_YOY_PCT', wb: 'FP.CPI.TOTL.ZG', name: 'Inflation, consumer prices (annual %)', unit: 'percent' },
@@ -53,14 +53,13 @@ const ALL_INDICATORS: Array<{ code: string; wb: string; name: string; unit?: str
   { section: 'Technology', code: 'PATENT_APPLICATIONS_RESIDENTS', wb: 'IP.PAT.RESD', name: 'Patent applications, residents', unit: 'count' },
   { section: 'Technology', code: 'SCIENTIFIC_JOURNAL_ARTICLES', wb: 'IP.JRN.ARTC.SC', name: 'Scientific and technical journal articles', unit: 'count' },
 
-  // ===== DEFENSE (7) =====
+  // ===== DEFENSE (6) =====
   { section: 'Defense', code: 'MILITARY_EXPENDITURE_PCT_GDP', wb: 'MS.MIL.XPND.GD.ZS', name: 'Military expenditure (% of GDP)', unit: 'percent' },
   { section: 'Defense', code: 'MILITARY_EXPENDITURE_USD', wb: 'MS.MIL.XPND.CD', name: 'Military expenditure (current US$)', unit: 'USD' },
   { section: 'Defense', code: 'ARMED_FORCES_PERSONNEL_TOTAL', wb: 'MS.MIL.TOTL.P1', name: 'Armed forces personnel, total', unit: 'people' },
   { section: 'Defense', code: 'ARMS_IMPORTS_TIV', wb: 'MS.MIL.MPRT.KD', name: 'Arms imports (SIPRI trend indicator values)', unit: 'TIV' },
   { section: 'Defense', code: 'ARMS_EXPORTS_TIV', wb: 'MS.MIL.XPRT.KD', name: 'Arms exports (SIPRI trend indicator values)', unit: 'TIV' },
   { section: 'Defense', code: 'BATTLE_RELATED_DEATHS', wb: 'VC.BTL.DETH', name: 'Battle-related deaths (number of people)', unit: 'people' },
-  // Note: POPULATION_TOTAL already defined in Society section
 
   // ===== INTERNATIONAL (6) =====
   { section: 'International', code: 'ODA_RECEIVED_USD', wb: 'DT.ODA.ALLD.CD', name: 'Net official development assistance received (current US$)', unit: 'USD' },
@@ -76,75 +75,73 @@ async function ensureIndicators() {
   for (const it of ALL_INDICATORS) {
     await prisma.indicator.upsert({
       where: { code: it.code },
-      create: {
-        code: it.code,
-        name: it.name,
-        topic: it.section,
-        unit: it.unit ?? undefined,
-        source: 'World Bank'
-      },
-      update: {
-        name: it.name,
-        topic: it.section,
-        unit: it.unit ?? undefined,
-        source: 'World Bank'
-      }
+      create: { code: it.code, name: it.name, topic: it.section, unit: it.unit ?? undefined, source: 'World Bank' },
+      update: { name: it.name, topic: it.section, unit: it.unit ?? undefined, source: 'World Bank' }
     });
   }
-  console.log(`✓ ${ALL_INDICATORS.length} indicators ensured in database`);
+  console.log(`  ${ALL_INDICATORS.length} indicators ensured`);
 }
 
-async function fetchSeriesIso3(iso3: string, wbIndicator: string): Promise<SeriesPoint[]> {
-  const url = `${WB_BASE}/country/${encodeURIComponent(iso3)}/indicator/${encodeURIComponent(wbIndicator)}?format=json&per_page=20000`;
-  const { data } = await axios.get(url);
-  const rows: any[] = Array.isArray(data?.[1]) ? data[1] : [];
-  return rows.map(r => ({ date: r.date, value: r.value }));
-}
+/**
+ * Fetch ALL countries for a single indicator in one API call (with pagination).
+ */
+async function fetchBulkIndicator(wbCode: string): Promise<Array<{ iso3: string; year: number; value: number }>> {
+  const results: Array<{ iso3: string; year: number; value: number }> = [];
+  let page = 1;
+  let totalPages = 1;
 
-function findLatestWithFallback(points: SeriesPoint[]): { year: number | null; value: number | null } {
-  for (const p of points) {
-    const year = parseInt(p.date, 10);
-    if (!isNaN(year) && p.value != null) {
-      return { year, value: p.value };
+  while (page <= totalPages) {
+    const url = `${WB_BASE}/country/all/indicator/${encodeURIComponent(wbCode)}?format=json&per_page=20000&page=${page}`;
+    const { data } = await axios.get(url, { timeout: 30000 });
+    if (page === 1 && data?.[0]) totalPages = data[0].pages || 1;
+
+    const rows: any[] = Array.isArray(data?.[1]) ? data[1] : [];
+    for (const r of rows) {
+      const iso3: string | undefined = r?.countryiso3code || r?.country?.id;
+      if (!iso3 || iso3.length !== 3) continue;
+      if (r.value === null || r.value === undefined) continue;
+      const year = parseInt(r.date, 10);
+      if (isNaN(year)) continue;
+      const value = Number(r.value);
+      if (!Number.isFinite(value)) continue;
+      results.push({ iso3: iso3.toUpperCase(), year, value });
     }
+    page++;
   }
-  return { year: null, value: null };
+  return results;
 }
 
-async function upsertSeries(entityId: string, indicatorCode: string, points: SeriesPoint[]) {
-  for (const p of points) {
-    const year = parseInt(p.date, 10);
-    if (isNaN(year)) continue;
-    await prisma.indicatorValue.upsert({
-      where: { entityId_indicatorCode_year: { entityId, indicatorCode, year } },
-      update: { value: p.value != null ? new Prisma.Decimal(p.value) : null, source: 'World Bank' },
-      create: { entityId, indicatorCode, year, value: p.value != null ? new Prisma.Decimal(p.value) : null, source: 'World Bank' }
-    });
-  }
+/**
+ * Bulk upsert using raw SQL INSERT ... ON CONFLICT for maximum speed.
+ * Processes rows in batches of BATCH_SIZE.
+ */
+async function bulkUpsert(rows: Array<{ id: string; entityId: string; indicatorCode: string; year: number; value: number; source: string; meta: any }>) {
+  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+    const batch = rows.slice(i, i + BATCH_SIZE);
 
-  // Ensure target latest year
-  const target = points.find(p => parseInt(p.date, 10) === TARGET_LATEST_YEAR);
-  const latest = findLatestWithFallback(points);
-  if (target && target.value != null) {
-    await prisma.indicatorValue.upsert({
-      where: { entityId_indicatorCode_year: { entityId, indicatorCode, year: TARGET_LATEST_YEAR } },
-      update: { value: new Prisma.Decimal(target.value), source: 'World Bank', meta: { targetYear: TARGET_LATEST_YEAR, latestAvailableYear: TARGET_LATEST_YEAR, fallback: false } as any },
-      create: { entityId, indicatorCode, year: TARGET_LATEST_YEAR, value: new Prisma.Decimal(target.value), source: 'World Bank', meta: { targetYear: TARGET_LATEST_YEAR, latestAvailableYear: TARGET_LATEST_YEAR, fallback: false } as any }
-    });
-  } else if (latest.year != null) {
-    await prisma.indicatorValue.upsert({
-      where: { entityId_indicatorCode_year: { entityId, indicatorCode, year: TARGET_LATEST_YEAR } },
-      update: { value: latest.value != null ? new Prisma.Decimal(latest.value) : null, source: 'World Bank', meta: { targetYear: TARGET_LATEST_YEAR, latestAvailableYear: latest.year, fallback: true } as any },
-      create: { entityId, indicatorCode, year: TARGET_LATEST_YEAR, value: latest.value != null ? new Prisma.Decimal(latest.value) : null, source: 'World Bank', meta: { targetYear: TARGET_LATEST_YEAR, latestAvailableYear: latest.year, fallback: true } as any }
-    });
+    const values = batch.map(r => {
+      const metaJson = r.meta ? JSON.stringify(r.meta).replace(/'/g, "''") : null;
+      const valStr = r.value.toString();
+      return `('${r.id}', '${r.entityId}', '${r.indicatorCode}', ${r.year}, ${valStr}, '${r.source}', ${metaJson ? `'${metaJson}'::jsonb` : 'NULL'}, NOW())`;
+    }).join(',\n');
+
+    await prisma.$executeRawUnsafe(`
+      INSERT INTO "IndicatorValue" ("id", "entityId", "indicatorCode", "year", "value", "source", "meta", "revisedAt")
+      VALUES ${values}
+      ON CONFLICT ("entityId", "indicatorCode", "year")
+      DO UPDATE SET
+        "value" = EXCLUDED."value",
+        "source" = EXCLUDED."source",
+        "meta" = COALESCE(EXCLUDED."meta", "IndicatorValue"."meta"),
+        "revisedAt" = NOW()
+    `);
   }
 }
 
 async function enrichCountryMeta() {
   console.log('Enriching country metadata...');
-  const perPage = 2000;
-  const url = `${WB_BASE}/country?format=json&per_page=${perPage}`;
-  const { data } = await axios.get(url);
+  const url = `${WB_BASE}/country?format=json&per_page=2000`;
+  const { data } = await axios.get(url, { timeout: 15000 });
   const countries: any[] = Array.isArray(data?.[1]) ? data[1] : [];
   let updated = 0;
   for (const c of countries) {
@@ -159,85 +156,113 @@ async function enrichCountryMeta() {
     const nextProps = { ...currentProps, incomeLevel };
     await prisma.entity.update({
       where: { id: entity.id },
-      data: {
-        name: name ?? entity.name,
-        region: regionValue ?? entity.region,
-        props: nextProps
-      } as any
+      data: { name: name ?? entity.name, region: regionValue ?? entity.region, props: nextProps } as any
     });
     updated++;
   }
-  console.log(`✓ Updated metadata for ${updated} countries`);
+  console.log(`  Updated metadata for ${updated} countries`);
 }
 
 async function main() {
-  console.log('\n=== WorldLore: Complete Indicator Ingestion ===\n');
+  console.log('\n=== WorldLore: Complete Indicator Ingestion (Bulk SQL) ===\n');
   console.log(`Target year: ${TARGET_LATEST_YEAR}`);
   console.log(`Total indicators: ${ALL_INDICATORS.length}`);
-  console.log('Sections: Economy, Politics, Society, Technology, Defense, International\n');
+  console.log(`Strategy: Bulk fetch + bulk SQL INSERT ON CONFLICT (fast)\n`);
 
   await ensureIndicators();
   await enrichCountryMeta();
 
+  // Build iso3 -> entityId lookup (prefer entity with most indicator data for duplicates)
   const entities = await prisma.entity.findMany({
     where: { type: 'COUNTRY', iso3: { not: null } },
-    select: { id: true, iso3: true, slug: true }
+    select: { id: true, iso3: true, _count: { select: { indicators: true } } }
   });
+  const iso3ToEntityId: Record<string, string> = {};
+  for (const e of entities) {
+    const key = (e.iso3 as string).toUpperCase();
+    if (!iso3ToEntityId[key] || e._count.indicators > 0) {
+      iso3ToEntityId[key] = e.id;
+    }
+  }
+  console.log(`\nLoaded ${Object.keys(iso3ToEntityId).length} unique country entities\n`);
 
-  console.log(`\nProcessing ${entities.length} countries...\n`);
-
-  let totalProcessed = 0;
+  let totalUpserted = 0;
   let totalErrors = 0;
 
-  for (const e of entities) {
-    const iso3 = e.iso3 as string;
-    console.log(`[${totalProcessed + 1}/${entities.length}] ${e.slug.toUpperCase()} (${iso3})`);
-    
-    for (const it of ALL_INDICATORS) {
-      try {
-        const series = await fetchSeriesIso3(iso3, it.wb);
-        await upsertSeries(e.id, it.code, series);
-        const dataPoints = series.filter(p => p.value !== null).length;
-        if (dataPoints > 0) {
-          console.log(`  ✓ ${it.section.padEnd(14)} ${it.code.padEnd(35)} → ${dataPoints.toString().padStart(4)} points`);
-        } else {
-          console.log(`  ○ ${it.section.padEnd(14)} ${it.code.padEnd(35)} → no data`);
-        }
-      } catch (err) {
-        totalErrors++;
-        console.log(`  ✗ ${it.section.padEnd(14)} ${it.code.padEnd(35)} → ERROR: ${(err as Error).message}`);
+  for (let i = 0; i < ALL_INDICATORS.length; i++) {
+    const it = ALL_INDICATORS[i];
+    const t0 = Date.now();
+    console.log(`[${i + 1}/${ALL_INDICATORS.length}] ${it.section.padEnd(14)} ${it.code} (${it.wb})`);
+
+    try {
+      const rows = await fetchBulkIndicator(it.wb);
+      console.log(`  Fetched ${rows.length} data points`);
+
+      // Group by iso3 to find latest per country
+      const byIso3 = new Map<string, Array<{ year: number; value: number }>>();
+      for (const r of rows) {
+        if (!iso3ToEntityId[r.iso3]) continue;
+        if (!byIso3.has(r.iso3)) byIso3.set(r.iso3, []);
+        byIso3.get(r.iso3)!.push({ year: r.year, value: r.value });
       }
+
+      // Build batch of all rows to upsert
+      const upsertRows: Array<{ id: string; entityId: string; indicatorCode: string; year: number; value: number; source: string; meta: any }> = [];
+
+      for (const [iso3, points] of byIso3) {
+        const entityId = iso3ToEntityId[iso3];
+        if (!entityId) continue;
+
+        // All historical data points
+        for (const p of points) {
+          upsertRows.push({
+            id: randomUUID(),
+            entityId,
+            indicatorCode: it.code,
+            year: p.year,
+            value: p.value,
+            source: 'World Bank',
+            meta: null
+          });
+        }
+
+        // Fallback at TARGET_LATEST_YEAR
+        points.sort((a, b) => b.year - a.year);
+        const latest = points[0];
+        const targetYearPoint = points.find(p => p.year === TARGET_LATEST_YEAR);
+        const fallbackValue = targetYearPoint ? targetYearPoint.value : latest.value;
+        const fallbackYear = targetYearPoint ? TARGET_LATEST_YEAR : latest.year;
+
+        // Only add fallback row if not already included in historical data at that year
+        if (!targetYearPoint) {
+          upsertRows.push({
+            id: randomUUID(),
+            entityId,
+            indicatorCode: it.code,
+            year: TARGET_LATEST_YEAR,
+            value: fallbackValue,
+            source: 'World Bank',
+            meta: { targetYear: TARGET_LATEST_YEAR, latestAvailableYear: fallbackYear, fallback: true }
+          });
+        }
+      }
+
+      // Execute bulk upsert
+      await bulkUpsert(upsertRows);
+      totalUpserted += upsertRows.length;
+      const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+      console.log(`  Upserted ${upsertRows.length} rows for ${byIso3.size} countries (${elapsed}s)\n`);
+    } catch (err) {
+      totalErrors++;
+      console.log(`  ERROR: ${(err as Error).message}\n`);
     }
-    
-    totalProcessed++;
-    console.log('');
   }
 
   console.log('\n=== Ingestion Complete ===');
-  console.log(`Countries processed: ${totalProcessed}`);
-  console.log(`Total indicators: ${ALL_INDICATORS.length}`);
+  console.log(`Total upserted records: ${totalUpserted}`);
   console.log(`Errors: ${totalErrors}`);
-  console.log('\nYou can now use the aggregated endpoints:');
-  console.log('  /api/politics/:iso3');
-  console.log('  /api/society/:iso3');
-  console.log('  /api/technology/:iso3');
-  console.log('  /api/defense/:iso3');
-  console.log('  /api/international/:iso3');
 }
 
 main()
   .catch((e) => { console.error(e); process.exit(1); })
   .finally(async () => { await prisma.$disconnect(); });
-
-
-
-
-
-
-
-
-
-
-
-
-

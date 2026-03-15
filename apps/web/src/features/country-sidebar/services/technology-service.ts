@@ -11,6 +11,8 @@ export interface TechnologyData {
   researchersPerMillion: IndicatorPoint; // SP.POP.SCIE.RD.P6 (Researchers in R&D, per million people)
   patentApplicationsResidents: IndicatorPoint; // IP.PAT.RESD (Patent applications, residents)
   scientificJournalArticles: IndicatorPoint; // IP.JRN.ARTC.SC (Scientific and technical journal articles)
+  fixedBroadbandPer100: IndicatorPoint;
+  highTechExportsPctManuf: IndicatorPoint;
   sources: { worldBank: string };
 }
 
@@ -42,6 +44,8 @@ class TechnologyService {
         researchersPerMillion: { value: null, year: null },
         patentApplicationsResidents: { value: null, year: null },
         scientificJournalArticles: { value: null, year: null },
+        fixedBroadbandPer100: { value: null, year: null },
+        highTechExportsPctManuf: { value: null, year: null },
         sources: { worldBank: 'https://api.worldbank.org/v2/' }
       };
     }

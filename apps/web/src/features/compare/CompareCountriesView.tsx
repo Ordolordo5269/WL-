@@ -5,7 +5,9 @@ import { useCountryBasicInfo } from '../country-sidebar/hooks/useCountryBasicInf
 import { useEconomyData } from '../country-sidebar/hooks/useEconomyData';
 import { useSocietyData } from '../country-sidebar/hooks/useSocietyData';
 import { usePoliticsData } from '../country-sidebar/hooks/usePoliticsData';
-import { historicalIndicatorsService } from '../world-map/services/historical-indicators.service';
+import { useDefenseData } from '../country-sidebar/hooks/useDefenseData';
+import { useTechnologyData } from '../country-sidebar/hooks/useTechnologyData';
+import { useEnvironmentData } from '../country-sidebar/hooks/useEnvironmentData';
 import RadarChartRecharts from './RadarChartRecharts';
 import SelectableComparisonChart from './SelectableComparisonChart';
 import type { Country } from '../../components/ui/CountrySelector';
@@ -25,146 +27,108 @@ export default function CompareCountriesView({
   country2Iso3,
   countries
 }: CompareCountriesViewProps) {
-  // Get country names and flags
   const country1Data = useMemo(() => countries.find(c => c.iso3 === country1Iso3), [countries, country1Iso3]);
   const country2Data = useMemo(() => countries.find(c => c.iso3 === country2Iso3), [countries, country2Iso3]);
 
   const country1Name = country1Data?.name || country1Iso3;
   const country2Name = country2Data?.name || country2Iso3;
 
-  // Load basic info for both countries
+  // Load basic info
   const { countryData: country1BasicInfo, isLoading: loading1Basic } = useCountryBasicInfo(country1Name);
   const { countryData: country2BasicInfo, isLoading: loading2Basic } = useCountryBasicInfo(country2Name);
 
   const country1Iso3FromBasic = country1BasicInfo?.cca3 || country1Iso3;
   const country2Iso3FromBasic = country2BasicInfo?.cca3 || country2Iso3;
 
-  // Load economy data
+  // Load section data for both countries
   const { economyData: economy1, isLoading: loading1Economy } = useEconomyData(country1Iso3FromBasic, country1Name);
   const { economyData: economy2, isLoading: loading2Economy } = useEconomyData(country2Iso3FromBasic, country2Name);
 
-  // Load society data
   const { data: society1, isLoading: loading1Society } = useSocietyData(country1Iso3FromBasic);
   const { data: society2, isLoading: loading2Society } = useSocietyData(country2Iso3FromBasic);
 
-  // Load politics data
   const { data: politics1, isLoading: loading1Politics } = usePoliticsData(country1Name, country1Iso3FromBasic);
   const { data: politics2, isLoading: loading2Politics } = usePoliticsData(country2Name, country2Iso3FromBasic);
 
-  // Time series data state
-  const [_gdpData1, setGdpData1] = useState<Array<{ year: number; value: number | null }>>([]);
-  const [_gdpData2, setGdpData2] = useState<Array<{ year: number; value: number | null }>>([]);
-  const [_inflationData1, setInflationData1] = useState<Array<{ year: number; value: number | null }>>([]);
-  const [_inflationData2, setInflationData2] = useState<Array<{ year: number; value: number | null }>>([]);
-  const [_loadingTimeSeries, setLoadingTimeSeries] = useState(true);
+  const { data: defense1 } = useDefenseData(country1Iso3FromBasic, country1Name);
+  const { data: defense2 } = useDefenseData(country2Iso3FromBasic, country2Name);
 
-  // Performance data for hexagonal chart
+  const { data: technology1 } = useTechnologyData(country1Iso3FromBasic, country1Name);
+  const { data: technology2 } = useTechnologyData(country2Iso3FromBasic, country2Name);
+
+  const { data: environment1 } = useEnvironmentData(country1Iso3FromBasic, country1Name);
+  const { data: environment2 } = useEnvironmentData(country2Iso3FromBasic, country2Name);
+
+  // Performance data for radar chart (10 dimensions)
   const [performanceData1, setPerformanceData1] = useState<Record<string, number>>({});
   const [performanceData2, setPerformanceData2] = useState<Record<string, number>>({});
   const [loadingPerformance, setLoadingPerformance] = useState(true);
 
-  // Load time series data
-  useEffect(() => {
-    if (!country1Iso3FromBasic || !country2Iso3FromBasic) return;
-
-    const loadTimeSeries = async () => {
-      setLoadingTimeSeries(true);
-      try {
-        const currentYear = new Date().getFullYear();
-        const startYear = currentYear - 10; // Last 10 years
-
-        // Load GDP data
-        const [gdp1, gdp2] = await Promise.all([
-          historicalIndicatorsService.getTimeSeries('gdp', country1Iso3FromBasic, startYear, currentYear),
-          historicalIndicatorsService.getTimeSeries('gdp', country2Iso3FromBasic, startYear, currentYear)
-        ]);
-        setGdpData1(gdp1);
-        setGdpData2(gdp2);
-
-        // Load Inflation data
-        const [inf1, inf2] = await Promise.all([
-          historicalIndicatorsService.getTimeSeries('inflation', country1Iso3FromBasic, startYear, currentYear),
-          historicalIndicatorsService.getTimeSeries('inflation', country2Iso3FromBasic, startYear, currentYear)
-        ]);
-        setInflationData1(inf1);
-        setInflationData2(inf2);
-      } catch (error) {
-        console.error('Error loading time series:', error);
-      } finally {
-        setLoadingTimeSeries(false);
-      }
-    };
-
-    loadTimeSeries();
-  }, [country1Iso3FromBasic, country2Iso3FromBasic]);
-
-  // Load performance data for hexagonal chart
   useEffect(() => {
     if (!economy1 || !economy2 || !society1 || !society2 || !politics1 || !politics2) return;
 
-    const loadPerformance = async () => {
-      setLoadingPerformance(true);
-      try {
-        // Normalize values to 0-100 scale for hexagonal chart
-        const normalize = (value: number | null | undefined, max: number = 100): number => {
-          if (!value || value <= 0) return 0;
-          return Math.min(100, (value / max) * 100);
-        };
-
-        // GDP per Capita (normalize to $100k max)
-        const gdpPerCapita1 = normalize(economy1.gdp_per_capita_usd, 100000);
-        const gdpPerCapita2 = normalize(economy2.gdp_per_capita_usd, 100000);
-
-        // Life Expectancy (normalize to 85 years max)
-        const lifeExp1 = normalize(society1.lifeExpectancy.value, 85);
-        const lifeExp2 = normalize(society2.lifeExpectancy.value, 85);
-
-        // Democracy Index (already 0-10, convert to 0-100)
-        const democracy1 = (politics1.democracyIndex.value || 0) * 10;
-        const democracy2 = (politics2.democracyIndex.value || 0) * 10;
-
-        // Education (literacy rate, already 0-100)
-        const education1 = society1.literacyRateAdult.value || 0;
-        const education2 = society2.literacyRateAdult.value || 0;
-
-        // Healthcare (UHC coverage, already 0-100)
-        const healthcare1 = society1.uhcServiceCoverageIndex.value || 0;
-        const healthcare2 = society2.uhcServiceCoverageIndex.value || 0;
-
-        // Trade Openness (calculate from exports + imports / GDP, normalize to 200% max)
-        const trade1 = economy1.exports_usd && economy1.gdp_usd 
-          ? normalize(((economy1.exports_usd + (economy1.imports_usd || 0)) / economy1.gdp_usd) * 100, 200)
-          : 0;
-        const trade2 = economy2.exports_usd && economy2.gdp_usd
-          ? normalize(((economy2.exports_usd + (economy2.imports_usd || 0)) / economy2.gdp_usd) * 100, 200)
-          : 0;
-
-        setPerformanceData1({
-          'GDP per Capita': gdpPerCapita1,
-          'Life Expectancy': lifeExp1,
-          'Democracy': democracy1,
-          'Education': education1,
-          'Healthcare': healthcare1,
-          'Trade Openness': trade1
-        });
-
-        setPerformanceData2({
-          'GDP per Capita': gdpPerCapita2,
-          'Life Expectancy': lifeExp2,
-          'Democracy': democracy2,
-          'Education': education2,
-          'Healthcare': healthcare2,
-          'Trade Openness': trade2
-        });
-      } catch (error) {
-        console.error('Error loading performance data:', error);
-      } finally {
-        setLoadingPerformance(false);
-      }
+    setLoadingPerformance(true);
+    const normalize = (value: number | null | undefined, max: number = 100): number => {
+      if (!value || value <= 0) return 0;
+      return Math.min(100, (value / max) * 100);
     };
 
-    loadPerformance();
-  }, [economy1, economy2, society1, society2, politics1, politics2]);
+    // GDP per Capita (normalize to $100k)
+    const gdpPc1 = normalize(economy1.gdp_per_capita_usd, 100000);
+    const gdpPc2 = normalize(economy2.gdp_per_capita_usd, 100000);
+
+    // Life Expectancy (normalize to 85 years)
+    const life1 = normalize(society1.lifeExpectancy.value, 85);
+    const life2 = normalize(society2.lifeExpectancy.value, 85);
+
+    // Democracy (0-10 → 0-100)
+    const dem1 = (politics1.democracyIndex.value ?? 0) * 10;
+    const dem2 = (politics2.democracyIndex.value ?? 0) * 10;
+
+    // Education (literacy %, already 0-100)
+    const edu1 = society1.literacyRateAdult.value ?? 0;
+    const edu2 = society2.literacyRateAdult.value ?? 0;
+
+    // Healthcare (UHC index, already 0-100)
+    const health1 = society1.uhcServiceCoverageIndex.value ?? 0;
+    const health2 = society2.uhcServiceCoverageIndex.value ?? 0;
+
+    // Trade Openness (normalize to 200% max)
+    const trade1 = economy1.exports_usd && economy1.gdp_usd
+      ? normalize(((economy1.exports_usd + (economy1.imports_usd ?? 0)) / economy1.gdp_usd) * 100, 200)
+      : 0;
+    const trade2 = economy2.exports_usd && economy2.gdp_usd
+      ? normalize(((economy2.exports_usd + (economy2.imports_usd ?? 0)) / economy2.gdp_usd) * 100, 200)
+      : 0;
+
+    // Environment — renewable energy % (already 0-100)
+    const env1 = environment1?.renewableEnergyConsumptionPct?.value ?? 0;
+    const env2 = environment2?.renewableEnergyConsumptionPct?.value ?? 0;
+
+    // Technology — broadband per 100 (normalize to 50 max)
+    const tech1 = normalize(technology1?.fixedBroadbandPer100?.value, 50);
+    const tech2 = normalize(technology2?.fixedBroadbandPer100?.value, 50);
+
+    // Military — mil exp % GDP (normalize to 5% max)
+    const mil1 = normalize(defense1?.militaryExpenditurePctGdp?.value, 5);
+    const mil2 = normalize(defense2?.militaryExpenditurePctGdp?.value, 5);
+
+    // Reserves (normalize to $1T)
+    const res1 = normalize(economy1.total_reserves_usd, 1e12);
+    const res2 = normalize(economy2.total_reserves_usd, 1e12);
+
+    setPerformanceData1({
+      'GDP/cap': gdpPc1, 'Life Exp.': life1, 'Democracy': dem1,
+      'Education': edu1, 'Healthcare': health1, 'Trade': trade1,
+      'Environment': env1, 'Technology': tech1, 'Military': mil1, 'Reserves': res1
+    });
+    setPerformanceData2({
+      'GDP/cap': gdpPc2, 'Life Exp.': life2, 'Democracy': dem2,
+      'Education': edu2, 'Healthcare': health2, 'Trade': trade2,
+      'Environment': env2, 'Technology': tech2, 'Military': mil2, 'Reserves': res2
+    });
+    setLoadingPerformance(false);
+  }, [economy1, economy2, society1, society2, politics1, politics2, defense1, defense2, technology1, technology2, environment1, environment2]);
 
   const isLoading = loading1Basic || loading2Basic || loading1Economy || loading2Economy || loading1Society || loading2Society || loading1Politics || loading2Politics;
 
@@ -175,11 +139,7 @@ export default function CompareCountriesView({
   useEffect(() => {
     const contentElement = contentRef.current;
     if (!contentElement) return;
-
-    const handleScroll = () => {
-      setIsScrolled(contentElement.scrollTop > 50);
-    };
-
+    const handleScroll = () => setIsScrolled(contentElement.scrollTop > 50);
     contentElement.addEventListener('scroll', handleScroll);
     return () => contentElement.removeEventListener('scroll', handleScroll);
   }, []);
@@ -192,18 +152,14 @@ export default function CompareCountriesView({
       if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
       return `$${value.toLocaleString()}`;
     }
-    if (type === 'percent') {
-      return `${value.toFixed(2)}%`;
-    }
+    if (type === 'percent') return `${value.toFixed(2)}%`;
     return value.toLocaleString();
   };
-
 
   return (
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Overlay for expanded view */}
           <motion.div
             className="country-info-overlay"
             initial={{ opacity: 0 }}
@@ -213,52 +169,33 @@ export default function CompareCountriesView({
             onClick={onClose}
           />
 
-          {/* Main View - Using expanded modal pattern */}
           <motion.div
             className="expanded-country-view"
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
-            transition={{
-              type: 'spring',
-              stiffness: 300,
-              damping: 30,
-              duration: 0.3
-            }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30, duration: 0.3 }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header - Sticky */}
+            {/* Header */}
             <div
               className={`compare-countries-header ${isScrolled ? 'compare-countries-header-scrolled' : ''}`}
               style={{ position: 'sticky', top: 0, zIndex: 100, background: '#0F0F1E', borderBottom: '1px solid rgba(71, 85, 105, 0.3)' }}
             >
               <div className="compare-countries-header-content">
-                {/* Country 1 */}
                 <div className="compare-countries-header-country">
                   {country1Data?.flagUrl && (
-                    <img
-                      src={country1Data.flagUrl}
-                      alt={country1Name}
-                      className="compare-countries-header-flag"
-                    />
+                    <img src={country1Data.flagUrl} alt={country1Name} className="compare-countries-header-flag" />
                   )}
                   <div className="compare-countries-header-info">
                     <h2 className="compare-countries-header-name">{country1Name}</h2>
                     <p className="compare-countries-header-iso">{country1Iso3}</p>
                   </div>
                 </div>
-
-                {/* VS */}
                 <div className="compare-countries-vs-large">VS</div>
-
-                {/* Country 2 */}
                 <div className="compare-countries-header-country">
                   {country2Data?.flagUrl && (
-                    <img
-                      src={country2Data.flagUrl}
-                      alt={country2Name}
-                      className="compare-countries-header-flag"
-                    />
+                    <img src={country2Data.flagUrl} alt={country2Name} className="compare-countries-header-flag" />
                   )}
                   <div className="compare-countries-header-info">
                     <h2 className="compare-countries-header-name">{country2Name}</h2>
@@ -266,18 +203,12 @@ export default function CompareCountriesView({
                   </div>
                 </div>
               </div>
-
-              {/* Close button — inside sticky header so it's always visible */}
-              <button
-                onClick={onClose}
-                className="compare-countries-close-btn"
-                aria-label="Close comparison"
-              >
+              <button onClick={onClose} className="compare-countries-close-btn" aria-label="Close comparison">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {/* Content - Using expanded-country-content wrapper */}
+            {/* Content */}
             <div className="expanded-country-content">
               <div className="compare-countries-content" ref={contentRef}>
               {isLoading ? (
@@ -286,7 +217,7 @@ export default function CompareCountriesView({
                 </div>
               ) : (
                 <>
-                  {/* KPIs Section */}
+                  {/* KPIs Section — 12 cards */}
                   <div className="compare-countries-section">
                     <h3 className="compare-countries-section-title">Key Indicators</h3>
                     <div className="compare-kpis-grid">
@@ -302,6 +233,13 @@ export default function CompareCountriesView({
                         <div className="compare-kpi-values">
                           <span className="compare-kpi-value country1">{formatValue(economy1?.gdp_per_capita_usd, 'currency')}</span>
                           <span className="compare-kpi-value country2">{formatValue(economy2?.gdp_per_capita_usd, 'currency')}</span>
+                        </div>
+                      </div>
+                      <div className="compare-kpi-card">
+                        <div className="compare-kpi-label">GDP Growth</div>
+                        <div className="compare-kpi-values">
+                          <span className="compare-kpi-value country1">{formatValue(economy1?.gdp_growth_annual_pct, 'percent')}</span>
+                          <span className="compare-kpi-value country2">{formatValue(economy2?.gdp_growth_annual_pct, 'percent')}</span>
                         </div>
                       </div>
                       <div className="compare-kpi-card">
@@ -332,10 +270,45 @@ export default function CompareCountriesView({
                           <span className="compare-kpi-value country2">{formatValue(politics2?.democracyIndex.value, 'number')}</span>
                         </div>
                       </div>
+                      <div className="compare-kpi-card">
+                        <div className="compare-kpi-label">Govt Debt (% GDP)</div>
+                        <div className="compare-kpi-values">
+                          <span className="compare-kpi-value country1">{formatValue(economy1?.govt_debt_pct_gdp, 'percent')}</span>
+                          <span className="compare-kpi-value country2">{formatValue(economy2?.govt_debt_pct_gdp, 'percent')}</span>
+                        </div>
+                      </div>
+                      <div className="compare-kpi-card">
+                        <div className="compare-kpi-label">CO2 per Capita</div>
+                        <div className="compare-kpi-values">
+                          <span className="compare-kpi-value country1">{environment1?.co2EmissionsPerCapita.value != null ? `${environment1.co2EmissionsPerCapita.value.toFixed(1)} t` : 'N/A'}</span>
+                          <span className="compare-kpi-value country2">{environment2?.co2EmissionsPerCapita.value != null ? `${environment2.co2EmissionsPerCapita.value.toFixed(1)} t` : 'N/A'}</span>
+                        </div>
+                      </div>
+                      <div className="compare-kpi-card">
+                        <div className="compare-kpi-label">Renewable Energy</div>
+                        <div className="compare-kpi-values">
+                          <span className="compare-kpi-value country1">{formatValue(environment1?.renewableEnergyConsumptionPct.value, 'percent')}</span>
+                          <span className="compare-kpi-value country2">{formatValue(environment2?.renewableEnergyConsumptionPct.value, 'percent')}</span>
+                        </div>
+                      </div>
+                      <div className="compare-kpi-card">
+                        <div className="compare-kpi-label">Broadband (per 100)</div>
+                        <div className="compare-kpi-values">
+                          <span className="compare-kpi-value country1">{technology1?.fixedBroadbandPer100.value != null ? technology1.fixedBroadbandPer100.value.toFixed(1) : 'N/A'}</span>
+                          <span className="compare-kpi-value country2">{technology2?.fixedBroadbandPer100.value != null ? technology2.fixedBroadbandPer100.value.toFixed(1) : 'N/A'}</span>
+                        </div>
+                      </div>
+                      <div className="compare-kpi-card">
+                        <div className="compare-kpi-label">Youth Unemployment</div>
+                        <div className="compare-kpi-values">
+                          <span className="compare-kpi-value country1">{formatValue(society1?.youthUnemploymentPct?.value, 'percent')}</span>
+                          <span className="compare-kpi-value country2">{formatValue(society2?.youthUnemploymentPct?.value, 'percent')}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Performance Comparison Chart - Single unified chart */}
+                  {/* Performance Comparison — 10-dimension Radar */}
                   <div className="compare-countries-section">
                     <h3 className="compare-countries-section-title">Performance Comparison</h3>
                     <RadarChartRecharts
@@ -345,13 +318,13 @@ export default function CompareCountriesView({
                       label2={country2Name}
                       color1="#3b82f6"
                       color2="#10b981"
-                      dimensions={['GDP per Capita', 'Life Expectancy', 'Democracy', 'Education', 'Healthcare', 'Trade Openness']}
+                      dimensions={['GDP/cap', 'Life Exp.', 'Democracy', 'Education', 'Healthcare', 'Trade', 'Environment', 'Technology', 'Military', 'Reserves']}
                       isLoading1={loadingPerformance}
                       isLoading2={loadingPerformance}
                     />
                   </div>
 
-                  {/* Selectable Statistics Comparison Chart */}
+                  {/* Selectable Statistics — 8 categories */}
                   <div className="compare-countries-section">
                     <h3 className="compare-countries-section-title">Custom Statistics Comparison</h3>
                     <SelectableComparisonChart
@@ -371,4 +344,3 @@ export default function CompareCountriesView({
     </AnimatePresence>
   );
 }
-

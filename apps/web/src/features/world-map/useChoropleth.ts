@@ -27,6 +27,15 @@ export function useChoropleth(mapRef: React.RefObject<MapRefType | null>) {
   const [democracyIndexLegend, setDemocracyIndexLegend] = useState<LegendEntry[]>([]);
   const [tradeGdpEnabled, setTradeGdpEnabled] = useState(false);
   const [tradeGdpLegend, setTradeGdpLegend] = useState<LegendEntry[]>([]);
+  // Raw Materials choropleths
+  const [fuelExportsEnabled, setFuelExportsEnabled] = useState(false);
+  const [fuelExportsLegend, setFuelExportsLegend] = useState<LegendEntry[]>([]);
+  const [mineralRentsEnabled, setMineralRentsEnabled] = useState(false);
+  const [mineralRentsLegend, setMineralRentsLegend] = useState<LegendEntry[]>([]);
+  const [energyImportsEnabled, setEnergyImportsEnabled] = useState(false);
+  const [energyImportsLegend, setEnergyImportsLegend] = useState<LegendEntry[]>([]);
+  const [cerealProductionEnabled, setCerealProductionEnabled] = useState(false);
+  const [cerealProductionLegend, setCerealProductionLegend] = useState<LegendEntry[]>([]);
 
   // GDP layer management
   useEffect(() => {
@@ -286,132 +295,191 @@ export function useChoropleth(mapRef: React.RefObject<MapRefType | null>) {
     return () => { cancelled = true; };
   }, [tradeGdpEnabled, gdpEnabled, gdpPerCapitaEnabled, inflationEnabled, giniEnabled, exportsEnabled, lifeExpectancyEnabled, militaryExpenditureEnabled, democracyIndexEnabled]);
 
-  // Toggle handlers with mutual exclusivity
-  const handleToggleGdpLayer = useCallback((enabled: boolean) => {
-    setGdpEnabled(enabled);
-    if (enabled) {
-      setGdpPerCapitaEnabled(false);
-      setInflationEnabled(false);
-      setGiniEnabled(false);
-      setExportsEnabled(false);
-      setLifeExpectancyEnabled(false);
-      setMilitaryExpenditureEnabled(false);
-      setDemocracyIndexEnabled(false);
-      setTradeGdpEnabled(false);
-    }
+  // Fuel Exports (% merchandise) layer - amber palette
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (!fuelExportsEnabled) {
+        mapRef.current?.setChoropleth?.('fuel-exports', null);
+        if (!gdpEnabled && !gdpPerCapitaEnabled && !inflationEnabled && !giniEnabled && !exportsEnabled && !lifeExpectancyEnabled && !militaryExpenditureEnabled && !democracyIndexEnabled && !tradeGdpEnabled && !mineralRentsEnabled && !energyImportsEnabled && !cerealProductionEnabled) {
+          mapRef.current?.setActiveChoropleth?.(null);
+        }
+        setFuelExportsLegend([]);
+        return;
+      }
+      const byIso3 = await fetchIndicatorLatestByIso3FromDb('fuel-exports');
+      if (cancelled) return;
+      const palette = ['#fffbeb', '#fef3c7', '#fde68a', '#fbbf24', '#f59e0b', '#d97706', '#92400e'];
+      const spec = buildQuantileChoropleth(byIso3, { buckets: 7, useLog: false, formatter: (v) => `${v.toFixed(1)}%`, palette });
+      setFuelExportsLegend(spec.legend.map(l => ({ color: l.color, min: l.min, max: l.max })));
+      mapRef.current?.setChoropleth?.('fuel-exports', spec as any);
+      mapRef.current?.setActiveChoropleth?.('fuel-exports');
+    };
+    run();
+    return () => { cancelled = true; };
+  }, [fuelExportsEnabled]);
+
+  // Mineral Rents (% GDP) layer - violet palette
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (!mineralRentsEnabled) {
+        mapRef.current?.setChoropleth?.('mineral-rents', null);
+        if (!gdpEnabled && !gdpPerCapitaEnabled && !inflationEnabled && !giniEnabled && !exportsEnabled && !lifeExpectancyEnabled && !militaryExpenditureEnabled && !democracyIndexEnabled && !tradeGdpEnabled && !fuelExportsEnabled && !energyImportsEnabled && !cerealProductionEnabled) {
+          mapRef.current?.setActiveChoropleth?.(null);
+        }
+        setMineralRentsLegend([]);
+        return;
+      }
+      const byIso3 = await fetchIndicatorLatestByIso3FromDb('mineral-rents');
+      if (cancelled) return;
+      const palette = ['#f5f3ff', '#ede9fe', '#ddd6fe', '#c4b5fd', '#a78bfa', '#8b5cf6', '#6d28d9'];
+      const spec = buildQuantileChoropleth(byIso3, { buckets: 7, useLog: false, formatter: (v) => `${v.toFixed(2)}%`, palette });
+      setMineralRentsLegend(spec.legend.map(l => ({ color: l.color, min: l.min, max: l.max })));
+      mapRef.current?.setChoropleth?.('mineral-rents', spec as any);
+      mapRef.current?.setActiveChoropleth?.('mineral-rents');
+    };
+    run();
+    return () => { cancelled = true; };
+  }, [mineralRentsEnabled]);
+
+  // Energy Imports (% of energy use) layer - orange palette
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (!energyImportsEnabled) {
+        mapRef.current?.setChoropleth?.('energy-imports', null);
+        if (!gdpEnabled && !gdpPerCapitaEnabled && !inflationEnabled && !giniEnabled && !exportsEnabled && !lifeExpectancyEnabled && !militaryExpenditureEnabled && !democracyIndexEnabled && !tradeGdpEnabled && !fuelExportsEnabled && !mineralRentsEnabled && !cerealProductionEnabled) {
+          mapRef.current?.setActiveChoropleth?.(null);
+        }
+        setEnergyImportsLegend([]);
+        return;
+      }
+      const byIso3 = await fetchIndicatorLatestByIso3FromDb('energy-imports');
+      if (cancelled) return;
+      const palette = ['#fff7ed', '#ffedd5', '#fed7aa', '#fdba74', '#fb923c', '#f97316', '#c2410c'];
+      const spec = buildQuantileChoropleth(byIso3, { buckets: 7, useLog: false, formatter: (v) => `${v.toFixed(1)}%`, palette });
+      setEnergyImportsLegend(spec.legend.map(l => ({ color: l.color, min: l.min, max: l.max })));
+      mapRef.current?.setChoropleth?.('energy-imports', spec as any);
+      mapRef.current?.setActiveChoropleth?.('energy-imports');
+    };
+    run();
+    return () => { cancelled = true; };
+  }, [energyImportsEnabled]);
+
+  // Cereal Production (metric tons) layer - green palette
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (!cerealProductionEnabled) {
+        mapRef.current?.setChoropleth?.('cereal-production', null);
+        if (!gdpEnabled && !gdpPerCapitaEnabled && !inflationEnabled && !giniEnabled && !exportsEnabled && !lifeExpectancyEnabled && !militaryExpenditureEnabled && !democracyIndexEnabled && !tradeGdpEnabled && !fuelExportsEnabled && !mineralRentsEnabled && !energyImportsEnabled) {
+          mapRef.current?.setActiveChoropleth?.(null);
+        }
+        setCerealProductionLegend([]);
+        return;
+      }
+      const byIso3 = await fetchIndicatorLatestByIso3FromDb('cereal-production');
+      if (cancelled) return;
+      const fmtTonnes = (v: number) => {
+        if (v >= 1e9) return `${(v / 1e9).toFixed(1)}B`;
+        if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
+        if (v >= 1e3) return `${(v / 1e3).toFixed(0)}K`;
+        return v.toFixed(0);
+      };
+      const palette = ['#f0fdf4', '#dcfce7', '#bbf7d0', '#86efac', '#4ade80', '#16a34a', '#166534'];
+      const spec = buildQuantileChoropleth(byIso3, { buckets: 7, useLog: true, formatter: fmtTonnes, palette });
+      setCerealProductionLegend(spec.legend.map(l => ({ color: l.color, min: l.min, max: l.max })));
+      mapRef.current?.setChoropleth?.('cereal-production', spec as any);
+      mapRef.current?.setActiveChoropleth?.('cereal-production');
+    };
+    run();
+    return () => { cancelled = true; };
+  }, [cerealProductionEnabled]);
+
+  // Helper to disable all choropleth layers
+  const disableAllChoropleths = useCallback(() => {
+    setGdpEnabled(false);
+    setGdpPerCapitaEnabled(false);
+    setInflationEnabled(false);
+    setGiniEnabled(false);
+    setExportsEnabled(false);
+    setLifeExpectancyEnabled(false);
+    setMilitaryExpenditureEnabled(false);
+    setDemocracyIndexEnabled(false);
+    setTradeGdpEnabled(false);
+    setFuelExportsEnabled(false);
+    setMineralRentsEnabled(false);
+    setEnergyImportsEnabled(false);
+    setCerealProductionEnabled(false);
   }, []);
+
+  // Toggle handlers with mutual exclusivity (using disableAllChoropleths helper)
+  const handleToggleGdpLayer = useCallback((enabled: boolean) => {
+    if (enabled) disableAllChoropleths();
+    setGdpEnabled(enabled);
+  }, [disableAllChoropleths]);
 
   const handleToggleGdpPerCapitaLayer = useCallback((enabled: boolean) => {
+    if (enabled) disableAllChoropleths();
     setGdpPerCapitaEnabled(enabled);
-    if (enabled) {
-      setGdpEnabled(false);
-      setInflationEnabled(false);
-      setGiniEnabled(false);
-      setExportsEnabled(false);
-      setLifeExpectancyEnabled(false);
-      setMilitaryExpenditureEnabled(false);
-      setDemocracyIndexEnabled(false);
-      setTradeGdpEnabled(false);
-    }
-  }, []);
+  }, [disableAllChoropleths]);
 
   const handleToggleInflationLayer = useCallback((enabled: boolean) => {
+    if (enabled) disableAllChoropleths();
     setInflationEnabled(enabled);
-    if (enabled) {
-      setGdpEnabled(false);
-      setGdpPerCapitaEnabled(false);
-      setGiniEnabled(false);
-      setExportsEnabled(false);
-      setLifeExpectancyEnabled(false);
-      setMilitaryExpenditureEnabled(false);
-      setDemocracyIndexEnabled(false);
-      setTradeGdpEnabled(false);
-    }
-  }, []);
+  }, [disableAllChoropleths]);
 
   const handleToggleGiniLayer = useCallback((enabled: boolean) => {
+    if (enabled) disableAllChoropleths();
     setGiniEnabled(enabled);
-    if (enabled) {
-      setGdpEnabled(false);
-      setGdpPerCapitaEnabled(false);
-      setInflationEnabled(false);
-      setExportsEnabled(false);
-      setLifeExpectancyEnabled(false);
-      setMilitaryExpenditureEnabled(false);
-      setDemocracyIndexEnabled(false);
-      setTradeGdpEnabled(false);
-    }
-  }, []);
+  }, [disableAllChoropleths]);
 
   const handleToggleExportsLayer = useCallback((enabled: boolean) => {
+    if (enabled) disableAllChoropleths();
     setExportsEnabled(enabled);
-    if (enabled) {
-      setGdpEnabled(false);
-      setGdpPerCapitaEnabled(false);
-      setInflationEnabled(false);
-      setGiniEnabled(false);
-      setLifeExpectancyEnabled(false);
-      setMilitaryExpenditureEnabled(false);
-      setDemocracyIndexEnabled(false);
-      setTradeGdpEnabled(false);
-    }
-  }, []);
+  }, [disableAllChoropleths]);
 
   const handleToggleLifeExpectancyLayer = useCallback((enabled: boolean) => {
+    if (enabled) disableAllChoropleths();
     setLifeExpectancyEnabled(enabled);
-    if (enabled) {
-      setGdpEnabled(false);
-      setGdpPerCapitaEnabled(false);
-      setInflationEnabled(false);
-      setGiniEnabled(false);
-      setExportsEnabled(false);
-      setMilitaryExpenditureEnabled(false);
-      setDemocracyIndexEnabled(false);
-      setTradeGdpEnabled(false);
-    }
-  }, []);
+  }, [disableAllChoropleths]);
 
   const handleToggleMilitaryExpenditureLayer = useCallback((enabled: boolean) => {
+    if (enabled) disableAllChoropleths();
     setMilitaryExpenditureEnabled(enabled);
-    if (enabled) {
-      setGdpEnabled(false);
-      setGdpPerCapitaEnabled(false);
-      setInflationEnabled(false);
-      setGiniEnabled(false);
-      setExportsEnabled(false);
-      setLifeExpectancyEnabled(false);
-      setDemocracyIndexEnabled(false);
-      setTradeGdpEnabled(false);
-    }
-  }, []);
+  }, [disableAllChoropleths]);
 
   const handleToggleDemocracyIndexLayer = useCallback((enabled: boolean) => {
+    if (enabled) disableAllChoropleths();
     setDemocracyIndexEnabled(enabled);
-    if (enabled) {
-      setGdpEnabled(false);
-      setGdpPerCapitaEnabled(false);
-      setInflationEnabled(false);
-      setGiniEnabled(false);
-      setExportsEnabled(false);
-      setLifeExpectancyEnabled(false);
-      setMilitaryExpenditureEnabled(false);
-      setTradeGdpEnabled(false);
-    }
-  }, []);
+  }, [disableAllChoropleths]);
 
   const handleToggleTradeGdpLayer = useCallback((enabled: boolean) => {
+    if (enabled) disableAllChoropleths();
     setTradeGdpEnabled(enabled);
-    if (enabled) {
-      setGdpEnabled(false);
-      setGdpPerCapitaEnabled(false);
-      setInflationEnabled(false);
-      setGiniEnabled(false);
-      setExportsEnabled(false);
-      setLifeExpectancyEnabled(false);
-      setMilitaryExpenditureEnabled(false);
-      setDemocracyIndexEnabled(false);
-    }
-  }, []);
+  }, [disableAllChoropleths]);
+
+  // Raw Materials choropleth toggles
+  const handleToggleFuelExportsLayer = useCallback((enabled: boolean) => {
+    if (enabled) disableAllChoropleths();
+    setFuelExportsEnabled(enabled);
+  }, [disableAllChoropleths]);
+
+  const handleToggleMineralRentsLayer = useCallback((enabled: boolean) => {
+    if (enabled) disableAllChoropleths();
+    setMineralRentsEnabled(enabled);
+  }, [disableAllChoropleths]);
+
+  const handleToggleEnergyImportsLayer = useCallback((enabled: boolean) => {
+    if (enabled) disableAllChoropleths();
+    setEnergyImportsEnabled(enabled);
+  }, [disableAllChoropleths]);
+
+  const handleToggleCerealProductionLayer = useCallback((enabled: boolean) => {
+    if (enabled) disableAllChoropleths();
+    setCerealProductionEnabled(enabled);
+  }, [disableAllChoropleths]);
 
   return {
     gdpEnabled, gdpLegend, handleToggleGdpLayer,
@@ -423,5 +491,10 @@ export function useChoropleth(mapRef: React.RefObject<MapRefType | null>) {
     militaryExpenditureEnabled, militaryExpenditureLegend, handleToggleMilitaryExpenditureLayer,
     democracyIndexEnabled, democracyIndexLegend, handleToggleDemocracyIndexLayer,
     tradeGdpEnabled, tradeGdpLegend, handleToggleTradeGdpLayer,
+    // Raw Materials
+    fuelExportsEnabled, fuelExportsLegend, handleToggleFuelExportsLayer,
+    mineralRentsEnabled, mineralRentsLegend, handleToggleMineralRentsLayer,
+    energyImportsEnabled, energyImportsLegend, handleToggleEnergyImportsLayer,
+    cerealProductionEnabled, cerealProductionLegend, handleToggleCerealProductionLayer,
   };
 }

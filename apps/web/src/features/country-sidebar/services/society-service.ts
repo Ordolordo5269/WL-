@@ -20,6 +20,8 @@ export interface SocietyIndicators {
   urbanPopulationPercent: IndicatorPoint; // SP.URB.TOTL.IN.ZS (%)
   ruralPopulationPercent: IndicatorPoint; // SP.RUR.TOTL.ZS (%)
   populationDensity: IndicatorPoint; // SP.POP.DNST (people per sq. km)
+  youthUnemploymentPct: IndicatorPoint;
+  intentionalHomicidesPer100k: IndicatorPoint;
 }
 
 
@@ -57,7 +59,9 @@ class SocietyService {
         crudeDeathRate: { value: null, year: null },
         urbanPopulationPercent: { value: null, year: null },
         ruralPopulationPercent: { value: null, year: null },
-        populationDensity: { value: null, year: null }
+        populationDensity: { value: null, year: null },
+        youthUnemploymentPct: { value: null, year: null },
+        intentionalHomicidesPer100k: { value: null, year: null }
       };
     }
   }

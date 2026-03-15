@@ -16,6 +16,17 @@ export interface EconomyData {
   income_level: string;
   trade_balance_usd: number | null;
   gdp_year: number | null;
+  // Expansion indicators
+  gdp_growth_annual_pct: number | null;
+  gni_per_capita_ppp: number | null;
+  govt_debt_pct_gdp: number | null;
+  tax_revenue_pct_gdp: number | null;
+  gross_savings_pct_gdp: number | null;
+  total_reserves_usd: number | null;
+  gross_capital_formation_pct_gdp: number | null;
+  fdi_net_inflows_pct_gdp: number | null;
+  remittances_received_pct_gdp: number | null;
+  manufacturing_pct_gdp: number | null;
 }
 
 class EconomyService {

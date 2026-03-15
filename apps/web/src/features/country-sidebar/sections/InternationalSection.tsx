@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { AlertCircle, Globe2, DollarSign, Percent, ArrowDownUp, Landmark } from 'lucide-react';
+import { AlertCircle, Globe2, DollarSign, Percent, ArrowDownUp, Landmark, Users, Truck, HandCoins } from 'lucide-react';
 import { internationalService } from '../services/international-service';
 import type { TInternationalData } from '../services/international-service';
 
@@ -84,6 +84,42 @@ export default function InternationalSection({ data, isLoading, error }: Interna
               <div className="metric-value">{s.formatCurrency(data.remittancesUsd.value)}</div>
             </div>
           </div>
+          {data.odaGivenPctGni?.value !== null && data.odaGivenPctGni?.value !== undefined && (
+            <div className="metric-item">
+              <div className="metric-icon small"><HandCoins className="w-4 h-4" /></div>
+              <div className="metric-content">
+                <div className="metric-label">ODA given (% GNI) {data.odaGivenPctGni.year ? <span className="ml-2 text-[10px] text-slate-400">{data.odaGivenPctGni.year}</span> : null}</div>
+                <div className="metric-value">{s.formatPercent(data.odaGivenPctGni.value)}</div>
+              </div>
+            </div>
+          )}
+          {data.logisticsPerformanceIndex?.value !== null && data.logisticsPerformanceIndex?.value !== undefined && (
+            <div className="metric-item">
+              <div className="metric-icon small"><Truck className="w-4 h-4" /></div>
+              <div className="metric-content">
+                <div className="metric-label">Logistics Index (LPI) {data.logisticsPerformanceIndex.year ? <span className="ml-2 text-[10px] text-slate-400">{data.logisticsPerformanceIndex.year}</span> : null}</div>
+                <div className="metric-value">{data.logisticsPerformanceIndex.value.toFixed(2)}</div>
+              </div>
+            </div>
+          )}
+          {data.refugeePopByOrigin?.value !== null && data.refugeePopByOrigin?.value !== undefined && (
+            <div className="metric-item">
+              <div className="metric-icon small"><Users className="w-4 h-4" /></div>
+              <div className="metric-content">
+                <div className="metric-label">Refugees (from country) {data.refugeePopByOrigin.year ? <span className="ml-2 text-[10px] text-slate-400">{data.refugeePopByOrigin.year}</span> : null}</div>
+                <div className="metric-value">{s.formatNumber(data.refugeePopByOrigin.value)}</div>
+              </div>
+            </div>
+          )}
+          {data.refugeePopByAsylum?.value !== null && data.refugeePopByAsylum?.value !== undefined && (
+            <div className="metric-item">
+              <div className="metric-icon small"><Users className="w-4 h-4" /></div>
+              <div className="metric-content">
+                <div className="metric-label">Refugees (in country) {data.refugeePopByAsylum.year ? <span className="ml-2 text-[10px] text-slate-400">{data.refugeePopByAsylum.year}</span> : null}</div>
+                <div className="metric-value">{s.formatNumber(data.refugeePopByAsylum.value)}</div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </motion.div>

@@ -308,6 +308,44 @@ export const getInternationalByIso3: RequestHandler = async (req: Request, res: 
   }
 };
 
+// ── Raw Materials / Commodities ──
+
+export const getCommoditiesByIso3: RequestHandler = async (req: Request, res: Response) => {
+  try {
+    const iso3Param = String(req.params.iso3 || '').toUpperCase();
+    if (!iso3Param || iso3Param.length !== 3) {
+      return res.status(400).json({ error: 'Invalid ISO3 code' });
+    }
+    const data = await service.getCommoditiesData(iso3Param);
+    if (!data) {
+      return res.status(404).json({ error: 'Country not found' });
+    }
+    res.json(data);
+  } catch (error) {
+    console.error('getCommoditiesByIso3 error:', error);
+    res.status(500).json({ error: 'Failed to fetch raw materials data from database' });
+  }
+};
+
+// ── Environment ──
+
+export const getEnvironmentByIso3: RequestHandler = async (req: Request, res: Response) => {
+  try {
+    const iso3Param = String(req.params.iso3 || '').toUpperCase();
+    if (!iso3Param || iso3Param.length !== 3) {
+      return res.status(400).json({ error: 'Invalid ISO3 code' });
+    }
+    const data = await service.getEnvironmentData(iso3Param);
+    if (!data) {
+      return res.status(404).json({ error: 'Country not found' });
+    }
+    res.json(data);
+  } catch (error) {
+    console.error('getEnvironmentByIso3 error:', error);
+    res.status(500).json({ error: 'Failed to fetch environment data from database' });
+  }
+};
+
 // ── Batch ──
 
 export const getIndicatorBatch: RequestHandler = async (req: Request, res: Response) => {

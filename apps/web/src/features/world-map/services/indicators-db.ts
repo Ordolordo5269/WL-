@@ -54,7 +54,12 @@ function slugToWorldBankCode(slug: string): string | null {
     'population-density': 'SP.POP.DNST',
     'military-expenditure': 'MS.MIL.XPND.GD.ZS',
     'democracy-index': 'VA.EST', // Will be normalized in frontend
-    'trade-gdp': 'NE.TRD.GNFS.ZS'
+    'trade-gdp': 'NE.TRD.GNFS.ZS',
+    // Raw Materials / Commodities
+    'fuel-exports': 'TX.VAL.FUEL.ZS.UN',
+    'mineral-rents': 'NY.GDP.MINR.RT.ZS',
+    'energy-imports': 'EG.IMP.CONS.ZS',
+    'cereal-production': 'AG.PRD.CREL.MT'
   };
   return map[slug] || null;
 }
