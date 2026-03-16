@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type { MapRefType } from './types';
 
 const NL_KEY = 'wl-natural-layers';
@@ -26,20 +26,40 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
   const [desertsEnabled, setDesertsEnabled] = useState(() => getNL('deserts'));
   const [naturalLod, setNaturalLod] = useState<'auto' | 'low' | 'med' | 'high'>('auto');
 
-  const handleSetBaseMapStyle = useCallback((next: 'night' | 'light' | 'outdoors' | 'dark' | 'satellite' | 'satellite-streets') => {
-    mapRef.current?.setBaseMapStyle?.(next);
+  // Track active globe theme to reset on individual control changes
+  const activeThemeRef = useRef<string | null>(null);
+
+  const resetFromTheme = useCallback(() => {
+    if (!activeThemeRef.current) return;
+    activeThemeRef.current = null;
+    // Reset atmosphere/space/stars to defaults (sync operations on the map)
+    mapRef.current?.setPlanetPreset?.('default');
+    mapRef.current?.setStarIntensity?.(0.6);
   }, []);
+
+  const handleSetBaseMapStyle = useCallback((next: 'night' | 'light' | 'outdoors' | 'dark' | 'satellite-streets' | 'navigation-day') => {
+    resetFromTheme();
+    mapRef.current?.setBaseMapStyle?.(next);
+  }, [resetFromTheme]);
 
   const handleSetPlanetPreset = useCallback((preset: 'default' | 'nebula' | 'sunset' | 'dawn' | 'arctic' | 'volcanic' | 'emerald' | 'midnight' | 'aurora' | 'sahara' | 'storm' | 'crimson' | 'rose' | 'void' | 'coral' | 'violet') => {
+    resetFromTheme();
     mapRef.current?.setPlanetPreset?.(preset);
-  }, []);
+  }, [resetFromTheme]);
 
   const handleSetStarIntensity = useCallback((v: number) => {
+    resetFromTheme();
     mapRef.current?.setStarIntensity?.(v);
-  }, []);
+  }, [resetFromTheme]);
 
   const handleSetSpacePreset = useCallback((preset: 'void' | 'deep' | 'nebula' | 'galaxy' | 'crimson') => {
+    resetFromTheme();
     mapRef.current?.setSpacePreset?.(preset);
+  }, [resetFromTheme]);
+
+  const handleSetGlobeTheme = useCallback((theme: 'mars' | 'lunar' | 'venus' | 'ice-world' | 'cyberpunk' | 'golden-age' | 'alien' | 'deep-ocean') => {
+    activeThemeRef.current = theme;
+    mapRef.current?.setGlobeTheme?.(theme);
   }, []);
 
   const handleSetTerrain = useCallback((v: boolean) => {
@@ -139,7 +159,7 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
     lakesEnabled, volcanoesEnabled, faultLinesEnabled, desertsEnabled,
     naturalLod,
     handleSetBaseMapStyle, handleSetPlanetPreset,
-    handleSetStarIntensity, handleSetSpacePreset,
+    handleSetStarIntensity, handleSetSpacePreset, handleSetGlobeTheme,
     handleSetTerrain, handleSetTerrainExaggeration,
     handleSetBuildings3D, handleSetMinimalMode,
     handleSetAutoRotate, handleSetRotateSpeed,

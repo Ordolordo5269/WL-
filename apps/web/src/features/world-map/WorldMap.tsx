@@ -1,6 +1,6 @@
 import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
-import { applyFog as appearanceApplyFog, setBaseFeaturesVisibility as appearanceSetBaseFeaturesVisibility, applyPhysicalModeTweaks as appearanceApplyPhysical, MAP_STYLES, type StyleKey, type PlanetPreset, applyStarIntensity as appearanceApplyStarIntensity, applySpacePreset as appearanceApplySpacePreset, type SpacePreset } from './map/mapAppearance';
+import { applyFog as appearanceApplyFog, setBaseFeaturesVisibility as appearanceSetBaseFeaturesVisibility, applyPhysicalModeTweaks as appearanceApplyPhysical, MAP_STYLES, type StyleKey, type PlanetPreset, applyStarIntensity as appearanceApplyStarIntensity, applySpacePreset as appearanceApplySpacePreset, type SpacePreset, type GlobeThemeKey, GLOBE_THEMES } from './map/mapAppearance';
 import { applyTerrain, reapplyAfterStyleChange, loadPersistedTerrain, persistTerrain } from './map/terrain';
 import type { ChoroplethSpec } from './services/worldbank-gdp';
 import type { ChoroplethSpec as GdpPerCapitaChoroplethSpec } from './services/worldbank-gdp-per-capita';
@@ -116,7 +116,11 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   
   // Presets de planeta (atmósfera)
   const [planetPreset, setPlanetPreset] = useState<PlanetPreset>('default');
+  const planetPresetRef = useRef<PlanetPreset>(planetPreset);
+  useEffect(() => { planetPresetRef.current = planetPreset; }, [planetPreset]);
   const [starIntensity, setStarIntensityState] = useState<number>(0.6);
+  // Counter to invalidate pending globe theme style.load callbacks
+  const globeThemeLoadId = useRef(0);
   // Ocultar nombres/carreteras/fronteras
   const [minimalModeOn, setMinimalModeOn] = useState(false);
   // Natural layers: state refs
@@ -181,11 +185,6 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       eventListenersRef.current = [];
     }
   }, []);
-  const applyFog = useCallback((preset: PlanetPreset = planetPreset) => {
-    if (!mapRef.current) return;
-    appearanceApplyFog(mapRef.current, preset);
-  }, [planetPreset]);
-
   // Ocultar capas políticas y overlays en modo físico
   const applyPhysicalModeTweaks = useCallback(() => {
     if (!mapRef.current) return;
@@ -1231,7 +1230,8 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       try {
         map.setStyle(MAP_STYLES[next], { diff: false } as any);
         map.once('style.load', () => {
-          applyFog();
+          // Use ref to read latest planetPreset (avoids stale closure)
+          appearanceApplyFog(map, planetPresetRef.current);
           // Reaplicar terreno si estaba activo
           reapplyAfterStyleChange(map, { enabled: terrainOn, exaggeration: terrainExaggeration, useHillshade: false });
           reinitializeInteractiveLayers();
@@ -1250,16 +1250,63 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       } catch {}
     },
     setPlanetPreset: (preset: PlanetPreset) => {
+      globeThemeLoadId.current++; // Cancel any pending theme style.load
       setPlanetPreset(preset);
-      applyFog(preset);
+      planetPresetRef.current = preset; // Update ref immediately for other handlers
+      if (mapRef.current) appearanceApplyFog(mapRef.current, preset);
     },
     setStarIntensity: (v: number) => {
+      globeThemeLoadId.current++; // Cancel any pending theme style.load
       const clamped = Math.min(1, Math.max(0, v));
       setStarIntensityState(clamped);
       if (mapRef.current) appearanceApplyStarIntensity(mapRef.current, clamped);
     },
     setSpacePreset: (preset: SpacePreset) => {
+      globeThemeLoadId.current++; // Cancel any pending theme style.load
       if (mapRef.current) appearanceApplySpacePreset(mapRef.current, preset);
+    },
+    setGlobeTheme: (themeKey: GlobeThemeKey) => {
+      const theme = GLOBE_THEMES[themeKey];
+      if (!theme || !mapRef.current) return;
+      const map = mapRef.current;
+      const loadId = ++globeThemeLoadId.current;
+      setStyleKey(theme.baseMap);
+      setPlanetPreset(theme.planet);
+      setStarIntensityState(theme.starIntensity);
+      const sameStyle = styleKeyRef.current === theme.baseMap;
+      const applyThemeEffects = () => {
+        appearanceApplyFog(map, theme.planet);
+        appearanceApplySpacePreset(map, theme.space);
+        appearanceApplyStarIntensity(map, theme.starIntensity);
+      };
+      if (sameStyle) {
+        try { applyThemeEffects(); } catch {}
+      } else {
+        try {
+          map.setStyle(MAP_STYLES[theme.baseMap], { diff: false } as any);
+          map.once('style.load', () => {
+            const cancelled = globeThemeLoadId.current !== loadId;
+            // Always re-initialize layers after style change
+            reapplyAfterStyleChange(map, { enabled: terrainOn, exaggeration: terrainExaggeration, useHillshade: false });
+            reinitializeInteractiveLayers();
+            updateLayerOpacitiesForStyle(theme.baseMap);
+            if (historyEnabledRef.current) {
+              ensureHistorySource(historyYearRef.current);
+              ensureHistoryLayers();
+            }
+            if (buildings3DOn) {
+              try { add3DBuildingsLayer(map); } catch {}
+            }
+            if (cancelled) {
+              // Theme was cancelled by individual control — apply current settings from refs
+              appearanceApplyFog(map, planetPresetRef.current);
+            } else {
+              // Theme still active — apply theme effects
+              applyThemeEffects();
+            }
+          });
+        } catch {}
+      }
     },
     // Terrain API
     setTerrainEnabled: (v: boolean) => {
@@ -1366,15 +1413,15 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     setRotateSpeed: (degPerSec: number) => {
       rotationSpeedRef.current = Math.max(0, Number.isFinite(degPerSec) ? degPerSec : 0);
     }
-  }), [easeTo, applyFog, applyPhysicalModeTweaks, styleKey, setBaseFeaturesVisibility, updateOrgHighlightFilter, terrainOn, terrainExaggeration]);
+  }), [easeTo, applyPhysicalModeTweaks, styleKey, setBaseFeaturesVisibility, updateOrgHighlightFilter, terrainOn, terrainExaggeration]);
 
   // Helper para reinstalar fuentes/capas y eventos tras cambio de estilo
   const reinitializeInteractiveLayers = useCallback(() => {
     if (!mapRef.current) return;
     const map = mapRef.current;
 
-    // Asegurar atmósfera/fog tras cambio de estilo
-    applyFog();
+    // Asegurar atmósfera/fog tras cambio de estilo (usar ref para evitar stale closure)
+    appearanceApplyFog(map, planetPresetRef.current);
     setBaseFeaturesVisibility(minimalModeOn);
 
     // Fuente de límites de países
@@ -1653,7 +1700,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         { event: 'click', handler: handleCountryClick, layer: 'country-highlight' }
       );
     } catch {}
-  }, [conflicts, handleCountrySelection, applyFog, applyPhysicalModeTweaks, styleKey, minimalModeOn, setBaseFeaturesVisibility]);
+  }, [conflicts, handleCountrySelection, applyPhysicalModeTweaks, styleKey, minimalModeOn, setBaseFeaturesVisibility]);
 
   // El toggle inline fue movido a la sidebar (Settings)
 
@@ -1800,7 +1847,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       setIsMapLoaded(true);
       onMapReady?.();
       // Configurar la atmósfera del globo con fondo estrellado
-      applyFog();
+      appearanceApplyFog(map, planetPresetRef.current);
       // Restaurar y aplicar terreno si estaba activo
       const persisted = loadPersistedTerrain();
       setTerrainOn(persisted.on);

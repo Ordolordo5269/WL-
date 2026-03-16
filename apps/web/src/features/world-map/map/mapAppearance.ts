@@ -1,11 +1,11 @@
-export type StyleKey = 'night' | 'light' | 'outdoors' | 'dark' | 'satellite' | 'satellite-streets';
+export type StyleKey = 'night' | 'light' | 'outdoors' | 'dark' | 'satellite-streets' | 'navigation-day';
 export const MAP_STYLES: Record<StyleKey, string> = {
   night: 'mapbox://styles/mapbox/navigation-night-v1',
   light: 'mapbox://styles/mapbox/light-v11',
   outdoors: 'mapbox://styles/mapbox/outdoors-v12',
   dark: 'mapbox://styles/mapbox/dark-v11',
-  satellite: 'mapbox://styles/mapbox/satellite-v9',
-  'satellite-streets': 'mapbox://styles/mapbox/satellite-streets-v12'
+  'satellite-streets': 'mapbox://styles/mapbox/satellite-streets-v12',
+  'navigation-day': 'mapbox://styles/mapbox/navigation-day-v1'
 };
 
 export type PlanetPreset = 'default' | 'nebula' | 'sunset' | 'dawn' | 'arctic' | 'volcanic' | 'emerald' | 'midnight' | 'aurora' | 'sahara' | 'storm' | 'crimson' | 'rose' | 'void' | 'coral' | 'violet';
@@ -136,6 +136,27 @@ export const SPACE_PRESETS: Record<SpacePreset, { 'space-color': string; 'star-i
   nebula:  { 'space-color': 'rgb(45, 10, 80)', 'star-intensity': 0.85 },
   galaxy:  { 'space-color': 'rgb(10, 25, 70)', 'star-intensity': 1.0 },
   crimson: { 'space-color': 'rgb(50, 8, 8)',   'star-intensity': 0.6 },
+};
+
+export type GlobeThemeKey = 'mars' | 'lunar' | 'venus' | 'ice-world' | 'cyberpunk' | 'golden-age' | 'alien' | 'deep-ocean';
+
+export interface GlobeTheme {
+  label: string;
+  baseMap: StyleKey;
+  planet: PlanetPreset;
+  space: SpacePreset;
+  starIntensity: number;
+}
+
+export const GLOBE_THEMES: Record<GlobeThemeKey, GlobeTheme> = {
+  mars: { label: 'Mars', baseMap: 'outdoors', planet: 'crimson', space: 'void', starIntensity: 0.25 },
+  lunar: { label: 'Lunar', baseMap: 'dark', planet: 'void', space: 'void', starIntensity: 1.0 },
+  venus: { label: 'Venus', baseMap: 'navigation-day', planet: 'sahara', space: 'crimson', starIntensity: 0.2 },
+  'ice-world': { label: 'Ice World', baseMap: 'light', planet: 'arctic', space: 'deep', starIntensity: 0.95 },
+  cyberpunk: { label: 'Cyberpunk', baseMap: 'dark', planet: 'violet', space: 'galaxy', starIntensity: 0.9 },
+  'golden-age': { label: 'Golden Age', baseMap: 'outdoors', planet: 'sahara', space: 'deep', starIntensity: 0.55 },
+  alien: { label: 'Alien', baseMap: 'night', planet: 'emerald', space: 'nebula', starIntensity: 0.65 },
+  'deep-ocean': { label: 'Deep Ocean', baseMap: 'satellite-streets', planet: 'midnight', space: 'deep', starIntensity: 0.95 },
 };
 
 export function applyStarIntensity(map: mapboxgl.Map, value: number) {

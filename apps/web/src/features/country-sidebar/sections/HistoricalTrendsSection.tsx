@@ -4,7 +4,6 @@ import { AlertCircle } from 'lucide-react';
 import TimeSeriesChart from '../../../components/ui/TimeSeriesChart';
 import { historicalIndicatorsService } from '../../world-map/services/historical-indicators.service';
 import type { TimeSeriesPoint } from '../../world-map/services/historical-indicators.service';
-import { societyService } from '../services/society-service';
 
 interface HistoricalTrendsSectionProps {
   iso3: string | null;
@@ -26,16 +25,16 @@ const ECONOMIC_INDICATORS = [
 
 // Society Indicators
 const SOCIETY_INDICATORS = [
-  { slug: 'life-expectancy', name: 'Life Expectancy', code: 'SP.DYN.LE00.IN', color: '#10b981', category: 'society' },
-  { slug: 'literacy', name: 'Adult Literacy', code: 'SE.ADT.LITR.ZS', color: '#3b82f6', category: 'society' },
-  { slug: 'uhc-coverage', name: 'UHC Coverage', code: 'SH.UHC.SRVS.CV.XD', color: '#8b5cf6', category: 'society' },
-  { slug: 'population-growth', name: 'Population Growth', code: 'SP.POP.GROW', color: '#22d3ee', category: 'society' },
-  { slug: 'birth-rate', name: 'Birth Rate', code: 'SP.DYN.CBRT.IN', color: '#ec4899', category: 'society' },
-  { slug: 'death-rate', name: 'Death Rate', code: 'SP.DYN.CDRT.IN', color: '#f59e0b', category: 'society' },
-  { slug: 'urban-population', name: 'Urban Population', code: 'SP.URB.TOTL.IN.ZS', color: '#06b6d4', category: 'society' },
-  { slug: 'population-density', name: 'Population Density', code: 'SP.POP.DNST', color: '#f97316', category: 'society' },
-  { slug: 'primary-enrollment', name: 'Primary Enrollment', code: 'SE.PRM.NENR', color: '#14b8a6', category: 'society' },
-  { slug: 'poverty', name: 'Extreme Poverty', code: 'SI.POV.DDAY', color: '#ef4444', category: 'society' }
+  { slug: 'life-expectancy', name: 'Life Expectancy', color: '#10b981', category: 'society' },
+  { slug: 'literacy', name: 'Adult Literacy', color: '#3b82f6', category: 'society' },
+  { slug: 'uhc-coverage', name: 'UHC Coverage', color: '#8b5cf6', category: 'society' },
+  { slug: 'population-growth', name: 'Population Growth', color: '#22d3ee', category: 'society' },
+  { slug: 'birth-rate', name: 'Birth Rate', color: '#ec4899', category: 'society' },
+  { slug: 'death-rate', name: 'Death Rate', color: '#f59e0b', category: 'society' },
+  { slug: 'urban-population', name: 'Urban Population', color: '#06b6d4', category: 'society' },
+  { slug: 'population-density', name: 'Population Density', color: '#f97316', category: 'society' },
+  { slug: 'primary-enrollment', name: 'Primary Enrollment', color: '#14b8a6', category: 'society' },
+  { slug: 'poverty', name: 'Extreme Poverty', color: '#ef4444', category: 'society' }
 ];
 
 // Politics Indicators (WGI)
@@ -69,9 +68,9 @@ const INTERNATIONAL_INDICATORS = [
 ];
 
 // Combined indicators
-const ALL_INDICATORS: Array<{ slug: string; name: string; color: string; category: string; code?: string }> = [...ECONOMIC_INDICATORS, ...SOCIETY_INDICATORS, ...POLITICS_INDICATORS, ...DEFENSE_INDICATORS, ...INTERNATIONAL_INDICATORS];
+const ALL_INDICATORS: Array<{ slug: string; name: string; color: string; category: string }> = [...ECONOMIC_INDICATORS, ...SOCIETY_INDICATORS, ...POLITICS_INDICATORS, ...DEFENSE_INDICATORS, ...INTERNATIONAL_INDICATORS];
 
-export default function HistoricalTrendsSection({ iso3, countryName: _countryName, fetchSocietyIndicatorSeries }: HistoricalTrendsSectionProps) {
+export default function HistoricalTrendsSection({ iso3, countryName: _countryName }: HistoricalTrendsSectionProps) {
   // Only one indicator can be selected at a time
   const [selectedIndicator, setSelectedIndicator] = useState<string | null>('gdp');
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'economic' | 'society' | 'politics' | 'defense' | 'international'>('all');
@@ -84,9 +83,10 @@ export default function HistoricalTrendsSection({ iso3, countryName: _countryNam
 
     // Load data for the selected indicator only
     const loadData = async () => {
-      // If already loaded, don't reload
-      if (timeSeriesData[selectedIndicator]) return;
-      
+      // If already loaded with actual data, don't reload
+      const cached = timeSeriesData[selectedIndicator];
+      if (cached && cached.length > 0) return;
+
       setLoading(prev => ({ ...prev, [selectedIndicator]: true }));
       setErrors(prev => {
         const newErrors = { ...prev };
@@ -98,19 +98,19 @@ export default function HistoricalTrendsSection({ iso3, countryName: _countryNam
         const indicator = ALL_INDICATORS.find(ind => ind.slug === selectedIndicator);
         if (!indicator) return;
 
-        let data: TimeSeriesPoint[] = [];
-        
-        if (indicator.category === 'economic' || indicator.category === 'politics' || indicator.category === 'defense' || indicator.category === 'international') {
-          // Use historical indicators service for economic, politics, defense, and international data
-          data = await historicalIndicatorsService.getTimeSeries(selectedIndicator, iso3);
-        } else if (indicator.category === 'society' && fetchSocietyIndicatorSeries) {
-          // Use society service for society data
-          data = await fetchSocietyIndicatorSeries(indicator.code!, 30);
-        } else if (indicator.category === 'society') {
-          // Fallback to direct World Bank API
-          data = await societyService.fetchWorldBankSeries(iso3, indicator.code!, 30);
+        // All categories use the same backend endpoint via slug mapping
+        const rawData = await historicalIndicatorsService.getTimeSeries(selectedIndicator, iso3);
+
+        // Filter out null-value data points so charts only receive usable data
+        const data = rawData.filter(d => d.value !== null && d.value !== undefined);
+
+        if (data.length === 0) {
+          setErrors(prev => ({
+            ...prev,
+            [selectedIndicator]: 'No historical data available for this indicator'
+          }));
         }
-        
+
         setTimeSeriesData(prev => ({ ...prev, [selectedIndicator]: data }));
       } catch (error) {
         setErrors(prev => ({
@@ -123,7 +123,7 @@ export default function HistoricalTrendsSection({ iso3, countryName: _countryNam
     };
 
     loadData();
-  }, [iso3, selectedIndicator, fetchSocietyIndicatorSeries]);
+  }, [iso3, selectedIndicator]);
 
   const selectIndicator = (slug: string) => {
     // If clicking the same indicator, deselect it (toggle off)
@@ -148,64 +148,7 @@ export default function HistoricalTrendsSection({ iso3, countryName: _countryNam
     : ALL_INDICATORS.filter(ind => ind.category === selectedCategory);
 
   const getIndicatorDisplayName = (slug: string): string => {
-    const indicator = ALL_INDICATORS.find(ind => ind.slug === slug);
-    if (!indicator) return slug;
-    
-    if (indicator.category === 'economic') {
-      return historicalIndicatorsService.getIndicatorName(slug);
-    } else if (indicator.category === 'society') {
-      // Society indicator
-      const societyInd = SOCIETY_INDICATORS.find(ind => ind.slug === slug);
-      if (societyInd) {
-        const unitMap: Record<string, string> = {
-          'SP.DYN.LE00.IN': 'years',
-          'SE.ADT.LITR.ZS': '%',
-          'SH.UHC.SRVS.CV.XD': 'index',
-          'SP.POP.GROW': '%',
-          'SP.DYN.CBRT.IN': 'per 1,000',
-          'SP.DYN.CDRT.IN': 'per 1,000',
-          'SP.URB.TOTL.IN.ZS': '%',
-          'SP.POP.DNST': 'per km²',
-          'SE.PRM.NENR': '%',
-          'SI.POV.DDAY': '%'
-        };
-        return `${societyInd.name} (${unitMap[societyInd.code] || ''})`;
-      }
-    } else if (indicator.category === 'politics') {
-      // Politics indicators - WGI indices
-      const unitMap: Record<string, string> = {
-        'political-stability': 'index',
-        'voice-accountability': 'index',
-        'government-effectiveness': 'index',
-        'regulatory-quality': 'index',
-        'rule-of-law': 'index',
-        'control-of-corruption': 'index'
-      };
-      return `${indicator.name} (${unitMap[slug] || 'index'})`;
-    } else if (indicator.category === 'defense') {
-      // Defense indicators
-      const unitMap: Record<string, string> = {
-        'military-expenditure-pct-gdp': '%',
-        'military-expenditure-usd': 'USD',
-        'armed-forces-personnel': 'people',
-        'arms-imports': 'TIV',
-        'arms-exports': 'TIV',
-        'battle-deaths': 'people'
-      };
-      return `${indicator.name} (${unitMap[slug] || ''})`;
-    } else if (indicator.category === 'international') {
-      // International indicators
-      const unitMap: Record<string, string> = {
-        'oda-received': 'USD',
-        'trade-percent-gdp': '%',
-        'current-account': 'USD',
-        'fdi-inflows': 'USD',
-        'fdi-outflows': 'USD',
-        'remittances': 'USD'
-      };
-      return `${indicator.name} (${unitMap[slug] || 'USD'})`;
-    }
-    return slug;
+    return historicalIndicatorsService.getIndicatorName(slug);
   };
 
   return (
