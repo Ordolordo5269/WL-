@@ -2443,9 +2443,11 @@
 /* Shared bento zone base style */
 .bento-zone-economy,
 .bento-zone-society,
+.bento-zone-health,
 .bento-zone-politics,
 .bento-zone-defense,
 .bento-zone-international,
+.bento-zone-infrastructure,
 .bento-zone-commodities,
 .bento-zone-environment {
   background: linear-gradient(145deg, rgba(26, 26, 42, 0.8) 0%, rgba(20, 20, 34, 0.8) 100%);
@@ -2458,9 +2460,11 @@
 
 .bento-zone-economy:hover,
 .bento-zone-society:hover,
+.bento-zone-health:hover,
 .bento-zone-politics:hover,
 .bento-zone-defense:hover,
 .bento-zone-international:hover,
+.bento-zone-infrastructure:hover,
 .bento-zone-commodities:hover,
 .bento-zone-environment:hover {
   border-color: rgba(255, 255, 255, 0.1);
@@ -2474,6 +2478,16 @@
 
 /* Zone 5: Society (50%) */
 .bento-zone-society {
+  grid-column: 7 / -1;
+}
+
+/* Zone: Health (50%) */
+.bento-zone-health {
+  grid-column: 1 / 7;
+}
+
+/* Zone: Infrastructure (50%) */
+.bento-zone-infrastructure {
   grid-column: 7 / -1;
 }
 
@@ -2508,9 +2522,11 @@
 .bento-zone-dynamic,
 .bento-zone-economy,
 .bento-zone-society,
+.bento-zone-health,
 .bento-zone-politics,
 .bento-zone-defense,
 .bento-zone-international,
+.bento-zone-infrastructure,
 .bento-zone-commodities,
 .bento-zone-environment {
   min-width: 0;
@@ -2523,6 +2539,20 @@
   height: 100%;
   display: flex;
   flex-direction: column;
+}
+
+/* Health & Infrastructure zones: 2-column grid fills space better at 50% width */
+.bento-zone-health .society-grid,
+.bento-zone-infrastructure .society-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Society zone: ensure Education sub-section has clear visual separation */
+.bento-zone-society .section-card {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.4);
 }
 
 .bento-section-content .expanded-category-header {
@@ -2580,6 +2610,14 @@
   .bento-zone-international {
     grid-column: 1 / -1;
   }
+
+  .bento-zone-health {
+    grid-column: 1 / -1;
+  }
+
+  .bento-zone-infrastructure {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 768px) {
@@ -2593,9 +2631,11 @@
   .bento-zone-dynamic,
   .bento-zone-economy,
   .bento-zone-society,
+  .bento-zone-health,
   .bento-zone-politics,
   .bento-zone-defense,
   .bento-zone-international,
+  .bento-zone-infrastructure,
   .bento-zone-commodities,
   .bento-zone-environment {
     grid-column: 1 / -1;
@@ -2682,14 +2722,15 @@
 /* Category Filter Buttons - Professional Style */
 .historical-category-filter {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
   margin-bottom: 20px;
   padding-bottom: 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .historical-category-btn {
-  padding: 8px 16px;
+  padding: 6px 12px;
   border-radius: 6px;
   font-size: 11px;
   font-weight: 600;
@@ -2767,6 +2808,132 @@
   background: rgba(168, 85, 247, 0.2) !important;
   border-color: rgba(168, 85, 247, 0.5) !important;
   box-shadow: 0 4px 12px rgba(168, 85, 247, 0.2);
+}
+
+/* Health Category Button - Selected */
+.historical-category-btn.category-health-active {
+  background: rgba(244, 63, 94, 0.15) !important;
+  border-color: rgba(244, 63, 94, 0.4) !important;
+  color: #f43f5e !important;
+  box-shadow: 0 2px 8px rgba(244, 63, 94, 0.15);
+}
+
+.historical-category-btn.category-health-active:hover {
+  background: rgba(244, 63, 94, 0.2) !important;
+  border-color: rgba(244, 63, 94, 0.5) !important;
+  box-shadow: 0 4px 12px rgba(244, 63, 94, 0.2);
+}
+
+/* Education Category Button - Selected */
+.historical-category-btn.category-education-active {
+  background: rgba(99, 102, 241, 0.15) !important;
+  border-color: rgba(99, 102, 241, 0.4) !important;
+  color: #6366f1 !important;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
+}
+
+.historical-category-btn.category-education-active:hover {
+  background: rgba(99, 102, 241, 0.2) !important;
+  border-color: rgba(99, 102, 241, 0.5) !important;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+}
+
+/* Politics Category Button - Selected */
+.historical-category-btn.category-politics-active {
+  background: rgba(147, 51, 234, 0.15) !important;
+  border-color: rgba(147, 51, 234, 0.4) !important;
+  color: #9333ea !important;
+  box-shadow: 0 2px 8px rgba(147, 51, 234, 0.15);
+}
+
+.historical-category-btn.category-politics-active:hover {
+  background: rgba(147, 51, 234, 0.2) !important;
+  border-color: rgba(147, 51, 234, 0.5) !important;
+  box-shadow: 0 4px 12px rgba(147, 51, 234, 0.2);
+}
+
+/* Defense Category Button - Selected */
+.historical-category-btn.category-defense-active {
+  background: rgba(220, 38, 38, 0.15) !important;
+  border-color: rgba(220, 38, 38, 0.4) !important;
+  color: #dc2626 !important;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.15);
+}
+
+.historical-category-btn.category-defense-active:hover {
+  background: rgba(220, 38, 38, 0.2) !important;
+  border-color: rgba(220, 38, 38, 0.5) !important;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
+}
+
+/* International Category Button - Selected */
+.historical-category-btn.category-international-active {
+  background: rgba(6, 182, 212, 0.15) !important;
+  border-color: rgba(6, 182, 212, 0.4) !important;
+  color: #06b6d4 !important;
+  box-shadow: 0 2px 8px rgba(6, 182, 212, 0.15);
+}
+
+.historical-category-btn.category-international-active:hover {
+  background: rgba(6, 182, 212, 0.2) !important;
+  border-color: rgba(6, 182, 212, 0.5) !important;
+  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.2);
+}
+
+/* Technology Category Button - Selected */
+.historical-category-btn.category-technology-active {
+  background: rgba(99, 102, 241, 0.15) !important;
+  border-color: rgba(99, 102, 241, 0.4) !important;
+  color: #818cf8 !important;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
+}
+
+.historical-category-btn.category-technology-active:hover {
+  background: rgba(99, 102, 241, 0.2) !important;
+  border-color: rgba(99, 102, 241, 0.5) !important;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+}
+
+/* Infrastructure Category Button - Selected */
+.historical-category-btn.category-infrastructure-active {
+  background: rgba(20, 184, 166, 0.15) !important;
+  border-color: rgba(20, 184, 166, 0.4) !important;
+  color: #14b8a6 !important;
+  box-shadow: 0 2px 8px rgba(20, 184, 166, 0.15);
+}
+
+.historical-category-btn.category-infrastructure-active:hover {
+  background: rgba(20, 184, 166, 0.2) !important;
+  border-color: rgba(20, 184, 166, 0.5) !important;
+  box-shadow: 0 4px 12px rgba(20, 184, 166, 0.2);
+}
+
+/* Raw Materials Category Button - Selected */
+.historical-category-btn.category-commodities-active {
+  background: rgba(217, 119, 6, 0.15) !important;
+  border-color: rgba(217, 119, 6, 0.4) !important;
+  color: #d97706 !important;
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.15);
+}
+
+.historical-category-btn.category-commodities-active:hover {
+  background: rgba(217, 119, 6, 0.2) !important;
+  border-color: rgba(217, 119, 6, 0.5) !important;
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.2);
+}
+
+/* Environment Category Button - Selected */
+.historical-category-btn.category-environment-active {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+  color: #059669 !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
+}
+
+.historical-category-btn.category-environment-active:hover {
+  background: rgba(16, 185, 129, 0.2) !important;
+  border-color: rgba(16, 185, 129, 0.5) !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
 }
 
 /* Indicator Selector - Modern Dark - Optimized */

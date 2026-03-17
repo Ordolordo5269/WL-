@@ -115,6 +115,26 @@ export const SLUG_TO_CODE: Record<string, string> = {
   'electric-power-consumption': 'ELECTRIC_POWER_CONSUMPTION_KWH_PC',
   'natural-gas-rents': 'NATURAL_GAS_RENTS_PCT_GDP',
   'oil-rents': 'OIL_RENTS_PCT_GDP',
+  // Health
+  'health-expenditure': 'HEALTH_EXPENDITURE_PCT_GDP',
+  'physicians': 'PHYSICIANS_PER_1000',
+  'hospital-beds': 'HOSPITAL_BEDS_PER_1000',
+  'infant-mortality': 'MORTALITY_RATE_INFANT',
+  'maternal-mortality': 'MORTALITY_RATE_MATERNAL',
+  'immunization-measles': 'IMMUNIZATION_MEASLES',
+  'undernourishment': 'PREVALENCE_OF_UNDERNOURISHMENT',
+  // Education (expansion of Society)
+  'education-expenditure': 'EDUCATION_EXPENDITURE_PCT_GDP',
+  'secondary-enrollment': 'SECONDARY_NET_ENROLLMENT',
+  'tertiary-enrollment': 'TERTIARY_GROSS_ENROLLMENT',
+  'pupil-teacher-ratio': 'PRIMARY_PUPIL_TEACHER_RATIO',
+  'out-of-school': 'OUT_OF_SCHOOL_CHILDREN_PRIMARY',
+  // Infrastructure & Connectivity
+  'internet-users': 'INTERNET_USERS',
+  'mobile-subscriptions': 'MOBILE_CELLULAR_SUBSCRIPTIONS',
+  'access-electricity': 'ACCESS_TO_ELECTRICITY',
+  'air-transport': 'AIR_TRANSPORT_PASSENGERS',
+  'secure-servers': 'SECURE_INTERNET_SERVERS_PER_MILLION',
 };
 
 export function toNumberOrNull(v: unknown): number | null {

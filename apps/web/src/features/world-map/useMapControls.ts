@@ -37,7 +37,7 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
     mapRef.current?.setStarIntensity?.(0.6);
   }, []);
 
-  const handleSetBaseMapStyle = useCallback((next: 'night' | 'light' | 'outdoors' | 'dark' | 'satellite-streets' | 'navigation-day') => {
+  const handleSetBaseMapStyle = useCallback((next: 'night' | 'light' | 'outdoors' | 'dark' | 'satellite-streets' | 'navigation-day' | 'earth-at-night' | 'nasa-night-lights' | 'nasa-black-marble') => {
     resetFromTheme();
     mapRef.current?.setBaseMapStyle?.(next);
   }, [resetFromTheme]);
@@ -57,7 +57,7 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
     mapRef.current?.setSpacePreset?.(preset);
   }, [resetFromTheme]);
 
-  const handleSetGlobeTheme = useCallback((theme: 'mars' | 'lunar' | 'venus' | 'ice-world' | 'cyberpunk' | 'golden-age' | 'alien' | 'deep-ocean') => {
+  const handleSetGlobeTheme = useCallback((theme: 'mars' | 'lunar' | 'venus' | 'ice-world' | 'cyberpunk' | 'golden-age' | 'alien' | 'deep-ocean' | 'earth-at-night' | 'nasa-night-lights' | 'nasa-black-marble') => {
     activeThemeRef.current = theme;
     mapRef.current?.setGlobeTheme?.(theme);
   }, []);

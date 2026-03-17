@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { AlertCircle, HeartPulse, GraduationCap, Activity, Users, MapPin, TrendingUp, Briefcase, ShieldAlert } from 'lucide-react';
+import { AlertCircle, HeartPulse, GraduationCap, Activity, Users, MapPin, TrendingUp, Briefcase, ShieldAlert, BookOpen, School } from 'lucide-react';
 import { societyService } from '../services/society-service';
 import type { TSocietyIndicators } from '../services/society-service';
 import type { SocietySeriesData } from '../hooks/useSocietyData';
@@ -160,6 +160,33 @@ export default function SocietySection({ data, isLoading, error, series: _series
           <Metric icon={<ShieldAlert className="w-4 h-4" />} label="Homicides (per 100k)" value={s.formatNumber(data.intentionalHomicidesPer100k.value)} />
         )}
       </div>
+
+      {/* Education Sub-section */}
+      {(data.educationExpenditurePctGdp?.value !== null || data.secondaryNetEnrollment?.value !== null || data.tertiaryGrossEnrollment?.value !== null || data.primaryPupilTeacherRatio?.value !== null || data.outOfSchoolChildrenPrimary?.value !== null) && (
+        <div className="section-card mt-5 pt-4" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+          <div className="section-header">
+            <GraduationCap className="h-4 w-4" />
+            <h3>Education</h3>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {data.educationExpenditurePctGdp?.value !== null && data.educationExpenditurePctGdp?.value !== undefined && (
+              <Metric icon={<BookOpen className="w-4 h-4" />} label="Education expenditure (% GDP)" value={s.formatPercent(data.educationExpenditurePctGdp.value)} />
+            )}
+            {data.secondaryNetEnrollment?.value !== null && data.secondaryNetEnrollment?.value !== undefined && (
+              <Metric icon={<School className="w-4 h-4" />} label="Secondary enrollment (%)" value={s.formatPercent(data.secondaryNetEnrollment.value)} />
+            )}
+            {data.tertiaryGrossEnrollment?.value !== null && data.tertiaryGrossEnrollment?.value !== undefined && (
+              <Metric icon={<GraduationCap className="w-4 h-4" />} label="Tertiary enrollment (%)" value={s.formatPercent(data.tertiaryGrossEnrollment.value)} />
+            )}
+            {data.primaryPupilTeacherRatio?.value !== null && data.primaryPupilTeacherRatio?.value !== undefined && (
+              <Metric icon={<Users className="w-4 h-4" />} label="Pupil-teacher ratio (primary)" value={s.formatNumber(data.primaryPupilTeacherRatio.value)} />
+            )}
+            {data.outOfSchoolChildrenPrimary?.value !== null && data.outOfSchoolChildrenPrimary?.value !== undefined && (
+              <Metric icon={<AlertCircle className="w-4 h-4" />} label="Children out of school" value={s.formatNumber(data.outOfSchoolChildrenPrimary.value)} />
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Historical Trends Section - Now in main Historical Trends zone, hidden here */}
       {false && iso3 && fetchIndicatorSeries && (

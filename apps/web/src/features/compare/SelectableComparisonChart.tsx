@@ -121,10 +121,37 @@ const ENVIRONMENT_INDICATORS = [
   { slug: 'forest-rents', name: 'Forest Rents (% GDP)' },
 ];
 
+const HEALTH_INDICATORS = [
+  { slug: 'health-expenditure', name: 'Health Expenditure (% GDP)' },
+  { slug: 'physicians', name: 'Physicians (per 1,000)' },
+  { slug: 'hospital-beds', name: 'Hospital Beds (per 1,000)' },
+  { slug: 'infant-mortality', name: 'Infant Mortality Rate' },
+  { slug: 'maternal-mortality', name: 'Maternal Mortality Ratio' },
+  { slug: 'immunization-measles', name: 'Immunization Measles (%)' },
+  { slug: 'undernourishment', name: 'Undernourishment (%)' },
+];
+
+const EDUCATION_INDICATORS = [
+  { slug: 'education-expenditure', name: 'Education Expenditure (% GDP)' },
+  { slug: 'secondary-enrollment', name: 'Secondary Enrollment (%)' },
+  { slug: 'tertiary-enrollment', name: 'Tertiary Enrollment (%)' },
+  { slug: 'pupil-teacher-ratio', name: 'Pupil-Teacher Ratio (Primary)' },
+  { slug: 'out-of-school', name: 'Out of School Children' },
+];
+
+const INFRASTRUCTURE_INDICATORS = [
+  { slug: 'internet-users', name: 'Internet Users (%)' },
+  { slug: 'mobile-subscriptions', name: 'Mobile Subscriptions (per 100)' },
+  { slug: 'access-electricity', name: 'Access to Electricity (%)' },
+  { slug: 'air-transport', name: 'Air Transport Passengers' },
+  { slug: 'secure-servers', name: 'Secure Servers (per million)' },
+];
+
 const ALL_INDICATORS: Array<{ slug: string; name: string }> = [
-  ...ECONOMIC_INDICATORS, ...SOCIETY_INDICATORS, ...POLITICS_INDICATORS,
+  ...ECONOMIC_INDICATORS, ...SOCIETY_INDICATORS, ...HEALTH_INDICATORS,
+  ...EDUCATION_INDICATORS, ...POLITICS_INDICATORS,
   ...DEFENSE_INDICATORS, ...INTERNATIONAL_INDICATORS, ...TECHNOLOGY_INDICATORS,
-  ...COMMODITIES_INDICATORS, ...ENVIRONMENT_INDICATORS
+  ...INFRASTRUCTURE_INDICATORS, ...COMMODITIES_INDICATORS, ...ENVIRONMENT_INDICATORS
 ];
 
 export default function SelectableComparisonChart({
@@ -194,6 +221,16 @@ export default function SelectableComparisonChart({
               <option key={ind.slug} value={ind.slug}>{ind.name}</option>
             ))}
           </optgroup>
+          <optgroup label="Health">
+            {HEALTH_INDICATORS.map(ind => (
+              <option key={ind.slug} value={ind.slug}>{ind.name}</option>
+            ))}
+          </optgroup>
+          <optgroup label="Education">
+            {EDUCATION_INDICATORS.map(ind => (
+              <option key={ind.slug} value={ind.slug}>{ind.name}</option>
+            ))}
+          </optgroup>
           <optgroup label="Politics">
             {POLITICS_INDICATORS.map(ind => (
               <option key={ind.slug} value={ind.slug}>{ind.name}</option>
@@ -211,6 +248,11 @@ export default function SelectableComparisonChart({
           </optgroup>
           <optgroup label="Technology">
             {TECHNOLOGY_INDICATORS.map(ind => (
+              <option key={ind.slug} value={ind.slug}>{ind.name}</option>
+            ))}
+          </optgroup>
+          <optgroup label="Infrastructure">
+            {INFRASTRUCTURE_INDICATORS.map(ind => (
               <option key={ind.slug} value={ind.slug}>{ind.name}</option>
             ))}
           </optgroup>

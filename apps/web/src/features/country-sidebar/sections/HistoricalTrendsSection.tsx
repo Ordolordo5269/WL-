@@ -37,6 +37,26 @@ const SOCIETY_INDICATORS = [
   { slug: 'poverty', name: 'Extreme Poverty', color: '#ef4444', category: 'society' }
 ];
 
+// Health Indicators
+const HEALTH_INDICATORS = [
+  { slug: 'health-expenditure', name: 'Health Expenditure', color: '#f43f5e', category: 'health' },
+  { slug: 'physicians', name: 'Physicians', color: '#ec4899', category: 'health' },
+  { slug: 'hospital-beds', name: 'Hospital Beds', color: '#be185d', category: 'health' },
+  { slug: 'infant-mortality', name: 'Infant Mortality', color: '#f97316', category: 'health' },
+  { slug: 'maternal-mortality', name: 'Maternal Mortality', color: '#dc2626', category: 'health' },
+  { slug: 'immunization-measles', name: 'Immunization Measles', color: '#10b981', category: 'health' },
+  { slug: 'undernourishment', name: 'Undernourishment', color: '#eab308', category: 'health' },
+];
+
+// Education Indicators
+const EDUCATION_INDICATORS = [
+  { slug: 'education-expenditure', name: 'Education Expenditure', color: '#6366f1', category: 'education' },
+  { slug: 'secondary-enrollment', name: 'Secondary Enrollment', color: '#8b5cf6', category: 'education' },
+  { slug: 'tertiary-enrollment', name: 'Tertiary Enrollment', color: '#a855f7', category: 'education' },
+  { slug: 'pupil-teacher-ratio', name: 'Pupil-Teacher Ratio', color: '#7c3aed', category: 'education' },
+  { slug: 'out-of-school', name: 'Out of School Children', color: '#ef4444', category: 'education' },
+];
+
 // Politics Indicators (WGI)
 const POLITICS_INDICATORS = [
   { slug: 'political-stability', name: 'Political Stability', color: '#a855f7', category: 'politics' },
@@ -67,13 +87,87 @@ const INTERNATIONAL_INDICATORS = [
   { slug: 'remittances', name: 'Remittances', color: '#0c4a6e', category: 'international' }
 ];
 
+// Technology Indicators
+const TECHNOLOGY_INDICATORS = [
+  { slug: 'rnd-expenditure', name: 'R&D Expenditure', color: '#6366f1', category: 'technology' },
+  { slug: 'high-tech-exports', name: 'High-Tech Exports (USD)', color: '#818cf8', category: 'technology' },
+  { slug: 'researchers', name: 'Researchers', color: '#a5b4fc', category: 'technology' },
+  { slug: 'patents', name: 'Patent Applications', color: '#4f46e5', category: 'technology' },
+  { slug: 'journal-articles', name: 'Journal Articles', color: '#7c3aed', category: 'technology' },
+  { slug: 'broadband', name: 'Broadband', color: '#8b5cf6', category: 'technology' },
+];
+
+// Infrastructure Indicators
+const INFRASTRUCTURE_INDICATORS = [
+  { slug: 'internet-users', name: 'Internet Users', color: '#14b8a6', category: 'infrastructure' },
+  { slug: 'mobile-subscriptions', name: 'Mobile Subscriptions', color: '#06b6d4', category: 'infrastructure' },
+  { slug: 'access-electricity', name: 'Access to Electricity', color: '#eab308', category: 'infrastructure' },
+  { slug: 'air-transport', name: 'Air Transport', color: '#0ea5e9', category: 'infrastructure' },
+  { slug: 'secure-servers', name: 'Secure Servers', color: '#0284c7', category: 'infrastructure' },
+];
+
+// Raw Materials / Commodities Indicators
+const COMMODITIES_INDICATORS = [
+  { slug: 'energy-imports', name: 'Energy Imports', color: '#d97706', category: 'commodities' },
+  { slug: 'fuel-exports', name: 'Fuel Exports', color: '#f59e0b', category: 'commodities' },
+  { slug: 'fuel-imports', name: 'Fuel Imports', color: '#fbbf24', category: 'commodities' },
+  { slug: 'energy-use-per-capita', name: 'Energy Use/Capita', color: '#b45309', category: 'commodities' },
+  { slug: 'electricity-renewables', name: 'Electricity Renewables', color: '#10b981', category: 'commodities' },
+  { slug: 'mineral-rents', name: 'Mineral Rents', color: '#78716c', category: 'commodities' },
+  { slug: 'ore-metal-exports', name: 'Ore & Metal Exports', color: '#a8a29e', category: 'commodities' },
+  { slug: 'cereal-production', name: 'Cereal Production', color: '#84cc16', category: 'commodities' },
+  { slug: 'arable-land', name: 'Arable Land', color: '#22c55e', category: 'commodities' },
+];
+
+// Environment Indicators
+const ENVIRONMENT_INDICATORS = [
+  { slug: 'co2-per-capita', name: 'CO2 per Capita', color: '#78716c', category: 'environment' },
+  { slug: 'co2-total', name: 'CO2 Total', color: '#a8a29e', category: 'environment' },
+  { slug: 'forest-area', name: 'Forest Area', color: '#22c55e', category: 'environment' },
+  { slug: 'pm25', name: 'PM2.5 Pollution', color: '#f97316', category: 'environment' },
+  { slug: 'renewable-energy', name: 'Renewable Energy', color: '#10b981', category: 'environment' },
+  { slug: 'clean-water', name: 'Clean Water Access', color: '#06b6d4', category: 'environment' },
+  { slug: 'renewable-electricity', name: 'Renewable Electricity', color: '#14b8a6', category: 'environment' },
+  { slug: 'protected-areas', name: 'Protected Areas', color: '#16a34a', category: 'environment' },
+  { slug: 'methane-emissions', name: 'Methane Emissions', color: '#dc2626', category: 'environment' },
+];
+
+type CategoryKey = 'all' | 'economic' | 'society' | 'health' | 'education' | 'politics' | 'defense' | 'international' | 'technology' | 'infrastructure' | 'commodities' | 'environment';
+
 // Combined indicators
-const ALL_INDICATORS: Array<{ slug: string; name: string; color: string; category: string }> = [...ECONOMIC_INDICATORS, ...SOCIETY_INDICATORS, ...POLITICS_INDICATORS, ...DEFENSE_INDICATORS, ...INTERNATIONAL_INDICATORS];
+const ALL_INDICATORS: Array<{ slug: string; name: string; color: string; category: string }> = [
+  ...ECONOMIC_INDICATORS,
+  ...SOCIETY_INDICATORS,
+  ...HEALTH_INDICATORS,
+  ...EDUCATION_INDICATORS,
+  ...POLITICS_INDICATORS,
+  ...DEFENSE_INDICATORS,
+  ...INTERNATIONAL_INDICATORS,
+  ...TECHNOLOGY_INDICATORS,
+  ...INFRASTRUCTURE_INDICATORS,
+  ...COMMODITIES_INDICATORS,
+  ...ENVIRONMENT_INDICATORS,
+];
+
+const CATEGORY_BUTTONS: Array<{ key: CategoryKey; label: string; cssClass: string }> = [
+  { key: 'all', label: 'All', cssClass: 'category-all-active' },
+  { key: 'economic', label: 'Economic', cssClass: 'category-economic-active' },
+  { key: 'society', label: 'Society', cssClass: 'category-society-active' },
+  { key: 'health', label: 'Health', cssClass: 'category-health-active' },
+  { key: 'education', label: 'Education', cssClass: 'category-education-active' },
+  { key: 'politics', label: 'Politics', cssClass: 'category-politics-active' },
+  { key: 'defense', label: 'Defense', cssClass: 'category-defense-active' },
+  { key: 'international', label: 'International', cssClass: 'category-international-active' },
+  { key: 'technology', label: 'Technology', cssClass: 'category-technology-active' },
+  { key: 'infrastructure', label: 'Infrastructure', cssClass: 'category-infrastructure-active' },
+  { key: 'commodities', label: 'Raw Materials', cssClass: 'category-commodities-active' },
+  { key: 'environment', label: 'Environment', cssClass: 'category-environment-active' },
+];
 
 export default function HistoricalTrendsSection({ iso3, countryName: _countryName }: HistoricalTrendsSectionProps) {
   // Only one indicator can be selected at a time
   const [selectedIndicator, setSelectedIndicator] = useState<string | null>('gdp');
-  const [selectedCategory, setSelectedCategory] = useState<'all' | 'economic' | 'society' | 'politics' | 'defense' | 'international'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<CategoryKey>('all');
   const [timeSeriesData, setTimeSeriesData] = useState<Record<string, TimeSeriesPoint[]>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -143,8 +237,8 @@ export default function HistoricalTrendsSection({ iso3, countryName: _countryNam
   }
 
   // Filter indicators by category
-  const filteredIndicators = selectedCategory === 'all' 
-    ? ALL_INDICATORS 
+  const filteredIndicators = selectedCategory === 'all'
+    ? ALL_INDICATORS
     : ALL_INDICATORS.filter(ind => ind.category === selectedCategory);
 
   const getIndicatorDisplayName = (slug: string): string => {
@@ -159,60 +253,18 @@ export default function HistoricalTrendsSection({ iso3, countryName: _countryNam
     >
       {/* Category Filter */}
       <div className="historical-category-filter">
-        <button
-          onClick={() => {
-            setSelectedCategory('all');
-            setSelectedIndicator(null);
-          }}
-          className={`historical-category-btn ${selectedCategory === 'all' ? 'category-all-active' : ''}`}
-        >
-          All
-        </button>
-        <button
-          onClick={() => {
-            setSelectedCategory('economic');
-            setSelectedIndicator(null);
-          }}
-          className={`historical-category-btn ${selectedCategory === 'economic' ? 'category-economic-active' : ''}`}
-        >
-          Economic
-        </button>
-        <button
-          onClick={() => {
-            setSelectedCategory('society');
-            setSelectedIndicator(null);
-          }}
-          className={`historical-category-btn ${selectedCategory === 'society' ? 'category-society-active' : ''}`}
-        >
-          Society
-        </button>
-        <button
-          onClick={() => {
-            setSelectedCategory('politics');
-            setSelectedIndicator(null);
-          }}
-          className={`historical-category-btn ${selectedCategory === 'politics' ? 'category-politics-active' : ''}`}
-        >
-          Politics
-        </button>
-        <button
-          onClick={() => {
-            setSelectedCategory('defense');
-            setSelectedIndicator(null);
-          }}
-          className={`historical-category-btn ${selectedCategory === 'defense' ? 'category-defense-active' : ''}`}
-        >
-          Defense
-        </button>
-        <button
-          onClick={() => {
-            setSelectedCategory('international');
-            setSelectedIndicator(null);
-          }}
-          className={`historical-category-btn ${selectedCategory === 'international' ? 'category-international-active' : ''}`}
-        >
-          International
-        </button>
+        {CATEGORY_BUTTONS.map(cat => (
+          <button
+            key={cat.key}
+            onClick={() => {
+              setSelectedCategory(cat.key);
+              setSelectedIndicator(null);
+            }}
+            className={`historical-category-btn ${selectedCategory === cat.key ? cat.cssClass : ''}`}
+          >
+            {cat.label}
+          </button>
+        ))}
       </div>
 
       {/* Indicator selector - Modern Dark Style (Single Selection) */}
@@ -224,7 +276,7 @@ export default function HistoricalTrendsSection({ iso3, countryName: _countryNam
               key={indicator.slug}
               onClick={() => selectIndicator(indicator.slug)}
               className={`historical-indicator-btn ${isSelected ? 'selected' : ''}`}
-              style={isSelected ? { 
+              style={isSelected ? {
                 borderColor: `${indicator.color}80`,
                 color: indicator.color,
                 background: `${indicator.color}15`
@@ -292,4 +344,3 @@ export default function HistoricalTrendsSection({ iso3, countryName: _countryNam
     </motion.div>
   );
 }
-

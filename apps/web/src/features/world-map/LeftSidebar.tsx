@@ -12,11 +12,11 @@ interface LeftSidebarProps {
   onClose: () => void;
   onCenterMap?: (coordinates: { lat: number; lng: number }) => void;
   onOpenConflictTracker?: () => void;
-  onSetBaseMapStyle?: (next: 'night' | 'light' | 'outdoors' | 'dark' | 'satellite-streets' | 'navigation-day') => void;
+  onSetBaseMapStyle?: (next: 'night' | 'light' | 'outdoors' | 'dark' | 'satellite-streets' | 'navigation-day' | 'earth-at-night' | 'nasa-night-lights' | 'nasa-black-marble') => void;
   onSetPlanetPreset?: (preset: 'default' | 'nebula' | 'sunset' | 'dawn' | 'arctic' | 'volcanic' | 'emerald' | 'midnight' | 'aurora' | 'sahara' | 'storm' | 'crimson' | 'rose' | 'void' | 'coral' | 'violet') => void;
   onSetStarIntensity?: (v: number) => void;
   onSetSpacePreset?: (preset: 'void' | 'deep' | 'nebula' | 'galaxy' | 'crimson') => void;
-  onSetGlobeTheme?: (theme: 'mars' | 'lunar' | 'venus' | 'ice-world' | 'cyberpunk' | 'golden-age' | 'alien' | 'deep-ocean') => void;
+  onSetGlobeTheme?: (theme: 'mars' | 'lunar' | 'venus' | 'ice-world' | 'cyberpunk' | 'golden-age' | 'alien' | 'deep-ocean' | 'earth-at-night' | 'nasa-night-lights' | 'nasa-black-marble') => void;
   // Terrain removido
   onSetTerrain?: (v: boolean) => void;
   onSetTerrainExaggeration?: (n: number) => void;
@@ -877,12 +877,12 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
                             </div>
                             <div className="settings-group-description">Combo presets that transform the entire globe appearance.</div>
                             <div className="settings-row settings-row-2col">
-                              {(['mars','lunar','venus','ice-world','cyberpunk','golden-age','alien','deep-ocean'] as const).map(theme => (
+                              {(['mars','lunar','venus','ice-world','cyberpunk','golden-age','alien','deep-ocean','earth-at-night','nasa-night-lights','nasa-black-marble'] as const).map(theme => (
                                 <button
                                   key={theme}
                                   className="settings-chip"
                                   onClick={() => onSetGlobeTheme?.(theme)}
-                                >{({mars:'Mars',lunar:'Lunar',venus:'Venus','ice-world':'Ice World',cyberpunk:'Cyberpunk','golden-age':'Golden Age',alien:'Alien','deep-ocean':'Deep Ocean'} as const)[theme]}</button>
+                                >{({mars:'Mars',lunar:'Lunar',venus:'Venus','ice-world':'Ice World',cyberpunk:'Cyberpunk','golden-age':'Golden Age',alien:'Alien','deep-ocean':'Deep Ocean','earth-at-night':'Earth at Night','nasa-night-lights':'Night Lights','nasa-black-marble':'Black Marble'} as const)[theme]}</button>
                               ))}
                             </div>
                           </div>
@@ -901,6 +901,9 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
                               <button className="settings-chip" onClick={() => onSetBaseMapStyle?.('dark')}>Dark</button>
                               <button className="settings-chip" onClick={() => onSetBaseMapStyle?.('satellite-streets')}>Sat+Streets</button>
                               <button className="settings-chip" onClick={() => onSetBaseMapStyle?.('navigation-day')}>Nav Day</button>
+                              <button className="settings-chip" onClick={() => onSetBaseMapStyle?.('earth-at-night')} title="NASA's Black Marble composite">Earth at Night</button>
+                              <button className="settings-chip" onClick={() => onSetBaseMapStyle?.('nasa-night-lights')} title="NASA's City Lights 2012">Night Lights</button>
+                              <button className="settings-chip" onClick={() => onSetBaseMapStyle?.('nasa-black-marble')} title="VIIRS Day/Night Band — 4-date composite for full coverage">Black Marble</button>
                             </div>
                           </div>
                           

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronDown, Globe, Banknote, Landmark, Shield, Users, Globe2, Cpu, Palette, X, Maximize2, Minimize2, TrendingUp, Star, Gem, Leaf } from 'lucide-react';
+import { ChevronDown, Globe, Banknote, Landmark, Shield, Users, Globe2, Cpu, Palette, X, Maximize2, Minimize2, TrendingUp, Star, Gem, Leaf, HeartPulse, Network } from 'lucide-react';
 import { useEconomyData } from './hooks/useEconomyData';
 import { useCountryBasicInfo } from './hooks/useCountryBasicInfo';
 import EconomySection from './sections/EconomySection';
@@ -21,6 +21,10 @@ import { useCommoditiesData } from './hooks/useCommoditiesData';
 import CommoditiesSection from './sections/CommoditiesSection';
 import { useEnvironmentData } from './hooks/useEnvironmentData';
 import EnvironmentSection from './sections/EnvironmentSection';
+import { useHealthData } from './hooks/useHealthData';
+import HealthSection from './sections/HealthSection';
+import { useInfrastructureData } from './hooks/useInfrastructureData';
+import InfrastructureSection from './sections/InfrastructureSection';
 import HistoricalTrendsSection from './sections/HistoricalTrendsSection';
 import CountryHeaderSticky from './sections/CountryHeaderSticky';
 import CountryKPIs from './sections/CountryKPIs';
@@ -216,6 +220,8 @@ export default function CountrySidebar({ isOpen, onClose, countryName, onNavigat
   const shouldLoadTechnology = expanded || openCategories.has('Technology and National Assets');
   const shouldLoadCommodities = expanded || openCategories.has('Raw Materials');
   const shouldLoadEnvironment = expanded || openCategories.has('Environment');
+  const shouldLoadHealth = expanded || openCategories.has('Health');
+  const shouldLoadInfrastructure = expanded || openCategories.has('Infrastructure & Connectivity');
   const shouldLoadCulture = expanded || openCategories.has('Culture');
   
   // Load data only when needed (lazy loading) - use debounced country name
@@ -227,6 +233,8 @@ export default function CountrySidebar({ isOpen, onClose, countryName, onNavigat
   const { data: technologyData, isLoading: isTechnologyLoading, error: technologyError } = useTechnologyData(iso3, debouncedCountryName, shouldLoadTechnology);
   const { data: commoditiesData, isLoading: isCommoditiesLoading, error: commoditiesError } = useCommoditiesData(iso3, debouncedCountryName, shouldLoadCommodities);
   const { data: environmentData, isLoading: isEnvironmentLoading, error: environmentError } = useEnvironmentData(iso3, debouncedCountryName, shouldLoadEnvironment);
+  const { data: healthData, isLoading: isHealthLoading, error: healthError } = useHealthData(iso3, debouncedCountryName, shouldLoadHealth);
+  const { data: infrastructureData, isLoading: isInfrastructureLoading, error: infrastructureError } = useInfrastructureData(iso3, debouncedCountryName, shouldLoadInfrastructure);
   const { data: cultureData, isLoading: isCultureLoading, error: cultureError } = useCultureData(iso3, debouncedCountryName, shouldLoadCulture);
   
   // Search removed per UX request; keep invariant empty term so lists show all items
@@ -280,6 +288,14 @@ export default function CountrySidebar({ isOpen, onClose, countryName, onNavigat
       ]
     },
     {
+      icon: <HeartPulse className="text-rose-400" />,
+      title: 'Health',
+      items: [
+        'Health expenditure', 'Physicians', 'Hospital beds',
+        'Infant mortality', 'Maternal mortality', 'Immunization', 'Undernourishment'
+      ]
+    },
+    {
       icon: <Landmark className="text-purple-400" />,
       title: 'Politics',
       items: ['Political parties', 'Political system', 'Head of State/Government', 'Political stability']
@@ -307,6 +323,14 @@ export default function CountrySidebar({ isOpen, onClose, countryName, onNavigat
         'R&D index', 'Tech exports', 'Major national companies',
         'State-owned enterprises', 'Strategic assets', 'Sovereign funds',
         'Strategic industries and specializations', 'Industrial policy', 'Critical minerals and global supply share'
+      ]
+    },
+    {
+      icon: <Network className="text-teal-400" />,
+      title: 'Infrastructure & Connectivity',
+      items: [
+        'Internet users', 'Mobile subscriptions', 'Access to electricity',
+        'Air transport', 'Secure internet servers'
       ]
     },
     {
@@ -541,7 +565,26 @@ export default function CountrySidebar({ isOpen, onClose, countryName, onNavigat
                     )}
                   </div>
 
-                  {/* Zone 6-8: Politics, Defense, International (33% each) */}
+                  {/* Zone: Health (50%) + Infrastructure (50%) — same row */}
+                  <div className="bento-zone-health">
+                    {renderCategorySection(
+                      'Health',
+                      HealthSection,
+                      { data: healthData, isLoading: isHealthLoading, error: healthError },
+                      true
+                    )}
+                  </div>
+
+                  <div className="bento-zone-infrastructure">
+                    {renderCategorySection(
+                      'Infrastructure & Connectivity',
+                      InfrastructureSection,
+                      { data: infrastructureData, isLoading: isInfrastructureLoading, error: infrastructureError },
+                      true
+                    )}
+                  </div>
+
+                  {/* Zone: Politics, Defense, International (33% each) */}
                   <div className="bento-zone-politics">
                     {renderCategorySection(
                       'Politics',
@@ -723,6 +766,15 @@ export default function CountrySidebar({ isOpen, onClose, countryName, onNavigat
                   );
                 }
 
+                // Special handling for Health category
+                if (category.title === 'Health') {
+                  return renderCategorySection(
+                    'Health',
+                    HealthSection,
+                    { data: healthData, isLoading: isHealthLoading, error: healthError }
+                  );
+                }
+
                 // Special handling for International category
                 if (category.title === 'International') {
                   return renderCategorySection(
@@ -738,6 +790,15 @@ export default function CountrySidebar({ isOpen, onClose, countryName, onNavigat
                     'Technology and National Assets',
                     TechnologySection,
                     { data: technologyData, isLoading: isTechnologyLoading, error: technologyError }
+                  );
+                }
+
+                // Special handling for Infrastructure & Connectivity category
+                if (category.title === 'Infrastructure & Connectivity') {
+                  return renderCategorySection(
+                    'Infrastructure & Connectivity',
+                    InfrastructureSection,
+                    { data: infrastructureData, isLoading: isInfrastructureLoading, error: infrastructureError }
                   );
                 }
 

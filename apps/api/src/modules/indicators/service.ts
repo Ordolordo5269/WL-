@@ -283,7 +283,9 @@ export async function getSocietyData(iso3: string) {
     lifeExpectancy, literacyRateAdult, povertyExtreme215, uhcServiceCoverageIndex,
     primaryNetEnrollment, populationTotal, populationGrowth, crudeBirthRate,
     crudeDeathRate, urbanPopulationPercent, ruralPopulationPercent, populationDensity,
-    youthUnemployment, homicides
+    youthUnemployment, homicides,
+    // Education expansion
+    educationExpenditure, secondaryEnrollment, tertiaryEnrollment, pupilTeacherRatio, outOfSchool
   ] = await Promise.all([
     getLatestIndicatorValueForIso3(countryIso3, 'LIFE_EXPECTANCY'),
     getLatestIndicatorValueForIso3(countryIso3, 'LITERACY_RATE_ADULT'),
@@ -299,6 +301,12 @@ export async function getSocietyData(iso3: string) {
     getLatestIndicatorValueForIso3(countryIso3, 'POPULATION_DENSITY'),
     getLatestIndicatorValueForIso3(countryIso3, 'YOUTH_UNEMPLOYMENT_PCT'),
     getLatestIndicatorValueForIso3(countryIso3, 'INTENTIONAL_HOMICIDES_PER_100K'),
+    // Education expansion
+    getLatestIndicatorValueForIso3(countryIso3, 'EDUCATION_EXPENDITURE_PCT_GDP'),
+    getLatestIndicatorValueForIso3(countryIso3, 'SECONDARY_NET_ENROLLMENT'),
+    getLatestIndicatorValueForIso3(countryIso3, 'TERTIARY_GROSS_ENROLLMENT'),
+    getLatestIndicatorValueForIso3(countryIso3, 'PRIMARY_PUPIL_TEACHER_RATIO'),
+    getLatestIndicatorValueForIso3(countryIso3, 'OUT_OF_SCHOOL_CHILDREN_PRIMARY'),
   ]);
 
   return {
@@ -317,6 +325,12 @@ export async function getSocietyData(iso3: string) {
     populationDensity: { value: toNumberOrNull(populationDensity.value), year: populationDensity.year },
     youthUnemploymentPct: { value: toNumberOrNull(youthUnemployment.value), year: youthUnemployment.year },
     intentionalHomicidesPer100k: { value: toNumberOrNull(homicides.value), year: homicides.year },
+    // Education expansion
+    educationExpenditurePctGdp: { value: toNumberOrNull(educationExpenditure.value), year: educationExpenditure.year },
+    secondaryNetEnrollment: { value: toNumberOrNull(secondaryEnrollment.value), year: secondaryEnrollment.year },
+    tertiaryGrossEnrollment: { value: toNumberOrNull(tertiaryEnrollment.value), year: tertiaryEnrollment.year },
+    primaryPupilTeacherRatio: { value: toNumberOrNull(pupilTeacherRatio.value), year: pupilTeacherRatio.year },
+    outOfSchoolChildrenPrimary: { value: toNumberOrNull(outOfSchool.value), year: outOfSchool.year },
   };
 }
 
@@ -488,6 +502,68 @@ export async function getEnvironmentData(iso3: string) {
     // Energy Transition
     renewableEnergyConsumptionPct: { value: toNumberOrNull(renewableEnergy.value), year: renewableEnergy.year },
     renewableElectricityOutputPct: { value: toNumberOrNull(renewableElectricity.value), year: renewableElectricity.year },
+    sources: { worldBank: 'https://api.worldbank.org/v2/' },
+  };
+}
+
+// ── Health ──
+
+export async function getHealthData(iso3: string) {
+  const entity = await repo.findCountryEntity(iso3);
+  if (!entity) return null;
+
+  const countryIso3 = entity.iso3 as string;
+
+  const [healthExpPctGdp, physicians, hospitalBeds, infantMortality, maternalMortality, immunizationMeasles, undernourishment] =
+    await Promise.all([
+      getLatestIndicatorValueForIso3(countryIso3, 'HEALTH_EXPENDITURE_PCT_GDP'),
+      getLatestIndicatorValueForIso3(countryIso3, 'PHYSICIANS_PER_1000'),
+      getLatestIndicatorValueForIso3(countryIso3, 'HOSPITAL_BEDS_PER_1000'),
+      getLatestIndicatorValueForIso3(countryIso3, 'MORTALITY_RATE_INFANT'),
+      getLatestIndicatorValueForIso3(countryIso3, 'MORTALITY_RATE_MATERNAL'),
+      getLatestIndicatorValueForIso3(countryIso3, 'IMMUNIZATION_MEASLES'),
+      getLatestIndicatorValueForIso3(countryIso3, 'PREVALENCE_OF_UNDERNOURISHMENT'),
+    ]);
+
+  return {
+    countryCode3: countryIso3,
+    countryName: entity.name,
+    healthExpenditurePctGdp: { value: toNumberOrNull(healthExpPctGdp.value), year: healthExpPctGdp.year },
+    physiciansPerThousand: { value: toNumberOrNull(physicians.value), year: physicians.year },
+    hospitalBedsPerThousand: { value: toNumberOrNull(hospitalBeds.value), year: hospitalBeds.year },
+    infantMortalityRate: { value: toNumberOrNull(infantMortality.value), year: infantMortality.year },
+    maternalMortalityRatio: { value: toNumberOrNull(maternalMortality.value), year: maternalMortality.year },
+    immunizationMeasles: { value: toNumberOrNull(immunizationMeasles.value), year: immunizationMeasles.year },
+    undernourishmentPct: { value: toNumberOrNull(undernourishment.value), year: undernourishment.year },
+    sources: { worldBank: 'https://api.worldbank.org/v2/' },
+  };
+}
+
+// ── Infrastructure & Connectivity ──
+
+export async function getInfrastructureData(iso3: string) {
+  const entity = await repo.findCountryEntity(iso3);
+  if (!entity) return null;
+
+  const countryIso3 = entity.iso3 as string;
+
+  const [internetUsers, mobileSubscriptions, accessElectricity, airTransport, secureServers] =
+    await Promise.all([
+      getLatestIndicatorValueForIso3(countryIso3, 'INTERNET_USERS'),
+      getLatestIndicatorValueForIso3(countryIso3, 'MOBILE_CELLULAR_SUBSCRIPTIONS'),
+      getLatestIndicatorValueForIso3(countryIso3, 'ACCESS_TO_ELECTRICITY'),
+      getLatestIndicatorValueForIso3(countryIso3, 'AIR_TRANSPORT_PASSENGERS'),
+      getLatestIndicatorValueForIso3(countryIso3, 'SECURE_INTERNET_SERVERS_PER_MILLION'),
+    ]);
+
+  return {
+    countryCode3: countryIso3,
+    countryName: entity.name,
+    internetUsersPct: { value: toNumberOrNull(internetUsers.value), year: internetUsers.year },
+    mobileCellularPer100: { value: toNumberOrNull(mobileSubscriptions.value), year: mobileSubscriptions.year },
+    accessElectricityPct: { value: toNumberOrNull(accessElectricity.value), year: accessElectricity.year },
+    airTransportPassengers: { value: toNumberOrNull(airTransport.value), year: airTransport.year },
+    secureInternetServersPm: { value: toNumberOrNull(secureServers.value), year: secureServers.year },
     sources: { worldBank: 'https://api.worldbank.org/v2/' },
   };
 }

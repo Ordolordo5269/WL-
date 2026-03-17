@@ -1,6 +1,6 @@
 import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
-import { applyFog as appearanceApplyFog, setBaseFeaturesVisibility as appearanceSetBaseFeaturesVisibility, applyPhysicalModeTweaks as appearanceApplyPhysical, MAP_STYLES, type StyleKey, type PlanetPreset, applyStarIntensity as appearanceApplyStarIntensity, applySpacePreset as appearanceApplySpacePreset, type SpacePreset, type GlobeThemeKey, GLOBE_THEMES } from './map/mapAppearance';
+import { applyFog as appearanceApplyFog, setBaseFeaturesVisibility as appearanceSetBaseFeaturesVisibility, applyPhysicalModeTweaks as appearanceApplyPhysical, MAP_STYLES, type StyleKey, type PlanetPreset, applyStarIntensity as appearanceApplyStarIntensity, applySpacePreset as appearanceApplySpacePreset, applyThemeAtmosphere as appearanceApplyThemeAtmosphere, type SpacePreset, type GlobeThemeKey, GLOBE_THEMES, applyRasterOverlay, removeRasterOverlay, findRasterInsertionPoint, EARTH_AT_NIGHT_OVERLAY, NASA_NIGHT_LIGHTS_OVERLAY, NASA_BLACK_MARBLE_OVERLAYS, type RasterOverlay } from './map/mapAppearance';
 import { applyTerrain, reapplyAfterStyleChange, loadPersistedTerrain, persistTerrain } from './map/terrain';
 import type { ChoroplethSpec } from './services/worldbank-gdp';
 import type { ChoroplethSpec as GdpPerCapitaChoroplethSpec } from './services/worldbank-gdp-per-capita';
@@ -121,6 +121,10 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   const [starIntensity, setStarIntensityState] = useState<number>(0.6);
   // Counter to invalidate pending globe theme style.load callbacks
   const globeThemeLoadId = useRef(0);
+  // Counter to invalidate pending base map style.load callbacks
+  const styleChangeLoadId = useRef(0);
+  // Track active NASA overlay source IDs for efficient cleanup
+  const activeNasaSourceIds = useRef<string[]>([]);
   // Ocultar nombres/carreteras/fronteras
   const [minimalModeOn, setMinimalModeOn] = useState(false);
   // Natural layers: state refs
@@ -1224,29 +1228,55 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       });
     },
     setBaseMapStyle: (next: StyleKey) => {
+      const loadId = ++styleChangeLoadId.current;
+      globeThemeLoadId.current++; // Cancel any pending theme callbacks
+      const sameUrl = MAP_STYLES[styleKeyRef.current] === MAP_STYLES[next];
       setStyleKey(next);
+      styleKeyRef.current = next; // Update ref immediately to avoid stale checks on subsequent calls
       if (!mapRef.current) return;
       const map = mapRef.current;
+      const nasaOverlays: RasterOverlay[] = next === 'earth-at-night' ? [EARTH_AT_NIGHT_OVERLAY]
+        : next === 'nasa-night-lights' ? [NASA_NIGHT_LIGHTS_OVERLAY]
+        : next === 'nasa-black-marble' ? NASA_BLACK_MARBLE_OVERLAYS : [];
+      const applyOverlays = (m: mapboxgl.Map) => {
+        const beforeId = findRasterInsertionPoint(m);
+        nasaOverlays.forEach(o => applyRasterOverlay(m, o, beforeId));
+        activeNasaSourceIds.current = nasaOverlays.map(o => o.sourceId);
+      };
       try {
-        map.setStyle(MAP_STYLES[next], { diff: false } as any);
-        map.once('style.load', () => {
-          // Use ref to read latest planetPreset (avoids stale closure)
-          appearanceApplyFog(map, planetPresetRef.current);
-          // Reaplicar terreno si estaba activo
-          reapplyAfterStyleChange(map, { enabled: terrainOn, exaggeration: terrainExaggeration, useHillshade: false });
-          reinitializeInteractiveLayers();
-          // Update opacities for existing layers based on style
-          updateLayerOpacitiesForStyle(next);
-          // Re-ensure history layers if enabled after style change
-          if (historyEnabledRef.current) {
-            ensureHistorySource(historyYearRef.current);
-            ensureHistoryLayers();
-          }
-          // Reaplicar edificios 3D
-          if (buildings3DOn) {
-            try { add3DBuildingsLayer(map); } catch {}
-          }
-        });
+        // Clean up only active NASA overlays
+        activeNasaSourceIds.current.forEach(id => removeRasterOverlay(map, id));
+        activeNasaSourceIds.current = [];
+        if (sameUrl) {
+          // Same underlying Mapbox style — skip reload, just toggle overlay
+          applyOverlays(map);
+        } else {
+          // Fade out canvas to hide style-change flash
+          const container = map.getContainer();
+          container.style.transition = 'opacity 0.18s ease-out';
+          container.style.opacity = '0';
+          map.setStyle(MAP_STYLES[next], { diff: false } as any);
+          map.once('style.load', () => {
+            if (styleChangeLoadId.current !== loadId) return; // Stale — a newer change superseded this
+            appearanceApplyFog(map, planetPresetRef.current);
+            reapplyAfterStyleChange(map, { enabled: terrainOn, exaggeration: terrainExaggeration, useHillshade: false });
+            reinitializeInteractiveLayers();
+            updateLayerOpacitiesForStyle(next);
+            if (historyEnabledRef.current) {
+              ensureHistorySource(historyYearRef.current);
+              ensureHistoryLayers();
+            }
+            if (buildings3DOn) {
+              try { add3DBuildingsLayer(map); } catch {}
+            }
+            applyOverlays(map);
+            // Fade canvas back in after style is ready
+            requestAnimationFrame(() => {
+              container.style.transition = 'opacity 0.3s ease-in';
+              container.style.opacity = '1';
+            });
+          });
+        }
       } catch {}
     },
     setPlanetPreset: (preset: PlanetPreset) => {
@@ -1270,19 +1300,32 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       if (!theme || !mapRef.current) return;
       const map = mapRef.current;
       const loadId = ++globeThemeLoadId.current;
+      styleChangeLoadId.current++; // Cancel any pending base map callbacks
+      const sameStyle = MAP_STYLES[styleKeyRef.current] === MAP_STYLES[theme.baseMap];
       setStyleKey(theme.baseMap);
+      styleKeyRef.current = theme.baseMap;
       setPlanetPreset(theme.planet);
       setStarIntensityState(theme.starIntensity);
-      const sameStyle = styleKeyRef.current === theme.baseMap;
       const applyThemeEffects = () => {
-        appearanceApplyFog(map, theme.planet);
-        appearanceApplySpacePreset(map, theme.space);
-        appearanceApplyStarIntensity(map, theme.starIntensity);
+        appearanceApplyThemeAtmosphere(map, theme.planet, theme.space, theme.starIntensity);
+        // Clean up only active NASA overlays, then apply new ones if present
+        activeNasaSourceIds.current.forEach(id => removeRasterOverlay(map, id));
+        activeNasaSourceIds.current = [];
+        if (theme.rasterOverlay) {
+          const overlays: RasterOverlay[] = Array.isArray(theme.rasterOverlay) ? theme.rasterOverlay : [theme.rasterOverlay as RasterOverlay];
+          const beforeId = findRasterInsertionPoint(map);
+          overlays.forEach(o => applyRasterOverlay(map, o, beforeId));
+          activeNasaSourceIds.current = overlays.map(o => o.sourceId);
+        }
       };
       if (sameStyle) {
         try { applyThemeEffects(); } catch {}
       } else {
         try {
+          // Fade out canvas to hide style-change flash
+          const container = map.getContainer();
+          container.style.transition = 'opacity 0.18s ease-out';
+          container.style.opacity = '0';
           map.setStyle(MAP_STYLES[theme.baseMap], { diff: false } as any);
           map.once('style.load', () => {
             const cancelled = globeThemeLoadId.current !== loadId;
@@ -1298,12 +1341,15 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
               try { add3DBuildingsLayer(map); } catch {}
             }
             if (cancelled) {
-              // Theme was cancelled by individual control — apply current settings from refs
               appearanceApplyFog(map, planetPresetRef.current);
             } else {
-              // Theme still active — apply theme effects
               applyThemeEffects();
             }
+            // Fade canvas back in after style is ready
+            requestAnimationFrame(() => {
+              container.style.transition = 'opacity 0.3s ease-in';
+              container.style.opacity = '1';
+            });
           });
         } catch {}
       }
@@ -1420,8 +1466,13 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     if (!mapRef.current) return;
     const map = mapRef.current;
 
-    // Asegurar atmósfera/fog tras cambio de estilo (usar ref para evitar stale closure)
-    appearanceApplyFog(map, planetPresetRef.current);
+    // Remove previously registered layer-specific listeners to prevent accumulation
+    const layerListeners = eventListenersRef.current.filter(r => r.layer);
+    layerListeners.forEach(({ event, handler, layer }) => {
+      try { map.off(event, layer!, handler as any); } catch {}
+    });
+    eventListenersRef.current = eventListenersRef.current.filter(r => !r.layer);
+
     setBaseFeaturesVisibility(minimalModeOn);
 
     // Fuente de límites de países

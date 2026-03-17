@@ -12,7 +12,7 @@ export type MapEaseToOptions = {
 export interface MapRefType {
   easeTo: (options: MapEaseToOptions) => void;
   getMap: () => any;
-  setBaseMapStyle?: (next: 'night' | 'light' | 'outdoors' | 'dark' | 'satellite-streets' | 'navigation-day') => void;
+  setBaseMapStyle?: (next: 'night' | 'light' | 'outdoors' | 'dark' | 'satellite-streets' | 'navigation-day' | 'earth-at-night' | 'nasa-night-lights' | 'nasa-black-marble') => void;
   setPlanetPreset?: (preset: 'default' | 'nebula' | 'sunset' | 'dawn' | 'arctic' | 'volcanic' | 'emerald' | 'midnight' | 'aurora' | 'sahara' | 'storm' | 'crimson' | 'rose' | 'void' | 'coral' | 'violet') => void;
   setBuildings3DEnabled?: (v: boolean) => void;
   setMinimalMode?: (v: boolean) => void;
@@ -26,7 +26,7 @@ export interface MapRefType {
   highlightIso3ToColorMap?: (isoToColor: Record<string, string>) => void;
   setStarIntensity?: (v: number) => void;
   setSpacePreset?: (preset: 'void' | 'deep' | 'nebula' | 'galaxy' | 'crimson') => void;
-  setGlobeTheme?: (theme: 'mars' | 'lunar' | 'venus' | 'ice-world' | 'cyberpunk' | 'golden-age' | 'alien' | 'deep-ocean') => void;
+  setGlobeTheme?: (theme: 'mars' | 'lunar' | 'venus' | 'ice-world' | 'cyberpunk' | 'golden-age' | 'alien' | 'deep-ocean' | 'earth-at-night' | 'nasa-night-lights' | 'nasa-black-marble') => void;
   setTerrainEnabled?: (v: boolean) => void;
   setTerrainExaggeration?: (n: number) => void;
   flyToCity?: (lat: number, lng: number, cityName?: string) => void;

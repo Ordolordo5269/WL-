@@ -61,7 +61,13 @@ class HistoricalIndicatorsService {
       'mineral-rents', 'ore-metal-exports', 'food-exports', 'food-imports',
       'arable-land', 'natural-gas-rents', 'oil-rents', 'forest-rents',
       'population-growth', 'urban-population', 'rural-population',
-      'literacy', 'primary-enrollment', 'poverty'
+      'literacy', 'primary-enrollment', 'poverty',
+      // Health
+      'health-expenditure', 'immunization-measles', 'undernourishment',
+      // Education
+      'education-expenditure', 'secondary-enrollment', 'tertiary-enrollment',
+      // Infrastructure
+      'internet-users', 'access-electricity',
     ];
 
     const indexIndicators = [
@@ -176,6 +182,26 @@ class HistoricalIndicatorsService {
       'electric-power-consumption': 'Electric Power (kWh per capita)',
       'natural-gas-rents': 'Natural Gas Rents (% GDP)',
       'oil-rents': 'Oil Rents (% GDP)',
+      // Health
+      'health-expenditure': 'Health Expenditure (% GDP)',
+      'physicians': 'Physicians (per 1,000 people)',
+      'hospital-beds': 'Hospital Beds (per 1,000 people)',
+      'infant-mortality': 'Infant Mortality (per 1,000 live births)',
+      'maternal-mortality': 'Maternal Mortality (per 100,000)',
+      'immunization-measles': 'Immunization Measles (%)',
+      'undernourishment': 'Undernourishment (%)',
+      // Education
+      'education-expenditure': 'Education Expenditure (% GDP)',
+      'secondary-enrollment': 'Secondary Enrollment (% net)',
+      'tertiary-enrollment': 'Tertiary Enrollment (% gross)',
+      'pupil-teacher-ratio': 'Pupil-Teacher Ratio (primary)',
+      'out-of-school': 'Children Out of School (primary)',
+      // Infrastructure & Connectivity
+      'internet-users': 'Internet Users (% population)',
+      'mobile-subscriptions': 'Mobile Subscriptions (per 100)',
+      'access-electricity': 'Access to Electricity (%)',
+      'air-transport': 'Air Transport Passengers',
+      'secure-servers': 'Secure Internet Servers (per million)',
       // Environment
       'co2-per-capita': 'CO2 per Capita (metric tons)',
       'co2-total': 'CO2 Emissions Total (Mt)',
