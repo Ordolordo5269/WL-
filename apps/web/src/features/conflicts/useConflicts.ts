@@ -1,31 +1,63 @@
+import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { http } from '../../lib/http';
-import type { ConflictV2, ConflictFiltersParams } from './types';
+import { conflictApi } from './api';
+import type { ConflictFeature, ConflictSummary } from './types';
 
-interface ApiResponse {
-  data: ConflictV2[];
-  count: number;
-}
+export function useConflicts() {
+  const [enabled, setEnabled] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<ConflictFeature | null>(null);
 
-export interface ConflictsResult {
-  conflicts: ConflictV2[];
-  count: number;
-}
-
-export function useConflicts(filters: ConflictFiltersParams = {}) {
-  return useQuery({
-    queryKey: ['conflicts', filters],
-    queryFn: async (): Promise<ConflictsResult> => {
-      const params = new URLSearchParams();
-      if (filters.region) params.set('region', filters.region);
-      if (filters.status) params.set('status', filters.status);
-      if (filters.country) params.set('country', filters.country);
-      if (filters.from) params.set('from', filters.from);
-      if (filters.to) params.set('to', filters.to);
-
-      const qs = params.toString();
-      const res = await http.get<ApiResponse>(`/api/conflicts${qs ? `?${qs}` : ''}`);
-      return { conflicts: res.data, count: res.count };
-    },
+  const query = useQuery({
+    queryKey: ['conflicts', enabled],
+    queryFn: () => conflictApi.getEvents(),
+    enabled,
+    refetchInterval: 10 * 60 * 1000,
+    staleTime: 0,
+    retry: 2,
   });
+
+  const handleToggle = useCallback((on: boolean) => {
+    setEnabled(on);
+    if (!on) {
+      setSelectedCountry(null);
+      setSelectedEvent(null);
+    }
+  }, []);
+
+  const handleSelectCountry = useCallback(
+    (country: string | null) => {
+      setSelectedCountry(country);
+      setSelectedEvent(null);
+    },
+    [],
+  );
+
+  const handleSelectEvent = useCallback((event: ConflictFeature | null) => {
+    setSelectedEvent(event);
+  }, []);
+
+  // Events filtered by selected country
+  const countryEvents: ConflictFeature[] =
+    selectedCountry && query.data
+      ? query.data.features.filter(
+          (f) => f.properties.country === selectedCountry,
+        )
+      : [];
+
+  // Summary sorted by fatalities
+  const summaries: ConflictSummary[] = query.data?.summary ?? [];
+
+  return {
+    enabled,
+    handleToggle,
+    data: query.data,
+    isLoading: query.isLoading || query.isFetching || (enabled && !query.data),
+    summaries,
+    selectedCountry,
+    handleSelectCountry,
+    countryEvents,
+    selectedEvent,
+    handleSelectEvent,
+  };
 }

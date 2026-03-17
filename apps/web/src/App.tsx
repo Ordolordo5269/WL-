@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import WorldMap from './features/world-map/WorldMap';
 import LeftSidebar from './features/world-map/LeftSidebar';
 import CountrySidebar from './features/country-sidebar/CountrySidebar';
-import ConflictTracker from './features/conflicts/ConflictTracker';
+
 import CountryCard from './features/country/CountryCard';
 import MenuToggleButton from './features/world-map/MenuToggleButton';
 import CompareCountriesPopup from './features/compare/CompareCountriesPopup';
@@ -11,11 +11,13 @@ import CompareCountriesView from './features/compare/CompareCountriesView';
 import { useChoropleth } from './features/world-map/useChoropleth';
 import { useMapControls } from './features/world-map/useMapControls';
 import { useLiveActivity } from './features/live-activity/useLiveActivity';
+import { useConflicts } from './features/conflicts/useConflicts';
 import LiveActivityLegend from './features/live-activity/LiveActivityLegend';
 import type { MapRefType } from './features/world-map/types';
 import './index.css';
 import './styles/sidebar.css';
-import "./styles/conflict-tracker.css";
+import './styles/conflict-tracker.css';
+
 import "./styles/compare-countries.css";
 
 interface Country {
@@ -53,8 +55,6 @@ function WorldMapView() {
   const [countriesLoading, setCountriesLoading] = useState(true);
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedConflictId, setSelectedConflictId] = useState<string | null>(null);
-
   const mapRef = useRef<MapRefType | null>(null);
 
   // Callback ref to expose map ref when it's ready
@@ -67,6 +67,24 @@ function WorldMapView() {
   const choropleth = useChoropleth(mapRef);
   const mapControls = useMapControls(mapRef);
   const liveActivity = useLiveActivity();
+  const conflicts = useConflicts();
+
+  // Wire conflict data to map layers
+  useEffect(() => {
+    mapRef.current?.setConflictLayer?.(
+      conflicts.enabled,
+      conflicts.data ?? null,
+      (event) => {
+        conflicts.handleSelectCountry(event.properties.country);
+        conflicts.handleSelectEvent(event);
+      },
+    );
+  }, [conflicts.enabled, conflicts.data]);
+
+  // Fly to conflict location
+  const handleConflictFlyTo = useCallback((lat: number, lng: number) => {
+    mapRef.current?.easeTo({ center: [lng, lat], zoom: 5, duration: 1500 });
+  }, []);
 
   // Wire live-activity data to map layers
   useEffect(() => {
@@ -106,8 +124,7 @@ function WorldMapView() {
   // Unified sidebars state
   const [sidebars, setSidebars] = useState({
     country: false,
-    menu: false,
-    conflict: false
+    menu: false
   });
 
   // Compare Countries state
@@ -119,7 +136,7 @@ function WorldMapView() {
   });
 
   // Unified sidebars handler
-  const toggleSidebar = useCallback((type: 'country' | 'menu' | 'conflict', open: boolean) => {
+  const toggleSidebar = useCallback((type: 'country' | 'menu', open: boolean) => {
     setSidebars(prev => ({ ...prev, [type]: open }));
   }, []);
 
@@ -201,38 +218,6 @@ function WorldMapView() {
     toggleSidebar('menu', false);
   }, [toggleSidebar]);
 
-  const handleOpenConflictTracker = useCallback(() => {
-    toggleSidebar('conflict', true);
-    if (mapControls.historyEnabled) {
-      mapControls.handleToggleHistoryMode(false);
-    }
-  }, [toggleSidebar, mapControls.historyEnabled, mapControls.handleToggleHistoryMode]);
-
-  const handleCloseConflictTracker = useCallback(() => {
-    toggleSidebar('conflict', false);
-    setSelectedConflictId(null);
-  }, [toggleSidebar]);
-
-  const handleCenterMapOnConflict = (coordinates: { lat: number; lng: number }) => {
-    if (mapRef.current) {
-      mapRef.current.easeTo({
-        center: [coordinates.lng, coordinates.lat],
-        zoom: 4,
-        duration: 1200
-      });
-    }
-  };
-
-  const handleConflictClick = (_conflictId: string) => {
-    // Conflict clicks from the map are no longer driven by static data.
-    // The ConflictTracker component handles selection via API.
-    toggleSidebar('conflict', true);
-  };
-
-  const handleConflictSelect = (conflictId: string | null) => {
-    setSelectedConflictId(conflictId);
-  };
-
   // Compare Countries handlers
   const handleOpenComparePopup = useCallback(() => {
     setCompareCountries(prev => ({ ...prev, popupOpen: true }));
@@ -266,10 +251,6 @@ function WorldMapView() {
     ), [countries, selectedCountry]
   );
 
-  // Conflicts for map — static data removed; pass empty array for now.
-  // Future: fetch conflict coordinates from API for map markers.
-  const conflictsForMap = useMemo(() => [] as any[], []);
-
   return (
     <div className="relative w-full h-full overflow-hidden">
       {/* Left menu toggle button */}
@@ -282,7 +263,6 @@ function WorldMapView() {
       <LeftSidebar
         isOpen={sidebars.menu}
         onClose={handleCloseLeftSidebar}
-        onOpenConflictTracker={handleOpenConflictTracker}
         // Natural layers props
         onToggleRiversLayer={mapControls.handleToggleRiversLayer}
         riversEnabled={mapControls.riversEnabled}
@@ -376,6 +356,17 @@ function WorldMapView() {
         weatherEnabled={liveActivity.weatherEnabled}
         weatherLayers={liveActivity.weatherLayers}
         onToggleWeatherLayer={liveActivity.handleToggleWeatherLayer}
+        // Conflict Tracker
+        onToggleConflicts={conflicts.handleToggle}
+        conflictsEnabled={conflicts.enabled}
+        conflictsLoading={conflicts.isLoading}
+        conflictSummaries={conflicts.summaries}
+        conflictSelectedCountry={conflicts.selectedCountry}
+        onConflictSelectCountry={conflicts.handleSelectCountry}
+        conflictCountryEvents={conflicts.countryEvents}
+        conflictSelectedEvent={conflicts.selectedEvent}
+        onConflictSelectEvent={conflicts.handleSelectEvent}
+        onConflictFlyTo={handleConflictFlyTo}
       />
 
       {/* Left sidebar overlay */}
@@ -398,9 +389,6 @@ function WorldMapView() {
         onCountrySelect={handleCountrySelect}
         selectedCountry={selectedCountry}
         onResetView={handleResetView}
-        conflicts={conflictsForMap}
-        onConflictClick={handleConflictClick}
-        selectedConflictId={selectedConflictId}
         isLeftSidebarOpen={sidebars.menu}
         onMapReady={handleMapReady}
       />
@@ -485,27 +473,6 @@ function WorldMapView() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Conflict Tracker */}
-      <AnimatePresence>
-        {sidebars.conflict && (
-          <motion.div
-            className="fixed inset-0 bg-black z-40 cursor-pointer"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.4 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2, ease: 'easeInOut' }}
-            onClick={handleCloseConflictTracker}
-          />
-        )}
-      </AnimatePresence>
-      {sidebars.conflict && (
-        <ConflictTracker
-          onBack={handleCloseConflictTracker}
-          onCenterMap={handleCenterMapOnConflict}
-          onConflictSelect={handleConflictSelect}
-        />
-      )}
 
       {/* Compare Countries Popup */}
       <CompareCountriesPopup

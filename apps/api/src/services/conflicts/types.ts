@@ -1,3 +1,28 @@
+export interface ACLEDRawEvent {
+  event_id_cnty: string;
+  event_date: string;
+  event_type: string;
+  sub_event_type: string;
+  actor1: string;
+  actor2: string;
+  country: string;
+  admin1: string;
+  latitude: string;
+  longitude: string;
+  fatalities: string;
+  notes: string;
+  iso: string;
+  disorder_type: string;
+}
+
+export interface ACLEDApiResponse {
+  status: number;
+  success: boolean;
+  count: number;
+  total_count: number;
+  data: ACLEDRawEvent[];
+}
+
 export type ConflictSeverity = 'critical' | 'high' | 'medium' | 'low';
 
 export interface ConflictEventProperties {
@@ -16,12 +41,6 @@ export interface ConflictEventProperties {
   notes: string;
 }
 
-export interface ConflictFeature {
-  type: 'Feature';
-  geometry: { type: 'Point'; coordinates: [number, number] };
-  properties: ConflictEventProperties;
-}
-
 export interface ConflictSummary {
   country: string;
   iso: string;
@@ -36,6 +55,10 @@ export interface ConflictSummary {
 
 export interface ConflictsResponse {
   type: 'FeatureCollection';
-  features: ConflictFeature[];
+  features: Array<{
+    type: 'Feature';
+    geometry: { type: 'Point'; coordinates: [number, number] };
+    properties: ConflictEventProperties;
+  }>;
   summary: ConflictSummary[];
 }

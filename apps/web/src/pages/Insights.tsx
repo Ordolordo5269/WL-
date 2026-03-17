@@ -2,11 +2,9 @@ import { ProtectedRoute } from '../features/auth/ProtectedRoute';
 import InsightForm from '../features/insights/InsightForm';
 import InsightResult from '../features/insights/InsightResult';
 import { useGenerateInsight } from '../features/insights/useGenerateInsight';
-import { useConflicts } from '../features/conflicts/useConflicts';
 import { useCountryEntities } from '../features/insights/useCountryEntities';
 
 export default function Insights() {
-  const { data: conflictsData } = useConflicts();
   const { data: countries } = useCountryEntities();
   const mutation = useGenerateInsight();
 
@@ -22,7 +20,7 @@ export default function Insights() {
           </div>
 
           <InsightForm
-            conflicts={conflictsData?.conflicts ?? []}
+            conflicts={[]}
             countries={countries ?? []}
             isLoading={mutation.isPending}
             onSubmit={data => mutation.mutate(data)}

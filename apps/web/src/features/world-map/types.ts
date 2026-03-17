@@ -34,4 +34,5 @@ export interface MapRefType {
   setLedHalo?: (enabled: boolean) => void;
   setLedHaloSpeed?: (ms: number) => void;
   setLiveActivityLayer?: (id: string, enabled: boolean, data?: GeoJSON.FeatureCollection | null, extra?: any) => void;
+  setConflictLayer?: (enabled: boolean, data: any | null, onEventClick?: (event: any) => void) => void;
 }

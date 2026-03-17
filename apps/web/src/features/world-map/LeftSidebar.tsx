@@ -1,7 +1,9 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import InternationalOrganizationsPanel from './InternationalOrganizationsPanel';
 import { AVAILABLE_HISTORY_YEARS, snapToAvailableYear } from '../../utils/historical-years';
-import { Crosshair, Settings, Info, Globe, Users, BarChart3, Map, User, GitCompare, Radio } from 'lucide-react';
+import { Settings, Info, Globe, Users, BarChart3, Map, User, GitCompare, Radio, Crosshair } from 'lucide-react';
+import ConflictPanel from '../conflicts/ConflictPanel';
+import type { ConflictSummary, ConflictFeature } from '../conflicts/types';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -11,7 +13,6 @@ interface LeftSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   onCenterMap?: (coordinates: { lat: number; lng: number }) => void;
-  onOpenConflictTracker?: () => void;
   onSetBaseMapStyle?: (next: 'night' | 'light' | 'outdoors' | 'dark' | 'satellite' | 'satellite-streets') => void;
   onSetPlanetPreset?: (preset: 'default' | 'nebula' | 'sunset' | 'dawn' | 'arctic' | 'volcanic' | 'emerald' | 'midnight' | 'aurora' | 'sahara' | 'storm' | 'crimson' | 'rose' | 'void' | 'coral' | 'violet') => void;
   onSetStarIntensity?: (v: number) => void;
@@ -110,6 +111,17 @@ interface LeftSidebarProps {
   weatherEnabled?: boolean;
   weatherLayers?: string[];
   onToggleWeatherLayer?: (layer: string) => void;
+  // Conflict Tracker
+  onToggleConflicts?: (enabled: boolean) => void;
+  conflictsEnabled?: boolean;
+  conflictsLoading?: boolean;
+  conflictSummaries?: ConflictSummary[];
+  conflictSelectedCountry?: string | null;
+  onConflictSelectCountry?: (country: string | null) => void;
+  conflictCountryEvents?: ConflictFeature[];
+  conflictSelectedEvent?: ConflictFeature | null;
+  onConflictSelectEvent?: (event: ConflictFeature | null) => void;
+  onConflictFlyTo?: (lat: number, lng: number) => void;
 }
 
 interface MenuItem {
@@ -120,8 +132,9 @@ interface MenuItem {
   iconBg?: string;
 }
 
-export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictTracker, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, onToggleGdpLayer, gdpEnabled = false, gdpLegend = [], onToggleGdpPerCapitaLayer, gdpPerCapitaEnabled = false, gdpPerCapitaLegend = [], onToggleInflationLayer, inflationEnabled = false, inflationLegend = [], onToggleGiniLayer, giniEnabled = false, giniLegend = [], onToggleExportsLayer, exportsEnabled = false, exportsLegend = [], onToggleLifeExpectancyLayer, lifeExpectancyEnabled = false, lifeExpectancyLegend = [], onToggleMilitaryExpenditureLayer, militaryExpenditureEnabled = false, militaryExpenditureLegend = [], onToggleDemocracyIndexLayer, democracyIndexEnabled = false, democracyIndexLegend = [], onToggleTradeGdpLayer, tradeGdpEnabled = false, tradeGdpLegend = [], onToggleFuelExportsLayer, fuelExportsEnabled = false, fuelExportsLegend = [], onToggleMineralRentsLayer, mineralRentsEnabled = false, mineralRentsLegend = [], onToggleEnergyImportsLayer, energyImportsEnabled = false, energyImportsLegend = [], onToggleCerealProductionLayer, cerealProductionEnabled = false, cerealProductionLegend = [], onToggleHistoryMode, onSetHistoryYear, historyEnabled: _historyEnabled = false, historyYear = 1880, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, naturalLod = 'auto', onSetNaturalLod, onSetLedHalo, onSetLedHaloSpeed, onToggleEarthquakes, earthquakesEnabled = false, onToggleFires, firesEnabled = false, onToggleRadar, radarEnabled = false, onToggleAirTraffic, airTrafficEnabled = false, onToggleMarineTraffic, marineTrafficEnabled = false, onToggleSatellites, satellitesEnabled = false, onToggleWeather, weatherEnabled = false, weatherLayers = [], onToggleWeatherLayer }: LeftSidebarProps) {
+export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, onToggleGdpLayer, gdpEnabled = false, gdpLegend = [], onToggleGdpPerCapitaLayer, gdpPerCapitaEnabled = false, gdpPerCapitaLegend = [], onToggleInflationLayer, inflationEnabled = false, inflationLegend = [], onToggleGiniLayer, giniEnabled = false, giniLegend = [], onToggleExportsLayer, exportsEnabled = false, exportsLegend = [], onToggleLifeExpectancyLayer, lifeExpectancyEnabled = false, lifeExpectancyLegend = [], onToggleMilitaryExpenditureLayer, militaryExpenditureEnabled = false, militaryExpenditureLegend = [], onToggleDemocracyIndexLayer, democracyIndexEnabled = false, democracyIndexLegend = [], onToggleTradeGdpLayer, tradeGdpEnabled = false, tradeGdpLegend = [], onToggleFuelExportsLayer, fuelExportsEnabled = false, fuelExportsLegend = [], onToggleMineralRentsLayer, mineralRentsEnabled = false, mineralRentsLegend = [], onToggleEnergyImportsLayer, energyImportsEnabled = false, energyImportsLegend = [], onToggleCerealProductionLayer, cerealProductionEnabled = false, cerealProductionLegend = [], onToggleHistoryMode, onSetHistoryYear, historyEnabled: _historyEnabled = false, historyYear = 1880, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, naturalLod = 'auto', onSetNaturalLod, onSetLedHalo, onSetLedHaloSpeed, onToggleEarthquakes, earthquakesEnabled = false, onToggleFires, firesEnabled = false, onToggleRadar, radarEnabled = false, onToggleAirTraffic, airTrafficEnabled = false, onToggleMarineTraffic, marineTrafficEnabled = false, onToggleSatellites, satellitesEnabled = false, onToggleWeather, weatherEnabled = false, weatherLayers = [], onToggleWeatherLayer, onToggleConflicts, conflictsEnabled = false, conflictsLoading = false, conflictSummaries = [], conflictSelectedCountry = null, onConflictSelectCountry, conflictCountryEvents = [], conflictSelectedEvent = null, onConflictSelectEvent, onConflictFlyTo }: LeftSidebarProps) {
   const [activeItem, setActiveItem] = useState<string>('home');
+  const [conflictView, setConflictView] = useState(false);
   const [physicalSections, setPhysicalSections] = useState({ geo: true, climate: true, terrain: true });
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
@@ -160,16 +173,16 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
 
   const menuItems: MenuItem[] = useMemo(() => [
     {
-      icon: <Crosshair className="h-5 w-5 text-red-400" />,
-      label: 'Conflict Tracker',
-      href: '#home',
-      iconBg: 'rgba(239, 68, 68, 0.12)'
-    },
-    {
       icon: <Globe className="h-5 w-5 text-cyan-400" />,
       label: 'History Mode',
       href: '#history',
       iconBg: 'rgba(6, 182, 212, 0.12)'
+    },
+    {
+      icon: <Crosshair className="h-5 w-5 text-red-400" />,
+      label: 'Conflict Tracker',
+      href: '#conflicts',
+      iconBg: 'rgba(239, 68, 68, 0.12)'
     },
     {
       icon: <Radio className="h-5 w-5 text-orange-400" />,
@@ -237,37 +250,55 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
       return;
     }
 
+    // Conflict Tracker opens its own dedicated view
+    if (item.label === 'Conflict Tracker') {
+      setConflictView(true);
+      return;
+    }
+
     const itemKey = item.label.toLowerCase();
-    
+
     // Toggle: if clicking the same item, close it
     if (activeItem === itemKey) {
       setActiveItem('');
       return;
     }
-    
+
     setActiveItem(itemKey);
-    
-    if (item.label === 'Conflict Tracker' && onOpenConflictTracker) {
-      onOpenConflictTracker();
-      return;
-    }
 
     if (item.label === 'Compare Countries' && onOpenCompareCountries) {
       onOpenCompareCountries();
       return;
     }
-    
-    
+
+
     if (item.onClick) {
       item.onClick();
     }
-  }, [activeItem, onOpenConflictTracker, onOpenCompareCountries]);
+  }, [activeItem, onOpenCompareCountries]);
 
   return (
     <>
       {isOpen && (
             <div className="left-sidebar">
 
+              {/* ── Conflict Tracker full-view ── */}
+              {conflictView ? (
+                <ConflictPanel
+                  summaries={conflictSummaries}
+                  selectedCountry={conflictSelectedCountry}
+                  onSelectCountry={onConflictSelectCountry ?? (() => {})}
+                  countryEvents={conflictCountryEvents}
+                  selectedEvent={conflictSelectedEvent}
+                  onSelectEvent={onConflictSelectEvent ?? (() => {})}
+                  onFlyTo={onConflictFlyTo ?? (() => {})}
+                  isLoading={conflictsLoading}
+                  enabled={conflictsEnabled}
+                  onToggle={onToggleConflicts ?? (() => {})}
+                  onBack={() => setConflictView(false)}
+                />
+              ) : (
+              <>
               <div className="left-sidebar-header mb-4" style={{ minHeight: '64px' }}>
                 <h1 className="left-sidebar-title">WorldLore</h1>
               </div>
@@ -284,7 +315,7 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
                           handleItemClick(item);
                         }}
                         className={`left-sidebar-item ${
-                          activeItem === item.label.toLowerCase() ? 'active' : ''
+                          activeItem === item.label.toLowerCase() || (item.label === 'Conflict Tracker' && conflictView) ? 'active' : ''
                         }`}
                       >
                         <div className="left-sidebar-item-icon" style={{ background: item.iconBg }}>
@@ -293,6 +324,9 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
                         <span className="left-sidebar-item-label">
                           {item.label}
                         </span>
+                        {item.label === 'Conflict Tracker' && conflictsEnabled && (
+                          <span className="conflict-live-dot" />
+                        )}
                         {activeItem === item.label.toLowerCase() && (
                           <div className="left-sidebar-item-indicator" />
                         )}
@@ -1141,6 +1175,8 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
               </div>
 
               <div className="left-sidebar-footer" />
+              </>
+              )}
             </div>
         )}
       </>
