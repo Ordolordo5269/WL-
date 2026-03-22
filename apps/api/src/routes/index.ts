@@ -30,6 +30,7 @@ import commoditiesRoutes from './commodities.routes';
 import environmentRoutes from './environment.routes';
 import healthRoutes from './health.routes';
 import infrastructureRoutes from './infrastructure.routes';
+import fireRoutes from '../modules/fire/routes';
 
 const router = Router();
 
@@ -62,5 +63,6 @@ router.use('/commodities', commoditiesRoutes);
 router.use('/environment', environmentRoutes);
 router.use('/health', healthRoutes);
 router.use('/infrastructure', infrastructureRoutes);
+router.use('/fire', fireRoutes);
 
 export default router;

@@ -1,6 +1,6 @@
 import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
-import { applyFog as appearanceApplyFog, setBaseFeaturesVisibility as appearanceSetBaseFeaturesVisibility, applyPhysicalModeTweaks as appearanceApplyPhysical, MAP_STYLES, type StyleKey, type PlanetPreset, applyStarIntensity as appearanceApplyStarIntensity, applySpacePreset as appearanceApplySpacePreset, applyThemeAtmosphere as appearanceApplyThemeAtmosphere, type SpacePreset, type GlobeThemeKey, GLOBE_THEMES, applyRasterOverlay, removeRasterOverlay, findRasterInsertionPoint, EARTH_AT_NIGHT_OVERLAY, NASA_NIGHT_LIGHTS_OVERLAY, NASA_BLACK_MARBLE_OVERLAYS, type RasterOverlay } from './map/mapAppearance';
+import { applyFog as appearanceApplyFog, setBaseFeaturesVisibility as appearanceSetBaseFeaturesVisibility, applyPhysicalModeTweaks as appearanceApplyPhysical, MAP_STYLES, type StyleKey, type PlanetPreset, applyStarIntensity as appearanceApplyStarIntensity, applySpacePreset as appearanceApplySpacePreset, applyThemeAtmosphere as appearanceApplyThemeAtmosphere, type SpacePreset, type GlobeThemeKey, GLOBE_THEMES, applyRasterOverlay, removeRasterOverlay, findRasterInsertionPoint, EARTH_AT_NIGHT_OVERLAY, NASA_NIGHT_LIGHTS_OVERLAY, NASA_BLACK_MARBLE_OVERLAYS, type RasterOverlay, type NasaOverlayType, NASA_EARTH_OVERLAYS, resolveNasaOverlaySources, warmUpResources } from './map/mapAppearance';
 import { applyTerrain, reapplyAfterStyleChange, loadPersistedTerrain, persistTerrain } from './map/terrain';
 import type { ChoroplethSpec } from './services/worldbank-gdp';
 import type { ChoroplethSpec as GdpPerCapitaChoroplethSpec } from './services/worldbank-gdp-per-capita';
@@ -71,7 +71,8 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   const isLeftSidebarOpenRef = useRef(isLeftSidebarOpen);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const historyEnabledRef = useRef<boolean>(false);
-  const historyYearRef = useRef<number>(1880);
+  const historyDataLoadedRef = useRef<boolean>(false); // true once user picks a year
+  const historyYearRef = useRef<number>(2010);
   const availableHistoryYearsRef = useRef<number[]>(AVAILABLE_HISTORY_YEARS);
   const historyCacheRef = useRef<Map<number, any>>(new Map());
   const historyRequestIdRef = useRef<number>(0);
@@ -83,6 +84,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   const deferredTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const rotationSpeedRef = useRef<number>(3);
   const spinRafRef = useRef<number | null>(null);
+  const pendingAutoRotateRef = useRef<boolean>(false);
   const userInteractingRef = useRef<boolean>(false);
   const eventListenersRef = useRef<EventListenerRecord[]>([]);
   const choroplethSpecRef = useRef<Record<MetricId, ChoroplethSpec | GdpPerCapitaChoroplethSpec | null>>({ 
@@ -125,8 +127,13 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   const styleChangeLoadId = useRef(0);
   // Track active NASA overlay source IDs for efficient cleanup
   const activeNasaSourceIds = useRef<string[]>([]);
+  // Track active Earth Data overlay types (toggleable layers)
+  const activeEarthOverlaysRef = useRef<Set<NasaOverlayType>>(new Set());
+  // Night Lights: save previous style/fog to restore on disable
+  const nightLightsPrevStyle = useRef<{ style: StyleKey; planet: PlanetPreset; star: number } | null>(null);
   // Ocultar nombres/carreteras/fronteras
   const [minimalModeOn, setMinimalModeOn] = useState(false);
+  const minimalModeRef = useRef(false);
   // Natural layers: state refs
   type NaturalLod = 'auto' | 'low' | 'med' | 'high';
   type NaturalLayerType = 'rivers' | 'ranges' | 'peaks' | 'lakes' | 'volcanoes' | 'fault-lines' | 'deserts';
@@ -957,6 +964,47 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         } as any);
       } catch {}
     }
+
+    // Re-register history click listener (may have been removed by reinitializeInteractiveLayers)
+    if (map.getLayer(fillId)) {
+      // Remove any stale listener first
+      const existing = eventListenersRef.current.find(r => r.layer === fillId && r.event === 'click');
+      if (existing) {
+        try { map.off('click', fillId, existing.handler as any); } catch {}
+        eventListenersRef.current = eventListenersRef.current.filter(r => r !== existing);
+      }
+      const onHistoryClick = (e: mapboxgl.MapMouseEvent) => {
+        if (!mapRef.current) return;
+        const features = mapRef.current.queryRenderedFeatures(e.point, { layers: [fillId] });
+        if (!features || features.length === 0) return;
+        const f = features[0] as any;
+        const canonical = f?.properties?.CANONICAL || null;
+        if (!canonical) return;
+        historySelectedCanonicalRef.current = canonical;
+        try { mapRef.current.setFilter(selectedFillId, ['==', ['get', 'CANONICAL'], canonical]); } catch {}
+        try { mapRef.current.setFilter(selectedOutlineId, ['==', ['get', 'CANONICAL'], canonical]); } catch {}
+        const name = String(f?.properties?.NAME ?? canonical).trim();
+        const subject = String(f?.properties?.SUBJECTO ?? '').trim();
+        const title = subject && subject.length > 0 ? `${name} — ${subject}` : name;
+        const wikiName = encodeURIComponent(name.replace(/\s+/g, '_'));
+        const wikiUrl = `https://en.wikipedia.org/wiki/${wikiName}`;
+        const popupHtml = `
+          <div class="history-popup-content">
+            <div class="popup-title">${title}</div>
+            <div class="popup-row">
+              <span class="popup-meta">Year ${historyYearRef.current}</span>
+              <a class="popup-link" href="${wikiUrl}" target="_blank" rel="noopener noreferrer">Wikipedia</a>
+            </div>
+          </div>`;
+        if (historyPopupRef.current) { try { historyPopupRef.current.remove(); } catch {} }
+        historyPopupRef.current = new mapboxgl.Popup({ closeButton: true, closeOnClick: false, className: 'history-popup' })
+          .setLngLat((e.lngLat as any))
+          .setHTML(popupHtml)
+          .addTo(mapRef.current);
+      };
+      map.on('click', fillId, onHistoryClick);
+      eventListenersRef.current.push({ event: 'click', handler: onHistoryClick, layer: fillId });
+    }
   }, []);
 
   // Deterministic HSL palette for categorical values
@@ -1123,6 +1171,21 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   useImperativeHandle(ref, () => ({
     easeTo,
     getMap: () => mapRef.current,
+    getBaseMapStyle: () => styleKeyRef.current,
+    getAutoRotate: () => spinRafRef.current !== null,
+    getRotateSpeed: () => rotationSpeedRef.current,
+    getStarIntensity: () => starIntensity,
+    // Allow external code to pre-set the style that Night Lights will restore on deactivation.
+    // Used when transitioning from History Mode → Satellite Intel so that the original
+    // (pre-History) style is captured instead of the transient 'navigation-day'.
+    setNightLightsPrevStyleOverride: (style: string, planet: string, star: number) => {
+      nightLightsPrevStyle.current = { style: style as any, planet: planet as any, star };
+    },
+    // Clear the night-lights restore state so deactivation won't trigger a style change.
+    // Used when transitioning from Satellite Intel → History Mode.
+    clearNightLightsPrevStyle: () => { nightLightsPrevStyle.current = null; },
+    // Read the saved pre-night-lights style (the user's original style before Satellite Intel).
+    getNightLightsPrevStyle: () => nightLightsPrevStyle.current ? { ...nightLightsPrevStyle.current } : null,
     setNaturalLayerEnabled: (type: NaturalLayerType, enabled: boolean) => {
       naturalEnabledRef.current = { ...naturalEnabledRef.current, [type]: enabled };
       if (!mapRef.current) return;
@@ -1179,8 +1242,27 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     highlightIso3ToColorMap: (isoToColor: Record<string,string>) => {
       updateOrgHighlightMap(isoToColor || {});
     },
+    dismissHistoryPopup: () => {
+      if (historyPopupRef.current) {
+        try { historyPopupRef.current.remove(); } catch {}
+        historyPopupRef.current = null;
+      }
+      historySelectedCanonicalRef.current = null;
+      const map = mapRef.current;
+      if (map) {
+        try { map.setFilter('history-selected-fill', ['==', ['get', 'CANONICAL'], '__none__']); } catch {}
+        try { map.setFilter('history-selected-outline', ['==', ['get', 'CANONICAL'], '__none__']); } catch {}
+      }
+    },
     setHistoryEnabled: (enabled: boolean) => {
       historyEnabledRef.current = enabled;
+      if (!enabled) {
+        historyDataLoadedRef.current = false;
+      } else {
+        // Reset to presentation mode: default year, data not yet "user-picked"
+        historyDataLoadedRef.current = false;
+        historyYearRef.current = 2010;
+      }
       const map = mapRef.current;
       if (!map) return;
       const fillId = 'history-fill';
@@ -1189,6 +1271,10 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       const selectedOutlineId = 'history-selected-outline';
       const sourceId = 'history-source';
       if (enabled) {
+        // Load territories for the default year — colored territories over visible
+        // country labels create the "history mode" presentation look.
+        // Don't set historyDataLoadedRef here — that flag is only for when
+        // the user explicitly picks a year (switches to territory-only view).
         updateHistory(historyYearRef.current);
         if (map.getLayer(fillId)) {
           try { map.setLayoutProperty(fillId, 'visibility', 'visible'); } catch {}
@@ -1203,11 +1289,16 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
           try { map.setLayoutProperty(selectedOutlineId, 'visibility', 'visible'); } catch {}
         }
       } else {
-        try { if (map.getLayer(fillId)) map.removeLayer(fillId); } catch {}
-        try { if (map.getLayer(outlineId)) map.removeLayer(outlineId); } catch {}
-        try { if (map.getLayer(selectedFillId)) map.removeLayer(selectedFillId); } catch {}
-        try { if (map.getLayer(selectedOutlineId)) map.removeLayer(selectedOutlineId); } catch {}
-        try { if (map.getSource(sourceId)) map.removeSource(sourceId); } catch {}
+        // Hide layers instead of removing them so that the click handler
+        // registered on 'history-fill' during map init stays alive.
+        try { if (map.getLayer(fillId)) map.setLayoutProperty(fillId, 'visibility', 'none'); } catch {}
+        try { if (map.getLayer(outlineId)) map.setLayoutProperty(outlineId, 'visibility', 'none'); } catch {}
+        try { if (map.getLayer(selectedFillId)) map.setLayoutProperty(selectedFillId, 'visibility', 'none'); } catch {}
+        try { if (map.getLayer(selectedOutlineId)) map.setLayoutProperty(selectedOutlineId, 'visibility', 'none'); } catch {}
+        // Reset selection filter so stale highlight doesn't reappear on re-enable
+        try { map.setFilter(selectedFillId, ['==', ['get', 'CANONICAL'], '__none__']); } catch {}
+        try { map.setFilter(selectedOutlineId, ['==', ['get', 'CANONICAL'], '__none__']); } catch {}
+        historySelectedCanonicalRef.current = null;
         // cleanup popup
         if (historyPopupRef.current) {
           try { historyPopupRef.current.remove(); } catch {}
@@ -1217,6 +1308,17 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     },
     setHistoryYear: (year: number) => {
       historyYearRef.current = year;
+      historyDataLoadedRef.current = true;
+      // Dismiss any open territory popup & selection highlight
+      if (historyPopupRef.current) {
+        try { historyPopupRef.current.remove(); } catch {}
+        historyPopupRef.current = null;
+      }
+      historySelectedCanonicalRef.current = null;
+      if (mapRef.current) {
+        try { mapRef.current.setFilter('history-selected-fill', ['==', ['get', 'CANONICAL'], '__none__']); } catch {}
+        try { mapRef.current.setFilter('history-selected-outline', ['==', ['get', 'CANONICAL'], '__none__']); } catch {}
+      }
       if (!mapRef.current) return;
       if (!historyEnabledRef.current) return;
       if (historyDebounceRef.current !== null) {
@@ -1227,9 +1329,12 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         updateHistory(year);
       });
     },
-    setBaseMapStyle: (next: StyleKey) => {
+    setBaseMapStyle: (next: StyleKey, opts?: { skipFade?: boolean }) => {
       const loadId = ++styleChangeLoadId.current;
       globeThemeLoadId.current++; // Cancel any pending theme callbacks
+      // If user manually changes style, invalidate Night Lights saved state
+      // so re-entering Satellite Intel captures the fresh style instead
+      nightLightsPrevStyle.current = null;
       const sameUrl = MAP_STYLES[styleKeyRef.current] === MAP_STYLES[next];
       setStyleKey(next);
       styleKeyRef.current = next; // Update ref immediately to avoid stale checks on subsequent calls
@@ -1242,6 +1347,12 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         const beforeId = findRasterInsertionPoint(m);
         nasaOverlays.forEach(o => applyRasterOverlay(m, o, beforeId));
         activeNasaSourceIds.current = nasaOverlays.map(o => o.sourceId);
+        // Re-apply active Earth Data overlays after style change
+        activeEarthOverlaysRef.current.forEach(type => {
+          resolveNasaOverlaySources(type).forEach(src => {
+            if (src.tiles.length > 0) applyRasterOverlay(m, src, beforeId);
+          });
+        });
       };
       try {
         // Clean up only active NASA overlays
@@ -1251,10 +1362,15 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
           // Same underlying Mapbox style — skip reload, just toggle overlay
           applyOverlays(map);
         } else {
-          // Fade out canvas to hide style-change flash
+          // Fade out canvas to hide style-change flash (skip when caller
+          // wants the globe to stay visible, e.g. entering History Mode so
+          // rotation is visible while textures load in the background).
           const container = map.getContainer();
-          container.style.transition = 'opacity 0.18s ease-out';
-          container.style.opacity = '0';
+          const skipFade = !!opts?.skipFade;
+          if (!skipFade) {
+            container.style.transition = 'opacity 0.18s ease-out';
+            container.style.opacity = '0';
+          }
           map.setStyle(MAP_STYLES[next], { diff: false } as any);
           map.once('style.load', () => {
             if (styleChangeLoadId.current !== loadId) return; // Stale — a newer change superseded this
@@ -1263,24 +1379,47 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
             reinitializeInteractiveLayers();
             updateLayerOpacitiesForStyle(next);
             if (historyEnabledRef.current) {
-              ensureHistorySource(historyYearRef.current);
-              ensureHistoryLayers();
+              updateHistory(historyYearRef.current);
             }
             if (buildings3DOn) {
               try { add3DBuildingsLayer(map); } catch {}
             }
             applyOverlays(map);
+            // Start or re-kick auto-rotation after style change completes
+            if (pendingAutoRotateRef.current) {
+              if (spinRafRef.current !== null) cancelAnimationFrame(spinRafRef.current);
+              let lastTs = 0;
+              const step = (ts: number) => {
+                const m = mapRef.current;
+                if (!m) { spinRafRef.current = null; return; }
+                if (lastTs === 0) lastTs = ts;
+                const dt = Math.max(0, (ts - lastTs) / 1000);
+                lastTs = ts;
+                const zoom = m.getZoom();
+                const isMoving = (m as any).isMoving?.() ?? false;
+                if (!isMoving && !userInteractingRef.current && zoom < 5) {
+                  const center = m.getCenter();
+                  center.lng -= rotationSpeedRef.current * dt;
+                  m.setCenter(center);
+                }
+                spinRafRef.current = requestAnimationFrame(step);
+              };
+              spinRafRef.current = requestAnimationFrame(step);
+            }
             // Fade canvas back in after style is ready
-            requestAnimationFrame(() => {
-              container.style.transition = 'opacity 0.3s ease-in';
-              container.style.opacity = '1';
-            });
+            if (!skipFade) {
+              requestAnimationFrame(() => {
+                container.style.transition = 'opacity 0.3s ease-in';
+                container.style.opacity = '1';
+              });
+            }
           });
         }
       } catch {}
     },
     setPlanetPreset: (preset: PlanetPreset) => {
       globeThemeLoadId.current++; // Cancel any pending theme style.load
+      nightLightsPrevStyle.current = null;
       setPlanetPreset(preset);
       planetPresetRef.current = preset; // Update ref immediately for other handlers
       if (mapRef.current) appearanceApplyFog(mapRef.current, preset);
@@ -1296,6 +1435,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       if (mapRef.current) appearanceApplySpacePreset(mapRef.current, preset);
     },
     setGlobeTheme: (themeKey: GlobeThemeKey) => {
+      nightLightsPrevStyle.current = null;
       const theme = GLOBE_THEMES[themeKey];
       if (!theme || !mapRef.current) return;
       const map = mapRef.current;
@@ -1317,6 +1457,14 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
           overlays.forEach(o => applyRasterOverlay(map, o, beforeId));
           activeNasaSourceIds.current = overlays.map(o => o.sourceId);
         }
+        // Re-apply active Earth Data overlays
+        const bId = findRasterInsertionPoint(map);
+        activeEarthOverlaysRef.current.forEach(type => {
+          const ovOpacity = type === 'night-lights' ? 0.45 : 1.0;
+          resolveNasaOverlaySources(type).forEach(src => {
+            if (src.tiles.length > 0) applyRasterOverlay(map, src, bId, ovOpacity);
+          });
+        });
       };
       if (sameStyle) {
         try { applyThemeEffects(); } catch {}
@@ -1334,8 +1482,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
             reinitializeInteractiveLayers();
             updateLayerOpacitiesForStyle(theme.baseMap);
             if (historyEnabledRef.current) {
-              ensureHistorySource(historyYearRef.current);
-              ensureHistoryLayers();
+              updateHistory(historyYearRef.current);
             }
             if (buildings3DOn) {
               try { add3DBuildingsLayer(map); } catch {}
@@ -1422,9 +1569,10 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         try { if (map.getLayer('3d-buildings')) map.removeLayer('3d-buildings'); } catch {}
       }
     },
-    setMinimalMode: (v: boolean) => { setMinimalModeOn(v); setBaseFeaturesVisibility(v); },
+    setMinimalMode: (v: boolean) => { setMinimalModeOn(v); minimalModeRef.current = v; setBaseFeaturesVisibility(v); },
     // NEW: Globe rotation controls (smooth RAF-based)
     setAutoRotate: (enabled: boolean) => {
+      pendingAutoRotateRef.current = enabled;
       if (!enabled) {
         if (spinRafRef.current !== null) {
           cancelAnimationFrame(spinRafRef.current);
@@ -1458,7 +1606,93 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     },
     setRotateSpeed: (degPerSec: number) => {
       rotationSpeedRef.current = Math.max(0, Number.isFinite(degPerSec) ? degPerSec : 0);
-    }
+    },
+    // Earth Data overlays (toggleable NASA GIBS layers)
+    setNasaOverlayEnabled: (type: NasaOverlayType, enabled: boolean) => {
+      const map = mapRef.current;
+      if (!map) return;
+      const cfg = NASA_EARTH_OVERLAYS[type];
+      if (!cfg) return;
+      if (enabled) {
+        // Night Lights: switch to dark immersive mode
+        if (type === 'night-lights') {
+          if (!nightLightsPrevStyle.current) {
+            nightLightsPrevStyle.current = { style: styleKeyRef.current, planet: planetPresetRef.current, star: starIntensity };
+          }
+          const alreadyDark = MAP_STYLES[styleKeyRef.current] === MAP_STYLES['dark'];
+          setStyleKey('dark');
+          styleKeyRef.current = 'dark';
+          activeEarthOverlaysRef.current.add(type);
+          const applyImmersive = () => {
+            appearanceApplyThemeAtmosphere(map, 'orbital', 'void', 1.0);
+            // Add all earth overlay tiles (including the one we just enabled)
+            activeEarthOverlaysRef.current.forEach(ovType => {
+              const ovCfg = NASA_EARTH_OVERLAYS[ovType];
+              if (ovCfg) {
+                const bid = findRasterInsertionPoint(map);
+                const opacity = ovType === 'night-lights' ? 0.45 : 1.0;
+                resolveNasaOverlaySources(ovType).forEach(src => {
+                  if (src.tiles.length > 0) applyRasterOverlay(map, src, bid, opacity);
+                });
+              }
+            });
+            reinitializeInteractiveLayers();
+          };
+          if (alreadyDark) {
+            applyImmersive();
+          } else {
+            map.setStyle(MAP_STYLES['dark']);
+            map.once('style.load', applyImmersive);
+          }
+          setPlanetPreset('orbital');
+          planetPresetRef.current = 'orbital';
+          setStarIntensityState(1.0);
+          return; // Skip the default tile-add below — applyImmersive handles it
+        }
+        const beforeId = findRasterInsertionPoint(map);
+        resolveNasaOverlaySources(type).forEach(src => {
+          if (src.tiles.length > 0) applyRasterOverlay(map, src, beforeId);
+        });
+        activeEarthOverlaysRef.current.add(type);
+      } else {
+        cfg.sources.forEach(s => removeRasterOverlay(map, s.sourceId));
+        activeEarthOverlaysRef.current.delete(type);
+        // Night Lights: deactivate ALL other overlays and restore previous style.
+        // This gives a clean exit from Satellite Intel immersive mode.
+        if (type === 'night-lights') {
+          // Remove tiles of any remaining active overlays
+          activeEarthOverlaysRef.current.forEach(ovType => {
+            const ovCfg = NASA_EARTH_OVERLAYS[ovType];
+            if (ovCfg) ovCfg.sources.forEach(s => removeRasterOverlay(map, s.sourceId));
+          });
+          activeEarthOverlaysRef.current.clear();
+          // Restore previous style & fog
+          if (nightLightsPrevStyle.current) {
+            const prev = nightLightsPrevStyle.current;
+            nightLightsPrevStyle.current = null;
+            const needsStyleChange = MAP_STYLES[styleKeyRef.current] !== MAP_STYLES[prev.style];
+            if (needsStyleChange) {
+              setStyleKey(prev.style);
+              styleKeyRef.current = prev.style;
+              map.setStyle(MAP_STYLES[prev.style]);
+              map.once('style.load', () => {
+                appearanceApplyFog(map, prev.planet);
+                reapplyAfterStyleChange(map, { enabled: terrainOn, exaggeration: terrainExaggeration, useHillshade: false });
+                reinitializeInteractiveLayers();
+                if (historyEnabledRef.current) {
+                  updateHistory(historyYearRef.current);
+                }
+              });
+            } else {
+              appearanceApplyFog(map, prev.planet);
+            }
+            setPlanetPreset(prev.planet);
+            planetPresetRef.current = prev.planet;
+            setStarIntensityState(prev.star);
+          }
+        }
+      }
+    },
   }), [easeTo, applyPhysicalModeTweaks, styleKey, setBaseFeaturesVisibility, updateOrgHighlightFilter, terrainOn, terrainExaggeration]);
 
   // Helper para reinstalar fuentes/capas y eventos tras cambio de estilo
@@ -1473,7 +1707,8 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     });
     eventListenersRef.current = eventListenersRef.current.filter(r => !r.layer);
 
-    setBaseFeaturesVisibility(minimalModeOn);
+    // Use the ref (always current) instead of the state (stale in async callbacks)
+    setBaseFeaturesVisibility(minimalModeRef.current);
 
     // Fuente de límites de países
     if (!map.getSource('country-boundaries')) {
@@ -1632,7 +1867,9 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     let hoverRafPending = false;
 
     const handleMouseMove = (e: mapboxgl.MapMouseEvent) => {
-      if (isLeftSidebarOpenRef.current && !historyEnabledRef.current) return;
+      // Block hover when user has picked a year (territory-only view)
+      if (historyEnabledRef.current && historyDataLoadedRef.current) return;
+      if (isLeftSidebarOpenRef.current) return;
       if (!e.features || e.features.length === 0) return;
       const id = e.features[0].id as any;
       if (id === hoveredId) return; // same feature — nothing to do
@@ -1666,11 +1903,32 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 
     const handleCountryClick = (e: mapboxgl.MapMouseEvent) => {
-      if (isLeftSidebarOpenRef.current && !historyEnabledRef.current) return;
+      // Block country clicks when user has picked a year (territory-only view)
+      if (historyEnabledRef.current && historyDataLoadedRef.current) return;
+      if (isLeftSidebarOpenRef.current) return;
       if (!e.features || e.features.length === 0) return;
       const feature: any = e.features[0];
 
       const countryName = feature.properties?.name_en || feature.properties?.name || 'Unknown Country';
+
+      // History presentation mode: show Wikipedia popup instead of opening sidebar
+      if (historyEnabledRef.current && !historyDataLoadedRef.current) {
+        const wikiName = encodeURIComponent(countryName.replace(/\s+/g, '_'));
+        const wikiUrl = `https://en.wikipedia.org/wiki/${wikiName}`;
+        const popupHtml = `
+          <div class="history-popup-content">
+            <div class="popup-title">${countryName}</div>
+            <div class="popup-row">
+              <a class="popup-link" href="${wikiUrl}" target="_blank" rel="noopener noreferrer">Wikipedia</a>
+            </div>
+          </div>`;
+        if (historyPopupRef.current) { try { historyPopupRef.current.remove(); } catch {} }
+        historyPopupRef.current = new mapboxgl.Popup({ closeButton: true, closeOnClick: false, className: 'history-popup' })
+          .setLngLat(e.lngLat)
+          .setHTML(popupHtml)
+          .addTo(map);
+        return;
+      }
       const featureId = feature.id;
       if (featureId === undefined || featureId === null) return;
 
@@ -1774,7 +2032,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       keyboard: true,
       renderWorldCopies: false,
       performanceMetricsCollection: false,
-      fadeDuration: 300,
+      fadeDuration: 0,
       crossSourceCollisions: false,
       attributionControl: false,
       localIdeographFontFamily: 'sans-serif',
@@ -1899,6 +2157,8 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       onMapReady?.();
       // Configurar la atmósfera del globo con fondo estrellado
       appearanceApplyFog(map, planetPresetRef.current);
+      // Warm up CDN caches for dark style + GIBS Night Lights tiles
+      warmUpResources(mapboxgl.accessToken || '');
       // Restaurar y aplicar terreno si estaba activo
       const persisted = loadPersistedTerrain();
       setTerrainOn(persisted.on);
@@ -1999,6 +2259,27 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         mapRef.current = null;
       }
     };
+  }, []);
+
+  // Auto-refresh active Earth Data overlays every 10 minutes (real-time data)
+  useEffect(() => {
+    const REFRESH_MS = 10 * 60 * 1000; // 10 minutes
+    const tid = setInterval(() => {
+      const map = mapRef.current;
+      if (!map || activeEarthOverlaysRef.current.size === 0) return;
+      const beforeId = findRasterInsertionPoint(map);
+      activeEarthOverlaysRef.current.forEach(type => {
+        const cfg = NASA_EARTH_OVERLAYS[type];
+        if (!cfg) return;
+        // Remove old sources and re-apply with fresh date
+        cfg.sources.forEach(s => removeRasterOverlay(map, s.sourceId));
+        const refreshOpacity = type === 'night-lights' ? 0.45 : 1.0;
+        resolveNasaOverlaySources(type).forEach(src => {
+          if (src.tiles.length > 0) applyRasterOverlay(map, src, beforeId, refreshOpacity);
+        });
+      });
+    }, REFRESH_MS);
+    return () => clearInterval(tid);
   }, []);
 
   // Efecto para actualizar conflictos cuando cambien

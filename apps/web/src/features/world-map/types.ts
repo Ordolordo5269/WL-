@@ -9,10 +9,12 @@ export type MapEaseToOptions = {
   bearing?: number;
 };
 
+export type { NasaOverlayType } from './map/mapAppearance';
+
 export interface MapRefType {
   easeTo: (options: MapEaseToOptions) => void;
   getMap: () => any;
-  setBaseMapStyle?: (next: 'night' | 'light' | 'outdoors' | 'dark' | 'satellite-streets' | 'navigation-day' | 'earth-at-night' | 'nasa-night-lights' | 'nasa-black-marble') => void;
+  setBaseMapStyle?: (next: 'night' | 'light' | 'outdoors' | 'dark' | 'satellite-streets' | 'navigation-day' | 'earth-at-night' | 'nasa-night-lights' | 'nasa-black-marble', opts?: { skipFade?: boolean }) => void;
   setPlanetPreset?: (preset: 'default' | 'nebula' | 'sunset' | 'dawn' | 'arctic' | 'volcanic' | 'emerald' | 'midnight' | 'aurora' | 'sahara' | 'storm' | 'crimson' | 'rose' | 'void' | 'coral' | 'violet') => void;
   setBuildings3DEnabled?: (v: boolean) => void;
   setMinimalMode?: (v: boolean) => void;
@@ -29,6 +31,15 @@ export interface MapRefType {
   setGlobeTheme?: (theme: 'mars' | 'lunar' | 'venus' | 'ice-world' | 'cyberpunk' | 'golden-age' | 'alien' | 'deep-ocean' | 'earth-at-night' | 'nasa-night-lights' | 'nasa-black-marble') => void;
   setTerrainEnabled?: (v: boolean) => void;
   setTerrainExaggeration?: (n: number) => void;
+  setNasaOverlayEnabled?: (type: import('./map/mapAppearance').NasaOverlayType, enabled: boolean) => void;
+  getBaseMapStyle?: () => 'night' | 'light' | 'outdoors' | 'dark' | 'satellite-streets' | 'navigation-day' | 'earth-at-night' | 'nasa-night-lights' | 'nasa-black-marble';
+  getAutoRotate?: () => boolean;
+  getRotateSpeed?: () => number;
+  getStarIntensity?: () => number;
+  setNightLightsPrevStyleOverride?: (style: string, planet: string, star: number) => void;
+  clearNightLightsPrevStyle?: () => void;
+  getNightLightsPrevStyle?: () => { style: string; planet: string; star: number } | null;
+  dismissHistoryPopup?: () => void;
   flyToCity?: (lat: number, lng: number, cityName?: string) => void;
   setCitiesData?: (cities: any[]) => void;
   setCitiesVisible?: (visible: boolean) => void;

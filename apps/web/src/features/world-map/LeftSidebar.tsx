@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import InternationalOrganizationsPanel from './InternationalOrganizationsPanel';
 import { AVAILABLE_HISTORY_YEARS, snapToAvailableYear } from '../../utils/historical-years';
-import { Crosshair, Settings, Info, Globe, Users, BarChart3, Map, User, GitCompare } from 'lucide-react';
+import { Crosshair, Settings, Info, Globe, Users, BarChart3, Map, User, GitCompare, Satellite } from 'lucide-react';
+import { type NasaOverlayType, NASA_EARTH_OVERLAYS, NASA_EARTH_OVERLAY_KEYS } from './map/mapAppearance';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -66,10 +67,13 @@ interface LeftSidebarProps {
   cerealProductionEnabled?: boolean;
   cerealProductionLegend?: Array<{ color: string; min?: number; max?: number }>;
   // History Mode controls
-  onToggleHistoryMode?: (enabled: boolean) => void;
+  onToggleHistoryMode?: (enabled: boolean, opts?: { skipRestore?: boolean }) => void;
+  onResetHistoryPresentation?: () => void;
+  onHistoryToSatellite?: () => void;
+  onSatelliteToHistory?: () => void;
   onSetHistoryYear?: (year: number) => void;
   historyEnabled?: boolean;
-  historyYear?: number;
+  historyYear?: number | null;
   // International Organizations highlight callback
   onSetOrganizationIsoFilter?: (iso3: string[], colorHex?: string) => void;
   // Natural layers
@@ -89,6 +93,9 @@ interface LeftSidebarProps {
   desertsEnabled?: boolean;
   naturalLod?: 'auto' | 'low' | 'med' | 'high';
   onSetNaturalLod?: (lod: 'auto' | 'low' | 'med' | 'high') => void;
+  // Earth Data (NASA) overlays
+  earthOverlays?: Record<NasaOverlayType, boolean>;
+  onToggleEarthOverlay?: (type: NasaOverlayType, enabled: boolean) => void;
   countries?: Array<{ iso3: string; name: string; flagUrl?: string }>;
   countriesLoading?: boolean;
   onOpenCompareCountries?: () => void;
@@ -102,10 +109,47 @@ interface MenuItem {
   iconBg?: string;
 }
 
-export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictTracker, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetGlobeTheme, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, onToggleGdpLayer, gdpEnabled = false, gdpLegend = [], onToggleGdpPerCapitaLayer, gdpPerCapitaEnabled = false, gdpPerCapitaLegend = [], onToggleInflationLayer, inflationEnabled = false, inflationLegend = [], onToggleGiniLayer, giniEnabled = false, giniLegend = [], onToggleExportsLayer, exportsEnabled = false, exportsLegend = [], onToggleLifeExpectancyLayer, lifeExpectancyEnabled = false, lifeExpectancyLegend = [], onToggleMilitaryExpenditureLayer, militaryExpenditureEnabled = false, militaryExpenditureLegend = [], onToggleDemocracyIndexLayer, democracyIndexEnabled = false, democracyIndexLegend = [], onToggleTradeGdpLayer, tradeGdpEnabled = false, tradeGdpLegend = [], onToggleFuelExportsLayer, fuelExportsEnabled = false, fuelExportsLegend = [], onToggleMineralRentsLayer, mineralRentsEnabled = false, mineralRentsLegend = [], onToggleEnergyImportsLayer, energyImportsEnabled = false, energyImportsLegend = [], onToggleCerealProductionLayer, cerealProductionEnabled = false, cerealProductionLegend = [], onToggleHistoryMode, onSetHistoryYear, historyEnabled: _historyEnabled = false, historyYear = 1880, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, naturalLod = 'auto', onSetNaturalLod }: LeftSidebarProps) {
+export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConflictTracker, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetGlobeTheme, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, onToggleGdpLayer, gdpEnabled = false, gdpLegend = [], onToggleGdpPerCapitaLayer, gdpPerCapitaEnabled = false, gdpPerCapitaLegend = [], onToggleInflationLayer, inflationEnabled = false, inflationLegend = [], onToggleGiniLayer, giniEnabled = false, giniLegend = [], onToggleExportsLayer, exportsEnabled = false, exportsLegend = [], onToggleLifeExpectancyLayer, lifeExpectancyEnabled = false, lifeExpectancyLegend = [], onToggleMilitaryExpenditureLayer, militaryExpenditureEnabled = false, militaryExpenditureLegend = [], onToggleDemocracyIndexLayer, democracyIndexEnabled = false, democracyIndexLegend = [], onToggleTradeGdpLayer, tradeGdpEnabled = false, tradeGdpLegend = [], onToggleFuelExportsLayer, fuelExportsEnabled = false, fuelExportsLegend = [], onToggleMineralRentsLayer, mineralRentsEnabled = false, mineralRentsLegend = [], onToggleEnergyImportsLayer, energyImportsEnabled = false, energyImportsLegend = [], onToggleCerealProductionLayer, cerealProductionEnabled = false, cerealProductionLegend = [], onToggleHistoryMode, onSetHistoryYear, onResetHistoryPresentation, historyEnabled: _historyEnabled = false, historyYear = null, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, naturalLod = 'auto', onSetNaturalLod, earthOverlays, onToggleEarthOverlay, onHistoryToSatellite, onSatelliteToHistory }: LeftSidebarProps) {
   const [activeItem, setActiveItem] = useState<string>('home');
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+
+  // Deactivate all active earth overlays when leaving Satellite Intel
+  const deactivateAllOverlays = useCallback(() => {
+    if (!earthOverlays || !onToggleEarthOverlay) return;
+    for (const [key, active] of Object.entries(earthOverlays)) {
+      if (active) onToggleEarthOverlay(key as NasaOverlayType, false);
+    }
+  }, [earthOverlays, onToggleEarthOverlay]);
+
+  // Deactivate all active statistic choropleths when leaving Statistics
+  const deactivateAllStats = useCallback(() => {
+    if (gdpEnabled) onToggleGdpLayer?.(false);
+    if (gdpPerCapitaEnabled) onToggleGdpPerCapitaLayer?.(false);
+    if (inflationEnabled) onToggleInflationLayer?.(false);
+    if (giniEnabled) onToggleGiniLayer?.(false);
+    if (exportsEnabled) onToggleExportsLayer?.(false);
+    if (lifeExpectancyEnabled) onToggleLifeExpectancyLayer?.(false);
+    if (militaryExpenditureEnabled) onToggleMilitaryExpenditureLayer?.(false);
+    if (democracyIndexEnabled) onToggleDemocracyIndexLayer?.(false);
+    if (tradeGdpEnabled) onToggleTradeGdpLayer?.(false);
+    if (fuelExportsEnabled) onToggleFuelExportsLayer?.(false);
+    if (mineralRentsEnabled) onToggleMineralRentsLayer?.(false);
+    if (energyImportsEnabled) onToggleEnergyImportsLayer?.(false);
+    if (cerealProductionEnabled) onToggleCerealProductionLayer?.(false);
+  }, [gdpEnabled, gdpPerCapitaEnabled, inflationEnabled, giniEnabled, exportsEnabled, lifeExpectancyEnabled, militaryExpenditureEnabled, democracyIndexEnabled, tradeGdpEnabled, fuelExportsEnabled, mineralRentsEnabled, energyImportsEnabled, cerealProductionEnabled, onToggleGdpLayer, onToggleGdpPerCapitaLayer, onToggleInflationLayer, onToggleGiniLayer, onToggleExportsLayer, onToggleLifeExpectancyLayer, onToggleMilitaryExpenditureLayer, onToggleDemocracyIndexLayer, onToggleTradeGdpLayer, onToggleFuelExportsLayer, onToggleMineralRentsLayer, onToggleEnergyImportsLayer, onToggleCerealProductionLayer]);
+
+  // Wrap onClose to cleanup active modes
+  const _onClose = useCallback(() => {
+    if (activeItem === 'satellite intel') {
+      deactivateAllOverlays();
+    }
+    if (activeItem === 'statistics') {
+      deactivateAllStats();
+    }
+    setActiveItem('home');
+    _onCloseRaw();
+  }, [activeItem, deactivateAllOverlays, deactivateAllStats, _onCloseRaw]);
   const [rotateSpeed, setRotateSpeed] = useState<number>(3);
   const [terrainEnabled, setTerrainEnabled] = useState<boolean>(false);
   const [terrainEx, setTerrainEx] = useState<number>(1);
@@ -121,7 +165,7 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
   // Snap the active year into view when it changes
   useEffect(() => {
     const container = yearScrollRef.current;
-    if (!container) return;
+    if (!container || historyYear === null) return;
     const activeYear = snapToAvailableYear(historyYear);
     const btn = container.querySelector(`[data-year="${activeYear}"]`) as HTMLButtonElement | null;
     if (!btn) return;
@@ -155,6 +199,12 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
       label: 'Physical Layers',
       href: '#physical',
       iconBg: 'rgba(16, 185, 129, 0.12)'
+    },
+    {
+      icon: <Satellite className="h-5 w-5 text-teal-400" />,
+      label: 'Satellite Intel',
+      href: '#satellite-intel',
+      iconBg: 'rgba(20, 184, 166, 0.12)'
     },
     {
       icon: <BarChart3 className="h-5 w-5 text-blue-400" />,
@@ -211,15 +261,66 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
     }
 
     const itemKey = item.label.toLowerCase();
-    
+
     // Toggle: if clicking the same item, close it
     if (activeItem === itemKey) {
+      // If leaving Satellite Intel, disable all overlays
+      if (item.label === 'Satellite Intel') {
+        deactivateAllOverlays();
+      }
+      // If leaving History Mode, disable it
+      if (activeItem === 'history mode') {
+        onToggleHistoryMode?.(false);
+      }
+      // If leaving Statistics, hide all choropleth layers
+      if (activeItem === 'statistics') {
+        deactivateAllStats();
+      }
       setActiveItem('');
       return;
     }
-    
+
+    // --- Special case: History Mode → Satellite Intel ---
+    // Use an atomic transition to avoid race conditions between the async
+    // style restoration of History Mode and Night Lights activation.
+    if (activeItem === 'history mode' && item.label === 'Satellite Intel') {
+      setActiveItem(itemKey);
+      onHistoryToSatellite?.();
+      return;
+    }
+
+    // --- Special case: Satellite Intel → History Mode ---
+    // Use an atomic transition to avoid race conditions between night-lights
+    // style restoration and History Mode activation.
+    if (activeItem === 'satellite intel' && item.label === 'History Mode') {
+      setActiveItem(itemKey);
+      setAutoRotate(true); // History Mode enables rotation by default
+      onSatelliteToHistory?.();
+      return;
+    }
+
+    // If leaving Satellite Intel for another section, disable all overlays
+    if (activeItem === 'satellite intel') {
+      deactivateAllOverlays();
+    }
+
+    // If leaving History Mode for another section, disable it
+    if (activeItem === 'history mode') {
+      onToggleHistoryMode?.(false);
+    }
+
+    // If leaving Statistics for another section, hide all choropleth layers
+    if (activeItem === 'statistics') {
+      deactivateAllStats();
+    }
+
     setActiveItem(itemKey);
-    
+
+    // Auto-activate Night Lights when entering Satellite Intel
+    if (item.label === 'Satellite Intel' && !earthOverlays?.['night-lights']) {
+      onToggleEarthOverlay?.('night-lights', true);
+    }
+
     if (item.label === 'Conflict Tracker' && onOpenConflictTracker) {
       onOpenConflictTracker();
       return;
@@ -229,12 +330,17 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
       onOpenCompareCountries();
       return;
     }
-    
-    
+
+    // Auto-activate History Mode when entering the section (switches to Nav Day)
+    if (item.label === 'History Mode') {
+      onToggleHistoryMode?.(true);
+      setAutoRotate(true); // History Mode enables rotation by default
+    }
+
     if (item.onClick) {
       item.onClick();
     }
-  }, [activeItem, onOpenConflictTracker, onOpenCompareCountries]);
+  }, [activeItem, earthOverlays, onToggleEarthOverlay, deactivateAllOverlays, deactivateAllStats, onOpenConflictTracker, onOpenCompareCountries, onToggleHistoryMode, onHistoryToSatellite, onSatelliteToHistory]);
 
   return (
     <>
@@ -403,6 +509,45 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
                                 aria-label={`Set detail level ${l}`}
                               >{l.toUpperCase()}</button>
                             ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {item.label === 'Satellite Intel' && activeItem === 'satellite intel' && (
+                        <div className="mt-3 ml-12 mr-3 settings-panel" aria-label="Satellite Intel">
+                          <div className="section-header" style={{ marginBottom: 8 }}>
+                            <h3>Satellite Intel</h3>
+                          </div>
+                          <div className="settings-subtitle" style={{ marginBottom: 12 }}>
+                            Real-time satellite powered by WorldLore.
+                          </div>
+                          <div className="settings-row" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
+                            {NASA_EARTH_OVERLAY_KEYS.map(key => {
+                              const cfg = NASA_EARTH_OVERLAYS[key];
+                              const enabled = earthOverlays?.[key] ?? false;
+                              return (
+                                <div className="section-card" style={{ marginBottom: 0 }} key={key}>
+                                  <div className="stats-header" style={{ marginBottom: 6 }}>
+                                    <div className="stats-title">{cfg.label}</div>
+                                    <div className="chip-group">
+                                      <button
+                                        className={`chip ${enabled ? 'active' : ''}`}
+                                        onClick={() => onToggleEarthOverlay?.(key, true)}
+                                        aria-pressed={enabled}
+                                        aria-label={`Show ${cfg.label}`}
+                                      >Show</button>
+                                      <button
+                                        className={`chip ${!enabled ? 'active' : ''}`}
+                                        onClick={() => onToggleEarthOverlay?.(key, false)}
+                                        aria-pressed={!enabled}
+                                        aria-label={`Hide ${cfg.label}`}
+                                      >Hide</button>
+                                    </div>
+                                  </div>
+                                  <div className="stats-subtitle">{cfg.description}</div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -838,12 +983,12 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
                               aria-label="Available historical years"
                             >
                               {AVAILABLE_HISTORY_YEARS.map((y: number) => {
-                                const isActive = snapToAvailableYear(historyYear) === y;
+                                const isActive = historyYear !== null && snapToAvailableYear(historyYear) === y;
                                 return (
                                   <button
                                     key={y}
                                     className={`settings-chip ${isActive ? 'active' : ''}`}
-                                    onClick={() => { onToggleHistoryMode?.(true); onSetHistoryYear?.(y); }}
+                                    onClick={() => { onSetHistoryYear?.(y); }}
                                     aria-pressed={isActive}
                                     title={`Year ${y}`}
                                     data-year={y}
@@ -855,11 +1000,24 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
                               })}
                             </div>
                           </div>
+                          <div className="settings-subtitle" style={{ marginTop: 12 }}>Rotation</div>
+                          <div className="settings-row segmented">
+                            <button
+                              className={`settings-chip ${autoRotate ? 'active' : ''}`}
+                              onClick={() => { setAutoRotate(true); onSetAutoRotate?.(true); }}
+                              aria-pressed={autoRotate}
+                            >On</button>
+                            <button
+                              className={`settings-chip ${!autoRotate ? 'active' : ''}`}
+                              onClick={() => { setAutoRotate(false); onSetAutoRotate?.(false); }}
+                              aria-pressed={!autoRotate}
+                            >Off</button>
+                          </div>
                           <div className="settings-row" style={{ marginTop: 8 }}>
                             <button
                               className="settings-chip"
-                              onClick={() => onToggleHistoryMode?.(false)}
-                              aria-label="Close history mode"
+                              onClick={() => onResetHistoryPresentation?.()}
+                              aria-label="Reset to presentation mode"
                             >Close History</button>
                           </div>
                         </div>
@@ -901,9 +1059,9 @@ export default function LeftSidebar({ isOpen, onClose: _onClose, onOpenConflictT
                               <button className="settings-chip" onClick={() => onSetBaseMapStyle?.('dark')}>Dark</button>
                               <button className="settings-chip" onClick={() => onSetBaseMapStyle?.('satellite-streets')}>Sat+Streets</button>
                               <button className="settings-chip" onClick={() => onSetBaseMapStyle?.('navigation-day')}>Nav Day</button>
-                              <button className="settings-chip" onClick={() => onSetBaseMapStyle?.('earth-at-night')} title="NASA's Black Marble composite">Earth at Night</button>
-                              <button className="settings-chip" onClick={() => onSetBaseMapStyle?.('nasa-night-lights')} title="NASA's City Lights 2012">Night Lights</button>
-                              <button className="settings-chip" onClick={() => onSetBaseMapStyle?.('nasa-black-marble')} title="VIIRS Day/Night Band — 4-date composite for full coverage">Black Marble</button>
+                              <button className="settings-chip" onClick={() => onSetBaseMapStyle?.('earth-at-night')} title="Black Marble composite">Earth at Night</button>
+                              <button className="settings-chip" onClick={() => onSetBaseMapStyle?.('nasa-night-lights')} title="City Lights 2012">Night Lights</button>
+                              <button className="settings-chip" onClick={() => onSetBaseMapStyle?.('nasa-black-marble')} title="Day/Night Band — 4-date composite for full coverage">Black Marble</button>
                             </div>
                           </div>
                           
