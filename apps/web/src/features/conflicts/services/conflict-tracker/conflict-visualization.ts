@@ -178,162 +178,7 @@ export const ConflictVisualization = {
     try {
       if (map.getLayer('country-selected')) map.moveLayer(LAYERS.COUNTRY_FILL, 'country-selected');
       if (map.getLayer('country-selected')) map.moveLayer(LAYERS.COUNTRY_BORDER, 'country-selected');
-      if (map.getLayer(LAYERS.CONFLICT_MARKER)) map.moveLayer(LAYERS.CONFLICT_MARKER);
     } catch { /* ignore if layers missing */ }
-
-    // Marcadores de conflicto principales
-    if (conflictGeoJSON && !map.getSource(LAYERS.CONFLICT_SOURCE)) {
-      map.addSource(LAYERS.CONFLICT_SOURCE, {
-        type: 'geojson',
-        data: conflictGeoJSON,
-        cluster: false // Desactivado: mostrar cada conflicto individualmente
-      });
-    }
-
-    // Capa de resplandor sutil detrás del marcador
-    if (conflictGeoJSON && !map.getLayer(LAYERS.CONFLICT_GLOW)) {
-      map.addLayer({
-        id: LAYERS.CONFLICT_GLOW,
-        type: 'circle',
-        source: LAYERS.CONFLICT_SOURCE,
-        filter: ['!', ['has', 'point_count']],
-        paint: {
-          'circle-radius': [
-            'interpolate',
-            ['linear'],
-            ['zoom'],
-            0, 14,
-            20, 22
-          ],
-          'circle-color': getStatusColorExpression(),
-          'circle-opacity': 0.22,
-          'circle-blur': 0.9,
-          'circle-pitch-alignment': 'viewport',
-          'circle-pitch-scale': 'viewport'
-        }
-      });
-    }
-
-    if (conflictGeoJSON && !map.getLayer(LAYERS.CONFLICT_GLOW_OUTER)) {
-      map.addLayer({
-        id: LAYERS.CONFLICT_GLOW_OUTER,
-        type: 'circle',
-        source: LAYERS.CONFLICT_SOURCE,
-        filter: ['!', ['has', 'point_count']],
-        paint: {
-          'circle-radius': [
-            'interpolate', ['linear'], ['zoom'],
-            0, 22,
-            20, 30
-          ],
-          'circle-color': getStatusColorExpression(),
-          'circle-opacity': 0.12,
-          'circle-blur': 1.2,
-          'circle-pitch-alignment': 'viewport',
-          'circle-pitch-scale': 'viewport'
-        }
-      });
-    }
-
-    if (conflictGeoJSON && !map.getLayer(LAYERS.CONFLICT_MARKER)) {
-      map.addLayer({
-        id: LAYERS.CONFLICT_MARKER,
-        type: 'circle',
-        source: LAYERS.CONFLICT_SOURCE,
-        filter: ['!', ['has', 'point_count']],
-        paint: {
-          // Núcleo brillante (más pequeño que antes)
-          'circle-radius': [
-            'interpolate',
-            ['linear'],
-            ['zoom'],
-            0, 5,
-            20, 8
-          ],
-          'circle-color': getStatusColorExpression(),
-          'circle-opacity': 1,
-          'circle-blur': 0.0,
-          'circle-pitch-alignment': 'viewport',
-          'circle-pitch-scale': 'viewport'
-        }
-      });
-    }
-
-    // Crear ondas minimalistas
-    for (let i = 0; i < ANIMATION.RIPPLE_COUNT; i++) {
-      const rippleLayerId = `conflict-ripple-${i}`;
-      if (conflictGeoJSON && !map.getLayer(rippleLayerId)) {
-        map.addLayer({
-          id: rippleLayerId,
-          type: 'circle',
-          source: LAYERS.CONFLICT_SOURCE,
-          filter: ['!', ['has', 'point_count']],
-          paint: {
-            'circle-radius': SIZES.RIPPLE_BASE_RADIUS + (i * SIZES.RIPPLE_SPACING),
-            'circle-color': getStatusColorExpression(),
-            'circle-opacity': OPACITIES.RIPPLE_BASE - (i * OPACITIES.RIPPLE_DECREASE),
-            'circle-pitch-alignment': 'viewport',
-            'circle-pitch-scale': 'viewport'
-          }
-        });
-      }
-    }
-
-    // Clusters: brillo + conteo
-    if (conflictGeoJSON && !map.getLayer(LAYERS.CONFLICT_CLUSTER_GLOW)) {
-      map.addLayer({
-        id: LAYERS.CONFLICT_CLUSTER_GLOW,
-        type: 'circle',
-        source: LAYERS.CONFLICT_SOURCE,
-        filter: ['has', 'point_count'],
-        paint: {
-          'circle-color': getStatusColorExpression(),
-          'circle-radius': [
-            'step', ['get', 'point_count'],
-            22, 10, 28, 25, 34
-          ],
-          'circle-opacity': 0.22,
-          'circle-blur': 0.95
-        }
-      });
-    }
-    if (conflictGeoJSON && !map.getLayer(LAYERS.CONFLICT_CLUSTER)) {
-      map.addLayer({
-        id: LAYERS.CONFLICT_CLUSTER,
-        type: 'circle',
-        source: LAYERS.CONFLICT_SOURCE,
-        filter: ['has', 'point_count'],
-        paint: {
-          'circle-color': getStatusColorExpression(),
-          'circle-radius': [
-            'step', ['get', 'point_count'],
-            10, 10, 12, 25, 14
-          ],
-          'circle-opacity': 1
-        }
-      });
-    }
-    if (conflictGeoJSON && !map.getLayer(LAYERS.CONFLICT_CLUSTER_COUNT)) {
-      map.addLayer({
-        id: LAYERS.CONFLICT_CLUSTER_COUNT,
-        type: 'symbol',
-        source: LAYERS.CONFLICT_SOURCE,
-        filter: ['has', 'point_count'],
-        layout: {
-          'text-field': ['get', 'point_count_abbreviated'],
-          'text-font': ['DIN Pro Medium', 'Arial Unicode MS Bold'],
-          'text-size': 12
-        },
-        paint: {
-          'text-color': '#ffffff',
-          'text-halo-color': getStatusColorExpression(),
-          'text-halo-width': 1.2
-        }
-      });
-    }
-
-    // Estilo de referencia es mayormente estático; animación opcional
-    if (ANIMATION.ENABLED) this.startRippleAnimation(map);
   },
 
   /**
@@ -364,49 +209,17 @@ export const ConflictVisualization = {
   },
 
   /**
-   * Actualiza los datos de los marcadores de conflicto
+   * Actualiza los datos de los marcadores de conflicto (deshabilitado — puntos eliminados)
    */
-  updateConflictMarkers(map: mapboxgl.Map, conflictGeoJSON: ConflictGeoJSON) {
-    const source = map.getSource(LAYERS.CONFLICT_SOURCE) as mapboxgl.GeoJSONSource;
-    if (source) {
-      source.setData(conflictGeoJSON);
-    }
+  updateConflictMarkers(_map: mapboxgl.Map, _conflictGeoJSON: ConflictGeoJSON) {
+    // No-op: marcadores de conflicto eliminados del mapa
   },
 
   /**
-   * Controla la visibilidad de los marcadores de conflicto
+   * Controla la visibilidad de los marcadores de conflicto (deshabilitado — puntos eliminados)
    */
-  setConflictMarkersVisibility(map: mapboxgl.Map, visible: boolean) {
-    try {
-      if (map.getLayer(LAYERS.CONFLICT_MARKER)) {
-        map.setLayoutProperty(LAYERS.CONFLICT_MARKER, 'visibility', visible ? 'visible' : 'none');
-      }
-      if (map.getLayer(LAYERS.CONFLICT_GLOW)) {
-        map.setLayoutProperty(LAYERS.CONFLICT_GLOW, 'visibility', visible ? 'visible' : 'none');
-      }
-      if (map.getLayer(LAYERS.CONFLICT_GLOW_OUTER)) {
-        map.setLayoutProperty(LAYERS.CONFLICT_GLOW_OUTER, 'visibility', visible ? 'visible' : 'none');
-      }
-      if (map.getLayer(LAYERS.CONFLICT_CLUSTER)) {
-        map.setLayoutProperty(LAYERS.CONFLICT_CLUSTER, 'visibility', visible ? 'visible' : 'none');
-      }
-      if (map.getLayer(LAYERS.CONFLICT_CLUSTER_COUNT)) {
-        map.setLayoutProperty(LAYERS.CONFLICT_CLUSTER_COUNT, 'visibility', visible ? 'visible' : 'none');
-      }
-      if (map.getLayer(LAYERS.CONFLICT_CLUSTER_GLOW)) {
-        map.setLayoutProperty(LAYERS.CONFLICT_CLUSTER_GLOW, 'visibility', visible ? 'visible' : 'none');
-      }
-      
-      // Controlar visibilidad de las ondas minimalistas
-      for (let i = 0; i < ANIMATION.RIPPLE_COUNT; i++) {
-        const rippleLayerId = `conflict-ripple-${i}`;
-        if (map.getLayer(rippleLayerId)) {
-          map.setLayoutProperty(rippleLayerId, 'visibility', visible ? 'visible' : 'none');
-        }
-      }
-    } catch {
-      console.error('[ERROR] Failed to set marker visibility');
-    }
+  setConflictMarkersVisibility(_map: mapboxgl.Map, _visible: boolean) {
+    // No-op: marcadores de conflicto eliminados del mapa
   },
 
   /**
@@ -457,17 +270,11 @@ export const ConflictVisualization = {
       }
     }
 
-    // Controlar visibilidad de marcadores
-    const shouldShowMarkers = !selectedConflictId;
-    this.setConflictMarkersVisibility(map, shouldShowMarkers);
-    
     if (selectedConflictId === 'russia-ukraine-war') {
       this.loadUkraineRealTimeLayers(map);
     } else {
       this.removeUkraineLayers(map);
     }
-
-    console.log('[DEBUG] Updated visualization - selectedConflictId:', selectedConflictId, 'showMarkers:', shouldShowMarkers, 'isoCodes:', isoCodes);
   },
 
   /**

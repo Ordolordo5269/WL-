@@ -122,6 +122,17 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
     }
   }, [earthOverlays, onToggleEarthOverlay]);
 
+  // Deactivate all active natural/physical layers when leaving Physical Layers
+  const deactivateAllNaturalLayers = useCallback(() => {
+    if (riversEnabled) onToggleRiversLayer?.(false);
+    if (mountainRangesEnabled) onToggleMountainRangesLayer?.(false);
+    if (peaksEnabled) onTogglePeaksLayer?.(false);
+    if (lakesEnabled) onToggleLakesLayer?.(false);
+    if (volcanoesEnabled) onToggleVolcanoesLayer?.(false);
+    if (faultLinesEnabled) onToggleFaultLinesLayer?.(false);
+    if (desertsEnabled) onToggleDesertsLayer?.(false);
+  }, [riversEnabled, mountainRangesEnabled, peaksEnabled, lakesEnabled, volcanoesEnabled, faultLinesEnabled, desertsEnabled, onToggleRiversLayer, onToggleMountainRangesLayer, onTogglePeaksLayer, onToggleLakesLayer, onToggleVolcanoesLayer, onToggleFaultLinesLayer, onToggleDesertsLayer]);
+
   // Deactivate all active statistic choropleths when leaving Statistics
   const deactivateAllStats = useCallback(() => {
     if (gdpEnabled) onToggleGdpLayer?.(false);
@@ -147,9 +158,12 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
     if (activeItem === 'statistics') {
       deactivateAllStats();
     }
+    if (activeItem === 'physical layers') {
+      deactivateAllNaturalLayers();
+    }
     setActiveItem('home');
     _onCloseRaw();
-  }, [activeItem, deactivateAllOverlays, deactivateAllStats, _onCloseRaw]);
+  }, [activeItem, deactivateAllOverlays, deactivateAllStats, deactivateAllNaturalLayers, _onCloseRaw]);
   const [rotateSpeed, setRotateSpeed] = useState<number>(3);
   const [terrainEnabled, setTerrainEnabled] = useState<boolean>(false);
   const [terrainEx, setTerrainEx] = useState<number>(1);
@@ -276,6 +290,10 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
       if (activeItem === 'statistics') {
         deactivateAllStats();
       }
+      // If leaving Physical Layers, hide all natural layers
+      if (activeItem === 'physical layers') {
+        deactivateAllNaturalLayers();
+      }
       setActiveItem('');
       return;
     }
@@ -314,6 +332,11 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
       deactivateAllStats();
     }
 
+    // If leaving Physical Layers for another section, hide all natural layers
+    if (activeItem === 'physical layers') {
+      deactivateAllNaturalLayers();
+    }
+
     setActiveItem(itemKey);
 
     // Auto-activate Night Lights when entering Satellite Intel
@@ -340,7 +363,7 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
     if (item.onClick) {
       item.onClick();
     }
-  }, [activeItem, earthOverlays, onToggleEarthOverlay, deactivateAllOverlays, deactivateAllStats, onOpenConflictTracker, onOpenCompareCountries, onToggleHistoryMode, onHistoryToSatellite, onSatelliteToHistory]);
+  }, [activeItem, earthOverlays, onToggleEarthOverlay, deactivateAllOverlays, deactivateAllStats, deactivateAllNaturalLayers, onOpenConflictTracker, onOpenCompareCountries, onToggleHistoryMode, onHistoryToSatellite, onSatelliteToHistory]);
 
   return (
     <>
