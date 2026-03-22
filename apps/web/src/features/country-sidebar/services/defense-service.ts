@@ -13,6 +13,9 @@ export interface DefenseData {
   armsExportsTiv: IndicatorPoint; // MS.MIL.XPRT.KD
   battleRelatedDeaths: IndicatorPoint; // VC.BTL.DETH
   populationTotal: IndicatorPoint; // SP.POP.TOTL (for per-capita if needed)
+  // Geopolitical expansion
+  armedForcesPctLaborForce: IndicatorPoint;
+  militaryExpenditurePctGovt: IndicatorPoint;
   sources: {
     worldBank: string;
   };
@@ -48,6 +51,8 @@ class DefenseService {
         armsExportsTiv: { value: null, year: null },
         battleRelatedDeaths: { value: null, year: null },
         populationTotal: { value: null, year: null },
+        armedForcesPctLaborForce: { value: null, year: null },
+        militaryExpenditurePctGovt: { value: null, year: null },
         sources: { worldBank: 'https://api.worldbank.org/v2/' }
       };
     }

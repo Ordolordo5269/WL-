@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { AlertCircle, Cloud, TreePine, Zap, Droplets, Shield, Flame, Wind } from 'lucide-react';
+import { AlertCircle, Cloud, TreePine, Zap, Droplets, Shield, Flame, Wind, Globe, Fuel } from 'lucide-react';
 import { environmentService } from '../services/environment-service';
 import type { TEnvironmentData } from '../services/environment-service';
 
@@ -28,8 +28,9 @@ export default function EnvironmentSection({ data, isLoading, error }: Environme
     data.co2FromElectricityPct, data.methaneEmissionsKtCo2eq,
     data.forestAreaPct, data.terrestrialProtectedAreasPct, data.accessCleanWaterPct,
     data.forestRentsPctGdp,
-    data.renewableEnergyConsumptionPct, data.renewableElectricityOutputPct
-  ].every(p => p.value === null || p.value === undefined);
+    data.renewableEnergyConsumptionPct, data.renewableElectricityOutputPct,
+    data.ghgEmissionsTotalKt, data.fossilFuelConsumptionPct, data.landAreaSqKm
+  ].every(p => p?.value === null || p?.value === undefined);
 
   if (allNull) {
     return (
@@ -90,6 +91,15 @@ export default function EnvironmentSection({ data, isLoading, error }: Environme
               <div className="metric-value">{s.formatMtCo2e(data.methaneEmissionsKtCo2eq.value)}</div>
             </div>
           </div>
+          {data.ghgEmissionsTotalKt?.value != null && (
+            <div className="metric-item">
+              <div className="metric-icon small"><Cloud className="w-4 h-4" /></div>
+              <div className="metric-content">
+                <div className="metric-label">Total GHG (kt CO2e) {data.ghgEmissionsTotalKt.year ? <span className="ml-2 text-[10px] text-slate-400">{data.ghgEmissionsTotalKt.year}</span> : null}</div>
+                <div className="metric-value">{s.formatKt(data.ghgEmissionsTotalKt.value)}</div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -152,8 +162,36 @@ export default function EnvironmentSection({ data, isLoading, error }: Environme
               <div className="metric-value">{s.formatPercent(data.renewableElectricityOutputPct.value)}</div>
             </div>
           </div>
+          {data.fossilFuelConsumptionPct?.value != null && (
+            <div className="metric-item">
+              <div className="metric-icon small"><Fuel className="w-4 h-4" /></div>
+              <div className="metric-content">
+                <div className="metric-label">Fossil fuel consumption (%) {data.fossilFuelConsumptionPct.year ? <span className="ml-2 text-[10px] text-slate-400">{data.fossilFuelConsumptionPct.year}</span> : null}</div>
+                <div className="metric-value">{s.formatPercent(data.fossilFuelConsumptionPct.value)}</div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Geography */}
+      {data.landAreaSqKm?.value != null && (
+        <div className="section-card">
+          <div className="section-header">
+            <Globe className="h-4 w-4" />
+            <h3>Geography</h3>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="metric-item">
+              <div className="metric-icon small"><Globe className="w-4 h-4" /></div>
+              <div className="metric-content">
+                <div className="metric-label">Land area {data.landAreaSqKm.year ? <span className="ml-2 text-[10px] text-slate-400">{data.landAreaSqKm.year}</span> : null}</div>
+                <div className="metric-value">{s.formatSqKm(data.landAreaSqKm.value)}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }

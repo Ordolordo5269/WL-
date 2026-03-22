@@ -114,7 +114,9 @@ export async function getEconomyData(iso3: string) {
 
   const [gdp, gdpPc, inflation, gini, agr, ind, srv, exp, imp, debt, unemp,
     gdpGrowth, gniPcPpp, govtDebt, taxRevenue, grossSavings, totalReserves, grossCapitalFormation,
-    fdiPctGdp, remittancesPctGdp, manufacturing] = await Promise.all([
+    fdiPctGdp, remittancesPctGdp, manufacturing,
+    gdpPpp, gdpPcPpp, exchangeRate, laborForce, govtRevenue, govtExpenditure,
+    externalDebtPctGni] = await Promise.all([
     getLatestIndicatorValueForIso3(countryIso3, 'GDP_USD'),
     getLatestIndicatorValueForIso3(countryIso3, 'GDP_PC_USD'),
     getLatestIndicatorValueForIso3(countryIso3, 'INFLATION_CPI_YOY_PCT'),
@@ -137,6 +139,15 @@ export async function getEconomyData(iso3: string) {
     getLatestIndicatorValueForIso3(countryIso3, 'FDI_NET_INFLOWS_PCT_GDP'),
     getLatestIndicatorValueForIso3(countryIso3, 'REMITTANCES_RECEIVED_PCT_GDP'),
     getLatestIndicatorValueForIso3(countryIso3, 'MANUFACTURING_VALUE_ADDED_PCT_GDP'),
+    // Geopolitical expansion
+    getLatestIndicatorValueForIso3(countryIso3, 'GDP_PPP_USD'),
+    getLatestIndicatorValueForIso3(countryIso3, 'GDP_PC_PPP_USD'),
+    getLatestIndicatorValueForIso3(countryIso3, 'EXCHANGE_RATE_LCU_PER_USD'),
+    getLatestIndicatorValueForIso3(countryIso3, 'LABOR_FORCE_TOTAL'),
+    getLatestIndicatorValueForIso3(countryIso3, 'GOVT_REVENUE_PCT_GDP'),
+    getLatestIndicatorValueForIso3(countryIso3, 'GOVT_EXPENDITURE_PCT_GDP'),
+    // Final geopolitical
+    getLatestIndicatorValueForIso3(countryIso3, 'EXTERNAL_DEBT_PCT_GNI'),
   ]);
 
   const exportsUsd = toNumberOrNull(exp.value);
@@ -172,6 +183,14 @@ export async function getEconomyData(iso3: string) {
     fdi_net_inflows_pct_gdp: toNumberOrNull(fdiPctGdp.value),
     remittances_received_pct_gdp: toNumberOrNull(remittancesPctGdp.value),
     manufacturing_pct_gdp: toNumberOrNull(manufacturing.value),
+    // Geopolitical expansion
+    gdp_ppp_usd: toNumberOrNull(gdpPpp.value),
+    gdp_per_capita_ppp_usd: toNumberOrNull(gdpPcPpp.value),
+    exchange_rate_lcu_per_usd: toNumberOrNull(exchangeRate.value),
+    labor_force_total: toNumberOrNull(laborForce.value),
+    govt_revenue_pct_gdp: toNumberOrNull(govtRevenue.value),
+    govt_expenditure_pct_gdp: toNumberOrNull(govtExpenditure.value),
+    external_debt_pct_gni: toNumberOrNull(externalDebtPctGni.value),
   };
 }
 
@@ -181,7 +200,8 @@ export async function getDefenseData(iso3: string) {
 
   const countryIso3 = entity.iso3 as string;
 
-  const [milPctGdp, milUsd, armedForces, armsImp, armsExp, battleDeaths, pop] = await Promise.all([
+  const [milPctGdp, milUsd, armedForces, armsImp, armsExp, battleDeaths, pop,
+    armedForcesPctLabor, milPctGovt] = await Promise.all([
     getLatestIndicatorValueForIso3(countryIso3, 'MILITARY_EXPENDITURE_PCT_GDP'),
     getLatestIndicatorValueForIso3(countryIso3, 'MILITARY_EXPENDITURE_USD'),
     getLatestIndicatorValueForIso3(countryIso3, 'ARMED_FORCES_PERSONNEL_TOTAL'),
@@ -189,6 +209,9 @@ export async function getDefenseData(iso3: string) {
     getLatestIndicatorValueForIso3(countryIso3, 'ARMS_EXPORTS_TIV'),
     getLatestIndicatorValueForIso3(countryIso3, 'BATTLE_RELATED_DEATHS'),
     getLatestIndicatorValueForIso3(countryIso3, 'POPULATION_TOTAL'),
+    // Geopolitical expansion
+    getLatestIndicatorValueForIso3(countryIso3, 'ARMED_FORCES_PCT_LABOR_FORCE'),
+    getLatestIndicatorValueForIso3(countryIso3, 'MILITARY_EXPENDITURE_PCT_GOVT'),
   ]);
 
   return {
@@ -201,6 +224,8 @@ export async function getDefenseData(iso3: string) {
     armsExportsTiv: { value: toNumberOrNull(armsExp.value), year: armsExp.year },
     battleRelatedDeaths: { value: toNumberOrNull(battleDeaths.value), year: battleDeaths.year },
     populationTotal: { value: toNumberOrNull(pop.value), year: pop.year },
+    armedForcesPctLaborForce: { value: toNumberOrNull(armedForcesPctLabor.value), year: armedForcesPctLabor.year },
+    militaryExpenditurePctGovt: { value: toNumberOrNull(milPctGovt.value), year: milPctGovt.year },
     sources: { worldBank: 'https://api.worldbank.org/v2/' },
   };
 }
@@ -285,7 +310,9 @@ export async function getSocietyData(iso3: string) {
     crudeDeathRate, urbanPopulationPercent, ruralPopulationPercent, populationDensity,
     youthUnemployment, homicides,
     // Education expansion
-    educationExpenditure, secondaryEnrollment, tertiaryEnrollment, pupilTeacherRatio, outOfSchool
+    educationExpenditure, secondaryEnrollment, tertiaryEnrollment, pupilTeacherRatio, outOfSchool,
+    // Geopolitical expansion
+    suicideRate, noncommunicableDeaths
   ] = await Promise.all([
     getLatestIndicatorValueForIso3(countryIso3, 'LIFE_EXPECTANCY'),
     getLatestIndicatorValueForIso3(countryIso3, 'LITERACY_RATE_ADULT'),
@@ -307,6 +334,9 @@ export async function getSocietyData(iso3: string) {
     getLatestIndicatorValueForIso3(countryIso3, 'TERTIARY_GROSS_ENROLLMENT'),
     getLatestIndicatorValueForIso3(countryIso3, 'PRIMARY_PUPIL_TEACHER_RATIO'),
     getLatestIndicatorValueForIso3(countryIso3, 'OUT_OF_SCHOOL_CHILDREN_PRIMARY'),
+    // Geopolitical expansion
+    getLatestIndicatorValueForIso3(countryIso3, 'SUICIDE_MORTALITY_RATE'),
+    getLatestIndicatorValueForIso3(countryIso3, 'CAUSE_OF_DEATH_NONCOMMUNICABLE_PCT'),
   ]);
 
   return {
@@ -331,6 +361,9 @@ export async function getSocietyData(iso3: string) {
     tertiaryGrossEnrollment: { value: toNumberOrNull(tertiaryEnrollment.value), year: tertiaryEnrollment.year },
     primaryPupilTeacherRatio: { value: toNumberOrNull(pupilTeacherRatio.value), year: pupilTeacherRatio.year },
     outOfSchoolChildrenPrimary: { value: toNumberOrNull(outOfSchool.value), year: outOfSchool.year },
+    // Geopolitical expansion
+    suicideMortalityRate: { value: toNumberOrNull(suicideRate.value), year: suicideRate.year },
+    causeOfDeathNoncommunicablePct: { value: toNumberOrNull(noncommunicableDeaths.value), year: noncommunicableDeaths.year },
   };
 }
 
@@ -343,7 +376,8 @@ export async function getTechnologyData(iso3: string) {
   const countryIso3 = entity.iso3 as string;
 
   const [rndExpenditurePctGdp, highTechExportsUsd, researchersPerMillion, patentApplicationsResidents, scientificJournalArticles,
-    broadband, highTechExportsPctManuf] =
+    broadband, highTechExportsPctManuf,
+    patentNonresidents, trademarks] =
     await Promise.all([
       getLatestIndicatorValueForIso3(countryIso3, 'RND_EXPENDITURE_PCT_GDP'),
       getLatestIndicatorValueForIso3(countryIso3, 'HIGH_TECH_EXPORTS_USD'),
@@ -352,6 +386,9 @@ export async function getTechnologyData(iso3: string) {
       getLatestIndicatorValueForIso3(countryIso3, 'SCIENTIFIC_JOURNAL_ARTICLES'),
       getLatestIndicatorValueForIso3(countryIso3, 'FIXED_BROADBAND_PER_100'),
       getLatestIndicatorValueForIso3(countryIso3, 'HIGH_TECH_EXPORTS_PCT_MANUF'),
+      // Geopolitical expansion
+      getLatestIndicatorValueForIso3(countryIso3, 'PATENT_APPLICATIONS_NONRESIDENTS'),
+      getLatestIndicatorValueForIso3(countryIso3, 'TRADEMARK_APPLICATIONS_RESIDENTS'),
     ]);
 
   return {
@@ -364,6 +401,8 @@ export async function getTechnologyData(iso3: string) {
     scientificJournalArticles: { value: toNumberOrNull(scientificJournalArticles.value), year: scientificJournalArticles.year },
     fixedBroadbandPer100: { value: toNumberOrNull(broadband.value), year: broadband.year },
     highTechExportsPctManuf: { value: toNumberOrNull(highTechExportsPctManuf.value), year: highTechExportsPctManuf.year },
+    patentApplicationsNonresidents: { value: toNumberOrNull(patentNonresidents.value), year: patentNonresidents.year },
+    trademarkApplicationsResidents: { value: toNumberOrNull(trademarks.value), year: trademarks.year },
     sources: { worldBank: 'https://api.worldbank.org/v2/' },
   };
 }
@@ -377,7 +416,9 @@ export async function getInternationalData(iso3: string) {
   const countryIso3 = entity.iso3 as string;
 
   const [odaReceivedUsd, tradePercentGdp, currentAccountUsd, fdiNetInflowsUsd, fdiNetOutflowsUsd, remittancesUsd,
-    refugeesByOrigin, refugeesByAsylum, lpi, odaGivenPctGni] =
+    refugeesByOrigin, refugeesByAsylum, lpi, odaGivenPctGni,
+    merchandiseExports, merchandiseImports, naturalResourceRents,
+    foodProductionIndex] =
     await Promise.all([
       getLatestIndicatorValueForIso3(countryIso3, 'ODA_RECEIVED_USD'),
       getLatestIndicatorValueForIso3(countryIso3, 'TRADE_PERCENT_GDP'),
@@ -389,6 +430,12 @@ export async function getInternationalData(iso3: string) {
       getLatestIndicatorValueForIso3(countryIso3, 'REFUGEE_POP_BY_ASYLUM'),
       getLatestIndicatorValueForIso3(countryIso3, 'LOGISTICS_PERFORMANCE_INDEX'),
       getLatestIndicatorValueForIso3(countryIso3, 'ODA_GIVEN_PCT_GNI'),
+      // Geopolitical expansion
+      getLatestIndicatorValueForIso3(countryIso3, 'MERCHANDISE_EXPORTS_USD'),
+      getLatestIndicatorValueForIso3(countryIso3, 'MERCHANDISE_IMPORTS_USD'),
+      getLatestIndicatorValueForIso3(countryIso3, 'TOTAL_NATURAL_RESOURCE_RENTS_PCT_GDP'),
+      // Final geopolitical
+      getLatestIndicatorValueForIso3(countryIso3, 'FOOD_PRODUCTION_INDEX'),
     ]);
 
   return {
@@ -404,6 +451,10 @@ export async function getInternationalData(iso3: string) {
     refugeePopByAsylum: { value: toNumberOrNull(refugeesByAsylum.value), year: refugeesByAsylum.year },
     logisticsPerformanceIndex: { value: toNumberOrNull(lpi.value), year: lpi.year },
     odaGivenPctGni: { value: toNumberOrNull(odaGivenPctGni.value), year: odaGivenPctGni.year },
+    merchandiseExportsUsd: { value: toNumberOrNull(merchandiseExports.value), year: merchandiseExports.year },
+    merchandiseImportsUsd: { value: toNumberOrNull(merchandiseImports.value), year: merchandiseImports.year },
+    totalNaturalResourceRentsPctGdp: { value: toNumberOrNull(naturalResourceRents.value), year: naturalResourceRents.year },
+    foodProductionIndex: { value: toNumberOrNull(foodProductionIndex.value), year: foodProductionIndex.year },
     sources: { worldBank: 'https://api.worldbank.org/v2/' },
   };
 }
@@ -470,7 +521,8 @@ export async function getEnvironmentData(iso3: string) {
 
   const [
     co2PerCapita, co2TotalKt, forestAreaPct, pm25, renewableEnergy,
-    cleanWater, renewableElectricity, co2Electricity, protectedAreas, methane, forestRents
+    cleanWater, renewableElectricity, co2Electricity, protectedAreas, methane, forestRents,
+    ghgTotal, fossilFuel, landArea
   ] = await Promise.all([
     getLatestIndicatorValueForIso3(countryIso3, 'CO2_EMISSIONS_PER_CAPITA'),
     getLatestIndicatorValueForIso3(countryIso3, 'CO2_EMISSIONS_TOTAL_KT'),
@@ -483,6 +535,10 @@ export async function getEnvironmentData(iso3: string) {
     getLatestIndicatorValueForIso3(countryIso3, 'TERRESTRIAL_PROTECTED_AREAS_PCT'),
     getLatestIndicatorValueForIso3(countryIso3, 'METHANE_EMISSIONS_KT_CO2EQ'),
     getLatestIndicatorValueForIso3(countryIso3, 'FOREST_RENTS_PCT_GDP'),
+    // Geopolitical expansion
+    getLatestIndicatorValueForIso3(countryIso3, 'GHG_EMISSIONS_TOTAL_KT'),
+    getLatestIndicatorValueForIso3(countryIso3, 'FOSSIL_FUEL_CONSUMPTION_PCT'),
+    getLatestIndicatorValueForIso3(countryIso3, 'LAND_AREA_SQ_KM'),
   ]);
 
   return {
@@ -502,6 +558,10 @@ export async function getEnvironmentData(iso3: string) {
     // Energy Transition
     renewableEnergyConsumptionPct: { value: toNumberOrNull(renewableEnergy.value), year: renewableEnergy.year },
     renewableElectricityOutputPct: { value: toNumberOrNull(renewableElectricity.value), year: renewableElectricity.year },
+    // Geopolitical expansion
+    ghgEmissionsTotalKt: { value: toNumberOrNull(ghgTotal.value), year: ghgTotal.year },
+    fossilFuelConsumptionPct: { value: toNumberOrNull(fossilFuel.value), year: fossilFuel.year },
+    landAreaSqKm: { value: toNumberOrNull(landArea.value), year: landArea.year },
     sources: { worldBank: 'https://api.worldbank.org/v2/' },
   };
 }
@@ -547,13 +607,22 @@ export async function getInfrastructureData(iso3: string) {
 
   const countryIso3 = entity.iso3 as string;
 
-  const [internetUsers, mobileSubscriptions, accessElectricity, airTransport, secureServers] =
+  const [internetUsers, mobileSubscriptions, accessElectricity, airTransport, secureServers,
+    railLines, roadsPaved, containerPort, airDepartures, airFreight, electricityLosses, electricityFromOil] =
     await Promise.all([
       getLatestIndicatorValueForIso3(countryIso3, 'INTERNET_USERS'),
       getLatestIndicatorValueForIso3(countryIso3, 'MOBILE_CELLULAR_SUBSCRIPTIONS'),
       getLatestIndicatorValueForIso3(countryIso3, 'ACCESS_TO_ELECTRICITY'),
       getLatestIndicatorValueForIso3(countryIso3, 'AIR_TRANSPORT_PASSENGERS'),
       getLatestIndicatorValueForIso3(countryIso3, 'SECURE_INTERNET_SERVERS_PER_MILLION'),
+      // Geopolitical expansion
+      getLatestIndicatorValueForIso3(countryIso3, 'RAIL_LINES_TOTAL_KM'),
+      getLatestIndicatorValueForIso3(countryIso3, 'ROADS_PAVED_PCT'),
+      getLatestIndicatorValueForIso3(countryIso3, 'CONTAINER_PORT_TRAFFIC_TEU'),
+      getLatestIndicatorValueForIso3(countryIso3, 'AIR_TRANSPORT_DEPARTURES'),
+      getLatestIndicatorValueForIso3(countryIso3, 'AIR_FREIGHT_MILLION_TON_KM'),
+      getLatestIndicatorValueForIso3(countryIso3, 'ELECTRICITY_TRANSMISSION_LOSSES_PCT'),
+      getLatestIndicatorValueForIso3(countryIso3, 'ELECTRICITY_FROM_OIL_PCT'),
     ]);
 
   return {
@@ -564,6 +633,14 @@ export async function getInfrastructureData(iso3: string) {
     accessElectricityPct: { value: toNumberOrNull(accessElectricity.value), year: accessElectricity.year },
     airTransportPassengers: { value: toNumberOrNull(airTransport.value), year: airTransport.year },
     secureInternetServersPm: { value: toNumberOrNull(secureServers.value), year: secureServers.year },
+    // Geopolitical expansion
+    railLinesTotalKm: { value: toNumberOrNull(railLines.value), year: railLines.year },
+    roadsPavedPct: { value: toNumberOrNull(roadsPaved.value), year: roadsPaved.year },
+    containerPortTrafficTeu: { value: toNumberOrNull(containerPort.value), year: containerPort.year },
+    airTransportDepartures: { value: toNumberOrNull(airDepartures.value), year: airDepartures.year },
+    airFreightMillionTonKm: { value: toNumberOrNull(airFreight.value), year: airFreight.year },
+    electricityTransmissionLossesPct: { value: toNumberOrNull(electricityLosses.value), year: electricityLosses.year },
+    electricityFromOilPct: { value: toNumberOrNull(electricityFromOil.value), year: electricityFromOil.year },
     sources: { worldBank: 'https://api.worldbank.org/v2/' },
   };
 }

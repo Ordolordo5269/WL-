@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { AlertCircle, Cpu, DollarSign, FlaskConical, Users, BookOpenCheck, FileCode2, Wifi, Percent } from 'lucide-react';
+import { AlertCircle, Cpu, DollarSign, FlaskConical, Users, BookOpenCheck, FileCode2, Wifi, Percent, FileText, Stamp } from 'lucide-react';
 import { technologyService } from '../services/technology-service';
 import type { TTechnologyData } from '../services/technology-service';
 
@@ -89,6 +89,24 @@ export default function TechnologySection({ data, isLoading, error }: Technology
               <div className="metric-content">
                 <div className="metric-label">High-tech exports (% manuf.) {data.highTechExportsPctManuf.year ? <span className="ml-2 text-[10px] text-slate-400">{data.highTechExportsPctManuf.year}</span> : null}</div>
                 <div className="metric-value">{s.formatPercent(data.highTechExportsPctManuf.value)}</div>
+              </div>
+            </div>
+          )}
+          {data.patentApplicationsNonresidents?.value != null && (
+            <div className="metric-item">
+              <div className="metric-icon small"><FileText className="w-4 h-4" /></div>
+              <div className="metric-content">
+                <div className="metric-label">Patents (non-residents) {data.patentApplicationsNonresidents.year ? <span className="ml-2 text-[10px] text-slate-400">{data.patentApplicationsNonresidents.year}</span> : null}</div>
+                <div className="metric-value">{s.formatNumber(data.patentApplicationsNonresidents.value)}</div>
+              </div>
+            </div>
+          )}
+          {data.trademarkApplicationsResidents?.value != null && (
+            <div className="metric-item">
+              <div className="metric-icon small"><Stamp className="w-4 h-4" /></div>
+              <div className="metric-content">
+                <div className="metric-label">Trademark applications {data.trademarkApplicationsResidents.year ? <span className="ml-2 text-[10px] text-slate-400">{data.trademarkApplicationsResidents.year}</span> : null}</div>
+                <div className="metric-value">{s.formatNumber(data.trademarkApplicationsResidents.value)}</div>
               </div>
             </div>
           )}

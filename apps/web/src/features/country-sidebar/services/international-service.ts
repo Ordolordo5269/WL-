@@ -17,6 +17,11 @@ export interface InternationalData {
   refugeePopByAsylum: IndicatorPoint;
   logisticsPerformanceIndex: IndicatorPoint;
   odaGivenPctGni: IndicatorPoint;
+  // Geopolitical expansion
+  merchandiseExportsUsd: IndicatorPoint;
+  merchandiseImportsUsd: IndicatorPoint;
+  totalNaturalResourceRentsPctGdp: IndicatorPoint;
+  foodProductionIndex: IndicatorPoint;
   sources: {
     worldBank: string;
   };
@@ -55,6 +60,10 @@ class InternationalService {
         refugeePopByAsylum: { value: null, year: null },
         logisticsPerformanceIndex: { value: null, year: null },
         odaGivenPctGni: { value: null, year: null },
+        merchandiseExportsUsd: { value: null, year: null },
+        merchandiseImportsUsd: { value: null, year: null },
+        totalNaturalResourceRentsPctGdp: { value: null, year: null },
+        foodProductionIndex: { value: null, year: null },
         sources: { worldBank: 'https://api.worldbank.org/v2/' }
       };
     }

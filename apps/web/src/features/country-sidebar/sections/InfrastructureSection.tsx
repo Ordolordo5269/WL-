@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { AlertCircle, Wifi, Smartphone, Zap, Plane, Server } from 'lucide-react';
+import { AlertCircle, Wifi, Smartphone, Zap, Plane, Server, Train, Route, Ship, PlaneTakeoff, Package, PlugZap, Fuel } from 'lucide-react';
 import { infrastructureService } from '../services/infrastructure-service';
 import type { TInfrastructureData } from '../services/infrastructure-service';
 
@@ -55,6 +55,7 @@ export default function InfrastructureSection({ data, isLoading, error }: Infras
       transition={{ duration: 0.3 }}
       className="p-3 space-y-3"
     >
+      {/* Digital Connectivity */}
       <div className="secondary-metrics society-grid">
         <Metric
           icon={<Wifi className="w-4 h-4" />}
@@ -74,14 +75,6 @@ export default function InfrastructureSection({ data, isLoading, error }: Infras
           value={s.formatPercent(data.accessElectricityPct.value)}
           year={data.accessElectricityPct.year}
         />
-        {data.airTransportPassengers?.value !== null && data.airTransportPassengers?.value !== undefined && (
-          <Metric
-            icon={<Plane className="w-4 h-4" />}
-            label="Air transport passengers"
-            value={s.formatNumber(data.airTransportPassengers.value)}
-            year={data.airTransportPassengers.year}
-          />
-        )}
         {data.secureInternetServersPm?.value !== null && data.secureInternetServersPm?.value !== undefined && (
           <Metric
             icon={<Server className="w-4 h-4" />}
@@ -91,6 +84,96 @@ export default function InfrastructureSection({ data, isLoading, error }: Infras
           />
         )}
       </div>
+
+      {/* Transport & Logistics */}
+      {(data.railLinesTotalKm?.value != null || data.roadsPavedPct?.value != null ||
+        data.containerPortTrafficTeu?.value != null || data.airTransportPassengers?.value != null ||
+        data.airTransportDepartures?.value != null || data.airFreightMillionTonKm?.value != null) && (
+        <div className="section-card">
+          <div className="section-header">
+            <Train className="h-4 w-4" />
+            <h3>Transport & Logistics</h3>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {data.railLinesTotalKm?.value != null && (
+              <Metric
+                icon={<Train className="w-4 h-4" />}
+                label="Rail lines (total km)"
+                value={s.formatKm(data.railLinesTotalKm.value)}
+                year={data.railLinesTotalKm.year}
+              />
+            )}
+            {data.roadsPavedPct?.value != null && (
+              <Metric
+                icon={<Route className="w-4 h-4" />}
+                label="Roads paved (%)"
+                value={s.formatPercent(data.roadsPavedPct.value)}
+                year={data.roadsPavedPct.year}
+              />
+            )}
+            {data.containerPortTrafficTeu?.value != null && (
+              <Metric
+                icon={<Ship className="w-4 h-4" />}
+                label="Container port traffic"
+                value={s.formatTeu(data.containerPortTrafficTeu.value)}
+                year={data.containerPortTrafficTeu.year}
+              />
+            )}
+            {data.airTransportPassengers?.value != null && (
+              <Metric
+                icon={<Plane className="w-4 h-4" />}
+                label="Air passengers"
+                value={s.formatCompact(data.airTransportPassengers.value)}
+                year={data.airTransportPassengers.year}
+              />
+            )}
+            {data.airTransportDepartures?.value != null && (
+              <Metric
+                icon={<PlaneTakeoff className="w-4 h-4" />}
+                label="Air departures"
+                value={s.formatCompact(data.airTransportDepartures.value)}
+                year={data.airTransportDepartures.year}
+              />
+            )}
+            {data.airFreightMillionTonKm?.value != null && (
+              <Metric
+                icon={<Package className="w-4 h-4" />}
+                label="Air freight (M ton-km)"
+                value={s.formatCompact(data.airFreightMillionTonKm.value)}
+                year={data.airFreightMillionTonKm.year}
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Energy Grid */}
+      {(data.electricityTransmissionLossesPct?.value != null || data.electricityFromOilPct?.value != null) && (
+        <div className="section-card">
+          <div className="section-header">
+            <PlugZap className="h-4 w-4" />
+            <h3>Energy Grid</h3>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {data.electricityTransmissionLossesPct?.value != null && (
+              <Metric
+                icon={<PlugZap className="w-4 h-4" />}
+                label="Transmission losses (%)"
+                value={s.formatPercent(data.electricityTransmissionLossesPct.value)}
+                year={data.electricityTransmissionLossesPct.year}
+              />
+            )}
+            {data.electricityFromOilPct?.value != null && (
+              <Metric
+                icon={<Fuel className="w-4 h-4" />}
+                label="Electricity from oil (%)"
+                value={s.formatPercent(data.electricityFromOilPct.value)}
+                year={data.electricityFromOilPct.year}
+              />
+            )}
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }

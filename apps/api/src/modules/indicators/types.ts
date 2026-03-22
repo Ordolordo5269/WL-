@@ -135,6 +135,41 @@ export const SLUG_TO_CODE: Record<string, string> = {
   'access-electricity': 'ACCESS_TO_ELECTRICITY',
   'air-transport': 'AIR_TRANSPORT_PASSENGERS',
   'secure-servers': 'SECURE_INTERNET_SERVERS_PER_MILLION',
+  // Geopolitical expansion — Economy
+  'gdp-ppp': 'GDP_PPP_USD',
+  'gdp-per-capita-ppp': 'GDP_PC_PPP_USD',
+  'exchange-rate': 'EXCHANGE_RATE_LCU_PER_USD',
+  'labor-force': 'LABOR_FORCE_TOTAL',
+  'govt-revenue': 'GOVT_REVENUE_PCT_GDP',
+  'govt-expenditure': 'GOVT_EXPENDITURE_PCT_GDP',
+  // Geopolitical expansion — Environment
+  'ghg-emissions-total': 'GHG_EMISSIONS_TOTAL_KT',
+  'fossil-fuel-consumption': 'FOSSIL_FUEL_CONSUMPTION_PCT',
+  'land-area': 'LAND_AREA_SQ_KM',
+  // Geopolitical expansion — Infrastructure
+  'rail-lines': 'RAIL_LINES_TOTAL_KM',
+  'roads-paved': 'ROADS_PAVED_PCT',
+  'container-port-traffic': 'CONTAINER_PORT_TRAFFIC_TEU',
+  'air-departures': 'AIR_TRANSPORT_DEPARTURES',
+  'air-freight': 'AIR_FREIGHT_MILLION_TON_KM',
+  'electricity-losses': 'ELECTRICITY_TRANSMISSION_LOSSES_PCT',
+  'electricity-from-oil': 'ELECTRICITY_FROM_OIL_PCT',
+  // Geopolitical expansion — Defense
+  'armed-forces-pct-labor': 'ARMED_FORCES_PCT_LABOR_FORCE',
+  'military-expenditure-pct-govt': 'MILITARY_EXPENDITURE_PCT_GOVT',
+  // Geopolitical expansion — International
+  'merchandise-exports': 'MERCHANDISE_EXPORTS_USD',
+  'merchandise-imports': 'MERCHANDISE_IMPORTS_USD',
+  'natural-resource-rents': 'TOTAL_NATURAL_RESOURCE_RENTS_PCT_GDP',
+  // Geopolitical expansion — Technology
+  'patents-nonresidents': 'PATENT_APPLICATIONS_NONRESIDENTS',
+  'trademarks': 'TRADEMARK_APPLICATIONS_RESIDENTS',
+  // Geopolitical expansion — Society
+  'suicide-rate': 'SUICIDE_MORTALITY_RATE',
+  'noncommunicable-deaths': 'CAUSE_OF_DEATH_NONCOMMUNICABLE_PCT',
+  // Final geopolitical indicators
+  'external-debt-pct-gni': 'EXTERNAL_DEBT_PCT_GNI',
+  'food-production-index': 'FOOD_PRODUCTION_INDEX',
 };
 
 export function toNumberOrNull(v: unknown): number | null {

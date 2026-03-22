@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { AlertCircle, Globe2, DollarSign, Percent, ArrowDownUp, Landmark, Users, Truck, HandCoins } from 'lucide-react';
+import { AlertCircle, Globe2, DollarSign, Percent, ArrowDownUp, Landmark, Users, Truck, HandCoins, Package, Gem, Wheat } from 'lucide-react';
 import { internationalService } from '../services/international-service';
 import type { TInternationalData } from '../services/international-service';
 
@@ -117,6 +117,42 @@ export default function InternationalSection({ data, isLoading, error }: Interna
               <div className="metric-content">
                 <div className="metric-label">Refugees (in country) {data.refugeePopByAsylum.year ? <span className="ml-2 text-[10px] text-slate-400">{data.refugeePopByAsylum.year}</span> : null}</div>
                 <div className="metric-value">{s.formatNumber(data.refugeePopByAsylum.value)}</div>
+              </div>
+            </div>
+          )}
+          {data.merchandiseExportsUsd?.value != null && (
+            <div className="metric-item">
+              <div className="metric-icon small"><Package className="w-4 h-4" /></div>
+              <div className="metric-content">
+                <div className="metric-label">Merchandise exports {data.merchandiseExportsUsd.year ? <span className="ml-2 text-[10px] text-slate-400">{data.merchandiseExportsUsd.year}</span> : null}</div>
+                <div className="metric-value">{s.formatCurrency(data.merchandiseExportsUsd.value)}</div>
+              </div>
+            </div>
+          )}
+          {data.merchandiseImportsUsd?.value != null && (
+            <div className="metric-item">
+              <div className="metric-icon small"><Package className="w-4 h-4" /></div>
+              <div className="metric-content">
+                <div className="metric-label">Merchandise imports {data.merchandiseImportsUsd.year ? <span className="ml-2 text-[10px] text-slate-400">{data.merchandiseImportsUsd.year}</span> : null}</div>
+                <div className="metric-value">{s.formatCurrency(data.merchandiseImportsUsd.value)}</div>
+              </div>
+            </div>
+          )}
+          {data.totalNaturalResourceRentsPctGdp?.value != null && (
+            <div className="metric-item">
+              <div className="metric-icon small"><Gem className="w-4 h-4" /></div>
+              <div className="metric-content">
+                <div className="metric-label">Resource rents (% GDP) {data.totalNaturalResourceRentsPctGdp.year ? <span className="ml-2 text-[10px] text-slate-400">{data.totalNaturalResourceRentsPctGdp.year}</span> : null}</div>
+                <div className="metric-value">{s.formatPercent(data.totalNaturalResourceRentsPctGdp.value)}</div>
+              </div>
+            </div>
+          )}
+          {data.foodProductionIndex?.value != null && (
+            <div className="metric-item">
+              <div className="metric-icon small"><Wheat className="w-4 h-4" /></div>
+              <div className="metric-content">
+                <div className="metric-label">Food production index {data.foodProductionIndex.year ? <span className="ml-2 text-[10px] text-slate-400">{data.foodProductionIndex.year}</span> : null}</div>
+                <div className="metric-value">{data.foodProductionIndex.value.toFixed(1)}</div>
               </div>
             </div>
           )}

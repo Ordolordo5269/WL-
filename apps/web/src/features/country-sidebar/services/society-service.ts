@@ -28,6 +28,9 @@ export interface SocietyIndicators {
   tertiaryGrossEnrollment: IndicatorPoint;
   primaryPupilTeacherRatio: IndicatorPoint;
   outOfSchoolChildrenPrimary: IndicatorPoint;
+  // Geopolitical expansion
+  suicideMortalityRate: IndicatorPoint;
+  causeOfDeathNoncommunicablePct: IndicatorPoint;
 }
 
 
@@ -72,7 +75,9 @@ class SocietyService {
         secondaryNetEnrollment: { value: null, year: null },
         tertiaryGrossEnrollment: { value: null, year: null },
         primaryPupilTeacherRatio: { value: null, year: null },
-        outOfSchoolChildrenPrimary: { value: null, year: null }
+        outOfSchoolChildrenPrimary: { value: null, year: null },
+        suicideMortalityRate: { value: null, year: null },
+        causeOfDeathNoncommunicablePct: { value: null, year: null }
       };
     }
   }

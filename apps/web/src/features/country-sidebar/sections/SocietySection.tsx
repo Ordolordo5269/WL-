@@ -159,6 +159,12 @@ export default function SocietySection({ data, isLoading, error, series: _series
         {data.intentionalHomicidesPer100k?.value !== null && data.intentionalHomicidesPer100k?.value !== undefined && (
           <Metric icon={<ShieldAlert className="w-4 h-4" />} label="Homicides (per 100k)" value={s.formatNumber(data.intentionalHomicidesPer100k.value)} />
         )}
+        {data.suicideMortalityRate?.value != null && (
+          <Metric icon={<Activity className="w-4 h-4" />} label="Suicide rate (per 100k)" value={s.formatNumber(data.suicideMortalityRate.value)} />
+        )}
+        {data.causeOfDeathNoncommunicablePct?.value != null && (
+          <Metric icon={<HeartPulse className="w-4 h-4" />} label="Non-communicable deaths (%)" value={s.formatPercent(data.causeOfDeathNoncommunicablePct.value)} />
+        )}
       </div>
 
       {/* Education Sub-section */}

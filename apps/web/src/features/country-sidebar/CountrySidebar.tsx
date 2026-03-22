@@ -273,9 +273,10 @@ export default function CountrySidebar({ isOpen, onClose, countryName, onNavigat
       icon: <Banknote className="text-green-400" />,
       title: 'Economy',
       items: [
-        'GDP (Gross Domestic Product)', 'GDP per capita', 'Inflation',
-        'GINI index', 'GDP structure', 'Exports and imports',
-        'Top trade partners', 'External debt', 'Unemployment rate'
+        'GDP (Gross Domestic Product)', 'GDP per capita', 'GDP (PPP)', 'GDP per capita (PPP)',
+        'Inflation', 'GINI index', 'GDP structure', 'Exports and imports',
+        'Top trade partners', 'External debt', 'Unemployment rate',
+        'Exchange rate', 'Labor force', 'Govt revenue', 'Govt expenditure'
       ]
     },
     {
@@ -284,7 +285,8 @@ export default function CountrySidebar({ isOpen, onClose, countryName, onNavigat
       items: [
         'Life expectancy', 'Literacy rate', 'Poverty indicators',
         'Access to health and education', 'Human Development Index (HDI)',
-        'Demographics', 'Birth and mortality rates', 'Urban/rural population (%)', 'Population density'
+        'Demographics', 'Birth and mortality rates', 'Urban/rural population (%)', 'Population density',
+        'Suicide rate', 'Non-communicable diseases'
       ]
     },
     {
@@ -305,7 +307,8 @@ export default function CountrySidebar({ isOpen, onClose, countryName, onNavigat
       title: 'Defense',
       items: [
         'Military budget', 'Armed forces size', 'Active conflicts',
-        'Peace operations', 'Military adversaries'
+        'Peace operations', 'Military adversaries',
+        'Armed forces (% labor)', 'Military spend (% govt)'
       ]
     },
     {
@@ -313,7 +316,8 @@ export default function CountrySidebar({ isOpen, onClose, countryName, onNavigat
       title: 'International',
       items: [
         'International organizations', 'Treaties', 'Regional cooperation',
-        'Official development assistance (ODA)', 'Main recipients', 'Rival countries', 'Key allies'
+        'Official development assistance (ODA)', 'Main recipients', 'Rival countries', 'Key allies',
+        'Merchandise exports/imports', 'Natural resource rents'
       ]
     },
     {
@@ -322,7 +326,8 @@ export default function CountrySidebar({ isOpen, onClose, countryName, onNavigat
       items: [
         'R&D index', 'Tech exports', 'Major national companies',
         'State-owned enterprises', 'Strategic assets', 'Sovereign funds',
-        'Strategic industries and specializations', 'Industrial policy', 'Critical minerals and global supply share'
+        'Strategic industries and specializations', 'Industrial policy', 'Critical minerals and global supply share',
+        'Patents (non-residents)', 'Trademark applications'
       ]
     },
     {
@@ -330,7 +335,10 @@ export default function CountrySidebar({ isOpen, onClose, countryName, onNavigat
       title: 'Infrastructure & Connectivity',
       items: [
         'Internet users', 'Mobile subscriptions', 'Access to electricity',
-        'Air transport', 'Secure internet servers'
+        'Secure internet servers',
+        'Rail lines', 'Roads paved', 'Container port traffic',
+        'Air passengers', 'Air departures', 'Air freight',
+        'Electricity losses', 'Electricity from oil'
       ]
     },
     {
@@ -346,9 +354,9 @@ export default function CountrySidebar({ isOpen, onClose, countryName, onNavigat
       icon: <Leaf className="text-emerald-400" />,
       title: 'Environment',
       items: [
-        'CO2 emissions', 'Air pollution (PM2.5)', 'Methane emissions',
+        'CO2 emissions', 'Air pollution (PM2.5)', 'Methane emissions', 'Total GHG emissions',
         'Forest area', 'Protected areas', 'Clean water access',
-        'Renewable energy', 'Renewable electricity', 'Energy transition'
+        'Renewable energy', 'Renewable electricity', 'Fossil fuel consumption', 'Land area'
       ]
     },
     {
@@ -565,7 +573,16 @@ export default function CountrySidebar({ isOpen, onClose, countryName, onNavigat
                     )}
                   </div>
 
-                  {/* Zone: Health (50%) + Infrastructure (50%) — same row */}
+                  {/* Zone: Technology (50%) + Health (50%) */}
+                  <div className="bento-zone-technology">
+                    {renderCategorySection(
+                      'Technology and National Assets',
+                      TechnologySection,
+                      { data: technologyData, isLoading: isTechnologyLoading, error: technologyError },
+                      true
+                    )}
+                  </div>
+
                   <div className="bento-zone-health">
                     {renderCategorySection(
                       'Health',

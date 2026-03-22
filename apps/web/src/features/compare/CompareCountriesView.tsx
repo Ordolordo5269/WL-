@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, DollarSign, Users, Landmark, Leaf, Cpu, Shield, Globe } from 'lucide-react';
 import { useCountryBasicInfo } from '../country-sidebar/hooks/useCountryBasicInfo';
 import { useEconomyData } from '../country-sidebar/hooks/useEconomyData';
 import { useSocietyData } from '../country-sidebar/hooks/useSocietyData';
@@ -8,6 +8,8 @@ import { usePoliticsData } from '../country-sidebar/hooks/usePoliticsData';
 import { useDefenseData } from '../country-sidebar/hooks/useDefenseData';
 import { useTechnologyData } from '../country-sidebar/hooks/useTechnologyData';
 import { useEnvironmentData } from '../country-sidebar/hooks/useEnvironmentData';
+import { useInternationalData } from '../country-sidebar/hooks/useInternationalData';
+import { useInfrastructureData } from '../country-sidebar/hooks/useInfrastructureData';
 import RadarChartRecharts from './RadarChartRecharts';
 import SelectableComparisonChart from './SelectableComparisonChart';
 import type { Country } from '../../components/ui/CountrySelector';
@@ -58,6 +60,12 @@ export default function CompareCountriesView({
 
   const { data: environment1 } = useEnvironmentData(country1Iso3FromBasic, country1Name);
   const { data: environment2 } = useEnvironmentData(country2Iso3FromBasic, country2Name);
+
+  const { data: international1 } = useInternationalData(country1Iso3FromBasic, country1Name);
+  const { data: international2 } = useInternationalData(country2Iso3FromBasic, country2Name);
+
+  const { data: infrastructure1 } = useInfrastructureData(country1Iso3FromBasic, country1Name);
+  const { data: infrastructure2 } = useInfrastructureData(country2Iso3FromBasic, country2Name);
 
   // Performance data for radar chart (10 dimensions)
   const [performanceData1, setPerformanceData1] = useState<Record<string, number>>({});
@@ -144,6 +152,140 @@ export default function CompareCountriesView({
     return () => contentElement.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Winner logic
+  type Polarity = 'higher' | 'lower' | 'neutral';
+
+  const getWinner = (v1: number | null | undefined, v2: number | null | undefined, polarity: Polarity): 'country1' | 'country2' | 'tie' => {
+    if (polarity === 'neutral' || v1 == null || v2 == null || v1 === v2) return 'tie';
+    const c1Wins = polarity === 'higher' ? v1 > v2 : v1 < v2;
+    return c1Wins ? 'country1' : 'country2';
+  };
+
+  const getWinnerClasses = (v1: number | null | undefined, v2: number | null | undefined, polarity: Polarity) => {
+    const winner = getWinner(v1, v2, polarity);
+    return {
+      c1: winner === 'country1' ? 'compare-kpi-winner' : '',
+      c2: winner === 'country2' ? 'compare-kpi-winner' : '',
+      card: winner === 'country1' ? 'winner-c1' : winner === 'country2' ? 'winner-c2' : '',
+    };
+  };
+
+  // Proportion bar helper — for "lower is better" metrics, invert so the better value gets a longer bar
+  const getBarWidths = (v1: number | null | undefined, v2: number | null | undefined, polarity: Polarity) => {
+    if (v1 == null || v2 == null || v1 <= 0 || v2 <= 0) return null;
+    if (polarity === 'lower') {
+      // Invert: lower value should get longer bar
+      const inv1 = 1 / v1, inv2 = 1 / v2;
+      const total = inv1 + inv2;
+      return { w1: (inv1 / total) * 100, w2: (inv2 / total) * 100 };
+    }
+    const total = Math.abs(v1) + Math.abs(v2);
+    return { w1: (Math.abs(v1) / total) * 100, w2: (Math.abs(v2) / total) * 100 };
+  };
+
+  // Category definitions
+  interface MetricDef {
+    label: string;
+    v1: number | null | undefined;
+    v2: number | null | undefined;
+    format: 'currency' | 'percent' | 'number';
+    suffix?: string;
+    polarity: Polarity;
+  }
+
+  interface CategoryDef {
+    id: string;
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    metrics: MetricDef[];
+    scorecardV1: number | null | undefined;
+    scorecardV2: number | null | undefined;
+    scorecardPolarity: Polarity;
+  }
+
+  const categories: CategoryDef[] = useMemo(() => [
+    {
+      id: 'economy', label: 'Economy', icon: DollarSign,
+      scorecardV1: economy1?.gdp_per_capita_usd, scorecardV2: economy2?.gdp_per_capita_usd, scorecardPolarity: 'higher' as Polarity,
+      metrics: [
+        { label: 'GDP', v1: economy1?.gdp_usd, v2: economy2?.gdp_usd, format: 'currency' as const, polarity: 'higher' as Polarity },
+        { label: 'GDP per Capita', v1: economy1?.gdp_per_capita_usd, v2: economy2?.gdp_per_capita_usd, format: 'currency' as const, polarity: 'higher' as Polarity },
+        { label: 'GDP Growth', v1: economy1?.gdp_growth_annual_pct, v2: economy2?.gdp_growth_annual_pct, format: 'percent' as const, polarity: 'higher' as Polarity },
+        { label: 'Inflation Rate', v1: economy1?.inflation_rate_percent, v2: economy2?.inflation_rate_percent, format: 'percent' as const, polarity: 'lower' as Polarity },
+        { label: 'Unemployment Rate', v1: economy1?.unemployment_rate_percent, v2: economy2?.unemployment_rate_percent, format: 'percent' as const, polarity: 'lower' as Polarity },
+        { label: 'Govt Debt (% GDP)', v1: economy1?.govt_debt_pct_gdp, v2: economy2?.govt_debt_pct_gdp, format: 'percent' as const, polarity: 'lower' as Polarity },
+        { label: 'Total Reserves', v1: economy1?.total_reserves_usd, v2: economy2?.total_reserves_usd, format: 'currency' as const, polarity: 'higher' as Polarity },
+      ]
+    },
+    {
+      id: 'society', label: 'Society & Development', icon: Users,
+      scorecardV1: society1?.lifeExpectancy?.value, scorecardV2: society2?.lifeExpectancy?.value, scorecardPolarity: 'higher' as Polarity,
+      metrics: [
+        { label: 'Population', v1: country1BasicInfo?.population, v2: country2BasicInfo?.population, format: 'number' as const, polarity: 'neutral' as Polarity },
+        { label: 'Life Expectancy', v1: society1?.lifeExpectancy?.value, v2: society2?.lifeExpectancy?.value, format: 'number' as const, suffix: ' yrs', polarity: 'higher' as Polarity },
+        { label: 'UHC Coverage', v1: society1?.uhcServiceCoverageIndex?.value, v2: society2?.uhcServiceCoverageIndex?.value, format: 'number' as const, polarity: 'higher' as Polarity },
+        { label: 'Youth Unemployment', v1: society1?.youthUnemploymentPct?.value, v2: society2?.youthUnemploymentPct?.value, format: 'percent' as const, polarity: 'lower' as Polarity },
+      ]
+    },
+    {
+      id: 'governance', label: 'Governance & Stability', icon: Landmark,
+      scorecardV1: politics1?.democracyIndex?.value, scorecardV2: politics2?.democracyIndex?.value, scorecardPolarity: 'higher' as Polarity,
+      metrics: [
+        { label: 'Democracy Index', v1: politics1?.democracyIndex?.value, v2: politics2?.democracyIndex?.value, format: 'number' as const, polarity: 'higher' as Polarity },
+        { label: 'Political Stability', v1: politics1?.wgiPoliticalStability?.value, v2: politics2?.wgiPoliticalStability?.value, format: 'number' as const, polarity: 'higher' as Polarity },
+        { label: 'Corruption Control', v1: politics1?.wgiControlOfCorruption?.value, v2: politics2?.wgiControlOfCorruption?.value, format: 'number' as const, polarity: 'higher' as Polarity },
+      ]
+    },
+    {
+      id: 'environment', label: 'Environment & Energy', icon: Leaf,
+      scorecardV1: environment1?.renewableEnergyConsumptionPct?.value, scorecardV2: environment2?.renewableEnergyConsumptionPct?.value, scorecardPolarity: 'higher' as Polarity,
+      metrics: [
+        { label: 'CO2 per Capita', v1: environment1?.co2EmissionsPerCapita?.value, v2: environment2?.co2EmissionsPerCapita?.value, format: 'number' as const, suffix: ' t', polarity: 'lower' as Polarity },
+        { label: 'Renewable Energy', v1: environment1?.renewableEnergyConsumptionPct?.value, v2: environment2?.renewableEnergyConsumptionPct?.value, format: 'percent' as const, polarity: 'higher' as Polarity },
+        { label: 'Fossil Fuel Consumption', v1: environment1?.fossilFuelConsumptionPct?.value, v2: environment2?.fossilFuelConsumptionPct?.value, format: 'percent' as const, polarity: 'lower' as Polarity },
+      ]
+    },
+    {
+      id: 'technology', label: 'Technology', icon: Cpu,
+      scorecardV1: technology1?.fixedBroadbandPer100?.value, scorecardV2: technology2?.fixedBroadbandPer100?.value, scorecardPolarity: 'higher' as Polarity,
+      metrics: [
+        { label: 'Broadband (per 100)', v1: technology1?.fixedBroadbandPer100?.value, v2: technology2?.fixedBroadbandPer100?.value, format: 'number' as const, polarity: 'higher' as Polarity },
+        { label: 'Internet Users', v1: infrastructure1?.internetUsersPct?.value, v2: infrastructure2?.internetUsersPct?.value, format: 'percent' as const, polarity: 'higher' as Polarity },
+        { label: 'R&D (% GDP)', v1: technology1?.rndExpenditurePctGdp?.value, v2: technology2?.rndExpenditurePctGdp?.value, format: 'percent' as const, polarity: 'higher' as Polarity },
+      ]
+    },
+    {
+      id: 'defense', label: 'Defense', icon: Shield,
+      scorecardV1: defense1?.militaryExpenditurePctGdp?.value, scorecardV2: defense2?.militaryExpenditurePctGdp?.value, scorecardPolarity: 'higher' as Polarity,
+      metrics: [
+        { label: 'Military (% GDP)', v1: defense1?.militaryExpenditurePctGdp?.value, v2: defense2?.militaryExpenditurePctGdp?.value, format: 'percent' as const, polarity: 'higher' as Polarity },
+        { label: 'Armed Forces', v1: defense1?.armedForcesPersonnelTotal?.value, v2: defense2?.armedForcesPersonnelTotal?.value, format: 'number' as const, polarity: 'neutral' as Polarity },
+      ]
+    },
+    {
+      id: 'trade', label: 'Trade & Investment', icon: Globe,
+      scorecardV1: international1?.tradePercentGdp?.value, scorecardV2: international2?.tradePercentGdp?.value, scorecardPolarity: 'higher' as Polarity,
+      metrics: [
+        { label: 'Trade (% GDP)', v1: international1?.tradePercentGdp?.value, v2: international2?.tradePercentGdp?.value, format: 'percent' as const, polarity: 'higher' as Polarity },
+        { label: 'FDI Inflows (% GDP)', v1: economy1?.fdi_net_inflows_pct_gdp, v2: economy2?.fdi_net_inflows_pct_gdp, format: 'percent' as const, polarity: 'higher' as Polarity },
+        { label: 'External Debt (% GNI)', v1: economy1?.external_debt_pct_gni, v2: economy2?.external_debt_pct_gni, format: 'percent' as const, polarity: 'lower' as Polarity },
+      ]
+    },
+  ], [economy1, economy2, society1, society2, politics1, politics2, environment1, environment2, technology1, technology2, defense1, defense2, international1, international2, infrastructure1, infrastructure2, country1BasicInfo, country2BasicInfo]);
+
+  // Win counter
+  const winCounts = useMemo(() => {
+    let c1 = 0, c2 = 0;
+    for (const cat of categories) {
+      for (const m of cat.metrics) {
+        const w = getWinner(m.v1, m.v2, m.polarity);
+        if (w === 'country1') c1++;
+        else if (w === 'country2') c2++;
+      }
+    }
+    return { c1, c2 };
+  }, [categories]);
+
   const formatValue = (value: number | null | undefined, type: 'currency' | 'percent' | 'number' = 'number'): string => {
     if (value === null || value === undefined) return 'N/A';
     if (type === 'currency') {
@@ -188,7 +330,10 @@ export default function CompareCountriesView({
                     <img src={country1Data.flagUrl} alt={country1Name} className="compare-countries-header-flag" />
                   )}
                   <div className="compare-countries-header-info">
-                    <h2 className="compare-countries-header-name">{country1Name}</h2>
+                    <h2 className="compare-countries-header-name">
+                      <span className="compare-countries-color-dot country1" />
+                      {country1Name}
+                    </h2>
                     <p className="compare-countries-header-iso">{country1Iso3}</p>
                   </div>
                 </div>
@@ -198,7 +343,10 @@ export default function CompareCountriesView({
                     <img src={country2Data.flagUrl} alt={country2Name} className="compare-countries-header-flag" />
                   )}
                   <div className="compare-countries-header-info">
-                    <h2 className="compare-countries-header-name">{country2Name}</h2>
+                    <h2 className="compare-countries-header-name">
+                      <span className="compare-countries-color-dot country2" />
+                      {country2Name}
+                    </h2>
                     <p className="compare-countries-header-iso">{country2Iso3}</p>
                   </div>
                 </div>
@@ -217,95 +365,84 @@ export default function CompareCountriesView({
                 </div>
               ) : (
                 <>
-                  {/* KPIs Section — 12 cards */}
+                  {/* Scorecard At-a-Glance */}
                   <div className="compare-countries-section">
                     <h3 className="compare-countries-section-title">Key Indicators</h3>
-                    <div className="compare-kpis-grid">
-                      <div className="compare-kpi-card">
-                        <div className="compare-kpi-label">GDP</div>
-                        <div className="compare-kpi-values">
-                          <span className="compare-kpi-value country1">{formatValue(economy1?.gdp_usd, 'currency')}</span>
-                          <span className="compare-kpi-value country2">{formatValue(economy2?.gdp_usd, 'currency')}</span>
-                        </div>
+
+                    {/* Wins Summary */}
+                    <div className="compare-wins-summary">
+                      <div className="compare-wins-side country1">
+                        <span className="compare-wins-iso">{country1Iso3}</span>
+                        <span className="compare-wins-count">{winCounts.c1}</span>
+                        <span className="compare-wins-label">leads</span>
                       </div>
-                      <div className="compare-kpi-card">
-                        <div className="compare-kpi-label">GDP per Capita</div>
-                        <div className="compare-kpi-values">
-                          <span className="compare-kpi-value country1">{formatValue(economy1?.gdp_per_capita_usd, 'currency')}</span>
-                          <span className="compare-kpi-value country2">{formatValue(economy2?.gdp_per_capita_usd, 'currency')}</span>
+                      <div className="compare-wins-center-col">
+                        <div className="compare-wins-dots">
+                          {categories.map(cat => {
+                            const winner = getWinner(cat.scorecardV1, cat.scorecardV2, cat.scorecardPolarity);
+                            return (
+                              <button
+                                key={cat.id}
+                                className={`compare-wins-dot-btn ${winner}`}
+                                title={cat.label}
+                                onClick={() => document.getElementById(`cat-${cat.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                              >
+                                <cat.icon className="compare-wins-dot-icon" />
+                              </button>
+                            );
+                          })}
                         </div>
+                        <span className="compare-wins-subtitle">
+                          Country leading in more indicators across {categories.length} categories
+                        </span>
                       </div>
-                      <div className="compare-kpi-card">
-                        <div className="compare-kpi-label">GDP Growth</div>
-                        <div className="compare-kpi-values">
-                          <span className="compare-kpi-value country1">{formatValue(economy1?.gdp_growth_annual_pct, 'percent')}</span>
-                          <span className="compare-kpi-value country2">{formatValue(economy2?.gdp_growth_annual_pct, 'percent')}</span>
-                        </div>
-                      </div>
-                      <div className="compare-kpi-card">
-                        <div className="compare-kpi-label">Inflation Rate</div>
-                        <div className="compare-kpi-values">
-                          <span className="compare-kpi-value country1">{formatValue(economy1?.inflation_rate_percent, 'percent')}</span>
-                          <span className="compare-kpi-value country2">{formatValue(economy2?.inflation_rate_percent, 'percent')}</span>
-                        </div>
-                      </div>
-                      <div className="compare-kpi-card">
-                        <div className="compare-kpi-label">Life Expectancy</div>
-                        <div className="compare-kpi-values">
-                          <span className="compare-kpi-value country1">{formatValue(society1?.lifeExpectancy.value, 'number')} yrs</span>
-                          <span className="compare-kpi-value country2">{formatValue(society2?.lifeExpectancy.value, 'number')} yrs</span>
-                        </div>
-                      </div>
-                      <div className="compare-kpi-card">
-                        <div className="compare-kpi-label">Population</div>
-                        <div className="compare-kpi-values">
-                          <span className="compare-kpi-value country1">{formatValue(country1BasicInfo?.population, 'number')}</span>
-                          <span className="compare-kpi-value country2">{formatValue(country2BasicInfo?.population, 'number')}</span>
-                        </div>
-                      </div>
-                      <div className="compare-kpi-card">
-                        <div className="compare-kpi-label">Democracy Index</div>
-                        <div className="compare-kpi-values">
-                          <span className="compare-kpi-value country1">{formatValue(politics1?.democracyIndex.value, 'number')}</span>
-                          <span className="compare-kpi-value country2">{formatValue(politics2?.democracyIndex.value, 'number')}</span>
-                        </div>
-                      </div>
-                      <div className="compare-kpi-card">
-                        <div className="compare-kpi-label">Govt Debt (% GDP)</div>
-                        <div className="compare-kpi-values">
-                          <span className="compare-kpi-value country1">{formatValue(economy1?.govt_debt_pct_gdp, 'percent')}</span>
-                          <span className="compare-kpi-value country2">{formatValue(economy2?.govt_debt_pct_gdp, 'percent')}</span>
-                        </div>
-                      </div>
-                      <div className="compare-kpi-card">
-                        <div className="compare-kpi-label">CO2 per Capita</div>
-                        <div className="compare-kpi-values">
-                          <span className="compare-kpi-value country1">{environment1?.co2EmissionsPerCapita.value != null ? `${environment1.co2EmissionsPerCapita.value.toFixed(1)} t` : 'N/A'}</span>
-                          <span className="compare-kpi-value country2">{environment2?.co2EmissionsPerCapita.value != null ? `${environment2.co2EmissionsPerCapita.value.toFixed(1)} t` : 'N/A'}</span>
-                        </div>
-                      </div>
-                      <div className="compare-kpi-card">
-                        <div className="compare-kpi-label">Renewable Energy</div>
-                        <div className="compare-kpi-values">
-                          <span className="compare-kpi-value country1">{formatValue(environment1?.renewableEnergyConsumptionPct.value, 'percent')}</span>
-                          <span className="compare-kpi-value country2">{formatValue(environment2?.renewableEnergyConsumptionPct.value, 'percent')}</span>
-                        </div>
-                      </div>
-                      <div className="compare-kpi-card">
-                        <div className="compare-kpi-label">Broadband (per 100)</div>
-                        <div className="compare-kpi-values">
-                          <span className="compare-kpi-value country1">{technology1?.fixedBroadbandPer100.value != null ? technology1.fixedBroadbandPer100.value.toFixed(1) : 'N/A'}</span>
-                          <span className="compare-kpi-value country2">{technology2?.fixedBroadbandPer100.value != null ? technology2.fixedBroadbandPer100.value.toFixed(1) : 'N/A'}</span>
-                        </div>
-                      </div>
-                      <div className="compare-kpi-card">
-                        <div className="compare-kpi-label">Youth Unemployment</div>
-                        <div className="compare-kpi-values">
-                          <span className="compare-kpi-value country1">{formatValue(society1?.youthUnemploymentPct?.value, 'percent')}</span>
-                          <span className="compare-kpi-value country2">{formatValue(society2?.youthUnemploymentPct?.value, 'percent')}</span>
-                        </div>
+                      <div className="compare-wins-side country2">
+                        <span className="compare-wins-label">leads</span>
+                        <span className="compare-wins-count">{winCounts.c2}</span>
+                        <span className="compare-wins-iso">{country2Iso3}</span>
                       </div>
                     </div>
+
+                    {/* Grouped KPIs */}
+                    {categories.map(cat => {
+                      const visibleMetrics = cat.metrics.filter(m => m.v1 != null || m.v2 != null);
+                      if (visibleMetrics.length === 0) return null;
+                      return (
+                        <div key={cat.id} id={`cat-${cat.id}`} className="compare-category-group">
+                          <div className="compare-category-header">
+                            <cat.icon className="compare-category-icon" />
+                            <span className="compare-category-label">{cat.label}</span>
+                          </div>
+                          <div className="compare-kpis-grid">
+                            {visibleMetrics.map(m => {
+                              const win = getWinnerClasses(m.v1, m.v2, m.polarity);
+                              const bar = getBarWidths(m.v1, m.v2, m.polarity);
+                              return (
+                                <div key={m.label} className={`compare-kpi-card ${win.card}`}>
+                                  <div className="compare-kpi-label">{m.label}</div>
+                                  <div className="compare-kpi-values">
+                                    <span className={`compare-kpi-value country1 ${win.c1}`}>
+                                      <span className="compare-kpi-iso">{country1Iso3}</span>
+                                      {formatValue(m.v1, m.format)}{m.suffix || ''}
+                                    </span>
+                                    <span className={`compare-kpi-value country2 ${win.c2}`}>
+                                      <span className="compare-kpi-iso">{country2Iso3}</span>
+                                      {formatValue(m.v2, m.format)}{m.suffix || ''}
+                                    </span>
+                                  </div>
+                                  {bar && (
+                                    <div className="compare-kpi-bar">
+                                      <div className="compare-kpi-bar-c1" style={{ width: `${bar.w1}%` }} />
+                                      <div className="compare-kpi-bar-c2" style={{ width: `${bar.w2}%` }} />
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
 
                   {/* Performance Comparison — 10-dimension Radar */}

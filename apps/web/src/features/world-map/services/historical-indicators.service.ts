@@ -47,7 +47,8 @@ class HistoricalIndicatorsService {
     const currencyIndicators = [
       'gdp', 'gdp-per-capita', 'gni-per-capita-ppp', 'exports', 'imports', 'debt',
       'total-reserves', 'military-expenditure-usd', 'oda-received', 'current-account',
-      'fdi-inflows', 'fdi-outflows', 'remittances', 'high-tech-exports'
+      'fdi-inflows', 'fdi-outflows', 'remittances', 'high-tech-exports',
+      'gdp-ppp', 'gdp-per-capita-ppp', 'merchandise-exports', 'merchandise-imports',
     ];
 
     const percentageIndicators = [
@@ -68,12 +69,19 @@ class HistoricalIndicatorsService {
       'education-expenditure', 'secondary-enrollment', 'tertiary-enrollment',
       // Infrastructure
       'internet-users', 'access-electricity',
+      // Geopolitical expansion
+      'govt-revenue', 'govt-expenditure', 'fossil-fuel-consumption',
+      'roads-paved', 'electricity-losses', 'electricity-from-oil',
+      'armed-forces-pct-labor', 'military-expenditure-pct-govt',
+      'natural-resource-rents', 'noncommunicable-deaths',
+      'external-debt-pct-gni',
     ];
 
     const indexIndicators = [
       'gini', 'political-stability', 'voice-accountability',
       'government-effectiveness', 'regulatory-quality', 'rule-of-law',
-      'control-of-corruption', 'logistics-index', 'uhc-coverage'
+      'control-of-corruption', 'logistics-index', 'uhc-coverage',
+      'food-production-index',
     ];
 
     if (currencyIndicators.includes(indicatorSlug)) {
@@ -214,6 +222,41 @@ class HistoricalIndicatorsService {
       'protected-areas': 'Terrestrial Protected Areas (%)',
       'methane-emissions': 'Methane Emissions (Mt CO2e)',
       'forest-rents': 'Forest Rents (% GDP)',
+      // Geopolitical expansion — Economy
+      'gdp-ppp': 'GDP, PPP (international $)',
+      'gdp-per-capita-ppp': 'GDP per Capita, PPP (international $)',
+      'exchange-rate': 'Exchange Rate (LCU per USD)',
+      'labor-force': 'Labor Force (total)',
+      'govt-revenue': 'Government Revenue (% GDP)',
+      'govt-expenditure': 'Government Expenditure (% GDP)',
+      // Geopolitical expansion — Environment
+      'ghg-emissions-total': 'Total GHG Emissions (kt CO2e)',
+      'fossil-fuel-consumption': 'Fossil Fuel Consumption (% total)',
+      'land-area': 'Land Area (km²)',
+      // Geopolitical expansion — Infrastructure
+      'rail-lines': 'Rail Lines (total km)',
+      'roads-paved': 'Roads Paved (% total)',
+      'container-port-traffic': 'Container Port Traffic (TEU)',
+      'air-departures': 'Air Transport Departures',
+      'air-freight': 'Air Freight (million ton-km)',
+      'electricity-losses': 'Electricity Transmission Losses (%)',
+      'electricity-from-oil': 'Electricity from Oil (%)',
+      // Geopolitical expansion — Defense
+      'armed-forces-pct-labor': 'Armed Forces (% labor force)',
+      'military-expenditure-pct-govt': 'Military Expenditure (% govt spending)',
+      // Geopolitical expansion — International
+      'merchandise-exports': 'Merchandise Exports (USD)',
+      'merchandise-imports': 'Merchandise Imports (USD)',
+      'natural-resource-rents': 'Natural Resource Rents (% GDP)',
+      // Geopolitical expansion — Technology
+      'patents-nonresidents': 'Patent Applications (non-residents)',
+      'trademarks': 'Trademark Applications (residents)',
+      // Geopolitical expansion — Society
+      'suicide-rate': 'Suicide Mortality Rate (per 100,000)',
+      'noncommunicable-deaths': 'Non-communicable Disease Deaths (%)',
+      // Final geopolitical
+      'external-debt-pct-gni': 'External Debt (% of GNI)',
+      'food-production-index': 'Food Production Index (2014-2016 = 100)',
     };
     return names[slug] || slug;
   }

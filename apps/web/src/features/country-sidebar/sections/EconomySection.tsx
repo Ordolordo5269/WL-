@@ -11,7 +11,11 @@ import {
   TrendingUp,
   Landmark,
   Wallet,
-  Factory
+  Factory,
+  Banknote,
+  HardHat,
+  Receipt,
+  CreditCard
 } from 'lucide-react';
 import { economyService } from '../services/economy-service';
 import type { EconomyData } from '../services/economy-service';
@@ -173,6 +177,30 @@ export default function EconomySection({ economyData, isLoading, error }: Econom
             </div>
           )}
 
+          {economyData.gdp_ppp_usd !== null && economyData.gdp_ppp_usd !== undefined && (
+            <div className="metric-item">
+              <div className="metric-icon small">
+                <Globe className="h-4 w-4" />
+              </div>
+              <div className="metric-content">
+                <div className="metric-label">GDP (PPP)</div>
+                <div className="metric-value">{economyService.formatCurrency(economyData.gdp_ppp_usd)}</div>
+              </div>
+            </div>
+          )}
+
+          {economyData.gdp_per_capita_ppp_usd !== null && economyData.gdp_per_capita_ppp_usd !== undefined && (
+            <div className="metric-item">
+              <div className="metric-icon small">
+                <Users className="h-4 w-4" />
+              </div>
+              <div className="metric-content">
+                <div className="metric-label">GDP per Capita (PPP)</div>
+                <div className="metric-value">{economyService.formatCurrency(economyData.gdp_per_capita_ppp_usd)}</div>
+              </div>
+            </div>
+          )}
+
           {economyData.gni_per_capita_ppp !== null && (
             <div className="metric-item">
               <div className="metric-icon small">
@@ -267,6 +295,19 @@ export default function EconomySection({ economyData, isLoading, error }: Econom
           </div>
         </div>
       )}
+      {economyData.external_debt_pct_gni !== null && economyData.external_debt_pct_gni !== undefined && (
+        <div className="metric-item">
+          <div className="metric-icon small">
+            <Globe className="h-4 w-4" />
+          </div>
+          <div className="metric-content">
+            <div className="metric-label">External Debt (% GNI)</div>
+            <div className={`metric-value ${economyData.external_debt_pct_gni > 80 ? 'value-negative' : 'value-neutral'}`}>
+              {economyService.formatPercentage(economyData.external_debt_pct_gni)}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Fiscal & Financial Health */}
       {(economyData.govt_debt_pct_gdp !== null || economyData.tax_revenue_pct_gdp !== null ||
@@ -348,6 +389,42 @@ export default function EconomySection({ economyData, isLoading, error }: Econom
                 <div className="metric-content">
                   <div className="metric-label">Remittances (% GDP)</div>
                   <div className="metric-value">{economyService.formatPercentage(economyData.remittances_received_pct_gdp)}</div>
+                </div>
+              </div>
+            )}
+            {economyData.govt_revenue_pct_gdp !== null && economyData.govt_revenue_pct_gdp !== undefined && (
+              <div className="metric-item">
+                <div className="metric-icon small"><Receipt className="h-4 w-4" /></div>
+                <div className="metric-content">
+                  <div className="metric-label">Govt Revenue (% GDP)</div>
+                  <div className="metric-value">{economyService.formatPercentage(economyData.govt_revenue_pct_gdp)}</div>
+                </div>
+              </div>
+            )}
+            {economyData.govt_expenditure_pct_gdp !== null && economyData.govt_expenditure_pct_gdp !== undefined && (
+              <div className="metric-item">
+                <div className="metric-icon small"><CreditCard className="h-4 w-4" /></div>
+                <div className="metric-content">
+                  <div className="metric-label">Govt Expenditure (% GDP)</div>
+                  <div className="metric-value">{economyService.formatPercentage(economyData.govt_expenditure_pct_gdp)}</div>
+                </div>
+              </div>
+            )}
+            {economyData.exchange_rate_lcu_per_usd !== null && economyData.exchange_rate_lcu_per_usd !== undefined && (
+              <div className="metric-item">
+                <div className="metric-icon small"><Banknote className="h-4 w-4" /></div>
+                <div className="metric-content">
+                  <div className="metric-label">Exchange Rate (LCU/USD)</div>
+                  <div className="metric-value">{economyData.exchange_rate_lcu_per_usd.toFixed(2)}</div>
+                </div>
+              </div>
+            )}
+            {economyData.labor_force_total !== null && economyData.labor_force_total !== undefined && (
+              <div className="metric-item">
+                <div className="metric-icon small"><HardHat className="h-4 w-4" /></div>
+                <div className="metric-content">
+                  <div className="metric-label">Labor Force</div>
+                  <div className="metric-value">{economyService.formatNumber(economyData.labor_force_total)}</div>
                 </div>
               </div>
             )}

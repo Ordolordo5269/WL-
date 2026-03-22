@@ -2443,6 +2443,7 @@
 /* Shared bento zone base style */
 .bento-zone-economy,
 .bento-zone-society,
+.bento-zone-technology,
 .bento-zone-health,
 .bento-zone-politics,
 .bento-zone-defense,
@@ -2460,6 +2461,7 @@
 
 .bento-zone-economy:hover,
 .bento-zone-society:hover,
+.bento-zone-technology:hover,
 .bento-zone-health:hover,
 .bento-zone-politics:hover,
 .bento-zone-defense:hover,
@@ -2481,14 +2483,19 @@
   grid-column: 7 / -1;
 }
 
-/* Zone: Health (50%) */
-.bento-zone-health {
+/* Zone: Technology (50%) */
+.bento-zone-technology {
   grid-column: 1 / 7;
 }
 
-/* Zone: Infrastructure (50%) */
-.bento-zone-infrastructure {
+/* Zone: Health (50%) */
+.bento-zone-health {
   grid-column: 7 / -1;
+}
+
+/* Zone: Infrastructure (Full Width) */
+.bento-zone-infrastructure {
+  grid-column: 1 / -1;
 }
 
 /* Zone 6: Politics (33%) */
@@ -2522,6 +2529,7 @@
 .bento-zone-dynamic,
 .bento-zone-economy,
 .bento-zone-society,
+.bento-zone-technology,
 .bento-zone-health,
 .bento-zone-politics,
 .bento-zone-defense,
@@ -2611,6 +2619,10 @@
     grid-column: 1 / -1;
   }
 
+  .bento-zone-technology {
+    grid-column: 1 / -1;
+  }
+
   .bento-zone-health {
     grid-column: 1 / -1;
   }
@@ -2631,6 +2643,7 @@
   .bento-zone-dynamic,
   .bento-zone-economy,
   .bento-zone-society,
+  .bento-zone-technology,
   .bento-zone-health,
   .bento-zone-politics,
   .bento-zone-defense,

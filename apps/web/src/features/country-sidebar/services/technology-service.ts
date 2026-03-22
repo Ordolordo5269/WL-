@@ -13,6 +13,9 @@ export interface TechnologyData {
   scientificJournalArticles: IndicatorPoint; // IP.JRN.ARTC.SC (Scientific and technical journal articles)
   fixedBroadbandPer100: IndicatorPoint;
   highTechExportsPctManuf: IndicatorPoint;
+  // Geopolitical expansion
+  patentApplicationsNonresidents: IndicatorPoint;
+  trademarkApplicationsResidents: IndicatorPoint;
   sources: { worldBank: string };
 }
 
@@ -46,6 +49,8 @@ class TechnologyService {
         scientificJournalArticles: { value: null, year: null },
         fixedBroadbandPer100: { value: null, year: null },
         highTechExportsPctManuf: { value: null, year: null },
+        patentApplicationsNonresidents: { value: null, year: null },
+        trademarkApplicationsResidents: { value: null, year: null },
         sources: { worldBank: 'https://api.worldbank.org/v2/' }
       };
     }

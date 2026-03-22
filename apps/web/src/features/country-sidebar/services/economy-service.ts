@@ -27,6 +27,14 @@ export interface EconomyData {
   fdi_net_inflows_pct_gdp: number | null;
   remittances_received_pct_gdp: number | null;
   manufacturing_pct_gdp: number | null;
+  // Geopolitical expansion
+  gdp_ppp_usd: number | null;
+  gdp_per_capita_ppp_usd: number | null;
+  exchange_rate_lcu_per_usd: number | null;
+  labor_force_total: number | null;
+  govt_revenue_pct_gdp: number | null;
+  govt_expenditure_pct_gdp: number | null;
+  external_debt_pct_gni: number | null;
 }
 
 class EconomyService {

@@ -15,12 +15,19 @@ interface HistoricalTrendsSectionProps {
 const ECONOMIC_INDICATORS = [
   { slug: 'gdp', name: 'GDP', color: '#3b82f6', category: 'economic' },
   { slug: 'gdp-per-capita', name: 'GDP per Capita', color: '#10b981', category: 'economic' },
+  { slug: 'gdp-ppp', name: 'GDP (PPP)', color: '#2563eb', category: 'economic' },
+  { slug: 'gdp-per-capita-ppp', name: 'GDP per Capita (PPP)', color: '#059669', category: 'economic' },
   { slug: 'inflation', name: 'Inflation', color: '#f59e0b', category: 'economic' },
   { slug: 'gini', name: 'GINI Index', color: '#ef4444', category: 'economic' },
   { slug: 'exports', name: 'Exports', color: '#8b5cf6', category: 'economic' },
   { slug: 'imports', name: 'Imports', color: '#ec4899', category: 'economic' },
   { slug: 'unemployment', name: 'Unemployment', color: '#06b6d4', category: 'economic' },
-  { slug: 'debt', name: 'External Debt', color: '#f97316', category: 'economic' }
+  { slug: 'debt', name: 'External Debt', color: '#f97316', category: 'economic' },
+  { slug: 'exchange-rate', name: 'Exchange Rate (LCU/USD)', color: '#d946ef', category: 'economic' },
+  { slug: 'labor-force', name: 'Labor Force', color: '#0d9488', category: 'economic' },
+  { slug: 'govt-revenue', name: 'Govt Revenue (% GDP)', color: '#16a34a', category: 'economic' },
+  { slug: 'govt-expenditure', name: 'Govt Expenditure (% GDP)', color: '#dc2626', category: 'economic' },
+  { slug: 'external-debt-pct-gni', name: 'External Debt (% GNI)', color: '#b91c1c', category: 'economic' },
 ];
 
 // Society Indicators
@@ -34,7 +41,9 @@ const SOCIETY_INDICATORS = [
   { slug: 'urban-population', name: 'Urban Population', color: '#06b6d4', category: 'society' },
   { slug: 'population-density', name: 'Population Density', color: '#f97316', category: 'society' },
   { slug: 'primary-enrollment', name: 'Primary Enrollment', color: '#14b8a6', category: 'society' },
-  { slug: 'poverty', name: 'Extreme Poverty', color: '#ef4444', category: 'society' }
+  { slug: 'poverty', name: 'Extreme Poverty', color: '#ef4444', category: 'society' },
+  { slug: 'suicide-rate', name: 'Suicide Rate', color: '#9f1239', category: 'society' },
+  { slug: 'noncommunicable-deaths', name: 'Non-communicable Deaths (%)', color: '#be123c', category: 'society' },
 ];
 
 // Health Indicators
@@ -74,7 +83,9 @@ const DEFENSE_INDICATORS = [
   { slug: 'armed-forces-personnel', name: 'Armed Forces Personnel', color: '#f87171', category: 'defense' },
   { slug: 'arms-imports', name: 'Arms Imports', color: '#fb923c', category: 'defense' },
   { slug: 'arms-exports', name: 'Arms Exports', color: '#f97316', category: 'defense' },
-  { slug: 'battle-deaths', name: 'Battle-Related Deaths', color: '#991b1b', category: 'defense' }
+  { slug: 'battle-deaths', name: 'Battle-Related Deaths', color: '#991b1b', category: 'defense' },
+  { slug: 'armed-forces-pct-labor', name: 'Armed Forces (% Labor)', color: '#b91c1c', category: 'defense' },
+  { slug: 'military-expenditure-pct-govt', name: 'Military Expenditure (% Govt)', color: '#7f1d1d', category: 'defense' },
 ];
 
 // International Indicators
@@ -84,7 +95,11 @@ const INTERNATIONAL_INDICATORS = [
   { slug: 'current-account', name: 'Current Account', color: '#0e7490', category: 'international' },
   { slug: 'fdi-inflows', name: 'FDI Inflows', color: '#155e75', category: 'international' },
   { slug: 'fdi-outflows', name: 'FDI Outflows', color: '#164e63', category: 'international' },
-  { slug: 'remittances', name: 'Remittances', color: '#0c4a6e', category: 'international' }
+  { slug: 'remittances', name: 'Remittances', color: '#0c4a6e', category: 'international' },
+  { slug: 'merchandise-exports', name: 'Merchandise Exports', color: '#0369a1', category: 'international' },
+  { slug: 'merchandise-imports', name: 'Merchandise Imports', color: '#075985', category: 'international' },
+  { slug: 'natural-resource-rents', name: 'Resource Rents (% GDP)', color: '#1e3a5f', category: 'international' },
+  { slug: 'food-production-index', name: 'Food Production Index', color: '#65a30d', category: 'international' },
 ];
 
 // Technology Indicators
@@ -95,6 +110,8 @@ const TECHNOLOGY_INDICATORS = [
   { slug: 'patents', name: 'Patent Applications', color: '#4f46e5', category: 'technology' },
   { slug: 'journal-articles', name: 'Journal Articles', color: '#7c3aed', category: 'technology' },
   { slug: 'broadband', name: 'Broadband', color: '#8b5cf6', category: 'technology' },
+  { slug: 'patents-nonresidents', name: 'Patents (Non-residents)', color: '#4338ca', category: 'technology' },
+  { slug: 'trademarks', name: 'Trademark Applications', color: '#5b21b6', category: 'technology' },
 ];
 
 // Infrastructure Indicators
@@ -104,6 +121,13 @@ const INFRASTRUCTURE_INDICATORS = [
   { slug: 'access-electricity', name: 'Access to Electricity', color: '#eab308', category: 'infrastructure' },
   { slug: 'air-transport', name: 'Air Transport', color: '#0ea5e9', category: 'infrastructure' },
   { slug: 'secure-servers', name: 'Secure Servers', color: '#0284c7', category: 'infrastructure' },
+  { slug: 'rail-lines', name: 'Rail Lines (km)', color: '#0f766e', category: 'infrastructure' },
+  { slug: 'roads-paved', name: 'Roads Paved (%)', color: '#115e59', category: 'infrastructure' },
+  { slug: 'container-port-traffic', name: 'Container Port Traffic', color: '#134e4a', category: 'infrastructure' },
+  { slug: 'air-departures', name: 'Air Departures', color: '#0369a1', category: 'infrastructure' },
+  { slug: 'air-freight', name: 'Air Freight', color: '#075985', category: 'infrastructure' },
+  { slug: 'electricity-losses', name: 'Electricity Losses (%)', color: '#b45309', category: 'infrastructure' },
+  { slug: 'electricity-from-oil', name: 'Electricity from Oil (%)', color: '#92400e', category: 'infrastructure' },
 ];
 
 // Raw Materials / Commodities Indicators
@@ -130,6 +154,8 @@ const ENVIRONMENT_INDICATORS = [
   { slug: 'renewable-electricity', name: 'Renewable Electricity', color: '#14b8a6', category: 'environment' },
   { slug: 'protected-areas', name: 'Protected Areas', color: '#16a34a', category: 'environment' },
   { slug: 'methane-emissions', name: 'Methane Emissions', color: '#dc2626', category: 'environment' },
+  { slug: 'fossil-fuel-consumption', name: 'Fossil Fuel Consumption (%)', color: '#78716c', category: 'environment' },
+  { slug: 'land-area', name: 'Land Area (km²)', color: '#65a30d', category: 'environment' },
 ];
 
 type CategoryKey = 'all' | 'economic' | 'society' | 'health' | 'education' | 'politics' | 'defense' | 'international' | 'technology' | 'infrastructure' | 'commodities' | 'environment';

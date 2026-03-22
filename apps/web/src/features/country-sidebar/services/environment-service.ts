@@ -20,6 +20,10 @@ export interface EnvironmentData {
   // Energy Transition
   renewableEnergyConsumptionPct: IndicatorPoint;
   renewableElectricityOutputPct: IndicatorPoint;
+  // Geopolitical expansion
+  ghgEmissionsTotalKt: IndicatorPoint;
+  fossilFuelConsumptionPct: IndicatorPoint;
+  landAreaSqKm: IndicatorPoint;
   sources: { worldBank: string };
 }
 
@@ -57,6 +61,9 @@ class EnvironmentService {
         forestRentsPctGdp: empty,
         renewableEnergyConsumptionPct: empty,
         renewableElectricityOutputPct: empty,
+        ghgEmissionsTotalKt: empty,
+        fossilFuelConsumptionPct: empty,
+        landAreaSqKm: empty,
         sources: { worldBank: 'https://api.worldbank.org/v2/' }
       };
     }
@@ -93,6 +100,13 @@ class EnvironmentService {
   formatUgM3(value: number | null): string {
     if (value === null || value === undefined) return 'N/A';
     return `${Number(value).toFixed(1)} µg/m³`;
+  }
+
+  formatSqKm(value: number | null): string {
+    if (value === null || value === undefined) return 'N/A';
+    if (value >= 1e6) return `${(value / 1e6).toFixed(2)}M km²`;
+    if (value >= 1e3) return `${(value / 1e3).toFixed(1)}K km²`;
+    return `${Number(value).toLocaleString()} km²`;
   }
 }
 

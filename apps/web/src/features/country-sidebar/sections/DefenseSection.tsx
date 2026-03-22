@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { AlertCircle, Shield, Users, DollarSign, ArrowDownToLine, ArrowUpFromLine, Skull } from 'lucide-react';
+import { AlertCircle, Shield, Users, DollarSign, ArrowDownToLine, ArrowUpFromLine, Skull, Percent, Landmark } from 'lucide-react';
 import { defenseService } from '../services/defense-service';
 import type { TDefenseData } from '../services/defense-service';
 
@@ -81,6 +81,24 @@ export default function DefenseSection({ data, isLoading, error }: DefenseSectio
               <div className="metric-value">{s.formatNumber(data.battleRelatedDeaths.value)}</div>
             </div>
           </div>
+          {data.armedForcesPctLaborForce?.value != null && (
+            <div className="metric-item">
+              <div className="metric-icon small"><Percent className="w-4 h-4" /></div>
+              <div className="metric-content">
+                <div className="metric-label">Armed forces (% labor) {data.armedForcesPctLaborForce.year ? <span className="ml-2 text-[10px] text-slate-400">{data.armedForcesPctLaborForce.year}</span> : null}</div>
+                <div className="metric-value">{s.formatPercent(data.armedForcesPctLaborForce.value)}</div>
+              </div>
+            </div>
+          )}
+          {data.militaryExpenditurePctGovt?.value != null && (
+            <div className="metric-item">
+              <div className="metric-icon small"><Landmark className="w-4 h-4" /></div>
+              <div className="metric-content">
+                <div className="metric-label">Military spend (% govt) {data.militaryExpenditurePctGovt.year ? <span className="ml-2 text-[10px] text-slate-400">{data.militaryExpenditurePctGovt.year}</span> : null}</div>
+                <div className="metric-value">{s.formatPercent(data.militaryExpenditurePctGovt.value)}</div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </motion.div>
