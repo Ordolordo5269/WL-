@@ -1,0 +1,87 @@
+<svg width="560" height="280" viewBox="0 0 560 280" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gbg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#120808"/>
+      <stop offset="60%" stop-color="#1a0c06"/>
+      <stop offset="100%" stop-color="#0d0604"/>
+    </linearGradient>
+    <radialGradient id="lava" cx="50%" cy="30%" r="50%">
+      <stop offset="0%" stop-color="#ff6600" stop-opacity="0.3"/>
+      <stop offset="60%" stop-color="#e84b1a" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#e84b1a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="caldera" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ff8c00" stop-opacity="0.5"/>
+      <stop offset="40%" stop-color="#e84b1a" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#e84b1a" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="gglow">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="gglow2">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="560" height="280" fill="url(#gbg)"/>
+  <!-- Tectonic zone background -->
+  <g opacity="0.04" stroke="#e84b1a" fill="none" stroke-width="0.5">
+    <path d="M0 140 Q140 100, 280 140 Q420 180, 560 140"/>
+    <path d="M0 120 Q140 80, 280 120 Q420 160, 560 120"/>
+    <path d="M0 160 Q140 120, 280 160 Q420 200, 560 160"/>
+  </g>
+  <!-- Volcanic cones silhouette -->
+  <path d="M0 280 L100 280 L160 200 L200 240 L240 170 L280 280Z" fill="#2a1008" opacity="0.5"/>
+  <path d="M280 280 L340 220 L380 250 L420 160 L460 210 L500 280Z" fill="#2a1008" opacity="0.4"/>
+  <!-- Main volcano -->
+  <g filter="url(#gglow)">
+    <path d="M180 280 L280 100 L380 280Z" fill="#3a1a0a" opacity="0.6"/>
+    <path d="M250 280 L280 100 L310 280Z" fill="#4a2010" opacity="0.4"/>
+  </g>
+  <!-- Caldera glow -->
+  <g filter="url(#gglow2)">
+    <ellipse cx="280" cy="95" rx="30" ry="12" fill="url(#caldera)">
+      <animate attributeName="opacity" values="0.8;0.4;0.8" dur="3s" repeatCount="indefinite"/>
+    </ellipse>
+  </g>
+  <!-- Eruption plume suggestion -->
+  <g opacity="0.15" filter="url(#gglow)">
+    <ellipse cx="280" cy="55" rx="50" ry="25" fill="#e84b1a" opacity="0.1"/>
+    <ellipse cx="280" cy="35" rx="35" ry="18" fill="#ff8c00" opacity="0.08"/>
+  </g>
+  <!-- Lava flow lines -->
+  <g stroke="#e84b1a" fill="none" stroke-width="1" opacity="0.2">
+    <path d="M275 105 C265 140, 250 180, 240 230" stroke-linecap="round">
+      <animate attributeName="opacity" values="0.2;0.05;0.2" dur="4s" repeatCount="indefinite"/>
+    </path>
+    <path d="M285 105 C295 150, 310 190, 320 240" stroke-linecap="round">
+      <animate attributeName="opacity" values="0.05;0.2;0.05" dur="3.5s" repeatCount="indefinite"/>
+    </path>
+  </g>
+  <!-- Seismic wave rings -->
+  <g stroke="#ff6b35" fill="none" opacity="0.12">
+    <circle cx="280" cy="260" r="30" stroke-width="0.5">
+      <animate attributeName="r" values="30;80" dur="4s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.12;0" dur="4s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="280" cy="260" r="30" stroke-width="0.5">
+      <animate attributeName="r" values="30;80" dur="4s" begin="2s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.12;0" dur="4s" begin="2s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  <!-- Monitoring points -->
+  <g fill="#ff8c00" opacity="0.6">
+    <circle cx="160" cy="195" r="2"><animate attributeName="opacity" values="0.6;0.2;0.6" dur="3s" repeatCount="indefinite"/></circle>
+    <circle cx="420" cy="155" r="2.5"><animate attributeName="opacity" values="0.2;0.6;0.2" dur="3.5s" repeatCount="indefinite"/></circle>
+    <circle cx="280" cy="90" r="3"><animate attributeName="opacity" values="0.8;0.3;0.8" dur="2.5s" repeatCount="indefinite"/></circle>
+    <circle cx="100" cy="230" r="1.5"><animate attributeName="opacity" values="0.4;0.1;0.4" dur="4s" repeatCount="indefinite"/></circle>
+  </g>
+  <!-- Grid -->
+  <g opacity="0.02" stroke="#e84b1a">
+    <line x1="0" y1="56" x2="560" y2="56"/><line x1="0" y1="112" x2="560" y2="112"/>
+    <line x1="0" y1="168" x2="560" y2="168"/><line x1="0" y1="224" x2="560" y2="224"/>
+    <line x1="112" y1="0" x2="112" y2="280"/><line x1="224" y1="0" x2="224" y2="280"/>
+    <line x1="336" y1="0" x2="336" y2="280"/><line x1="448" y1="0" x2="448" y2="280"/>
+  </g>
+</svg>

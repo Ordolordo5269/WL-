@@ -2175,22 +2175,12 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
 
       // Conflict visualization is now handled by CountryConflictVisualization
 
-    // Restore persisted natural layer states before reinitializing
-    try {
-      const _nlStored = localStorage.getItem('wl-natural-layers');
-      if (_nlStored) {
-        const _nl = JSON.parse(_nlStored);
-        naturalEnabledRef.current = {
-          rivers: _nl.rivers ?? false,
-          ranges: _nl.ranges ?? false,
-          peaks: _nl.peaks ?? false,
-          lakes: _nl.lakes ?? false,
-          volcanoes: _nl.volcanoes ?? false,
-          'fault-lines': _nl['fault-lines'] ?? false,
-          deserts: _nl.deserts ?? false,
-        };
-      }
-    } catch {}
+    // Clear persisted natural layers — they should only be active within the Physical Layers section
+    try { localStorage.removeItem('wl-natural-layers'); } catch {}
+    naturalEnabledRef.current = {
+      rivers: false, ranges: false, peaks: false, lakes: false,
+      volcanoes: false, 'fault-lines': false, deserts: false,
+    };
 
     // Reusar helper estándar
     reinitializeInteractiveLayers();

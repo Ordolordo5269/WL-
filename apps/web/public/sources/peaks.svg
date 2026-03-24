@@ -1,0 +1,94 @@
+<svg width="560" height="280" viewBox="0 0 560 280" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="pkbg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0f0d08"/>
+      <stop offset="100%" stop-color="#18140c"/>
+    </linearGradient>
+    <linearGradient id="pkfill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#a0855b" stop-opacity=".2"/>
+      <stop offset="100%" stop-color="#6b5a3a" stop-opacity=".05"/>
+    </linearGradient>
+    <filter id="pkg">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="pkg2">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="560" height="280" fill="url(#pkbg)"/>
+  <!-- Topographic contours -->
+  <g opacity=".04" stroke="#a0855b" fill="none" stroke-width=".4">
+    <ellipse cx="280" cy="160" rx="240" ry="110"/>
+    <ellipse cx="280" cy="155" rx="200" ry="90"/>
+    <ellipse cx="280" cy="150" rx="160" ry="70"/>
+    <ellipse cx="280" cy="145" rx="120" ry="50"/>
+    <ellipse cx="280" cy="140" rx="80" ry="32"/>
+    <ellipse cx="280" cy="135" rx="40" ry="16"/>
+  </g>
+  <!-- Background range silhouette -->
+  <path d="M0 280 L0 230 Q60 220 120 200 L180 150 L220 180 L260 120 L300 160 L340 90 L380 140 L420 100 L460 150 L500 130 L540 170 L560 150 L560 280Z"
+    fill="url(#pkfill)" opacity=".5"/>
+  <!-- Summit A — tallest -->
+  <g filter="url(#pkg)">
+    <path d="M300 280 L340 50 L380 280" fill="#a0855b" fill-opacity=".08" stroke="#a0855b" stroke-width=".6" stroke-opacity=".15"/>
+  </g>
+  <path d="M340 50 L356 85 L348 80 L340 95 L332 80 L324 85Z" fill="#fff" fill-opacity=".35"/>
+  <!-- Summit marker A -->
+  <g filter="url(#pkg2)">
+    <circle cx="340" cy="44" r="4" fill="#d4a853" fill-opacity=".7">
+      <animate attributeName="opacity" values=".7;.25;.7" dur="3s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  <line x1="340" y1="48" x2="340" y2="55" stroke="#d4a853" stroke-width=".5" opacity=".4"/>
+  <!-- Summit B -->
+  <g filter="url(#pkg)">
+    <path d="M140 280 L190 110 L240 280" fill="#8b7648" fill-opacity=".06" stroke="#a0855b" stroke-width=".5" stroke-opacity=".12"/>
+  </g>
+  <path d="M190 110 L202 135 L196 130 L190 142 L184 130 L178 135Z" fill="#fff" fill-opacity=".25"/>
+  <g filter="url(#pkg2)">
+    <circle cx="190" cy="104" r="3" fill="#d4a853" fill-opacity=".6">
+      <animate attributeName="opacity" values=".25;.6;.25" dur="3.5s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  <line x1="190" y1="107" x2="190" y2="114" stroke="#d4a853" stroke-width=".5" opacity=".3"/>
+  <!-- Summit C -->
+  <g filter="url(#pkg)">
+    <path d="M420 280 L470 85 L520 280" fill="#8b7648" fill-opacity=".06" stroke="#a0855b" stroke-width=".5" stroke-opacity=".12"/>
+  </g>
+  <path d="M470 85 L482 112 L476 108 L470 118 L464 108 L458 112Z" fill="#fff" fill-opacity=".28"/>
+  <g filter="url(#pkg2)">
+    <circle cx="470" cy="79" r="3" fill="#d4a853" fill-opacity=".6">
+      <animate attributeName="opacity" values=".5;.15;.5" dur="4s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  <line x1="470" y1="82" x2="470" y2="89" stroke="#d4a853" stroke-width=".5" opacity=".3"/>
+  <!-- Summit D (smaller) -->
+  <g filter="url(#pkg)">
+    <path d="M70 280 L100 155 L130 280" fill="#8b7648" fill-opacity=".04" stroke="#a0855b" stroke-width=".4" stroke-opacity=".1"/>
+  </g>
+  <circle cx="100" cy="150" r="2" fill="#d4a853" fill-opacity=".4">
+    <animate attributeName="opacity" values=".4;.1;.4" dur="4.5s" repeatCount="indefinite"/>
+  </circle>
+  <!-- Altitude labels -->
+  <g font-family="monospace" font-size="7" fill="#d4a853" opacity=".15">
+    <text x="348" y="40">8,849m</text>
+    <text x="198" y="100">8,611m</text>
+    <text x="478" y="75">6,190m</text>
+    <text x="108" y="148">4,810m</text>
+  </g>
+  <!-- Prominence lines -->
+  <g stroke="#a0855b" stroke-dasharray="2 3" fill="none" stroke-width=".4" opacity=".08">
+    <line x1="340" y1="50" x2="560" y2="50"/>
+    <line x1="190" y1="110" x2="0" y2="110"/>
+    <line x1="470" y1="85" x2="560" y2="85"/>
+  </g>
+  <!-- Grid -->
+  <g opacity=".02" stroke="#a0855b">
+    <line x1="0" y1="56" x2="560" y2="56"/><line x1="0" y1="112" x2="560" y2="112"/>
+    <line x1="0" y1="168" x2="560" y2="168"/><line x1="0" y1="224" x2="560" y2="224"/>
+    <line x1="112" y1="0" x2="112" y2="280"/><line x1="224" y1="0" x2="224" y2="280"/>
+    <line x1="336" y1="0" x2="336" y2="280"/><line x1="448" y1="0" x2="448" y2="280"/>
+  </g>
+</svg>

@@ -1,0 +1,83 @@
+<svg width="560" height="280" viewBox="0 0 560 280" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="tecbg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d0806"/>
+      <stop offset="100%" stop-color="#140c08"/>
+    </linearGradient>
+    <linearGradient id="fault" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ff6b35" stop-opacity="0.6"/>
+      <stop offset="50%" stop-color="#ff9a5c" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#ff6b35" stop-opacity="0.6"/>
+    </linearGradient>
+    <filter id="fglow">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="fglow2">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="560" height="280" fill="url(#tecbg)"/>
+  <!-- Plate surface texture -->
+  <g opacity="0.03" stroke="#ff6b35" fill="none" stroke-width="0.3">
+    <path d="M0 20 Q280 30, 560 15"/><path d="M0 50 Q280 60, 560 45"/>
+    <path d="M0 80 Q280 90, 560 75"/><path d="M0 110 Q280 120, 560 105"/>
+    <path d="M0 140 Q280 150, 560 135"/><path d="M0 170 Q280 180, 560 165"/>
+    <path d="M0 200 Q280 210, 560 195"/><path d="M0 230 Q280 240, 560 225"/>
+    <path d="M0 260 Q280 270, 560 255"/>
+  </g>
+  <!-- Main fault line -->
+  <g filter="url(#fglow)">
+    <path d="M0 160 L60 140 L120 155 L180 130 L240 145 L300 120 L360 140 L420 115 L480 135 L540 110 L560 120"
+      stroke="url(#fault)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  </g>
+  <!-- Fault line crack effect -->
+  <g stroke="#ff6b35" fill="none" stroke-width="0.8" opacity="0.2">
+    <path d="M60 140 L50 120 L40 100" stroke-linecap="round"/>
+    <path d="M60 140 L70 165 L65 190" stroke-linecap="round"/>
+    <path d="M180 130 L170 105 L175 85" stroke-linecap="round"/>
+    <path d="M180 130 L190 155 L185 180" stroke-linecap="round"/>
+    <path d="M300 120 L290 95 L295 75" stroke-linecap="round"/>
+    <path d="M300 120 L310 148 L305 175" stroke-linecap="round"/>
+    <path d="M420 115 L410 90 L415 70" stroke-linecap="round"/>
+    <path d="M420 115 L430 145 L425 170" stroke-linecap="round"/>
+  </g>
+  <!-- Secondary fault -->
+  <g filter="url(#fglow)" opacity="0.4">
+    <path d="M40 240 L120 220 L200 235 L280 210 L360 225 L440 200 L520 220"
+      stroke="#ff6b35" stroke-width="1.5" stroke-dasharray="8 4" fill="none" stroke-linecap="round"/>
+  </g>
+  <!-- Plate labels -->
+  <g font-family="monospace" font-size="8" fill="#ff6b35" opacity="0.08" letter-spacing="3">
+    <text x="100" y="60">PLATE A</text>
+    <text x="350" y="260">PLATE B</text>
+  </g>
+  <!-- Seismic epicentres -->
+  <g filter="url(#fglow2)">
+    <circle cx="180" cy="130" r="6" fill="#ff6b35" fill-opacity="0.15" stroke="#ff6b35" stroke-width="0.5" stroke-opacity="0.3">
+      <animate attributeName="r" values="6;14" dur="3s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.3;0" dur="3s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="300" cy="120" r="8" fill="#ff9a5c" fill-opacity="0.2" stroke="#ff6b35" stroke-width="0.5" stroke-opacity="0.3">
+      <animate attributeName="r" values="8;18" dur="4s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.3;0" dur="4s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="420" cy="115" r="5" fill="#ff6b35" fill-opacity="0.15" stroke="#ff6b35" stroke-width="0.5" stroke-opacity="0.3">
+      <animate attributeName="r" values="5;12" dur="3.5s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.25;0" dur="3.5s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  <!-- Monitoring points -->
+  <g fill="#ff8c00" opacity="0.5">
+    <circle cx="180" cy="130" r="2"/><circle cx="300" cy="120" r="2.5"/><circle cx="420" cy="115" r="2"/>
+    <circle cx="120" cy="155" r="1.5" opacity="0.3"/><circle cx="480" cy="135" r="1.5" opacity="0.3"/>
+  </g>
+  <!-- Movement arrows -->
+  <g stroke="#ff6b35" fill="#ff6b35" opacity="0.1" stroke-width="0.8">
+    <path d="M200 70 L200 100 M195 95 L200 100 L205 95"/>
+    <path d="M200 190 L200 160 M195 165 L200 160 L205 165"/>
+    <path d="M400 50 L400 80 M395 75 L400 80 L405 75"/>
+    <path d="M400 200 L400 170 M395 175 L400 170 L405 175"/>
+  </g>
+</svg>

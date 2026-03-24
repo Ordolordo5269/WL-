@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import InternationalOrganizationsPanel from './InternationalOrganizationsPanel';
 import { AVAILABLE_HISTORY_YEARS, snapToAvailableYear } from '../../utils/historical-years';
 import { Crosshair, Settings, Info, Globe, Users, BarChart3, Map, User, GitCompare, Satellite } from 'lucide-react';
-import { type NasaOverlayType, NASA_EARTH_OVERLAYS, NASA_EARTH_OVERLAY_KEYS } from './map/mapAppearance';
+import { type NasaOverlayType, NASA_EARTH_OVERLAYS, NASA_EARTH_OVERLAY_KEYS, prefetchNightLightsTiles, getNasaObservationDate } from './map/mapAppearance';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -302,6 +302,7 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
     // Use an atomic transition to avoid race conditions between the async
     // style restoration of History Mode and Night Lights activation.
     if (activeItem === 'history mode' && item.label === 'Satellite Intel') {
+      prefetchNightLightsTiles();
       setActiveItem(itemKey);
       onHistoryToSatellite?.();
       return;
@@ -339,9 +340,12 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
 
     setActiveItem(itemKey);
 
-    // Auto-activate Night Lights when entering Satellite Intel
-    if (item.label === 'Satellite Intel' && !earthOverlays?.['night-lights']) {
-      onToggleEarthOverlay?.('night-lights', true);
+    // Prefetch + auto-activate Night Lights when entering Satellite Intel
+    if (item.label === 'Satellite Intel') {
+      prefetchNightLightsTiles();
+      if (!earthOverlays?.['night-lights']) {
+        onToggleEarthOverlay?.('night-lights', true);
+      }
     }
 
     if (item.label === 'Conflict Tracker' && onOpenConflictTracker) {
@@ -568,6 +572,9 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
                                     </div>
                                   </div>
                                   <div className="stats-subtitle">{cfg.description}</div>
+                                  <div style={{ fontSize: 9, color: 'rgba(160,150,200,0.45)', marginTop: 4, letterSpacing: '0.02em' }}>
+                                    Last observation — {new Date(getNasaObservationDate(key) + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                  </div>
                                 </div>
                               );
                             })}

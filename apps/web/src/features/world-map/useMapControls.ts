@@ -29,13 +29,13 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
   const [historyYear, setHistoryYear] = useState<number | null>(null);
   const [_orgIsoFilter, setOrgIsoFilter] = useState<string[]>([]);
   const [_orgColor, setOrgColor] = useState<string | null>(null);
-  const [riversEnabled, setRiversEnabled] = useState(() => getNL('rivers'));
-  const [mountainRangesEnabled, setMountainRangesEnabled] = useState(() => getNL('ranges'));
-  const [peaksEnabled, setPeaksEnabled] = useState(() => getNL('peaks'));
-  const [lakesEnabled, setLakesEnabled] = useState(() => getNL('lakes'));
-  const [volcanoesEnabled, setVolcanoesEnabled] = useState(() => getNL('volcanoes'));
-  const [faultLinesEnabled, setFaultLinesEnabled] = useState(() => getNL('fault-lines'));
-  const [desertsEnabled, setDesertsEnabled] = useState(() => getNL('deserts'));
+  const [riversEnabled, setRiversEnabled] = useState(false);
+  const [mountainRangesEnabled, setMountainRangesEnabled] = useState(false);
+  const [peaksEnabled, setPeaksEnabled] = useState(false);
+  const [lakesEnabled, setLakesEnabled] = useState(false);
+  const [volcanoesEnabled, setVolcanoesEnabled] = useState(false);
+  const [faultLinesEnabled, setFaultLinesEnabled] = useState(false);
+  const [desertsEnabled, setDesertsEnabled] = useState(false);
   const [naturalLod, setNaturalLod] = useState<'auto' | 'low' | 'med' | 'high'>('auto');
 
   // Earth Data (NASA) overlay states

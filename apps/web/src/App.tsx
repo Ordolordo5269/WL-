@@ -12,8 +12,8 @@ import { conflictsDatabase } from './data/conflicts-data';
 import { useChoropleth } from './features/world-map/useChoropleth';
 import { useMapControls } from './features/world-map/useMapControls';
 import type { MapRefType } from './features/world-map/types';
-import { NASA_EARTH_OVERLAYS, getNasaPreviewUrl, getNasaObservationDate, INSTRUMENT_INFO, OVERLAY_INSTRUMENT_MAP, type NasaOverlayType } from './features/world-map/map/mapAppearance';
-import { Satellite } from 'lucide-react';
+import { NASA_EARTH_OVERLAYS, getNasaPreviewUrl, getNasaObservationDate, INSTRUMENT_INFO, OVERLAY_INSTRUMENT_MAP, type NasaOverlayType, PHYSICAL_LAYER_CONFIG, PHYSICAL_LAYER_KEYS, type PhysicalLayerType } from './features/world-map/map/mapAppearance';
+import { Satellite, Waves, Mountain, MountainSnow, Droplets, Flame, Zap, Sun } from 'lucide-react';
 import './index.css';
 import './styles/sidebar.css';
 import "./styles/conflict-tracker.css";
@@ -97,6 +97,58 @@ function WorldMapView() {
     setExpandedOverlay(null);
     setCardTilt({ rx: 0, ry: 0, shineX: 50, shineY: 50 });
   }, []);
+
+  // Physical Layers legend — 3D tilt + cursor shine (earthy palette)
+  const physicalLegendRef = useRef<HTMLDivElement>(null);
+  const [physicalLegendTilt, setPhysicalLegendTilt] = useState({ rx: 0, ry: 0, shineX: 50, shineY: 50 });
+  const [expandedPhysicalLayer, setExpandedPhysicalLayer] = useState<PhysicalLayerType | null>(null);
+
+  // Physical expanded card — 3D tilt
+  const physicalCardRef = useRef<HTMLDivElement>(null);
+  const [physicalCardTilt, setPhysicalCardTilt] = useState({ rx: 0, ry: 0, shineX: 50, shineY: 50 });
+  const handlePhysicalCardMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const el = physicalCardRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const dx = (e.clientX - (rect.left + rect.width / 2)) / (rect.width / 2);
+    const dy = (e.clientY - (rect.top + rect.height / 2)) / (rect.height / 2);
+    const maxTilt = 8;
+    setPhysicalCardTilt({
+      rx: -dy * maxTilt,
+      ry: dx * maxTilt,
+      shineX: ((e.clientX - rect.left) / rect.width) * 100,
+      shineY: ((e.clientY - rect.top) / rect.height) * 100,
+    });
+  }, []);
+  const handlePhysicalCardMouseLeave = useCallback(() => {
+    setPhysicalCardTilt({ rx: 0, ry: 0, shineX: 50, shineY: 50 });
+  }, []);
+  const closePhysicalExpandedCard = useCallback(() => {
+    setExpandedPhysicalLayer(null);
+    setPhysicalCardTilt({ rx: 0, ry: 0, shineX: 50, shineY: 50 });
+  }, []);
+
+  // Derive active physical layers
+  const activePhysicalLayers = useMemo(() => {
+    const map: Record<PhysicalLayerType, boolean> = {
+      rivers: mapControls.riversEnabled,
+      ranges: mapControls.mountainRangesEnabled,
+      peaks: mapControls.peaksEnabled,
+      lakes: mapControls.lakesEnabled,
+      volcanoes: mapControls.volcanoesEnabled,
+      'fault-lines': mapControls.faultLinesEnabled,
+      deserts: mapControls.desertsEnabled,
+    };
+    return PHYSICAL_LAYER_KEYS.filter(k => map[k]);
+  }, [mapControls.riversEnabled, mapControls.mountainRangesEnabled, mapControls.peaksEnabled, mapControls.lakesEnabled, mapControls.volcanoesEnabled, mapControls.faultLinesEnabled, mapControls.desertsEnabled]);
+
+  // Reset expanded physical layer card when all layers deactivate
+  useEffect(() => {
+    if (activePhysicalLayers.length === 0 && expandedPhysicalLayer) {
+      setExpandedPhysicalLayer(null);
+      setPhysicalCardTilt({ rx: 0, ry: 0, shineX: 50, shineY: 50 });
+    }
+  }, [activePhysicalLayers.length, expandedPhysicalLayer]);
 
   // Preload GIBS preview images as blob URLs (GIBS sends no-store, so browser HTTP cache won't help)
   const previewBlobCache = useRef<Map<string, string>>(new Map());
@@ -237,6 +289,31 @@ function WorldMapView() {
       const dy = Math.max(-1, Math.min(1, (e.clientY - cy) / (rect.height / 2)));
       const maxTilt = 10;
       setLegendTilt({
+        rx: -dy * maxTilt * factor,
+        ry: dx * maxTilt * factor,
+        shineX: ((e.clientX - rect.left) / rect.width) * 100,
+        shineY: ((e.clientY - rect.top) / rect.height) * 100,
+      });
+    };
+    window.addEventListener('mousemove', onMove);
+    return () => window.removeEventListener('mousemove', onMove);
+  }, []);
+
+  // Physical Layers legend — 3D tilt listener (earthy palette)
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      const el = physicalLegendRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dist = Math.sqrt((e.clientX - cx) ** 2 + (e.clientY - cy) ** 2);
+      const maxDist = 400;
+      const factor = Math.max(0, 1 - dist / maxDist);
+      const dx = Math.max(-1, Math.min(1, (e.clientX - cx) / (rect.width / 2)));
+      const dy = Math.max(-1, Math.min(1, (e.clientY - cy) / (rect.height / 2)));
+      const maxTilt = 10;
+      setPhysicalLegendTilt({
         rx: -dy * maxTilt * factor,
         ry: dx * maxTilt * factor,
         shineX: ((e.clientX - rect.left) / rect.width) * 100,
@@ -1329,6 +1406,423 @@ function WorldMapView() {
                         width: 16,
                         height: 16,
                         color: 'rgba(140,120,200,0.25)',
+                      }} />
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+              </div>
+            </>
+          );
+        })()}
+      </AnimatePresence>
+
+      {/* Physical Layers Legend — Museum of the Future style (earthy palette) */}
+      <AnimatePresence>
+        {(() => {
+          if (activePhysicalLayers.length === 0) return null;
+          return (
+            <motion.div
+              ref={physicalLegendRef}
+              key="phys-legend"
+              initial={{ opacity: 0, scale: 0.88, y: 24 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.88, y: 24 }}
+              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              style={{
+                position: 'fixed',
+                bottom: 28,
+                right: 20,
+                zIndex: 50,
+                pointerEvents: 'none',
+                transform: `perspective(800px) rotateX(${physicalLegendTilt.rx}deg) rotateY(${physicalLegendTilt.ry}deg)`,
+                transition: 'transform 0.2s cubic-bezier(0.23, 1, 0.32, 1)',
+                transformStyle: 'preserve-3d',
+                willChange: 'transform',
+              }}
+            >
+              {/* Gradient border wrapper */}
+              <div style={{
+                position: 'relative',
+                borderRadius: 24,
+                padding: 1,
+                background: 'linear-gradient(170deg, rgba(180,140,80,0.2) 0%, rgba(160,120,60,0.1) 40%, rgba(100,80,40,0.05) 100%)',
+              }}>
+                {/* Ambient earthy glow */}
+                <div style={{
+                  position: 'absolute',
+                  inset: -6,
+                  borderRadius: 30,
+                  background: 'radial-gradient(ellipse at 50% 30%, rgba(180,140,60,0.07) 0%, transparent 70%)',
+                  filter: 'blur(12px)',
+                  pointerEvents: 'none',
+                }} />
+                {/* Main card */}
+                <div style={{
+                  position: 'relative',
+                  background: 'linear-gradient(170deg, rgba(18,16,12,0.95) 0%, rgba(22,18,12,0.93) 50%, rgba(36,28,16,0.9) 100%)',
+                  backdropFilter: 'blur(40px) saturate(1.3)',
+                  borderRadius: 23,
+                  padding: '20px 24px 18px',
+                  minWidth: 250,
+                  maxWidth: 310,
+                  boxShadow: '0 20px 60px rgba(0,0,0,0.55), 0 0 80px rgba(160,120,60,0.05), 0 0 0 0.5px rgba(255,255,255,0.03) inset',
+                  overflow: 'hidden',
+                  textAlign: 'center',
+                }}>
+                  {/* Cursor-following shine */}
+                  <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    borderRadius: 'inherit',
+                    background: `radial-gradient(circle at ${physicalLegendTilt.shineX}% ${physicalLegendTilt.shineY}%, rgba(200,170,100,0.12) 0%, rgba(180,140,80,0.04) 40%, transparent 65%)`,
+                    pointerEvents: 'none',
+                    transition: 'background 0.15s ease-out',
+                  }} />
+                  {/* Header */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    marginBottom: 16,
+                    paddingBottom: 12,
+                    borderBottom: '1px solid rgba(180,140,80,0.06)',
+                  }}>
+                    <div style={{ position: 'relative', width: 5, height: 5 }}>
+                      <div style={{
+                        position: 'absolute',
+                        inset: -3,
+                        borderRadius: '50%',
+                        background: 'rgba(212,168,83,0.12)',
+                        animation: 'pulse 3s ease-in-out infinite',
+                      }} />
+                      <div style={{
+                        width: 5,
+                        height: 5,
+                        borderRadius: '50%',
+                        background: '#d4a853',
+                        boxShadow: '0 0 8px rgba(212,168,83,0.4)',
+                      }} />
+                    </div>
+                    <span style={{
+                      fontSize: 9,
+                      fontWeight: 300,
+                      letterSpacing: '0.24em',
+                      textTransform: 'uppercase',
+                      color: 'rgba(190,170,130,0.5)',
+                    }}>Physical Layers</span>
+                  </div>
+                  {/* LOD controls row */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    marginBottom: 14,
+                    paddingBottom: 12,
+                    borderBottom: '1px solid rgba(180,140,80,0.06)',
+                    pointerEvents: 'auto',
+                  }}>
+                    {(['auto', 'low', 'med', 'high'] as const).map((l) => (
+                      <div
+                        key={l}
+                        onClick={() => mapControls.handleSetNaturalLod(l)}
+                        style={{
+                          fontSize: 7,
+                          fontWeight: 300,
+                          letterSpacing: '0.12em',
+                          textTransform: 'uppercase',
+                          color: mapControls.naturalLod === l ? 'rgba(212,168,83,0.8)' : 'rgba(190,170,130,0.3)',
+                          background: mapControls.naturalLod === l
+                            ? 'linear-gradient(135deg, rgba(180,140,60,0.12) 0%, rgba(140,100,40,0.06) 100%)'
+                            : 'transparent',
+                          padding: '3px 8px',
+                          borderRadius: 10,
+                          border: `1px solid ${mapControls.naturalLod === l ? 'rgba(180,140,80,0.15)' : 'rgba(180,140,80,0.05)'}`,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                        }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.opacity = '0.7'; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.opacity = '1'; }}
+                      >{l}</div>
+                    ))}
+                  </div>
+                  {/* Active layers — clickable, scrollable */}
+                  <div
+                    className="phys-legend-scroll"
+                    style={{
+                      maxHeight: 260,
+                      overflowY: 'auto',
+                      overflowX: 'hidden',
+                      marginRight: -8,
+                      paddingRight: 8,
+                    }}
+                  >
+                  {activePhysicalLayers.map((key, i) => {
+                    const cfg = PHYSICAL_LAYER_CONFIG[key];
+                    return (
+                      <div
+                        key={key}
+                        onClick={() => setExpandedPhysicalLayer(key)}
+                        style={{
+                          position: 'relative',
+                          marginBottom: i < activePhysicalLayers.length - 1 ? 14 : 0,
+                          paddingBottom: i < activePhysicalLayers.length - 1 ? 14 : 0,
+                          borderBottom: i < activePhysicalLayers.length - 1 ? '1px solid rgba(180,140,80,0.04)' : 'none',
+                          cursor: 'pointer',
+                          pointerEvents: 'auto',
+                          transition: 'opacity 0.15s',
+                        }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.opacity = '0.75'; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.opacity = '1'; }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                          {/* Layer type visual representation */}
+                          <div style={{ width: 28, height: 20, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {key === 'rivers' && (
+                              <svg width="28" height="18" viewBox="0 0 28 18" fill="none">
+                                <path d="M2 14 C8 14, 8 4, 14 4 C20 4, 20 14, 26 14" stroke={cfg.color} strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.9" />
+                                <path d="M4 16 C8 16, 10 10, 14 10" stroke={cfg.color} strokeWidth="1" strokeLinecap="round" fill="none" opacity="0.4" />
+                              </svg>
+                            )}
+                            {key === 'ranges' && (
+                              <svg width="28" height="18" viewBox="0 0 28 18" fill="none">
+                                <path d="M1 16 L7 5 L10 9 L14 2 L18 9 L21 5 L27 16Z" fill={cfg.color} fillOpacity="0.2" stroke={cfg.color} strokeWidth="1" strokeDasharray="3 2" strokeLinecap="round" opacity="0.8" />
+                              </svg>
+                            )}
+                            {key === 'peaks' && (
+                              <svg width="28" height="18" viewBox="0 0 28 18" fill="none">
+                                <path d="M14 2 L20 16 L8 16Z" fill={cfg.color} fillOpacity="0.15" stroke={cfg.color} strokeWidth="1" opacity="0.8" />
+                                <circle cx="14" cy="5" r="1.5" fill="#fff" fillOpacity="0.6" />
+                              </svg>
+                            )}
+                            {key === 'lakes' && (
+                              <svg width="28" height="18" viewBox="0 0 28 18" fill="none">
+                                <ellipse cx="14" cy="10" rx="11" ry="6" fill={cfg.color} fillOpacity="0.25" stroke={cfg.color} strokeWidth="1" opacity="0.8" />
+                                <path d="M7 9 Q14 7, 21 9" stroke={cfg.color} strokeWidth="0.5" fill="none" opacity="0.4" />
+                              </svg>
+                            )}
+                            {key === 'volcanoes' && (
+                              <svg width="28" height="18" viewBox="0 0 28 18" fill="none">
+                                <path d="M10 16 L14 6 L18 16" fill={cfg.color} fillOpacity="0.15" stroke={cfg.color} strokeWidth="1" opacity="0.7" />
+                                <circle cx="14" cy="4" r="2.5" fill={cfg.color} fillOpacity="0.3" stroke={cfg.color} strokeWidth="0.8" opacity="0.9" />
+                                <circle cx="14" cy="4" r="1" fill="#ff8c00" fillOpacity="0.8" />
+                              </svg>
+                            )}
+                            {key === 'fault-lines' && (
+                              <svg width="28" height="18" viewBox="0 0 28 18" fill="none">
+                                <path d="M2 14 L8 6 L14 12 L20 4 L26 10" stroke={cfg.color} strokeWidth="1.5" strokeDasharray="4 2" strokeLinecap="round" fill="none" opacity="0.9" />
+                                <path d="M8 6 L6 2" stroke={cfg.color} strokeWidth="0.8" fill="none" opacity="0.4" />
+                                <path d="M20 4 L22 1" stroke={cfg.color} strokeWidth="0.8" fill="none" opacity="0.4" />
+                              </svg>
+                            )}
+                            {key === 'deserts' && (
+                              <svg width="28" height="18" viewBox="0 0 28 18" fill="none">
+                                <rect x="2" y="4" width="24" height="12" rx="3" fill={cfg.color} fillOpacity="0.2" stroke={cfg.color} strokeWidth="1" strokeDasharray="3 2" opacity="0.7" />
+                                <circle cx="9" cy="9" r="1" fill={cfg.color} fillOpacity="0.4" />
+                                <circle cx="14" cy="11" r="0.8" fill={cfg.color} fillOpacity="0.3" />
+                                <circle cx="19" cy="8" r="1" fill={cfg.color} fillOpacity="0.4" />
+                              </svg>
+                            )}
+                          </div>
+                          <div style={{
+                            fontSize: 12,
+                            fontWeight: 200,
+                            color: 'rgba(240,230,210,0.9)',
+                            letterSpacing: '0.06em',
+                          }}>{cfg.label}</div>
+                        </div>
+                        <div style={{
+                          fontSize: 10,
+                          fontWeight: 200,
+                          color: 'rgba(190,170,130,0.4)',
+                          lineHeight: 1.55,
+                          letterSpacing: '0.015em',
+                          marginBottom: 6,
+                          paddingLeft: 38,
+                        }}>{cfg.legendNote}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 38 }}>
+                          <span style={{
+                            display: 'inline-block',
+                            fontSize: 7,
+                            fontWeight: 400,
+                            letterSpacing: '0.18em',
+                            textTransform: 'uppercase',
+                            color: 'rgba(180,140,80,0.4)',
+                            background: 'linear-gradient(135deg, rgba(160,120,60,0.08) 0%, rgba(120,90,40,0.04) 100%)',
+                            padding: '3px 10px',
+                            borderRadius: 20,
+                            border: '1px solid rgba(180,140,80,0.08)',
+                          }}>{cfg.legendSource}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
+
+      {/* Physical Layers — Expanded Card Popup (Museum of the Future) */}
+      <AnimatePresence>
+        {expandedPhysicalLayer && (() => {
+          const cfg = PHYSICAL_LAYER_CONFIG[expandedPhysicalLayer];
+          const PhysIconMap: Record<string, React.ComponentType<any>> = { Waves, Mountain, MountainSnow, Droplets, Flame, Zap, Sun };
+          const LayerIcon = PhysIconMap[cfg.iconName] || Mountain;
+          return (
+            <>
+              <motion.div
+                key="phys-card-overlay"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                onClick={closePhysicalExpandedCard}
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  zIndex: 55,
+                  background: 'rgba(0,0,0,0.35)',
+                  backdropFilter: 'blur(6px)',
+                }}
+              />
+              {/* Outer wrapper handles 3D tilt */}
+              <div
+                ref={physicalCardRef}
+                onMouseMove={handlePhysicalCardMouseMove}
+                onMouseLeave={handlePhysicalCardMouseLeave}
+                style={{
+                  position: 'fixed',
+                  bottom: 40,
+                  right: 24,
+                  zIndex: 60,
+                  width: 340,
+                  transform: `perspective(800px) rotateX(${physicalCardTilt.rx}deg) rotateY(${physicalCardTilt.ry}deg)`,
+                  transition: 'transform 0.18s cubic-bezier(0.23, 1, 0.32, 1)',
+                  transformStyle: 'preserve-3d',
+                  willChange: 'transform',
+                }}
+              >
+              <motion.div
+                key="phys-expanded-card"
+                initial={{ opacity: 0, scale: 0.85, y: 40 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.85, y: 40 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+              >
+                {/* Gradient border */}
+                <div style={{
+                  borderRadius: 24,
+                  padding: 1,
+                  background: 'linear-gradient(170deg, rgba(180,140,80,0.25) 0%, rgba(160,120,60,0.1) 40%, rgba(100,80,40,0.05) 100%)',
+                  position: 'relative',
+                }}>
+                  {/* Cursor-following shine */}
+                  <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    borderRadius: 'inherit',
+                    background: `radial-gradient(circle at ${physicalCardTilt.shineX}% ${physicalCardTilt.shineY}%, rgba(200,170,100,0.1) 0%, rgba(180,140,80,0.03) 40%, transparent 65%)`,
+                    pointerEvents: 'none',
+                    transition: 'background 0.15s ease-out',
+                    zIndex: 1,
+                  }} />
+                  {/* Main card */}
+                  <div style={{
+                    borderRadius: 23,
+                    background: 'linear-gradient(170deg, rgba(18,16,12,0.97) 0%, rgba(24,20,14,0.95) 50%, rgba(40,32,18,0.93) 100%)',
+                    backdropFilter: 'blur(40px) saturate(1.3)',
+                    overflow: 'hidden',
+                    boxShadow: '0 24px 70px rgba(0,0,0,0.6), 0 0 100px rgba(160,120,60,0.06)',
+                  }}>
+                    {/* Hero visual section */}
+                    <div style={{
+                      width: '100%',
+                      height: 180,
+                      backgroundImage: `url(${cfg.heroSvg})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      backgroundColor: 'rgba(18,16,12,0.8)',
+                      position: 'relative',
+                      overflow: 'hidden',
+                    }}>
+                      {/* Gradient fade at bottom */}
+                      <div style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        height: 70,
+                        background: 'linear-gradient(to top, rgba(18,16,12,0.97), transparent)',
+                      }} />
+                      {/* Close button */}
+                      <button
+                        onClick={closePhysicalExpandedCard}
+                        style={{
+                          position: 'absolute',
+                          top: 12,
+                          right: 12,
+                          width: 28,
+                          height: 28,
+                          borderRadius: '50%',
+                          background: 'rgba(0,0,0,0.45)',
+                          backdropFilter: 'blur(8px)',
+                          border: '1px solid rgba(255,255,255,0.08)',
+                          color: 'rgba(255,255,255,0.7)',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 13,
+                          lineHeight: 1,
+                          padding: 0,
+                        }}
+                      >{'\u2715'}</button>
+                    </div>
+                    {/* Content section */}
+                    <div style={{ padding: '14px 26px 22px', textAlign: 'center' }}>
+                      {/* Source badge */}
+                      <div style={{
+                        fontSize: 8,
+                        fontWeight: 400,
+                        letterSpacing: '0.22em',
+                        textTransform: 'uppercase',
+                        color: 'rgba(190,170,130,0.45)',
+                        marginBottom: 12,
+                      }}>{cfg.legendSource}</div>
+                      {/* Title */}
+                      <div style={{
+                        fontSize: 22,
+                        fontWeight: 200,
+                        color: 'rgba(240,230,210,0.92)',
+                        letterSpacing: '0.02em',
+                        lineHeight: 1.2,
+                        marginBottom: 14,
+                      }}>{cfg.label}</div>
+                      {/* Expanded description */}
+                      <div style={{
+                        fontSize: 12,
+                        fontWeight: 300,
+                        color: 'rgba(190,170,130,0.5)',
+                        lineHeight: 1.75,
+                        letterSpacing: '0.01em',
+                        marginBottom: 18,
+                      }}>{cfg.expandedDescription}</div>
+                      {/* Decorative separator + icon */}
+                      <div style={{
+                        width: 28,
+                        height: 1,
+                        background: 'linear-gradient(90deg, transparent, rgba(180,140,80,0.2), transparent)',
+                        margin: '0 auto 12px',
+                      }} />
+                      <LayerIcon style={{
+                        width: 16,
+                        height: 16,
+                        color: 'rgba(180,140,80,0.25)',
                       }} />
                     </div>
                   </div>

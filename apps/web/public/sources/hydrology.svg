@@ -1,0 +1,81 @@
+<svg width="560" height="280" viewBox="0 0 560 280" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="hbg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#060e1a"/>
+      <stop offset="100%" stop-color="#0a1a2e"/>
+    </linearGradient>
+    <linearGradient id="terrain-l" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a2a18" stop-opacity=".6"/>
+      <stop offset="100%" stop-color="#0d1a0c" stop-opacity=".3"/>
+    </linearGradient>
+    <linearGradient id="terrain-r" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a2818" stop-opacity=".5"/>
+      <stop offset="100%" stop-color="#0d180c" stop-opacity=".25"/>
+    </linearGradient>
+    <filter id="rgl"><feGaussianBlur stdDeviation="3"/></filter>
+    <filter id="rgl2"><feGaussianBlur stdDeviation="6"/></filter>
+    <filter id="rgl3"><feGaussianBlur stdDeviation="1.5"/></filter>
+  </defs>
+  <rect width="560" height="280" fill="url(#hbg)"/>
+  <!-- Left bank terrain -->
+  <path d="M0 0 L0 280 L120 280 L130 240 L110 200 L125 160 L105 130 L120 90 L100 60 L115 30 L100 0Z" fill="url(#terrain-l)"/>
+  <path d="M0 0 L0 280 L80 280 L85 230 L70 190 L80 150 L65 120 L75 80 L60 50 L70 20 L55 0Z" fill="#1a2a18" fill-opacity=".3"/>
+  <!-- Right bank terrain -->
+  <path d="M560 0 L560 280 L430 280 L420 245 L440 210 L425 175 L445 140 L430 110 L445 70 L435 40 L450 0Z" fill="url(#terrain-r)"/>
+  <path d="M560 0 L560 280 L470 280 L475 235 L465 200 L478 165 L468 130 L480 95 L470 60 L482 30 L475 0Z" fill="#1a2818" fill-opacity=".25"/>
+  <!-- River channel — main body with meanders -->
+  <g filter="url(#rgl2)">
+    <path d="M240 0 C250 20, 300 30, 310 50 C320 70, 260 85, 250 105 C240 125, 310 140, 320 160 C330 180, 270 195, 260 215 C250 235, 310 250, 330 270 L330 280 L220 280 L220 270 C240 250, 190 235, 200 215 C210 195, 260 180, 250 160 C240 140, 190 125, 200 105 C210 85, 260 70, 250 50 C240 30, 200 20, 210 0Z"
+      fill="#4aa3df" fill-opacity=".12"/>
+  </g>
+  <!-- River centerline with glow -->
+  <g filter="url(#rgl)">
+    <path d="M225 0 C235 25, 285 35, 280 55 C275 80, 225 90, 225 110 C225 130, 280 145, 280 165 C280 185, 230 200, 230 220 C230 240, 275 255, 280 280"
+      stroke="#4aa3df" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-opacity=".5"/>
+  </g>
+  <!-- Meander detail strokes -->
+  <g stroke="#5bb8ef" fill="none" stroke-width="1" opacity=".2">
+    <path d="M235 50 C245 55, 270 52, 275 58" stroke-linecap="round"/>
+    <path d="M230 108 C225 115, 240 118, 250 112" stroke-linecap="round"/>
+    <path d="M270 162 C275 168, 255 172, 245 167" stroke-linecap="round"/>
+    <path d="M235 218 C230 225, 250 228, 258 222" stroke-linecap="round"/>
+  </g>
+  <!-- Tributaries from left -->
+  <g filter="url(#rgl3)">
+    <path d="M120 50 C150 55, 180 58, 215 52" stroke="#4aa3df" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-opacity=".3"/>
+    <path d="M105 140 C135 138, 165 142, 200 112" stroke="#4aa3df" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-opacity=".25"/>
+    <path d="M115 230 C145 225, 175 228, 215 220" stroke="#4aa3df" stroke-width="1" fill="none" stroke-linecap="round" stroke-opacity=".2"/>
+  </g>
+  <!-- Tributaries from right -->
+  <g filter="url(#rgl3)">
+    <path d="M440 80 C410 78, 380 82, 310 60" stroke="#4aa3df" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-opacity=".25"/>
+    <path d="M430 170 C400 168, 365 172, 310 165" stroke="#4aa3df" stroke-width="1" fill="none" stroke-linecap="round" stroke-opacity=".2"/>
+    <path d="M445 260 C415 255, 385 258, 330 270" stroke="#4aa3df" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-opacity=".25"/>
+  </g>
+  <!-- Sandbanks / sediment -->
+  <g fill="#4aa3df" fill-opacity=".06">
+    <ellipse cx="260" cy="85" rx="12" ry="4" transform="rotate(-15 260 85)"/>
+    <ellipse cx="240" cy="145" rx="10" ry="3" transform="rotate(10 240 145)"/>
+    <ellipse cx="265" cy="205" rx="11" ry="3.5" transform="rotate(-8 265 205)"/>
+  </g>
+  <!-- Flow particles -->
+  <g fill="#5bb8ef" opacity=".6">
+    <circle cx="250" cy="40" r="1.2"><animate attributeName="cy" values="40;280" dur="12s" repeatCount="indefinite"/><animate attributeName="opacity" values=".6;.1;.6;.1;.6" dur="12s" repeatCount="indefinite"/></circle>
+    <circle cx="260" cy="120" r="1"><animate attributeName="cy" values="120;280;0;120" dur="15s" repeatCount="indefinite"/><animate attributeName="opacity" values=".4;.1;.4;.1" dur="15s" repeatCount="indefinite"/></circle>
+    <circle cx="245" cy="200" r="1.2"><animate attributeName="cy" values="200;280;0;200" dur="18s" repeatCount="indefinite"/><animate attributeName="opacity" values=".5;.1;.5;.1" dur="18s" repeatCount="indefinite"/></circle>
+  </g>
+  <!-- Gauge stations -->
+  <g>
+    <circle cx="240" cy="55" r="3" fill="none" stroke="#4aa3df" stroke-width=".8" opacity=".3"/>
+    <circle cx="240" cy="55" r="1" fill="#4aa3df" opacity=".5"><animate attributeName="opacity" values=".5;.2;.5" dur="3s" repeatCount="indefinite"/></circle>
+    <circle cx="260" cy="165" r="3" fill="none" stroke="#4aa3df" stroke-width=".8" opacity=".3"/>
+    <circle cx="260" cy="165" r="1" fill="#4aa3df" opacity=".5"><animate attributeName="opacity" values=".2;.5;.2" dur="3.5s" repeatCount="indefinite"/></circle>
+    <circle cx="250" cy="245" r="3" fill="none" stroke="#4aa3df" stroke-width=".8" opacity=".3"/>
+    <circle cx="250" cy="245" r="1" fill="#4aa3df" opacity=".5"><animate attributeName="opacity" values=".4;.15;.4" dur="4s" repeatCount="indefinite"/></circle>
+  </g>
+  <!-- Discharge labels -->
+  <g font-family="monospace" font-size="6" fill="#4aa3df" opacity=".12">
+    <text x="248" y="52">12,400 m³/s</text>
+    <text x="268" y="162">8,700 m³/s</text>
+  </g>
+</svg>

@@ -108,6 +108,25 @@ body {
   scrollbar-color: rgba(140, 120, 200, 0.15) transparent;
 }
 
+/* Physical Layers legend — minimal scrollbar (earthy tones) */
+.phys-legend-scroll::-webkit-scrollbar {
+  width: 3px;
+}
+.phys-legend-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.phys-legend-scroll::-webkit-scrollbar-thumb {
+  background: rgba(180, 140, 80, 0.15);
+  border-radius: 3px;
+}
+.phys-legend-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(180, 140, 80, 0.3);
+}
+.phys-legend-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(180, 140, 80, 0.15) transparent;
+}
+
 @media (max-width: 768px) {
   .conflict-tracker {
     width: 85vw;

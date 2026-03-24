@@ -1,0 +1,82 @@
+<svg width="560" height="280" viewBox="0 0 560 280" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="lkbg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#060e1a"/>
+      <stop offset="100%" stop-color="#0a1830"/>
+    </linearGradient>
+    <radialGradient id="lkwater" cx="50%" cy="45%" r="50%">
+      <stop offset="0%" stop-color="#5b9bd5" stop-opacity=".18"/>
+      <stop offset="60%" stop-color="#3a7cb8" stop-opacity=".1"/>
+      <stop offset="100%" stop-color="#2a5a8a" stop-opacity=".04"/>
+    </radialGradient>
+    <radialGradient id="lkdeep" cx="45%" cy="42%" r="25%">
+      <stop offset="0%" stop-color="#1a3a6c" stop-opacity=".5"/>
+      <stop offset="100%" stop-color="#1a3a6c" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="lgl"><feGaussianBlur stdDeviation="4"/></filter>
+    <filter id="lgl2"><feGaussianBlur stdDeviation="8"/></filter>
+    <filter id="lgl3"><feGaussianBlur stdDeviation="2"/></filter>
+  </defs>
+  <rect width="560" height="280" fill="url(#lkbg)"/>
+  <!-- Surrounding terrain — mountain ridgeline -->
+  <path d="M0 0 L0 100 L30 95 L60 70 L90 85 L120 55 L150 75 L180 45 L210 65 L240 40 L270 58 L300 35 L330 55 L360 42 L390 60 L420 50 L450 68 L480 55 L510 72 L540 60 L560 70 L560 0Z"
+    fill="#12200e" fill-opacity=".6"/>
+  <path d="M0 0 L0 80 L40 78 L80 58 L120 68 L160 42 L200 55 L240 30 L280 48 L320 28 L360 45 L400 38 L440 52 L480 42 L520 55 L560 48 L560 0Z"
+    fill="#0d180a" fill-opacity=".4"/>
+  <!-- Shore terrain around lake -->
+  <path d="M0 280 L0 160 L30 155 L60 170 L100 150 L140 165 L170 145 L200 155 L230 135 L260 145 L280 130 L310 140 L340 125 L370 138 L400 128 L430 142 L460 135 L490 150 L520 140 L550 155 L560 150 L560 280Z"
+    fill="#12200e" fill-opacity=".35"/>
+  <!-- Lake body — irregular shoreline -->
+  <g filter="url(#lgl)">
+    <path d="M80 140 C100 128, 140 118, 180 115 C220 112, 250 108, 280 105 C320 102, 360 108, 400 115 C440 122, 470 130, 490 140 C505 148, 510 160, 505 175 C498 192, 480 205, 450 215 C420 225, 380 230, 340 232 C300 234, 260 230, 220 225 C180 220, 140 210, 110 195 C85 182, 72 165, 72 150 C72 145, 75 142, 80 140Z"
+      fill="url(#lkwater)" stroke="#5b9bd5" stroke-width="1" stroke-opacity=".2"/>
+  </g>
+  <!-- Deep zone -->
+  <g filter="url(#lgl2)">
+    <ellipse cx="290" cy="165" rx="100" ry="45" fill="url(#lkdeep)"/>
+  </g>
+  <!-- Bathymetric contours -->
+  <g filter="url(#lgl3)" opacity=".25" stroke="#5b9bd5" fill="none" stroke-width=".5">
+    <path d="M130 155 C160 140, 220 130, 280 128 C340 126, 400 135, 450 155 C470 165, 465 185, 440 198 C400 215, 340 218, 280 216 C220 214, 160 200, 130 180 C118 172, 118 162, 130 155Z"/>
+    <path d="M180 160 C200 150, 240 142, 290 140 C340 138, 380 145, 410 160 C425 168, 422 182, 405 192 C380 205, 330 208, 280 206 C230 204, 190 195, 175 180 C168 172, 170 165, 180 160Z"/>
+    <path d="M230 168 C245 162, 270 158, 295 157 C320 156, 350 160, 368 170 C378 176, 375 185, 365 192 C348 200, 318 202, 290 201 C262 200, 240 195, 230 185 C225 180, 226 172, 230 168Z"/>
+  </g>
+  <!-- Inlet stream (top) -->
+  <g filter="url(#lgl3)">
+    <path d="M280 28 C275 45, 285 65, 278 85 C272 100, 280 108, 280 105" stroke="#4aa3df" stroke-width="2" fill="none" stroke-linecap="round" stroke-opacity=".3"/>
+  </g>
+  <!-- Outlet stream (bottom-right) -->
+  <g filter="url(#lgl3)">
+    <path d="M460 220 C475 230, 490 240, 510 248 C530 256, 545 260, 560 265" stroke="#4aa3df" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-opacity=".25"/>
+  </g>
+  <!-- Small islands -->
+  <g fill="#12200e" fill-opacity=".5">
+    <ellipse cx="320" cy="175" rx="8" ry="4" transform="rotate(-10 320 175)"/>
+    <ellipse cx="240" cy="185" rx="5" ry="3" transform="rotate(15 240 185)"/>
+  </g>
+  <!-- Shore vegetation fringe -->
+  <g fill="#1a3a18" fill-opacity=".15">
+    <path d="M100 148 C120 140, 160 130, 190 125 L185 128 C155 135, 125 145, 105 152Z"/>
+    <path d="M430 138 C450 145, 470 155, 485 165 L480 162 C465 152, 445 142, 425 135Z"/>
+  </g>
+  <!-- Water surface reflections -->
+  <g stroke="#5bb8ef" fill="none" opacity=".08" stroke-width=".6">
+    <path d="M200 150 Q240 145, 280 148 Q320 151, 360 146"/>
+    <path d="M180 170 Q230 165, 280 168 Q330 171, 380 166"/>
+    <path d="M200 190 Q250 186, 300 188 Q350 190, 390 185"/>
+  </g>
+  <!-- Monitoring buoys -->
+  <g>
+    <circle cx="260" cy="155" r="3.5" fill="none" stroke="#5b9bd5" stroke-width=".6" opacity=".25"/>
+    <circle cx="260" cy="155" r="1.2" fill="#5b9bd5" opacity=".5"><animate attributeName="opacity" values=".5;.15;.5" dur="3s" repeatCount="indefinite"/></circle>
+    <circle cx="350" cy="175" r="3.5" fill="none" stroke="#5b9bd5" stroke-width=".6" opacity=".25"/>
+    <circle cx="350" cy="175" r="1.2" fill="#5b9bd5" opacity=".5"><animate attributeName="opacity" values=".15;.5;.15" dur="3.5s" repeatCount="indefinite"/></circle>
+    <circle cx="300" cy="200" r="3.5" fill="none" stroke="#5b9bd5" stroke-width=".6" opacity=".25"/>
+    <circle cx="300" cy="200" r="1.2" fill="#5b9bd5" opacity=".5"><animate attributeName="opacity" values=".4;.1;.4" dur="4s" repeatCount="indefinite"/></circle>
+  </g>
+  <!-- Data labels -->
+  <g font-family="monospace" font-size="6" fill="#5b9bd5" opacity=".1">
+    <text x="275" y="170">Depth: 1,642m</text>
+    <text x="160" y="210">Area: 31,722 km²</text>
+  </g>
+</svg>

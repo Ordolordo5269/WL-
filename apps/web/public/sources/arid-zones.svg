@@ -1,0 +1,79 @@
+<svg width="560" height="280" viewBox="0 0 560 280" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="abg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a140a"/>
+      <stop offset="100%" stop-color="#0f0c06"/>
+    </linearGradient>
+    <linearGradient id="dune1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#d4a853" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#b08840" stop-opacity="0.08"/>
+    </linearGradient>
+    <linearGradient id="dune2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e8c97a" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#c4a050" stop-opacity="0.05"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#e8c97a" stop-opacity="0.2"/>
+      <stop offset="40%" stop-color="#d4a853" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#d4a853" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="aglow">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="560" height="280" fill="url(#abg)"/>
+  <!-- Heat shimmer lines -->
+  <g opacity="0.04" stroke="#d4a853" fill="none" stroke-width="0.3">
+    <path d="M0 30 Q140 25, 280 35 Q420 45, 560 30"/>
+    <path d="M0 60 Q140 55, 280 65 Q420 75, 560 60"/>
+    <path d="M0 90 Q140 85, 280 95 Q420 105, 560 90"/>
+  </g>
+  <!-- Sun glow -->
+  <circle cx="460" cy="50" r="60" fill="url(#sun)">
+    <animate attributeName="opacity" values="1;0.6;1" dur="6s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="460" cy="50" r="8" fill="#e8c97a" fill-opacity="0.2" filter="url(#aglow)"/>
+  <!-- Dune layers - far -->
+  <path d="M0 280 L0 200 Q70 180, 140 195 Q210 210, 280 185 Q350 160, 420 180 Q490 200, 560 175 L560 280Z"
+    fill="url(#dune2)" opacity="0.5"/>
+  <!-- Dune layers - mid -->
+  <path d="M0 280 L0 220 Q80 200, 160 215 Q240 230, 320 205 Q400 180, 480 200 Q530 210, 560 195 L560 280Z"
+    fill="url(#dune1)" opacity="0.7"/>
+  <!-- Dune layers - near -->
+  <path d="M0 280 L0 240 Q90 225, 180 238 Q270 250, 360 230 Q450 210, 530 228 L560 220 L560 280Z"
+    fill="url(#dune1)"/>
+  <!-- Dune ridge highlights -->
+  <g stroke="#e8c97a" fill="none" stroke-width="0.8" opacity="0.15">
+    <path d="M0 220 Q80 200, 160 215 Q240 230, 320 205 Q400 180, 480 200" stroke-linecap="round"/>
+    <path d="M0 240 Q90 225, 180 238 Q270 250, 360 230 Q450 210, 530 228" stroke-linecap="round"/>
+  </g>
+  <!-- Sand particles -->
+  <g fill="#d4a853" opacity="0.3">
+    <circle cx="80" cy="210" r="0.8"/><circle cx="150" cy="225" r="0.6"/>
+    <circle cx="230" cy="215" r="0.8"/><circle cx="310" cy="200" r="0.7"/>
+    <circle cx="380" cy="195" r="0.6"/><circle cx="450" cy="205" r="0.8"/>
+    <circle cx="120" cy="240" r="0.5"/><circle cx="270" cy="245" r="0.7"/>
+    <circle cx="400" cy="220" r="0.6"/><circle cx="500" cy="215" r="0.5"/>
+  </g>
+  <!-- Wind lines -->
+  <g stroke="#d4a853" fill="none" opacity="0.08" stroke-width="0.5">
+    <path d="M60 150 Q120 145, 180 150 Q240 155, 300 148">
+      <animate attributeName="opacity" values="0.08;0.02;0.08" dur="5s" repeatCount="indefinite"/>
+    </path>
+    <path d="M200 130 Q260 125, 320 130 Q380 135, 440 128">
+      <animate attributeName="opacity" values="0.02;0.08;0.02" dur="4.5s" repeatCount="indefinite"/>
+    </path>
+    <path d="M340 145 Q400 140, 460 145 Q510 148, 540 142">
+      <animate attributeName="opacity" values="0.06;0.01;0.06" dur="5.5s" repeatCount="indefinite"/>
+    </path>
+  </g>
+  <!-- Arid zone boundary (dashed) -->
+  <path d="M20 160 Q140 140, 280 155 Q420 170, 540 145"
+    stroke="#d4a853" stroke-width="1" stroke-dasharray="6 4" fill="none" opacity="0.12"/>
+  <!-- Temperature markers -->
+  <g font-family="monospace" font-size="7" fill="#d4a853" opacity="0.08">
+    <text x="100" y="170">48.2°C</text>
+    <text x="350" y="165">52.1°C</text>
+  </g>
+</svg>

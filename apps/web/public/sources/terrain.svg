@@ -1,0 +1,69 @@
+<svg width="560" height="280" viewBox="0 0 560 280" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="tbg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0f0d08"/>
+      <stop offset="100%" stop-color="#1a150c"/>
+    </linearGradient>
+    <linearGradient id="mtn1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#c4a882" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#8b6b4a" stop-opacity="0.1"/>
+    </linearGradient>
+    <linearGradient id="mtn2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#b08968" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#6b4a2a" stop-opacity="0.08"/>
+    </linearGradient>
+    <linearGradient id="snow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.1"/>
+    </linearGradient>
+    <filter id="tglow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="560" height="280" fill="url(#tbg)"/>
+  <!-- Topographic contour lines -->
+  <g opacity="0.06" stroke="#b08968" fill="none" stroke-width="0.5">
+    <ellipse cx="200" cy="140" rx="180" ry="80"/>
+    <ellipse cx="200" cy="135" rx="150" ry="65"/>
+    <ellipse cx="200" cy="130" rx="120" ry="50"/>
+    <ellipse cx="200" cy="125" rx="90" ry="35"/>
+    <ellipse cx="200" cy="120" rx="60" ry="22"/>
+    <ellipse cx="400" cy="180" rx="120" ry="60"/>
+    <ellipse cx="400" cy="175" rx="95" ry="45"/>
+    <ellipse cx="400" cy="170" rx="70" ry="30"/>
+    <ellipse cx="400" cy="165" rx="45" ry="18"/>
+  </g>
+  <!-- Background range silhouette -->
+  <path d="M0 280 L0 220 Q60 200, 100 180 L160 120 L200 160 L240 90 L280 140 L320 60 L360 110 L400 50 L440 100 L480 70 L520 130 L560 100 L560 280Z"
+    fill="url(#mtn2)" opacity="0.4"/>
+  <!-- Foreground range -->
+  <path d="M0 280 L0 230 L80 190 L140 140 L180 170 L220 100 L260 150 L300 80 L340 130 L380 60 L420 120 L460 90 L500 140 L540 110 L560 150 L560 280Z"
+    fill="url(#mtn1)"/>
+  <!-- Snowcaps -->
+  <g filter="url(#tglow)">
+    <path d="M220 100 L230 115 L210 115Z" fill="url(#snow)" opacity="0.6"/>
+    <path d="M300 80 L312 98 L288 98Z" fill="url(#snow)" opacity="0.7"/>
+    <path d="M380 60 L394 82 L366 82Z" fill="url(#snow)" opacity="0.8"/>
+    <path d="M460 90 L472 106 L448 106Z" fill="url(#snow)" opacity="0.6"/>
+  </g>
+  <!-- Peak markers -->
+  <g fill="#d4a853" opacity="0.7">
+    <circle cx="380" cy="56" r="2.5"><animate attributeName="opacity" values="0.7;0.3;0.7" dur="4s" repeatCount="indefinite"/></circle>
+    <circle cx="300" cy="76" r="2"><animate attributeName="opacity" values="0.3;0.7;0.3" dur="3.5s" repeatCount="indefinite"/></circle>
+    <circle cx="460" cy="86" r="2"><animate attributeName="opacity" values="0.5;0.2;0.5" dur="4.5s" repeatCount="indefinite"/></circle>
+  </g>
+  <!-- Elevation labels -->
+  <g font-family="monospace" font-size="7" fill="#b08968" opacity="0.15">
+    <text x="375" y="48">8849m</text>
+    <text x="295" y="68">6190m</text>
+    <text x="455" y="78">4810m</text>
+  </g>
+  <!-- Grid -->
+  <g opacity="0.025" stroke="#b08968">
+    <line x1="0" y1="56" x2="560" y2="56"/><line x1="0" y1="112" x2="560" y2="112"/>
+    <line x1="0" y1="168" x2="560" y2="168"/><line x1="0" y1="224" x2="560" y2="224"/>
+    <line x1="112" y1="0" x2="112" y2="280"/><line x1="224" y1="0" x2="224" y2="280"/>
+    <line x1="336" y1="0" x2="336" y2="280"/><line x1="448" y1="0" x2="448" y2="280"/>
+  </g>
+</svg>
