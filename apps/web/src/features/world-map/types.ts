@@ -43,4 +43,12 @@ export interface MapRefType {
   flyToCity?: (lat: number, lng: number, cityName?: string) => void;
   setCitiesData?: (cities: any[]) => void;
   setCitiesVisible?: (visible: boolean) => void;
+  setSatelliteTrackingLayers?: (enabled: boolean) => void;
+  updateSatellitePositions?: (features: any[]) => void;
+  showSatelliteGroundTrack?: (coords: [number, number][], category: string) => void;
+  removeSatelliteGroundTrack?: () => void;
+  enterSatellitePOV?: (noradId: number, category?: string) => void;
+  exitSatellitePOV?: () => void;
+  updateSatellitePOVPositions?: (features: any[]) => void;
+  isSatellitePOVActive?: () => boolean;
 }

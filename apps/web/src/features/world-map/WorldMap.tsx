@@ -8,6 +8,7 @@ import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
 import '../../styles/geocoder.css';
 import { ConflictVisualization } from '../conflicts/services/conflict-tracker/conflict-visualization';
+import { SatelliteVisualization } from './map/satellite-visualization';
 import { AVAILABLE_HISTORY_YEARS, snapToAvailableYear } from '../../utils/historical-years';
 import { ConflictDataManager, type ConflictData } from '../conflicts/services/conflict-tracker/conflict-data-manager';
 
@@ -80,6 +81,13 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   const historySelectedCanonicalRef = useRef<string | null>(null);
   const historyPopupRef = useRef<mapboxgl.Popup | null>(null);
   const naturalPopupRef = useRef<mapboxgl.Popup | null>(null);
+  const satelliteClickRegistered = useRef(false);
+  const satelliteTrackingActiveRef = useRef(false);
+  // Satellite POV mode
+  const povRafRef = useRef<number | null>(null);
+  const povNoradIdRef = useRef<number | null>(null);
+  const povPositionsRef = useRef<any[]>([]);
+  const povPrevState = useRef<{ style: StyleKey; planet: PlanetPreset; star: number; zoom: number; pitch: number; bearing: number; center: [number, number] } | null>(null);
   
   const deferredTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const rotationSpeedRef = useRef<number>(3);
@@ -1608,6 +1616,156 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       rotationSpeedRef.current = Math.max(0, Number.isFinite(degPerSec) ? degPerSec : 0);
     },
     // Earth Data overlays (toggleable NASA GIBS layers)
+    // Satellite live tracking layers
+    setSatelliteTrackingLayers: (enabled: boolean) => {
+      satelliteTrackingActiveRef.current = enabled;
+      const map = mapRef.current;
+      if (!map) return;
+      if (enabled) {
+        ensureSatelliteLayers(map);
+      } else {
+        SatelliteVisualization.cleanup(map);
+        satelliteClickRegistered.current = false;
+      }
+    },
+    updateSatellitePositions: (features: any[]) => {
+      const map = mapRef.current;
+      if (!map) return;
+      SatelliteVisualization.updatePositions(map, features);
+    },
+    showSatelliteGroundTrack: (coords: [number, number][], category: string) => {
+      const map = mapRef.current;
+      if (!map) return;
+      SatelliteVisualization.showGroundTrack(map, coords, category);
+    },
+    removeSatelliteGroundTrack: () => {
+      const map = mapRef.current;
+      if (!map) return;
+      SatelliteVisualization.removeGroundTrack(map);
+    },
+    // ── Satellite POV Mode ──
+    enterSatellitePOV: (noradId: number, category?: string) => {
+      const map = mapRef.current;
+      if (!map) return;
+      povNoradIdRef.current = noradId;
+
+      // Save current state for restoration
+      const c = map.getCenter();
+      povPrevState.current = {
+        style: styleKeyRef.current,
+        planet: planetPresetRef.current,
+        star: starIntensity,
+        zoom: map.getZoom(),
+        pitch: map.getPitch(),
+        bearing: map.getBearing(),
+        center: [c.lng, c.lat],
+      };
+
+      // Stop auto-rotate if active
+      if (spinRafRef.current !== null) {
+        cancelAnimationFrame(spinRafRef.current);
+        spinRafRef.current = null;
+      }
+
+      // Find satellite's current position from last positions
+      const sat = povPositionsRef.current.find((f: any) => f.properties?.noradId === noradId);
+      const satCoords = sat?.geometry?.coordinates || [0, 20];
+
+      // Apply category-specific atmosphere (Phase 4)
+      const SAT_ATMOSPHERE: Record<string, { planet: PlanetPreset; space: 'void' | 'deep' | 'nebula' | 'galaxy' | 'crimson'; star: number }> = {
+        military:   { planet: 'crimson', space: 'void', star: 0.4 },
+        navigation: { planet: 'sunset', space: 'deep', star: 0.8 },
+        weather:    { planet: 'arctic', space: 'deep', star: 0.95 },
+        stations:   { planet: 'orbital', space: 'deep', star: 1.0 },
+        starlink:   { planet: 'violet', space: 'galaxy', star: 0.9 },
+      };
+      const atmo = SAT_ATMOSPHERE[category || ''] || SAT_ATMOSPHERE.military;
+      appearanceApplyThemeAtmosphere(map, atmo.planet, atmo.space, atmo.star);
+
+      // Fly to satellite — top-down view (pitch 0) at continent scale (zoom 3.5)
+      // so you see the ground track curvature and the satellite moving along it
+      map.flyTo({
+        center: satCoords as [number, number],
+        zoom: 3.5,
+        pitch: 0,
+        bearing: 0,
+        duration: 1400,
+        easing: (t: number) => 1 - Math.pow(1 - t, 3),
+      });
+
+      // Request ground track so the trajectory line stays visible during POV
+      window.dispatchEvent(new CustomEvent('wl-satellite-pov-track', { detail: { noradId } }));
+
+      // Start POV follow loop — updates every 2s matching worker tick
+      if (povRafRef.current !== null) cancelAnimationFrame(povRafRef.current);
+      let lastUpdateTs = 0;
+      const step = (ts: number) => {
+        const m = mapRef.current;
+        if (!m || povNoradIdRef.current === null) {
+          povRafRef.current = null;
+          return;
+        }
+        // Throttle easeTo to every ~2s to match worker updates
+        if (ts - lastUpdateTs > 1800) {
+          lastUpdateTs = ts;
+          const target = povPositionsRef.current.find((f: any) => f.properties?.noradId === povNoradIdRef.current);
+          if (target) {
+            const coords = target.geometry.coordinates as [number, number];
+            m.easeTo({
+              center: coords,
+              duration: 2000,
+              easing: (t: number) => t, // linear for smooth tracking
+            });
+          }
+        }
+        povRafRef.current = requestAnimationFrame(step);
+      };
+      // Wait for flyTo to finish before starting follow loop
+      setTimeout(() => {
+        if (povNoradIdRef.current !== null) {
+          povRafRef.current = requestAnimationFrame(step);
+        }
+      }, 1500);
+
+      // Dispatch event so App.tsx can show HUD
+      window.dispatchEvent(new CustomEvent('wl-satellite-pov', { detail: { active: true, noradId } }));
+    },
+    exitSatellitePOV: () => {
+      const map = mapRef.current;
+      povNoradIdRef.current = null;
+
+      // Stop RAF loop
+      if (povRafRef.current !== null) {
+        cancelAnimationFrame(povRafRef.current);
+        povRafRef.current = null;
+      }
+
+      if (!map) return;
+
+      // Restore previous state
+      const prev = povPrevState.current;
+      if (prev) {
+        appearanceApplyFog(map, prev.planet);
+        map.flyTo({
+          center: prev.center,
+          zoom: prev.zoom,
+          pitch: prev.pitch,
+          bearing: prev.bearing,
+          duration: 1200,
+          easing: (t: number) => 1 - Math.pow(1 - t, 3),
+        });
+        povPrevState.current = null;
+      } else {
+        appearanceApplyFog(map, 'default');
+        map.flyTo({ center: [0, 20], zoom: 2, pitch: 0, bearing: 0, duration: 1200 });
+      }
+
+      window.dispatchEvent(new CustomEvent('wl-satellite-pov', { detail: { active: false } }));
+    },
+    updateSatellitePOVPositions: (features: any[]) => {
+      povPositionsRef.current = features;
+    },
+    isSatellitePOVActive: () => povNoradIdRef.current !== null,
     setNasaOverlayEnabled: (type: NasaOverlayType, enabled: boolean) => {
       const map = mapRef.current;
       if (!map) return;
@@ -1694,6 +1852,43 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       }
     },
   }), [easeTo, applyPhysicalModeTweaks, styleKey, setBaseFeaturesVisibility, updateOrgHighlightFilter, terrainOn, terrainExaggeration]);
+
+  // Helper: (re-)add satellite layers + click handler if tracking is active
+  const ensureSatelliteLayers = useCallback(async (map: mapboxgl.Map) => {
+    await SatelliteVisualization.addLayers(map);
+    if (!satelliteClickRegistered.current) {
+      satelliteClickRegistered.current = true;
+      const layerIds = SatelliteVisualization.getLayerIds();
+      const clickHandler = (e: mapboxgl.MapMouseEvent) => {
+        if (!e.features || e.features.length === 0) return;
+        const feature = e.features[0];
+        const props = feature.properties || {};
+        const coords = (feature.geometry as any).coordinates as [number, number];
+        const noradId = props.noradId;
+        if (noradId) {
+          // Remove previous ground track
+          SatelliteVisualization.removeGroundTrack(map);
+          window.dispatchEvent(new CustomEvent('wl-satellite-click', {
+            detail: {
+              noradId,
+              name: props.name,
+              category: props.category,
+              alt: props.alt,
+              objectId: props.objectId,
+              country: props.country,
+              lon: coords[0],
+              lat: coords[1],
+            },
+          }));
+        }
+      };
+      for (const layerId of layerIds) {
+        map.on('click', layerId, clickHandler);
+        map.on('mouseenter', layerId, () => { map.getCanvas().style.cursor = 'pointer'; });
+        map.on('mouseleave', layerId, () => { map.getCanvas().style.cursor = ''; });
+      }
+    }
+  }, []);
 
   // Helper para reinstalar fuentes/capas y eventos tras cambio de estilo
   const reinitializeInteractiveLayers = useCallback(() => {
@@ -2009,7 +2204,14 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         { event: 'click', handler: handleCountryClick, layer: 'country-highlight' }
       );
     } catch {}
-  }, [conflicts, handleCountrySelection, applyPhysicalModeTweaks, styleKey, minimalModeOn, setBaseFeaturesVisibility]);
+
+    // Re-add satellite tracking layers if they were active before the style change
+    if (satelliteTrackingActiveRef.current) {
+      satelliteClickRegistered.current = false;
+      SatelliteVisualization.resetIcons(); // Icons lost on style change
+      ensureSatelliteLayers(map);
+    }
+  }, [conflicts, handleCountrySelection, applyPhysicalModeTweaks, styleKey, minimalModeOn, setBaseFeaturesVisibility, ensureSatelliteLayers]);
 
   // El toggle inline fue movido a la sidebar (Settings)
 

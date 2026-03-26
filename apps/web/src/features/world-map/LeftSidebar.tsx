@@ -1,10 +1,21 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import InternationalOrganizationsPanel from './InternationalOrganizationsPanel';
+import StatisticsPanel from './StatisticsPanel';
 import { AVAILABLE_HISTORY_YEARS, snapToAvailableYear } from '../../utils/historical-years';
 import { Crosshair, Settings, Info, Globe, Users, BarChart3, Map, User, GitCompare, Satellite } from 'lucide-react';
 import { type NasaOverlayType, NASA_EARTH_OVERLAYS, NASA_EARTH_OVERLAY_KEYS, prefetchNightLightsTiles, getNasaObservationDate } from './map/mapAppearance';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSatelliteTracking, type SatCategory } from './useSatelliteTracking';
+import type { ChoroplethState } from './useChoropleth';
+
+const SAT_CATEGORY_META: Record<SatCategory, { label: string; count: string; color: string }> = {
+  military:   { label: 'Military & Intel',  count: '~120', color: '#ff4444' },
+  navigation: { label: 'Navigation (GNSS)', count: '~130', color: '#ffaa22' },
+  weather:    { label: 'Weather & SAR',     count: '~150', color: '#44aaff' },
+  stations:   { label: 'Stations & Relay',  count: '~40',  color: '#d4a0ff' },
+  starlink:   { label: 'Starlink',          count: '~10,000', color: '#00ff88' },
+};
 
 const LANDING_ABOUT_URL = `${import.meta.env.VITE_LANDING_URL ?? (import.meta.env.DEV ? 'http://localhost:5174' : '')}/about`;
 
@@ -25,47 +36,7 @@ interface LeftSidebarProps {
   onSetMinimalMode?: (v: boolean) => void;
   onSetAutoRotate?: (v: boolean) => void;
   onSetRotateSpeed?: (degPerSec: number) => void;
-  onToggleGdpLayer?: (enabled: boolean) => void;
-  gdpEnabled?: boolean;
-  gdpLegend?: Array<{ color: string; min?: number; max?: number }>;
-  onToggleGdpPerCapitaLayer?: (enabled: boolean) => void;
-  gdpPerCapitaEnabled?: boolean;
-  gdpPerCapitaLegend?: Array<{ color: string; min?: number; max?: number }>;
-  onToggleInflationLayer?: (enabled: boolean) => void;
-  inflationEnabled?: boolean;
-  inflationLegend?: Array<{ color: string; min?: number; max?: number }>;
-  onToggleGiniLayer?: (enabled: boolean) => void;
-  giniEnabled?: boolean;
-  giniLegend?: Array<{ color: string; min?: number; max?: number }>;
-  onToggleExportsLayer?: (enabled: boolean) => void;
-  exportsEnabled?: boolean;
-  exportsLegend?: Array<{ color: string; min?: number; max?: number }>;
-  // New indicators
-  onToggleLifeExpectancyLayer?: (enabled: boolean) => void;
-  lifeExpectancyEnabled?: boolean;
-  lifeExpectancyLegend?: Array<{ color: string; min?: number; max?: number }>;
-  onToggleMilitaryExpenditureLayer?: (enabled: boolean) => void;
-  militaryExpenditureEnabled?: boolean;
-  militaryExpenditureLegend?: Array<{ color: string; min?: number; max?: number }>;
-  onToggleDemocracyIndexLayer?: (enabled: boolean) => void;
-  democracyIndexEnabled?: boolean;
-  democracyIndexLegend?: Array<{ color: string; min?: number; max?: number }>;
-  onToggleTradeGdpLayer?: (enabled: boolean) => void;
-  tradeGdpEnabled?: boolean;
-  tradeGdpLegend?: Array<{ color: string; min?: number; max?: number }>;
-  // Raw Materials choropleths
-  onToggleFuelExportsLayer?: (enabled: boolean) => void;
-  fuelExportsEnabled?: boolean;
-  fuelExportsLegend?: Array<{ color: string; min?: number; max?: number }>;
-  onToggleMineralRentsLayer?: (enabled: boolean) => void;
-  mineralRentsEnabled?: boolean;
-  mineralRentsLegend?: Array<{ color: string; min?: number; max?: number }>;
-  onToggleEnergyImportsLayer?: (enabled: boolean) => void;
-  energyImportsEnabled?: boolean;
-  energyImportsLegend?: Array<{ color: string; min?: number; max?: number }>;
-  onToggleCerealProductionLayer?: (enabled: boolean) => void;
-  cerealProductionEnabled?: boolean;
-  cerealProductionLegend?: Array<{ color: string; min?: number; max?: number }>;
+  choropleth?: ChoroplethState;
   // History Mode controls
   onToggleHistoryMode?: (enabled: boolean, opts?: { skipRestore?: boolean }) => void;
   onResetHistoryPresentation?: () => void;
@@ -109,18 +80,70 @@ interface MenuItem {
   iconBg?: string;
 }
 
-export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConflictTracker, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetGlobeTheme, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, onToggleGdpLayer, gdpEnabled = false, gdpLegend = [], onToggleGdpPerCapitaLayer, gdpPerCapitaEnabled = false, gdpPerCapitaLegend = [], onToggleInflationLayer, inflationEnabled = false, inflationLegend = [], onToggleGiniLayer, giniEnabled = false, giniLegend = [], onToggleExportsLayer, exportsEnabled = false, exportsLegend = [], onToggleLifeExpectancyLayer, lifeExpectancyEnabled = false, lifeExpectancyLegend = [], onToggleMilitaryExpenditureLayer, militaryExpenditureEnabled = false, militaryExpenditureLegend = [], onToggleDemocracyIndexLayer, democracyIndexEnabled = false, democracyIndexLegend = [], onToggleTradeGdpLayer, tradeGdpEnabled = false, tradeGdpLegend = [], onToggleFuelExportsLayer, fuelExportsEnabled = false, fuelExportsLegend = [], onToggleMineralRentsLayer, mineralRentsEnabled = false, mineralRentsLegend = [], onToggleEnergyImportsLayer, energyImportsEnabled = false, energyImportsLegend = [], onToggleCerealProductionLayer, cerealProductionEnabled = false, cerealProductionLegend = [], onToggleHistoryMode, onSetHistoryYear, onResetHistoryPresentation, historyEnabled: _historyEnabled = false, historyYear = null, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, naturalLod = 'auto', onSetNaturalLod, earthOverlays, onToggleEarthOverlay, onHistoryToSatellite, onSatelliteToHistory }: LeftSidebarProps) {
+export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConflictTracker, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetGlobeTheme, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, choropleth, onToggleHistoryMode, onSetHistoryYear, onResetHistoryPresentation, historyEnabled: _historyEnabled = false, historyYear = null, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, naturalLod = 'auto', onSetNaturalLod, earthOverlays, onToggleEarthOverlay, onHistoryToSatellite, onSatelliteToHistory }: LeftSidebarProps) {
   const [activeItem, setActiveItem] = useState<string>('home');
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
 
-  // Deactivate all active earth overlays when leaving Satellite Intel
-  const deactivateAllOverlays = useCallback(() => {
-    if (!earthOverlays || !onToggleEarthOverlay) return;
-    for (const [key, active] of Object.entries(earthOverlays)) {
-      if (active) onToggleEarthOverlay(key as NasaOverlayType, false);
+  // ── Satellite Live Tracking ──
+  const satTracking = useSatelliteTracking();
+
+  // Bridge: wire worker output to map layers via __wl_map_comp
+  useEffect(() => {
+    const mapComp = () => (document as any).__wl_map_comp;
+
+    satTracking.setOnPositions((features: any[]) => {
+      mapComp()?.updateSatellitePositions?.(features);
+      mapComp()?.updateSatellitePOVPositions?.(features);
+    });
+
+    satTracking.setOnGroundTrack((noradId: number, coords: [number, number][], category: string) => {
+      mapComp()?.showSatelliteGroundTrack?.(coords, category);
+    });
+
+    // Listen for satellite clicks + POV mode — request ground track
+    const handleGroundTrack = (e: Event) => {
+      const { noradId } = (e as CustomEvent).detail;
+      if (noradId) satTracking.requestGroundTrack(noradId);
+    };
+    window.addEventListener('wl-satellite-click', handleGroundTrack);
+    window.addEventListener('wl-satellite-pov-track', handleGroundTrack);
+    return () => {
+      window.removeEventListener('wl-satellite-click', handleGroundTrack);
+      window.removeEventListener('wl-satellite-pov-track', handleGroundTrack);
+    };
+  }, []);
+
+  const handleToggleSatCategory = useCallback(async (cat: SatCategory, enabled: boolean) => {
+    const mapComp = (document as any).__wl_map_comp;
+    if (enabled) {
+      mapComp?.setSatelliteTrackingLayers?.(true);
+    } else {
+      // Always remove ground track when toggling a category off
+      mapComp?.removeSatelliteGroundTrack?.();
     }
-  }, [earthOverlays, onToggleEarthOverlay]);
+    await satTracking.toggleCategory(cat, enabled);
+    const anyStillOn = Object.entries({ ...satTracking.categories, [cat]: enabled }).some(([, v]) => v);
+    if (!anyStillOn) {
+      mapComp?.setSatelliteTrackingLayers?.(false);
+    }
+  }, [satTracking]);
+
+  // Cleanup satellite tracking when leaving Satellite Intel
+  const cleanupSatelliteTracking = useCallback(() => {
+    satTracking.cleanup();
+    (document as any).__wl_map_comp?.setSatelliteTrackingLayers?.(false);
+  }, [satTracking]);
+
+  // Deactivate all active earth overlays + satellite tracking when leaving Satellite Intel
+  const deactivateAllOverlays = useCallback(() => {
+    if (earthOverlays && onToggleEarthOverlay) {
+      for (const [key, active] of Object.entries(earthOverlays)) {
+        if (active) onToggleEarthOverlay(key as NasaOverlayType, false);
+      }
+    }
+    cleanupSatelliteTracking();
+  }, [earthOverlays, onToggleEarthOverlay, cleanupSatelliteTracking]);
 
   // Deactivate all active natural/physical layers when leaving Physical Layers
   const deactivateAllNaturalLayers = useCallback(() => {
@@ -135,20 +158,8 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
 
   // Deactivate all active statistic choropleths when leaving Statistics
   const deactivateAllStats = useCallback(() => {
-    if (gdpEnabled) onToggleGdpLayer?.(false);
-    if (gdpPerCapitaEnabled) onToggleGdpPerCapitaLayer?.(false);
-    if (inflationEnabled) onToggleInflationLayer?.(false);
-    if (giniEnabled) onToggleGiniLayer?.(false);
-    if (exportsEnabled) onToggleExportsLayer?.(false);
-    if (lifeExpectancyEnabled) onToggleLifeExpectancyLayer?.(false);
-    if (militaryExpenditureEnabled) onToggleMilitaryExpenditureLayer?.(false);
-    if (democracyIndexEnabled) onToggleDemocracyIndexLayer?.(false);
-    if (tradeGdpEnabled) onToggleTradeGdpLayer?.(false);
-    if (fuelExportsEnabled) onToggleFuelExportsLayer?.(false);
-    if (mineralRentsEnabled) onToggleMineralRentsLayer?.(false);
-    if (energyImportsEnabled) onToggleEnergyImportsLayer?.(false);
-    if (cerealProductionEnabled) onToggleCerealProductionLayer?.(false);
-  }, [gdpEnabled, gdpPerCapitaEnabled, inflationEnabled, giniEnabled, exportsEnabled, lifeExpectancyEnabled, militaryExpenditureEnabled, democracyIndexEnabled, tradeGdpEnabled, fuelExportsEnabled, mineralRentsEnabled, energyImportsEnabled, cerealProductionEnabled, onToggleGdpLayer, onToggleGdpPerCapitaLayer, onToggleInflationLayer, onToggleGiniLayer, onToggleExportsLayer, onToggleLifeExpectancyLayer, onToggleMilitaryExpenditureLayer, onToggleDemocracyIndexLayer, onToggleTradeGdpLayer, onToggleFuelExportsLayer, onToggleMineralRentsLayer, onToggleEnergyImportsLayer, onToggleCerealProductionLayer]);
+    choropleth?.handleHideAll();
+  }, [choropleth]);
 
   // Wrap onClose to cleanup active modes
   const _onClose = useCallback(() => {
@@ -579,385 +590,59 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
                               );
                             })}
                           </div>
+
+                          {/* ── Live Tracking ── */}
+                          <div className="section-header" style={{ marginTop: 18, marginBottom: 8 }}>
+                            <h3>Live Tracking</h3>
+                          </div>
+                          <div className="settings-subtitle" style={{ marginBottom: 12 }}>
+                            Real-time satellite positions via CelesTrak (SGP4).
+                          </div>
+                          <div className="settings-row" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
+                            {(['military', 'weather', 'stations', 'starlink'] as SatCategory[]).map(cat => {
+                              const meta = SAT_CATEGORY_META[cat];
+                              const enabled = satTracking.categories[cat];
+                              const isLoading = satTracking.loading[cat];
+                              return (
+                                <div className="section-card" style={{ marginBottom: 0 }} key={cat}>
+                                  <div className="stats-header" style={{ marginBottom: 4 }}>
+                                    <div className="stats-title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: meta.color, display: 'inline-block', flexShrink: 0 }} />
+                                      {meta.label}
+                                      <span style={{ fontSize: 10, color: 'rgba(160,150,200,0.5)', fontWeight: 400 }}>({meta.count})</span>
+                                    </div>
+                                    <div className="chip-group">
+                                      <button
+                                        className={`chip ${enabled ? 'active' : ''}`}
+                                        onClick={() => !isLoading && handleToggleSatCategory(cat, true)}
+                                        aria-pressed={enabled}
+                                        disabled={isLoading}
+                                      >{isLoading ? '...' : 'Show'}</button>
+                                      <button
+                                        className={`chip ${!enabled ? 'active' : ''}`}
+                                        onClick={() => handleToggleSatCategory(cat, false)}
+                                        aria-pressed={!enabled}
+                                      >Hide</button>
+                                    </div>
+                                  </div>
+                                  {cat === 'starlink' && (
+                                    <div style={{ fontSize: 9, color: 'rgba(255,200,100,0.5)', marginTop: 2, letterSpacing: '0.02em' }}>
+                                      Large constellation — may impact performance on older devices
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div style={{ fontSize: 9, color: 'rgba(160,150,200,0.35)', marginTop: 8, letterSpacing: '0.02em' }}>
+                            Source: CelesTrak · Positions updated every 2s · Click a satellite for details
+                          </div>
                         </div>
                       )}
 
-                      {item.label === 'Statistics' && activeItem === 'statistics' && (
-                        <div className="mt-3 ml-12 mr-3 stats-card" aria-label="Statistics">
-                          <div className="stats-header">
-                            <div className="stats-title">GDP (nominal)</div>
-                            <div className="chip-group">
-                              <button
-                                className={`chip ${gdpEnabled ? 'active' : ''}`}
-                                onClick={() => onToggleGdpLayer?.(true)}
-                                aria-pressed={gdpEnabled}
-                              >Show</button>
-                              <button
-                                className={`chip ${!gdpEnabled ? 'active' : ''}`}
-                                onClick={() => onToggleGdpLayer?.(false)}
-                                aria-pressed={!gdpEnabled}
-                              >Hide</button>
-                            </div>
-                          </div>
-                          <div className="stats-subtitle">Current US$, latest available year · log scale</div>
-                          {gdpEnabled && gdpLegend.length > 0 && (
-                            <div className="legend-card">
-                              <div className="legend-label">Legend</div>
-                              <div className="choropleth-legend-bar">
-                                {gdpLegend.map((b, i) => (
-                                  <span key={i} className="choropleth-legend-swatch" style={{ backgroundColor: b.color }} />
-                                ))}
-                              </div>
-                              <div className="choropleth-legend-scale">
-                                <span>low</span>
-                                <span>high</span>
-                              </div>
-                              <div className="legend-source">Source: World Bank (NY.GDP.MKTP.CD)</div>
-                            </div>
-                          )}
-                          <div className="stats-header" style={{ marginTop: 12 }}>
-                            <div className="stats-title">GDP per Capita</div>
-                            <div className="chip-group">
-                              <button
-                                className={`chip ${gdpPerCapitaEnabled ? 'active' : ''}`}
-                                onClick={() => onToggleGdpPerCapitaLayer?.(true)}
-                                aria-pressed={gdpPerCapitaEnabled}
-                              >Show</button>
-                              <button
-                                className={`chip ${!gdpPerCapitaEnabled ? 'active' : ''}`}
-                                onClick={() => onToggleGdpPerCapitaLayer?.(false)}
-                                aria-pressed={!gdpPerCapitaEnabled}
-                              >Hide</button>
-                            </div>
-                          </div>
-                          <div className="stats-subtitle">Current US$, latest available year · log scale</div>
-                          {gdpPerCapitaEnabled && gdpPerCapitaLegend.length > 0 && (
-                            <div className="legend-card">
-                              <div className="legend-label">Legend</div>
-                              <div className="choropleth-legend-bar">
-                                {gdpPerCapitaLegend.map((b, i) => (
-                                  <span key={i} className="choropleth-legend-swatch" style={{ backgroundColor: b.color }} />
-                                ))}
-                              </div>
-                              <div className="choropleth-legend-scale">
-                                <span>low</span>
-                                <span>high</span>
-                              </div>
-                              <div className="legend-source">Source: World Bank (NY.GDP.PCAP.CD)</div>
-                            </div>
-                          )}
-                          <div className="stats-header" style={{ marginTop: 12 }}>
-                            <div className="stats-title">Inflation (annual %)</div>
-                            <div className="chip-group">
-                              <button
-                                className={`chip ${inflationEnabled ? 'active' : ''}`}
-                                onClick={() => onToggleInflationLayer?.(true)}
-                                aria-pressed={inflationEnabled}
-                              >Show</button>
-                              <button
-                                className={`chip ${!inflationEnabled ? 'active' : ''}`}
-                                onClick={() => onToggleInflationLayer?.(false)}
-                                aria-pressed={!inflationEnabled}
-                              >Hide</button>
-                            </div>
-                          </div>
-                          <div className="stats-subtitle">Consumer prices (annual %), latest available year</div>
-                          {inflationEnabled && inflationLegend.length > 0 && (
-                            <div className="legend-card">
-                              <div className="legend-label">Legend</div>
-                              <div className="choropleth-legend-bar">
-                                {inflationLegend.map((b, i) => (
-                                  <span key={i} className="choropleth-legend-swatch" style={{ backgroundColor: b.color }} />
-                                ))}
-                              </div>
-                              <div className="choropleth-legend-scale">
-                                <span>low</span>
-                                <span>high</span>
-                              </div>
-                              <div className="legend-source">Source: World Bank (FP.CPI.TOTL.ZG)</div>
-                            </div>
-                          )}
-                          {/* GINI */}
-                          <div className="stats-header" style={{ marginTop: 12 }}>
-                            <div className="stats-title">GINI Index</div>
-                            <div className="chip-group">
-                              <button
-                                className={`chip ${giniEnabled ? 'active' : ''}`}
-                                onClick={() => onToggleGiniLayer?.(true)}
-                                aria-pressed={giniEnabled}
-                              >Show</button>
-                              <button
-                                className={`chip ${!giniEnabled ? 'active' : ''}`}
-                                onClick={() => onToggleGiniLayer?.(false)}
-                                aria-pressed={!giniEnabled}
-                              >Hide</button>
-                            </div>
-                          </div>
-                          <div className="stats-subtitle">Latest available value (0–100) · quantiles</div>
-                          {giniEnabled && giniLegend.length > 0 && (
-                            <div className="legend-card">
-                              <div className="legend-label">Legend</div>
-                              <div className="choropleth-legend-bar">
-                                {giniLegend.map((b, i) => (
-                                  <span key={i} className="choropleth-legend-swatch" style={{ backgroundColor: b.color }} />
-                                ))}
-                              </div>
-                              <div className="choropleth-legend-scale">
-                                <span>low</span>
-                                <span>high</span>
-                              </div>
-                              <div className="legend-source">Source: World Bank (SI.POV.GINI)</div>
-                            </div>
-                          )}
-                          {/* Exports */}
-                          <div className="stats-header" style={{ marginTop: 12 }}>
-                            <div className="stats-title">Exports (US$)</div>
-                            <div className="chip-group">
-                              <button
-                                className={`chip ${exportsEnabled ? 'active' : ''}`}
-                                onClick={() => onToggleExportsLayer?.(true)}
-                                aria-pressed={exportsEnabled}
-                              >Show</button>
-                              <button
-                                className={`chip ${!exportsEnabled ? 'active' : ''}`}
-                                onClick={() => onToggleExportsLayer?.(false)}
-                                aria-pressed={!exportsEnabled}
-                              >Hide</button>
-                            </div>
-                          </div>
-                          <div className="stats-subtitle">Current US$, latest available year · log scale</div>
-                          {exportsEnabled && exportsLegend.length > 0 && (
-                            <div className="legend-card">
-                              <div className="legend-label">Legend</div>
-                              <div className="choropleth-legend-bar">
-                                {exportsLegend.map((b, i) => (
-                                  <span key={i} className="choropleth-legend-swatch" style={{ backgroundColor: b.color }} />
-                                ))}
-                              </div>
-                              <div className="choropleth-legend-scale">
-                                <span>low</span>
-                                <span>high</span>
-                              </div>
-                              <div className="legend-source">Source: World Bank (NE.EXP.GNFS.CD)</div>
-                            </div>
-                          )}
-
-                          {/* Life Expectancy */}
-                          <div className="stats-header" style={{ marginTop: 12 }}>
-                            <div className="stats-title">Life Expectancy</div>
-                            <div className="chip-group">
-                              <button
-                                className={`chip ${lifeExpectancyEnabled ? 'active' : ''}`}
-                                onClick={() => onToggleLifeExpectancyLayer?.(true)}
-                                aria-pressed={lifeExpectancyEnabled}
-                              >Show</button>
-                              <button
-                                className={`chip ${!lifeExpectancyEnabled ? 'active' : ''}`}
-                                onClick={() => onToggleLifeExpectancyLayer?.(false)}
-                                aria-pressed={!lifeExpectancyEnabled}
-                              >Hide</button>
-                            </div>
-                          </div>
-                          <div className="stats-subtitle">Years, latest available</div>
-                          {lifeExpectancyEnabled && lifeExpectancyLegend.length > 0 && (
-                            <div className="legend-card">
-                              <div className="legend-label">Legend</div>
-                              <div className="choropleth-legend-bar">
-                                {lifeExpectancyLegend.map((b, i) => (
-                                  <span key={i} className="choropleth-legend-swatch" style={{ backgroundColor: b.color }} />
-                                ))}
-                              </div>
-                              <div className="choropleth-legend-scale">
-                                <span>low</span>
-                                <span>high</span>
-                              </div>
-                              <div className="legend-source">Source: World Bank (SP.DYN.LE00.IN)</div>
-                            </div>
-                          )}
-
-                          {/* Military Expenditure */}
-                          <div className="stats-header" style={{ marginTop: 12 }}>
-                            <div className="stats-title">Military Expenditure (% GDP)</div>
-                            <div className="chip-group">
-                              <button
-                                className={`chip ${militaryExpenditureEnabled ? 'active' : ''}`}
-                                onClick={() => onToggleMilitaryExpenditureLayer?.(true)}
-                                aria-pressed={militaryExpenditureEnabled}
-                              >Show</button>
-                              <button
-                                className={`chip ${!militaryExpenditureEnabled ? 'active' : ''}`}
-                                onClick={() => onToggleMilitaryExpenditureLayer?.(false)}
-                                aria-pressed={!militaryExpenditureEnabled}
-                              >Hide</button>
-                            </div>
-                          </div>
-                          <div className="stats-subtitle">% of GDP, latest available</div>
-                          {militaryExpenditureEnabled && militaryExpenditureLegend.length > 0 && (
-                            <div className="legend-card">
-                              <div className="legend-label">Legend</div>
-                              <div className="choropleth-legend-bar">
-                                {militaryExpenditureLegend.map((b, i) => (
-                                  <span key={i} className="choropleth-legend-swatch" style={{ backgroundColor: b.color }} />
-                                ))}
-                              </div>
-                              <div className="choropleth-legend-scale">
-                                <span>low</span>
-                                <span>high</span>
-                              </div>
-                              <div className="legend-source">Source: World Bank (MS.MIL.XPND.GD.ZS)</div>
-                            </div>
-                          )}
-
-                          {/* Democracy Index */}
-                          <div className="stats-header" style={{ marginTop: 12 }}>
-                            <div className="stats-title">Democracy Index</div>
-                            <div className="chip-group">
-                              <button
-                                className={`chip ${democracyIndexEnabled ? 'active' : ''}`}
-                                onClick={() => onToggleDemocracyIndexLayer?.(true)}
-                                aria-pressed={democracyIndexEnabled}
-                              >Show</button>
-                              <button
-                                className={`chip ${!democracyIndexEnabled ? 'active' : ''}`}
-                                onClick={() => onToggleDemocracyIndexLayer?.(false)}
-                                aria-pressed={!democracyIndexEnabled}
-                              >Hide</button>
-                            </div>
-                          </div>
-                          <div className="stats-subtitle">WGI Voice & Accountability (0-10 scale)</div>
-                          {democracyIndexEnabled && democracyIndexLegend.length > 0 && (
-                            <div className="legend-card">
-                              <div className="legend-label">Legend</div>
-                              <div className="choropleth-legend-bar">
-                                {democracyIndexLegend.map((b, i) => (
-                                  <span key={i} className="choropleth-legend-swatch" style={{ backgroundColor: b.color }} />
-                                ))}
-                              </div>
-                              <div className="choropleth-legend-scale">
-                                <span>low</span>
-                                <span>high</span>
-                              </div>
-                              <div className="legend-source">Source: World Bank (VA.EST)</div>
-                            </div>
-                          )}
-
-                          {/* Trade % GDP */}
-                          <div className="stats-header" style={{ marginTop: 12 }}>
-                            <div className="stats-title">Trade (% of GDP)</div>
-                            <div className="chip-group">
-                              <button
-                                className={`chip ${tradeGdpEnabled ? 'active' : ''}`}
-                                onClick={() => onToggleTradeGdpLayer?.(true)}
-                                aria-pressed={tradeGdpEnabled}
-                              >Show</button>
-                              <button
-                                className={`chip ${!tradeGdpEnabled ? 'active' : ''}`}
-                                onClick={() => onToggleTradeGdpLayer?.(false)}
-                                aria-pressed={!tradeGdpEnabled}
-                              >Hide</button>
-                            </div>
-                          </div>
-                          <div className="stats-subtitle">Trade openness, latest available</div>
-                          {tradeGdpEnabled && tradeGdpLegend.length > 0 && (
-                            <div className="legend-card">
-                              <div className="legend-label">Legend</div>
-                              <div className="choropleth-legend-bar">
-                                {tradeGdpLegend.map((b, i) => (
-                                  <span key={i} className="choropleth-legend-swatch" style={{ backgroundColor: b.color }} />
-                                ))}
-                              </div>
-                              <div className="choropleth-legend-scale">
-                                <span>low</span>
-                                <span>high</span>
-                              </div>
-                              <div className="legend-source">Source: World Bank (NE.TRD.GNFS.ZS)</div>
-                            </div>
-                          )}
-
-                          {/* Raw Materials Section */}
-                          <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                            <div style={{ fontSize: 11, fontWeight: 600, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Raw Materials</div>
-
-                            {/* Fuel Exports */}
-                            <div className="stats-header" style={{ marginTop: 8 }}>
-                              <div className="stats-title">Fuel Exports (% merch.)</div>
-                              <div className="chip-group">
-                                <button className={`chip ${fuelExportsEnabled ? 'active' : ''}`} onClick={() => onToggleFuelExportsLayer?.(true)} aria-pressed={fuelExportsEnabled}>Show</button>
-                                <button className={`chip ${!fuelExportsEnabled ? 'active' : ''}`} onClick={() => onToggleFuelExportsLayer?.(false)} aria-pressed={!fuelExportsEnabled}>Hide</button>
-                              </div>
-                            </div>
-                            <div className="stats-subtitle">Fuel exports as % of merchandise exports</div>
-                            {fuelExportsEnabled && fuelExportsLegend.length > 0 && (
-                              <div className="legend-card">
-                                <div className="legend-label">Legend</div>
-                                <div className="choropleth-legend-bar">
-                                  {fuelExportsLegend.map((b, i) => (<span key={i} className="choropleth-legend-swatch" style={{ backgroundColor: b.color }} />))}
-                                </div>
-                                <div className="choropleth-legend-scale"><span>low</span><span>high</span></div>
-                                <div className="legend-source">Source: World Bank (TX.VAL.FUEL.ZS.UN)</div>
-                              </div>
-                            )}
-
-                            {/* Mineral Rents */}
-                            <div className="stats-header" style={{ marginTop: 12 }}>
-                              <div className="stats-title">Mineral Rents (% GDP)</div>
-                              <div className="chip-group">
-                                <button className={`chip ${mineralRentsEnabled ? 'active' : ''}`} onClick={() => onToggleMineralRentsLayer?.(true)} aria-pressed={mineralRentsEnabled}>Show</button>
-                                <button className={`chip ${!mineralRentsEnabled ? 'active' : ''}`} onClick={() => onToggleMineralRentsLayer?.(false)} aria-pressed={!mineralRentsEnabled}>Hide</button>
-                              </div>
-                            </div>
-                            <div className="stats-subtitle">Mineral rents as % of GDP</div>
-                            {mineralRentsEnabled && mineralRentsLegend.length > 0 && (
-                              <div className="legend-card">
-                                <div className="legend-label">Legend</div>
-                                <div className="choropleth-legend-bar">
-                                  {mineralRentsLegend.map((b, i) => (<span key={i} className="choropleth-legend-swatch" style={{ backgroundColor: b.color }} />))}
-                                </div>
-                                <div className="choropleth-legend-scale"><span>low</span><span>high</span></div>
-                                <div className="legend-source">Source: World Bank (NY.GDP.MINR.RT.ZS)</div>
-                              </div>
-                            )}
-
-                            {/* Energy Imports */}
-                            <div className="stats-header" style={{ marginTop: 12 }}>
-                              <div className="stats-title">Energy Imports (% use)</div>
-                              <div className="chip-group">
-                                <button className={`chip ${energyImportsEnabled ? 'active' : ''}`} onClick={() => onToggleEnergyImportsLayer?.(true)} aria-pressed={energyImportsEnabled}>Show</button>
-                                <button className={`chip ${!energyImportsEnabled ? 'active' : ''}`} onClick={() => onToggleEnergyImportsLayer?.(false)} aria-pressed={!energyImportsEnabled}>Hide</button>
-                              </div>
-                            </div>
-                            <div className="stats-subtitle">Net energy imports as % of energy use</div>
-                            {energyImportsEnabled && energyImportsLegend.length > 0 && (
-                              <div className="legend-card">
-                                <div className="legend-label">Legend</div>
-                                <div className="choropleth-legend-bar">
-                                  {energyImportsLegend.map((b, i) => (<span key={i} className="choropleth-legend-swatch" style={{ backgroundColor: b.color }} />))}
-                                </div>
-                                <div className="choropleth-legend-scale"><span>low</span><span>high</span></div>
-                                <div className="legend-source">Source: World Bank (EG.IMP.CONS.ZS)</div>
-                              </div>
-                            )}
-
-                            {/* Cereal Production */}
-                            <div className="stats-header" style={{ marginTop: 12 }}>
-                              <div className="stats-title">Cereal Production</div>
-                              <div className="chip-group">
-                                <button className={`chip ${cerealProductionEnabled ? 'active' : ''}`} onClick={() => onToggleCerealProductionLayer?.(true)} aria-pressed={cerealProductionEnabled}>Show</button>
-                                <button className={`chip ${!cerealProductionEnabled ? 'active' : ''}`} onClick={() => onToggleCerealProductionLayer?.(false)} aria-pressed={!cerealProductionEnabled}>Hide</button>
-                              </div>
-                            </div>
-                            <div className="stats-subtitle">Total cereal production (metric tons) · log scale</div>
-                            {cerealProductionEnabled && cerealProductionLegend.length > 0 && (
-                              <div className="legend-card">
-                                <div className="legend-label">Legend</div>
-                                <div className="choropleth-legend-bar">
-                                  {cerealProductionLegend.map((b, i) => (<span key={i} className="choropleth-legend-swatch" style={{ backgroundColor: b.color }} />))}
-                                </div>
-                                <div className="choropleth-legend-scale"><span>low</span><span>high</span></div>
-                                <div className="legend-source">Source: World Bank (AG.PRD.CREL.MT)</div>
-                              </div>
-                            )}
-                          </div>
+                      {item.label === 'Statistics' && activeItem === 'statistics' && choropleth && (
+                        <div className="mt-3 ml-12 mr-3">
+                          <StatisticsPanel choropleth={choropleth} />
                         </div>
                       )}
 

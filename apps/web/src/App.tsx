@@ -14,10 +14,22 @@ import { useMapControls } from './features/world-map/useMapControls';
 import type { MapRefType } from './features/world-map/types';
 import { NASA_EARTH_OVERLAYS, getNasaPreviewUrl, getNasaObservationDate, INSTRUMENT_INFO, OVERLAY_INSTRUMENT_MAP, type NasaOverlayType, PHYSICAL_LAYER_CONFIG, PHYSICAL_LAYER_KEYS, type PhysicalLayerType } from './features/world-map/map/mapAppearance';
 import { Satellite, Waves, Mountain, MountainSnow, Droplets, Flame, Zap, Sun } from 'lucide-react';
+import { getSatelliteProfileAsync, preloadSatelliteProfiles, COUNTRY_FLAGS, COUNTRY_NAMES, type SatelliteProfile } from './features/world-map/map/satellite-database';
 import './index.css';
 import './styles/sidebar.css';
 import "./styles/conflict-tracker.css";
 import "./styles/compare-countries.css";
+
+interface SatelliteClickData {
+  noradId: number;
+  name: string;
+  category: string;
+  alt: number;
+  objectId: string;
+  country: string;
+  lon: number;
+  lat: number;
+}
 
 interface Country {
   name: string;
@@ -96,6 +108,80 @@ function WorldMapView() {
   const closeExpandedCard = useCallback(() => {
     setExpandedOverlay(null);
     setCardTilt({ rx: 0, ry: 0, shineX: 50, shineY: 50 });
+  }, []);
+
+  // ── Satellite Orbital Card (Phase 2) ──
+  const [expandedSatellite, setExpandedSatellite] = useState<{ data: SatelliteClickData; profile: SatelliteProfile } | null>(null);
+  const satCardRef = useRef<HTMLDivElement>(null);
+  const [satCardTilt, setSatCardTilt] = useState({ rx: 0, ry: 0, shineX: 50, shineY: 50 });
+  const handleSatCardMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const el = satCardRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const dx = (e.clientX - (rect.left + rect.width / 2)) / (rect.width / 2);
+    const dy = (e.clientY - (rect.top + rect.height / 2)) / (rect.height / 2);
+    const maxTilt = 8;
+    setSatCardTilt({
+      rx: -dy * maxTilt,
+      ry: dx * maxTilt,
+      shineX: ((e.clientX - rect.left) / rect.width) * 100,
+      shineY: ((e.clientY - rect.top) / rect.height) * 100,
+    });
+  }, []);
+  const handleSatCardMouseLeave = useCallback(() => {
+    setSatCardTilt({ rx: 0, ry: 0, shineX: 50, shineY: 50 });
+  }, []);
+  const closeSatelliteCard = useCallback(() => {
+    setExpandedSatellite(null);
+    setSatCardTilt({ rx: 0, ry: 0, shineX: 50, shineY: 50 });
+    mapRef.current?.removeSatelliteGroundTrack?.();
+  }, []);
+
+  // ── Satellite POV Mode ──
+  const [povMode, setPovMode] = useState<{ noradId: number; name: string; country: string; category: string } | null>(null);
+
+  const enterPOV = useCallback((sat: SatelliteClickData) => {
+    // Close card without removing ground track (POV needs it)
+    setExpandedSatellite(null);
+    setSatCardTilt({ rx: 0, ry: 0, shineX: 50, shineY: 50 });
+    mapRef.current?.enterSatellitePOV?.(sat.noradId, sat.category);
+    setPovMode({ noradId: sat.noradId, name: sat.name, country: sat.country, category: sat.category });
+  }, []);
+
+  const exitPOV = useCallback(() => {
+    mapRef.current?.exitSatellitePOV?.();
+    mapRef.current?.removeSatelliteGroundTrack?.();
+    setPovMode(null);
+  }, []);
+
+  // Update POV telemetry from position data
+  useEffect(() => {
+    if (!povMode) return;
+    const handler = (e: Event) => {
+      const { active } = (e as CustomEvent).detail;
+      if (!active) setPovMode(null);
+    };
+    window.addEventListener('wl-satellite-pov', handler);
+    return () => window.removeEventListener('wl-satellite-pov', handler);
+  }, [povMode]);
+
+  // Preload satellite profiles from API on mount
+  useEffect(() => { preloadSatelliteProfiles(); }, []);
+
+  // Listen for satellite click events from WorldMap
+  useEffect(() => {
+    const handler = async (e: Event) => {
+      const detail = (e as CustomEvent).detail as SatelliteClickData;
+      // If in POV mode, exit first
+      if (mapRef.current?.isSatellitePOVActive?.()) {
+        mapRef.current?.exitSatellitePOV?.();
+        setPovMode(null);
+      }
+      const profile = await getSatelliteProfileAsync(detail.name, detail.country);
+      setExpandedSatellite({ data: detail, profile });
+    };
+    window.addEventListener('wl-satellite-click', handler);
+    return () => window.removeEventListener('wl-satellite-click', handler);
   }, []);
 
   // Physical Layers legend — 3D tilt + cursor shine (earthy palette)
@@ -540,45 +626,7 @@ function WorldMapView() {
         onSetMinimalMode={mapControls.handleSetMinimalMode}
         onSetAutoRotate={mapControls.handleSetAutoRotate}
         onSetRotateSpeed={mapControls.handleSetRotateSpeed}
-        onToggleGdpLayer={choropleth.handleToggleGdpLayer}
-        gdpEnabled={choropleth.gdpEnabled}
-        gdpLegend={choropleth.gdpLegend}
-        onToggleGdpPerCapitaLayer={choropleth.handleToggleGdpPerCapitaLayer}
-        gdpPerCapitaEnabled={choropleth.gdpPerCapitaEnabled}
-        gdpPerCapitaLegend={choropleth.gdpPerCapitaLegend}
-        onToggleInflationLayer={choropleth.handleToggleInflationLayer}
-        inflationEnabled={choropleth.inflationEnabled}
-        inflationLegend={choropleth.inflationLegend}
-        onToggleGiniLayer={choropleth.handleToggleGiniLayer}
-        giniEnabled={choropleth.giniEnabled}
-        giniLegend={choropleth.giniLegend}
-        onToggleExportsLayer={choropleth.handleToggleExportsLayer}
-        exportsEnabled={choropleth.exportsEnabled}
-        exportsLegend={choropleth.exportsLegend}
-        onToggleLifeExpectancyLayer={choropleth.handleToggleLifeExpectancyLayer}
-        lifeExpectancyEnabled={choropleth.lifeExpectancyEnabled}
-        lifeExpectancyLegend={choropleth.lifeExpectancyLegend}
-        onToggleMilitaryExpenditureLayer={choropleth.handleToggleMilitaryExpenditureLayer}
-        militaryExpenditureEnabled={choropleth.militaryExpenditureEnabled}
-        militaryExpenditureLegend={choropleth.militaryExpenditureLegend}
-        onToggleDemocracyIndexLayer={choropleth.handleToggleDemocracyIndexLayer}
-        democracyIndexEnabled={choropleth.democracyIndexEnabled}
-        democracyIndexLegend={choropleth.democracyIndexLegend}
-        onToggleTradeGdpLayer={choropleth.handleToggleTradeGdpLayer}
-        tradeGdpEnabled={choropleth.tradeGdpEnabled}
-        tradeGdpLegend={choropleth.tradeGdpLegend}
-        onToggleFuelExportsLayer={choropleth.handleToggleFuelExportsLayer}
-        fuelExportsEnabled={choropleth.fuelExportsEnabled}
-        fuelExportsLegend={choropleth.fuelExportsLegend}
-        onToggleMineralRentsLayer={choropleth.handleToggleMineralRentsLayer}
-        mineralRentsEnabled={choropleth.mineralRentsEnabled}
-        mineralRentsLegend={choropleth.mineralRentsLegend}
-        onToggleEnergyImportsLayer={choropleth.handleToggleEnergyImportsLayer}
-        energyImportsEnabled={choropleth.energyImportsEnabled}
-        energyImportsLegend={choropleth.energyImportsLegend}
-        onToggleCerealProductionLayer={choropleth.handleToggleCerealProductionLayer}
-        cerealProductionEnabled={choropleth.cerealProductionEnabled}
-        cerealProductionLegend={choropleth.cerealProductionLegend}
+        choropleth={choropleth}
         onToggleHistoryMode={mapControls.handleToggleHistoryMode}
         onSetHistoryYear={mapControls.handleSetHistoryYear}
         onResetHistoryPresentation={mapControls.handleResetHistoryPresentation}
@@ -1413,6 +1461,356 @@ function WorldMapView() {
               </motion.div>
               </div>
             </>
+          );
+        })()}
+      </AnimatePresence>
+
+      {/* Satellite Orbital Card — expanded profile (Phase 2) */}
+      <AnimatePresence>
+        {expandedSatellite && (() => {
+          const sat = expandedSatellite.data;
+          const profile = expandedSatellite.profile;
+          const catColor = ({ military: '#ff4444', weather: '#44aaff', stations: '#d4a0ff', starlink: '#00ff88' } as Record<string, string>)[sat.category] || '#ffffff';
+          const flag = COUNTRY_FLAGS[sat.country] || '';
+          const countryName = COUNTRY_NAMES[sat.country] || sat.country;
+          const iconPath = ({ military: '/icons/sat-military.svg', weather: '/icons/sat-weather.svg', stations: '/icons/sat-stations.svg' } as Record<string, string>)[sat.category];
+          return (
+            <>
+              <motion.div
+                key="sat-orbital-overlay"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                onClick={closeSatelliteCard}
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  zIndex: 55,
+                  background: 'rgba(0,0,0,0.35)',
+                  backdropFilter: 'blur(6px)',
+                }}
+              />
+              <div
+                ref={satCardRef}
+                onMouseMove={handleSatCardMouseMove}
+                onMouseLeave={handleSatCardMouseLeave}
+                style={{
+                  position: 'fixed',
+                  bottom: 40,
+                  right: 24,
+                  zIndex: 60,
+                  width: 340,
+                  transform: `perspective(800px) rotateX(${satCardTilt.rx}deg) rotateY(${satCardTilt.ry}deg)`,
+                  transition: 'transform 0.18s cubic-bezier(0.23, 1, 0.32, 1)',
+                  transformStyle: 'preserve-3d',
+                  willChange: 'transform',
+                }}
+              >
+                <motion.div
+                  key="sat-orbital-card"
+                  initial={{ opacity: 0, scale: 0.85, y: 40 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.85, y: 40 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+                >
+                  {/* Gradient border */}
+                  <div style={{
+                    borderRadius: 24,
+                    padding: 1,
+                    background: `linear-gradient(170deg, ${catColor}33 0%, ${catColor}15 40%, rgba(60,50,120,0.05) 100%)`,
+                    position: 'relative',
+                  }}>
+                    {/* Cursor-following shine */}
+                    <div style={{
+                      position: 'absolute',
+                      inset: 0,
+                      borderRadius: 'inherit',
+                      background: `radial-gradient(circle at ${satCardTilt.shineX}% ${satCardTilt.shineY}%, rgba(160,140,255,0.1) 0%, rgba(120,100,220,0.03) 40%, transparent 65%)`,
+                      pointerEvents: 'none',
+                      transition: 'background 0.15s ease-out',
+                      zIndex: 1,
+                    }} />
+                    {/* Main card */}
+                    <div style={{
+                      borderRadius: 23,
+                      background: 'linear-gradient(170deg, rgba(14,12,28,0.97) 0%, rgba(20,16,40,0.95) 50%, rgba(32,24,56,0.93) 100%)',
+                      backdropFilter: 'blur(40px) saturate(1.3)',
+                      overflow: 'hidden',
+                      boxShadow: `0 24px 70px rgba(0,0,0,0.6), 0 0 100px ${catColor}0F`,
+                    }}>
+                      {/* Image header section */}
+                      <div style={{
+                        width: '100%',
+                        height: 180,
+                        ...(profile.imageUrl
+                          ? { backgroundImage: `url(${profile.imageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundColor: 'rgba(20,16,40,0.8)' }
+                          : { background: `linear-gradient(135deg, ${catColor}15 0%, rgba(20,16,40,0.6) 60%, rgba(14,12,28,0.95) 100%)` }
+                        ),
+                        position: 'relative',
+                        overflow: 'hidden',
+                      }}>
+                        {/* Shimmer while image loads */}
+                        {profile.imageUrl && (
+                          <div style={{
+                            position: 'absolute', inset: 0,
+                            background: 'linear-gradient(110deg, rgba(20,16,40,0) 30%, rgba(80,60,140,0.08) 50%, rgba(20,16,40,0) 70%)',
+                            backgroundSize: '200% 100%',
+                            animation: 'satShimmer 1.5s ease-in-out infinite',
+                          }} />
+                        )}
+                        {/* Category icon overlay when no image */}
+                        {!profile.imageUrl && (iconPath ? (
+                          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <img src={iconPath} alt="" style={{ width: 64, height: 64, opacity: 0.4, filter: 'brightness(1.5)' }} />
+                          </div>
+                        ) : (
+                          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Satellite style={{ width: 40, height: 40, color: catColor, opacity: 0.3 }} />
+                          </div>
+                        ))}
+                        {/* Gradient fade at bottom */}
+                        <div style={{
+                          position: 'absolute', bottom: 0, left: 0, right: 0, height: 70,
+                          background: 'linear-gradient(to top, rgba(14,12,28,0.97), transparent)',
+                        }} />
+                        {/* Close button */}
+                        <button
+                          onClick={closeSatelliteCard}
+                          style={{
+                            position: 'absolute', top: 12, right: 12,
+                            width: 28, height: 28, borderRadius: '50%',
+                            background: 'rgba(0,0,0,0.45)',
+                            backdropFilter: 'blur(8px)',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            color: 'rgba(255,255,255,0.7)',
+                            cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 13, lineHeight: 1, padding: 0,
+                          }}
+                        >{'\u2715'}</button>
+                        {/* Category badge */}
+                        <div style={{
+                          position: 'absolute', top: 12, left: 14,
+                          fontSize: 7, fontWeight: 400, letterSpacing: '0.16em',
+                          textTransform: 'uppercase',
+                          color: catColor,
+                          background: `${catColor}15`,
+                          border: `1px solid ${catColor}30`,
+                          borderRadius: 10, padding: '3px 10px',
+                        }}>{sat.category}</div>
+                      </div>
+
+                      {/* Content section */}
+                      <div style={{ padding: '14px 26px 22px' }}>
+                        {/* Country */}
+                        {sat.country && (
+                          <div style={{
+                            fontSize: 8, fontWeight: 400, letterSpacing: '0.22em',
+                            textTransform: 'uppercase',
+                            color: 'rgba(170,155,210,0.45)',
+                            marginBottom: 6,
+                          }}>{flag}  {countryName}</div>
+                        )}
+                        {/* Satellite name */}
+                        <div style={{
+                          fontSize: 20, fontWeight: 200,
+                          color: 'rgba(240,235,255,0.92)',
+                          letterSpacing: '0.02em', lineHeight: 1.2,
+                          marginBottom: 4,
+                        }}>{sat.name}</div>
+                        {/* Program */}
+                        <div style={{
+                          fontSize: 11, fontWeight: 300,
+                          color: 'rgba(160,145,210,0.5)',
+                          marginBottom: 10,
+                        }}>{profile.program}</div>
+                        {/* Description */}
+                        <div style={{
+                          fontSize: 11, fontWeight: 300,
+                          color: 'rgba(190,180,220,0.45)',
+                          lineHeight: 1.75, letterSpacing: '0.01em',
+                          marginBottom: 16,
+                        }}>{profile.description}</div>
+                        {/* Separator */}
+                        <div style={{
+                          width: 28, height: 1,
+                          background: 'linear-gradient(90deg, transparent, rgba(140,120,200,0.2), transparent)',
+                          margin: '0 auto 14px',
+                        }} />
+                        {/* Orbital details */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+                          <div style={{ fontSize: 9, fontWeight: 300, color: 'rgba(170,155,210,0.5)', letterSpacing: '0.04em' }}>
+                            <span style={{ color: `${catColor}80`, marginRight: 6 }}>&#9675;</span>
+                            {profile.orbitType}
+                          </div>
+                          <div style={{ fontSize: 9, fontWeight: 300, color: 'rgba(170,155,210,0.5)', letterSpacing: '0.04em' }}>
+                            <span style={{ color: `${catColor}80`, marginRight: 6 }}>&#9675;</span>
+                            {sat.alt.toLocaleString()} km altitude
+                          </div>
+                          <div style={{ fontSize: 9, fontWeight: 300, color: 'rgba(170,155,210,0.5)', letterSpacing: '0.04em' }}>
+                            <span style={{ color: `${catColor}80`, marginRight: 6 }}>&#9675;</span>
+                            {profile.coverage}
+                          </div>
+                          <div style={{ fontSize: 9, fontWeight: 300, color: 'rgba(170,155,210,0.5)', letterSpacing: '0.04em' }}>
+                            <span style={{ color: `${catColor}80`, marginRight: 6 }}>&#9675;</span>
+                            {profile.operator}
+                          </div>
+                        </div>
+                        {/* Enter POV button */}
+                        <button
+                          onClick={() => enterPOV(sat)}
+                          style={{
+                            width: '100%',
+                            padding: '9px 16px',
+                            marginBottom: 14,
+                            background: `linear-gradient(135deg, ${catColor}20 0%, ${catColor}10 100%)`,
+                            border: `1px solid ${catColor}40`,
+                            borderRadius: 10,
+                            color: catColor,
+                            fontSize: 10,
+                            fontWeight: 400,
+                            letterSpacing: '0.1em',
+                            textTransform: 'uppercase',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 8,
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = `linear-gradient(135deg, ${catColor}40 0%, ${catColor}25 100%)`;
+                            e.currentTarget.style.borderColor = `${catColor}70`;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = `linear-gradient(135deg, ${catColor}20 0%, ${catColor}10 100%)`;
+                            e.currentTarget.style.borderColor = `${catColor}40`;
+                          }}
+                        >
+                          <Satellite style={{ width: 13, height: 13 }} />
+                          Enter POV
+                        </button>
+                        {/* Separator */}
+                        <div style={{
+                          width: 28, height: 1,
+                          background: 'linear-gradient(90deg, transparent, rgba(140,120,200,0.2), transparent)',
+                          margin: '0 auto 14px',
+                        }} />
+                        {/* Footer — NORAD + source */}
+                        <div style={{
+                          fontSize: 8, fontWeight: 300, letterSpacing: '0.06em',
+                          color: 'rgba(140,125,180,0.3)',
+                          textAlign: 'center',
+                        }}>
+                          NORAD {sat.noradId}{sat.objectId ? ` \u00B7 ${sat.objectId}` : ''}
+                        </div>
+                        <div style={{
+                          fontSize: 7, fontWeight: 300, letterSpacing: '0.14em',
+                          textTransform: 'uppercase',
+                          color: 'rgba(140,125,180,0.2)',
+                          textAlign: 'center',
+                          marginTop: 4,
+                        }}>CelesTrak \u00B7 WorldLore</div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            </>
+          );
+        })()}
+      </AnimatePresence>
+
+      {/* Satellite POV HUD */}
+      <AnimatePresence>
+        {povMode && (() => {
+          const flag = COUNTRY_FLAGS[povMode.country] || '';
+          const hudColor = ({ military: '#ff4444', weather: '#44aaff', stations: '#d4a0ff', starlink: '#00ff88' } as Record<string, string>)[povMode.category] || '#ffffff';
+          return (
+            <motion.div
+              key="sat-pov-hud"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              style={{
+                position: 'fixed',
+                top: 20,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 50,
+                pointerEvents: 'auto',
+              }}
+            >
+              <div style={{
+                borderRadius: 16,
+                padding: 1,
+                background: `linear-gradient(170deg, ${hudColor}30 0%, ${hudColor}10 40%, rgba(60,50,120,0.05) 100%)`,
+              }}>
+                <div style={{
+                  borderRadius: 15,
+                  background: 'linear-gradient(170deg, rgba(10,8,20,0.95) 0%, rgba(16,12,32,0.93) 100%)',
+                  backdropFilter: 'blur(40px) saturate(1.3)',
+                  padding: '12px 24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 20,
+                  boxShadow: `0 12px 40px rgba(0,0,0,0.5), 0 0 60px ${hudColor}08`,
+                }}>
+                  {/* Satellite info */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{
+                      width: 6, height: 6, borderRadius: '50%',
+                      background: hudColor,
+                      boxShadow: `0 0 10px ${hudColor}80`,
+                      animation: 'pulse 2s ease-in-out infinite',
+                    }} />
+                    <span style={{
+                      fontSize: 12, fontWeight: 300, color: 'rgba(240,235,255,0.9)',
+                      letterSpacing: '0.03em',
+                    }}>{povMode.name}</span>
+                    {flag && <span style={{ fontSize: 14 }}>{flag}</span>}
+                  </div>
+                  {/* Separator */}
+                  <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.06)' }} />
+                  {/* POV label */}
+                  <div style={{
+                    fontSize: 7, fontWeight: 400, letterSpacing: '0.2em',
+                    textTransform: 'uppercase', color: `${hudColor}90`,
+                  }}>POV Mode</div>
+                  {/* Separator */}
+                  <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.06)' }} />
+                  {/* Exit button */}
+                  <button
+                    onClick={exitPOV}
+                    style={{
+                      padding: '5px 14px',
+                      borderRadius: 8,
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      color: 'rgba(255,255,255,0.6)',
+                      fontSize: 9,
+                      fontWeight: 300,
+                      letterSpacing: '0.1em',
+                      textTransform: 'uppercase',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(255,80,80,0.15)';
+                      e.currentTarget.style.borderColor = 'rgba(255,80,80,0.3)';
+                      e.currentTarget.style.color = 'rgba(255,120,120,0.9)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                      e.currentTarget.style.color = 'rgba(255,255,255,0.6)';
+                    }}
+                  >Exit POV</button>
+                </div>
+              </div>
+            </motion.div>
           );
         })()}
       </AnimatePresence>
