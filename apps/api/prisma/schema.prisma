@@ -647,6 +647,28 @@ model OsintScrapeLog {
 }
 
 // ============================
+// Satellite Profiles
+// ============================
+
+model SatelliteProfile {
+  id          Int      @id @default(autoincrement())
+  pattern     String   // regex pattern to match OBJECT_NAME (or country code for fallbacks)
+  matchType   String   @default("pattern") @map("match_type") // "pattern" | "country"
+  program     String
+  operator    String
+  purpose     String
+  coverage    String
+  orbitType   String   @map("orbit_type")
+  description String   @db.Text
+  imageUrl    String?  @map("image_url")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("satellite_profiles")
+}
+
+// ============================
 // GeoDB Cities API Cache
 // ============================
 

@@ -31,6 +31,7 @@ import environmentRoutes from './environment.routes';
 import healthRoutes from './health.routes';
 import infrastructureRoutes from './infrastructure.routes';
 import fireRoutes from '../modules/fire/routes';
+import satelliteRoutes from '../modules/satellite/routes';
 
 const router = Router();
 
@@ -64,5 +65,6 @@ router.use('/environment', environmentRoutes);
 router.use('/health', healthRoutes);
 router.use('/infrastructure', infrastructureRoutes);
 router.use('/fire', fireRoutes);
+router.use('/satellite', satelliteRoutes);
 
 export default router;
