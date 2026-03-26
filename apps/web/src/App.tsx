@@ -15,6 +15,7 @@ import type { MapRefType } from './features/world-map/types';
 import { NASA_EARTH_OVERLAYS, getNasaPreviewUrl, getNasaObservationDate, INSTRUMENT_INFO, OVERLAY_INSTRUMENT_MAP, type NasaOverlayType, PHYSICAL_LAYER_CONFIG, PHYSICAL_LAYER_KEYS, type PhysicalLayerType } from './features/world-map/map/mapAppearance';
 import { Satellite, Waves, Mountain, MountainSnow, Droplets, Flame, Zap, Sun } from 'lucide-react';
 import { getSatelliteProfileAsync, preloadSatelliteProfiles, COUNTRY_FLAGS, COUNTRY_NAMES, type SatelliteProfile } from './features/world-map/map/satellite-database';
+import { MuseumLegend, MuseumExpandedCard, PURPLE_SCHEME, EARTHY_SCHEME } from './components/MuseumCard';
 import './index.css';
 import './styles/sidebar.css';
 import "./styles/conflict-tracker.css";
@@ -80,35 +81,9 @@ function WorldMapView() {
   const choropleth = useChoropleth(mapRef);
   const mapControls = useMapControls(mapRef);
 
-  // Satellite Intel legend — 3D tilt + cursor shine
-  const legendRef = useRef<HTMLDivElement>(null);
-  const [legendTilt, setLegendTilt] = useState({ rx: 0, ry: 0, shineX: 50, shineY: 50 });
+  // Satellite Intel — expanded overlay state
   const [expandedOverlay, setExpandedOverlay] = useState<NasaOverlayType | null>(null);
-
-  // Expanded card — 3D tilt + cursor shine (Museum of the Future style)
-  const expandedCardRef = useRef<HTMLDivElement>(null);
-  const [cardTilt, setCardTilt] = useState({ rx: 0, ry: 0, shineX: 50, shineY: 50 });
-  const handleCardMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const el = expandedCardRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const dx = (e.clientX - (rect.left + rect.width / 2)) / (rect.width / 2);
-    const dy = (e.clientY - (rect.top + rect.height / 2)) / (rect.height / 2);
-    const maxTilt = 8;
-    setCardTilt({
-      rx: -dy * maxTilt,
-      ry: dx * maxTilt,
-      shineX: ((e.clientX - rect.left) / rect.width) * 100,
-      shineY: ((e.clientY - rect.top) / rect.height) * 100,
-    });
-  }, []);
-  const handleCardMouseLeave = useCallback(() => {
-    setCardTilt({ rx: 0, ry: 0, shineX: 50, shineY: 50 });
-  }, []);
-  const closeExpandedCard = useCallback(() => {
-    setExpandedOverlay(null);
-    setCardTilt({ rx: 0, ry: 0, shineX: 50, shineY: 50 });
-  }, []);
+  const closeExpandedCard = useCallback(() => setExpandedOverlay(null), []);
 
   // ── Satellite Orbital Card (Phase 2) ──
   const [expandedSatellite, setExpandedSatellite] = useState<{ data: SatelliteClickData; profile: SatelliteProfile } | null>(null);
@@ -141,7 +116,6 @@ function WorldMapView() {
   const [povMode, setPovMode] = useState<{ noradId: number; name: string; country: string; category: string } | null>(null);
 
   const enterPOV = useCallback((sat: SatelliteClickData) => {
-    // Close card without removing ground track (POV needs it)
     setExpandedSatellite(null);
     setSatCardTilt({ rx: 0, ry: 0, shineX: 50, shineY: 50 });
     mapRef.current?.enterSatellitePOV?.(sat.noradId, sat.category);
@@ -154,7 +128,6 @@ function WorldMapView() {
     setPovMode(null);
   }, []);
 
-  // Update POV telemetry from position data
   useEffect(() => {
     if (!povMode) return;
     const handler = (e: Event) => {
@@ -165,14 +138,11 @@ function WorldMapView() {
     return () => window.removeEventListener('wl-satellite-pov', handler);
   }, [povMode]);
 
-  // Preload satellite profiles from API on mount
   useEffect(() => { preloadSatelliteProfiles(); }, []);
 
-  // Listen for satellite click events from WorldMap
   useEffect(() => {
     const handler = async (e: Event) => {
       const detail = (e as CustomEvent).detail as SatelliteClickData;
-      // If in POV mode, exit first
       if (mapRef.current?.isSatellitePOVActive?.()) {
         mapRef.current?.exitSatellitePOV?.();
         setPovMode(null);
@@ -184,35 +154,9 @@ function WorldMapView() {
     return () => window.removeEventListener('wl-satellite-click', handler);
   }, []);
 
-  // Physical Layers legend — 3D tilt + cursor shine (earthy palette)
-  const physicalLegendRef = useRef<HTMLDivElement>(null);
-  const [physicalLegendTilt, setPhysicalLegendTilt] = useState({ rx: 0, ry: 0, shineX: 50, shineY: 50 });
+  // Physical Layers — expanded layer state
   const [expandedPhysicalLayer, setExpandedPhysicalLayer] = useState<PhysicalLayerType | null>(null);
-
-  // Physical expanded card — 3D tilt
-  const physicalCardRef = useRef<HTMLDivElement>(null);
-  const [physicalCardTilt, setPhysicalCardTilt] = useState({ rx: 0, ry: 0, shineX: 50, shineY: 50 });
-  const handlePhysicalCardMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const el = physicalCardRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const dx = (e.clientX - (rect.left + rect.width / 2)) / (rect.width / 2);
-    const dy = (e.clientY - (rect.top + rect.height / 2)) / (rect.height / 2);
-    const maxTilt = 8;
-    setPhysicalCardTilt({
-      rx: -dy * maxTilt,
-      ry: dx * maxTilt,
-      shineX: ((e.clientX - rect.left) / rect.width) * 100,
-      shineY: ((e.clientY - rect.top) / rect.height) * 100,
-    });
-  }, []);
-  const handlePhysicalCardMouseLeave = useCallback(() => {
-    setPhysicalCardTilt({ rx: 0, ry: 0, shineX: 50, shineY: 50 });
-  }, []);
-  const closePhysicalExpandedCard = useCallback(() => {
-    setExpandedPhysicalLayer(null);
-    setPhysicalCardTilt({ rx: 0, ry: 0, shineX: 50, shineY: 50 });
-  }, []);
+  const closePhysicalExpandedCard = useCallback(() => setExpandedPhysicalLayer(null), []);
 
   // Derive active physical layers
   const activePhysicalLayers = useMemo(() => {
@@ -232,7 +176,6 @@ function WorldMapView() {
   useEffect(() => {
     if (activePhysicalLayers.length === 0 && expandedPhysicalLayer) {
       setExpandedPhysicalLayer(null);
-      setPhysicalCardTilt({ rx: 0, ry: 0, shineX: 50, shineY: 50 });
     }
   }, [activePhysicalLayers.length, expandedPhysicalLayer]);
 
@@ -360,55 +303,6 @@ function WorldMapView() {
   // Derive instrument info from last activated overlay
   const instrumentKey = mapControls.lastActivatedOverlay ? OVERLAY_INSTRUMENT_MAP[mapControls.lastActivatedOverlay] : null;
   const instrumentInfo = instrumentKey ? INSTRUMENT_INFO[instrumentKey] : null;
-
-  useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      const el = legendRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-      const dist = Math.sqrt((e.clientX - cx) ** 2 + (e.clientY - cy) ** 2);
-      const maxDist = 400;
-      const factor = Math.max(0, 1 - dist / maxDist);
-      const dx = Math.max(-1, Math.min(1, (e.clientX - cx) / (rect.width / 2)));
-      const dy = Math.max(-1, Math.min(1, (e.clientY - cy) / (rect.height / 2)));
-      const maxTilt = 10;
-      setLegendTilt({
-        rx: -dy * maxTilt * factor,
-        ry: dx * maxTilt * factor,
-        shineX: ((e.clientX - rect.left) / rect.width) * 100,
-        shineY: ((e.clientY - rect.top) / rect.height) * 100,
-      });
-    };
-    window.addEventListener('mousemove', onMove);
-    return () => window.removeEventListener('mousemove', onMove);
-  }, []);
-
-  // Physical Layers legend — 3D tilt listener (earthy palette)
-  useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      const el = physicalLegendRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-      const dist = Math.sqrt((e.clientX - cx) ** 2 + (e.clientY - cy) ** 2);
-      const maxDist = 400;
-      const factor = Math.max(0, 1 - dist / maxDist);
-      const dx = Math.max(-1, Math.min(1, (e.clientX - cx) / (rect.width / 2)));
-      const dy = Math.max(-1, Math.min(1, (e.clientY - cy) / (rect.height / 2)));
-      const maxTilt = 10;
-      setPhysicalLegendTilt({
-        rx: -dy * maxTilt * factor,
-        ry: dx * maxTilt * factor,
-        shineX: ((e.clientX - rect.left) / rect.width) * 100,
-        shineY: ((e.clientY - rect.top) / rect.height) * 100,
-      });
-    };
-    window.addEventListener('mousemove', onMove);
-    return () => window.removeEventListener('mousemove', onMove);
-  }, []);
 
   // Unified sidebars state
   const [sidebars, setSidebars] = useState({
@@ -960,323 +854,49 @@ function WorldMapView() {
             .map(([k]) => k as NasaOverlayType);
           if (activeOverlays.length === 0) return null;
           return (
-            <motion.div
-              ref={legendRef}
-              key="sat-legend"
-              initial={{ opacity: 0, scale: 0.88, y: 24 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.88, y: 24 }}
-              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-              style={{
-                position: 'fixed',
-                bottom: 28,
-                right: 20,
-                zIndex: 50,
-                pointerEvents: 'none',
-                transform: `perspective(800px) rotateX(${legendTilt.rx}deg) rotateY(${legendTilt.ry}deg)`,
-                transition: 'transform 0.2s cubic-bezier(0.23, 1, 0.32, 1)',
-                transformStyle: 'preserve-3d',
-                willChange: 'transform',
-              }}
-            >
-              {/* Gradient border wrapper */}
-              <div style={{
-                position: 'relative',
-                borderRadius: 24,
-                padding: 1,
-                background: 'linear-gradient(170deg, rgba(130,100,220,0.2) 0%, rgba(80,120,200,0.1) 40%, rgba(60,50,120,0.05) 100%)',
-              }}>
-                {/* Ambient purple glow */}
-                <div style={{
-                  position: 'absolute',
-                  inset: -6,
-                  borderRadius: 30,
-                  background: 'radial-gradient(ellipse at 50% 30%, rgba(120,80,200,0.07) 0%, transparent 70%)',
-                  filter: 'blur(12px)',
-                  pointerEvents: 'none',
-                }} />
-                {/* Main card */}
-                <div style={{
-                  position: 'relative',
-                  background: 'linear-gradient(170deg, rgba(14,12,28,0.95) 0%, rgba(18,14,36,0.93) 50%, rgba(30,22,52,0.9) 100%)',
-                  backdropFilter: 'blur(40px) saturate(1.3)',
-                  borderRadius: 23,
-                  padding: '20px 24px 18px',
-                  minWidth: 250,
-                  maxWidth: 310,
-                  boxShadow: '0 20px 60px rgba(0,0,0,0.55), 0 0 80px rgba(100,70,180,0.05), 0 0 0 0.5px rgba(255,255,255,0.03) inset',
-                  overflow: 'hidden',
-                  textAlign: 'center',
-                }}>
-                  {/* Cursor-following shine */}
-                  <div style={{
-                    position: 'absolute',
-                    inset: 0,
-                    borderRadius: 'inherit',
-                    background: `radial-gradient(circle at ${legendTilt.shineX}% ${legendTilt.shineY}%, rgba(160,140,255,0.12) 0%, rgba(120,100,220,0.04) 40%, transparent 65%)`,
-                    pointerEvents: 'none',
-                    transition: 'background 0.15s ease-out',
-                  }} />
-                  {/* Header */}
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                    marginBottom: 16,
-                    paddingBottom: 12,
-                    borderBottom: '1px solid rgba(160,140,220,0.06)',
-                  }}>
-                    <div style={{ position: 'relative', width: 5, height: 5 }}>
-                      <div style={{
-                        position: 'absolute',
-                        inset: -3,
-                        borderRadius: '50%',
-                        background: 'rgba(52,211,153,0.12)',
-                        animation: 'pulse 3s ease-in-out infinite',
-                      }} />
-                      <div style={{
-                        width: 5,
-                        height: 5,
-                        borderRadius: '50%',
-                        background: '#34d399',
-                        boxShadow: '0 0 8px rgba(52,211,153,0.4)',
-                      }} />
+            <MuseumLegend
+              colorScheme={PURPLE_SCHEME}
+              motionKey="sat-legend"
+              headerLabel="Satellite Intel"
+              items={activeOverlays.map(key => {
+                const cfg = NASA_EARTH_OVERLAYS[key];
+                const obsDate = getNasaObservationDate(key);
+                const obsLabel = obsDate ? new Date(obsDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+                return { key, label: cfg.label, note: cfg.legendNote, source: cfg.legendSource, date: obsLabel || undefined };
+              })}
+              onItemClick={(key) => setExpandedOverlay(key as NasaOverlayType)}
+              scrollClassName="sat-legend-scroll"
+              loading={overlayLoading ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 10, padding: '5px 0' }}>
+                  <div style={{ width: 12, height: 12, borderRadius: '50%', border: '1.5px solid rgba(130,100,220,0.15)', borderTopColor: 'rgba(130,100,220,0.5)', animation: 'spin 0.8s linear infinite' }} />
+                  <span style={{ fontSize: 8, fontWeight: 300, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(170,155,210,0.4)' }}>Loading imagery...</span>
+                </div>
+              ) : undefined}
+              controls={
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, marginBottom: 14, paddingBottom: 12, borderBottom: '1px solid rgba(160,140,220,0.06)' }}>
+                  {/* Auto-Rotate toggle */}
+                  <div onClick={() => { const next = !satAutoRotate; setSatAutoRotate(next); mapControls.handleSetAutoRotate(next); if (next) mapControls.handleSetRotateSpeed(1); }} style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', pointerEvents: 'auto', transition: 'opacity 0.15s' }} onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.opacity = '0.7'; }} onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.opacity = '1'; }}>
+                    <div style={{ width: 22, height: 11, borderRadius: 6, background: satAutoRotate ? 'linear-gradient(90deg, rgba(52,211,153,0.4) 0%, rgba(52,211,153,0.25) 100%)' : 'rgba(80,70,120,0.2)', border: `1px solid ${satAutoRotate ? 'rgba(52,211,153,0.3)' : 'rgba(120,100,180,0.12)'}`, position: 'relative', transition: 'all 0.25s ease' }}>
+                      <div style={{ position: 'absolute', top: 1, left: satAutoRotate ? 11 : 1, width: 7, height: 7, borderRadius: '50%', background: satAutoRotate ? '#34d399' : 'rgba(160,140,200,0.3)', boxShadow: satAutoRotate ? '0 0 6px rgba(52,211,153,0.4)' : 'none', transition: 'all 0.25s ease' }} />
                     </div>
-                    <span style={{
-                      fontSize: 9,
-                      fontWeight: 300,
-                      letterSpacing: '0.24em',
-                      textTransform: 'uppercase',
-                      color: 'rgba(170,155,210,0.45)',
-                    }}>Satellite Intel</span>
+                    <span style={{ fontSize: 7, fontWeight: 300, letterSpacing: '0.12em', textTransform: 'uppercase', color: satAutoRotate ? 'rgba(52,211,153,0.6)' : 'rgba(160,140,200,0.3)', transition: 'color 0.25s ease' }}>Auto-Rotate</span>
                   </div>
-                  {/* Loading indicator */}
-                  {overlayLoading && (
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 6,
-                      marginBottom: 10,
-                      padding: '5px 0',
-                    }}>
-                      <div style={{
-                        width: 12,
-                        height: 12,
-                        borderRadius: '50%',
-                        border: '1.5px solid rgba(130,100,220,0.15)',
-                        borderTopColor: 'rgba(130,100,220,0.5)',
-                        animation: 'spin 0.8s linear infinite',
-                      }} />
-                      <span style={{
-                        fontSize: 8,
-                        fontWeight: 300,
-                        letterSpacing: '0.12em',
-                        textTransform: 'uppercase',
-                        color: 'rgba(170,155,210,0.4)',
-                      }}>Loading imagery...</span>
+                  <div style={{ width: 2, height: 2, borderRadius: '50%', background: 'rgba(160,140,220,0.2)' }} />
+                  {/* 3D Terrain toggle */}
+                  <div onClick={() => { const next = !sat3DTerrain; setSat3DTerrain(next); mapControls.handleSetTerrain(next); }} style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', pointerEvents: 'auto', transition: 'opacity 0.15s' }} onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.opacity = '0.7'; }} onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.opacity = '1'; }}>
+                    <div style={{ width: 22, height: 11, borderRadius: 6, background: sat3DTerrain ? 'linear-gradient(90deg, rgba(52,211,153,0.4) 0%, rgba(52,211,153,0.25) 100%)' : 'rgba(80,70,120,0.2)', border: `1px solid ${sat3DTerrain ? 'rgba(52,211,153,0.3)' : 'rgba(120,100,180,0.12)'}`, position: 'relative', transition: 'all 0.25s ease' }}>
+                      <div style={{ position: 'absolute', top: 1, left: sat3DTerrain ? 11 : 1, width: 7, height: 7, borderRadius: '50%', background: sat3DTerrain ? '#34d399' : 'rgba(160,140,200,0.3)', boxShadow: sat3DTerrain ? '0 0 6px rgba(52,211,153,0.4)' : 'none', transition: 'all 0.25s ease' }} />
                     </div>
-                  )}
-                  {/* Globe controls row */}
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 14,
-                    marginBottom: 14,
-                    paddingBottom: 12,
-                    borderBottom: '1px solid rgba(160,140,220,0.06)',
-                  }}>
-                    {/* Auto-Rotate toggle */}
-                    <div
-                      onClick={() => {
-                        const next = !satAutoRotate;
-                        setSatAutoRotate(next);
-                        mapControls.handleSetAutoRotate(next);
-                        if (next) mapControls.handleSetRotateSpeed(1);
-                      }}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 5,
-                        cursor: 'pointer',
-                        pointerEvents: 'auto',
-                        transition: 'opacity 0.15s',
-                      }}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.opacity = '0.7'; }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.opacity = '1'; }}
-                    >
-                      <div style={{
-                        width: 22,
-                        height: 11,
-                        borderRadius: 6,
-                        background: satAutoRotate
-                          ? 'linear-gradient(90deg, rgba(52,211,153,0.4) 0%, rgba(52,211,153,0.25) 100%)'
-                          : 'rgba(80,70,120,0.2)',
-                        border: `1px solid ${satAutoRotate ? 'rgba(52,211,153,0.3)' : 'rgba(120,100,180,0.12)'}`,
-                        position: 'relative',
-                        transition: 'all 0.25s ease',
-                      }}>
-                        <div style={{
-                          position: 'absolute',
-                          top: 1,
-                          left: satAutoRotate ? 11 : 1,
-                          width: 7,
-                          height: 7,
-                          borderRadius: '50%',
-                          background: satAutoRotate ? '#34d399' : 'rgba(160,140,200,0.3)',
-                          boxShadow: satAutoRotate ? '0 0 6px rgba(52,211,153,0.4)' : 'none',
-                          transition: 'all 0.25s ease',
-                        }} />
-                      </div>
-                      <span style={{
-                        fontSize: 7,
-                        fontWeight: 300,
-                        letterSpacing: '0.12em',
-                        textTransform: 'uppercase',
-                        color: satAutoRotate ? 'rgba(52,211,153,0.6)' : 'rgba(160,140,200,0.3)',
-                        transition: 'color 0.25s ease',
-                      }}>Auto-Rotate</span>
-                    </div>
-                    {/* Separator */}
-                    <div style={{
-                      width: 2,
-                      height: 2,
-                      borderRadius: '50%',
-                      background: 'rgba(160,140,220,0.2)',
-                    }} />
-                    {/* 3D Terrain toggle */}
-                    <div
-                      onClick={() => {
-                        const next = !sat3DTerrain;
-                        setSat3DTerrain(next);
-                        mapControls.handleSetTerrain(next);
-                      }}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 5,
-                        cursor: 'pointer',
-                        pointerEvents: 'auto',
-                        transition: 'opacity 0.15s',
-                      }}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.opacity = '0.7'; }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.opacity = '1'; }}
-                    >
-                      <div style={{
-                        width: 22,
-                        height: 11,
-                        borderRadius: 6,
-                        background: sat3DTerrain
-                          ? 'linear-gradient(90deg, rgba(52,211,153,0.4) 0%, rgba(52,211,153,0.25) 100%)'
-                          : 'rgba(80,70,120,0.2)',
-                        border: `1px solid ${sat3DTerrain ? 'rgba(52,211,153,0.3)' : 'rgba(120,100,180,0.12)'}`,
-                        position: 'relative',
-                        transition: 'all 0.25s ease',
-                      }}>
-                        <div style={{
-                          position: 'absolute',
-                          top: 1,
-                          left: sat3DTerrain ? 11 : 1,
-                          width: 7,
-                          height: 7,
-                          borderRadius: '50%',
-                          background: sat3DTerrain ? '#34d399' : 'rgba(160,140,200,0.3)',
-                          boxShadow: sat3DTerrain ? '0 0 6px rgba(52,211,153,0.4)' : 'none',
-                          transition: 'all 0.25s ease',
-                        }} />
-                      </div>
-                      <span style={{
-                        fontSize: 7,
-                        fontWeight: 300,
-                        letterSpacing: '0.12em',
-                        textTransform: 'uppercase',
-                        color: sat3DTerrain ? 'rgba(52,211,153,0.6)' : 'rgba(160,140,200,0.3)',
-                        transition: 'color 0.25s ease',
-                      }}>3D Terrain</span>
-                    </div>
-                  </div>
-                  {/* Active layers — clickable, scrollable */}
-                  <div
-                    className="sat-legend-scroll"
-                    style={{
-                      maxHeight: 260,
-                      overflowY: 'auto',
-                      overflowX: 'hidden',
-                      marginRight: -8,
-                      paddingRight: 8,
-                    }}
-                  >
-                  {activeOverlays.map((key, i) => {
-                    const cfg = NASA_EARTH_OVERLAYS[key];
-                    const obsDate = getNasaObservationDate(key);
-                    const obsLabel = obsDate ? new Date(obsDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-                    return (
-                      <div
-                        key={key}
-                        onClick={() => setExpandedOverlay(key)}
-                        style={{
-                          position: 'relative',
-                          marginBottom: i < activeOverlays.length - 1 ? 14 : 0,
-                          paddingBottom: i < activeOverlays.length - 1 ? 14 : 0,
-                          borderBottom: i < activeOverlays.length - 1 ? '1px solid rgba(160,140,220,0.04)' : 'none',
-                          cursor: 'pointer',
-                          pointerEvents: 'auto',
-                          transition: 'opacity 0.15s',
-                        }}
-                        onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.opacity = '0.75'; }}
-                        onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.opacity = '1'; }}
-                      >
-                        <div style={{
-                          fontSize: 12,
-                          fontWeight: 200,
-                          color: 'rgba(240,235,255,0.9)',
-                          letterSpacing: '0.06em',
-                          marginBottom: 4,
-                        }}>{cfg.label}</div>
-                        <div style={{
-                          fontSize: 10,
-                          fontWeight: 200,
-                          color: 'rgba(190,180,220,0.4)',
-                          lineHeight: 1.55,
-                          letterSpacing: '0.015em',
-                          marginBottom: 6,
-                        }}>{cfg.legendNote}</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{
-                            display: 'inline-block',
-                            fontSize: 7,
-                            fontWeight: 400,
-                            letterSpacing: '0.18em',
-                            textTransform: 'uppercase',
-                            color: 'rgba(160,140,220,0.4)',
-                            background: 'linear-gradient(135deg, rgba(120,100,200,0.08) 0%, rgba(80,60,160,0.04) 100%)',
-                            padding: '3px 10px',
-                            borderRadius: 20,
-                            border: '1px solid rgba(140,120,200,0.08)',
-                          }}>{cfg.legendSource}</span>
-                          {obsLabel && (
-                            <span style={{
-                              fontSize: 7,
-                              fontWeight: 300,
-                              letterSpacing: '0.08em',
-                              color: 'rgba(140,130,190,0.3)',
-                            }}>{obsLabel}</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                    <span style={{ fontSize: 7, fontWeight: 300, letterSpacing: '0.12em', textTransform: 'uppercase', color: sat3DTerrain ? 'rgba(52,211,153,0.6)' : 'rgba(160,140,200,0.3)', transition: 'color 0.25s ease' }}>3D Terrain</span>
                   </div>
                 </div>
-              </div>
-            </motion.div>
+              }
+            />
           );
         })()}
       </AnimatePresence>
 
-      {/* Satellite Intel — Expanded Card Popup (Museum of the Future) */}
+      {/* Satellite Intel — Expanded Card */}
       <AnimatePresence>
         {expandedOverlay && (() => {
           const cfg = NASA_EARTH_OVERLAYS[expandedOverlay];
@@ -1285,182 +905,17 @@ function WorldMapView() {
           const obsDate = getNasaObservationDate(expandedOverlay);
           const obsLabel = obsDate ? new Date(obsDate + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
           return (
-            <>
-              <motion.div
-                key="sat-card-overlay"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.25 }}
-                onClick={closeExpandedCard}
-                style={{
-                  position: 'fixed',
-                  inset: 0,
-                  zIndex: 55,
-                  background: 'rgba(0,0,0,0.35)',
-                  backdropFilter: 'blur(6px)',
-                }}
-              />
-              {/* Outer wrapper handles 3D tilt (separate from framer-motion transform) */}
-              <div
-                ref={expandedCardRef}
-                onMouseMove={handleCardMouseMove}
-                onMouseLeave={handleCardMouseLeave}
-                style={{
-                  position: 'fixed',
-                  bottom: 40,
-                  right: 24,
-                  zIndex: 60,
-                  width: 340,
-                  transform: `perspective(800px) rotateX(${cardTilt.rx}deg) rotateY(${cardTilt.ry}deg)`,
-                  transition: 'transform 0.18s cubic-bezier(0.23, 1, 0.32, 1)',
-                  transformStyle: 'preserve-3d',
-                  willChange: 'transform',
-                }}
-              >
-              <motion.div
-                key="sat-expanded-card"
-                initial={{ opacity: 0, scale: 0.85, y: 40 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.85, y: 40 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-              >
-                {/* Gradient border */}
-                <div style={{
-                  borderRadius: 24,
-                  padding: 1,
-                  background: 'linear-gradient(170deg, rgba(130,100,220,0.25) 0%, rgba(80,120,200,0.1) 40%, rgba(60,50,120,0.05) 100%)',
-                  position: 'relative',
-                }}>
-                  {/* Cursor-following shine */}
-                  <div style={{
-                    position: 'absolute',
-                    inset: 0,
-                    borderRadius: 'inherit',
-                    background: `radial-gradient(circle at ${cardTilt.shineX}% ${cardTilt.shineY}%, rgba(160,140,255,0.1) 0%, rgba(120,100,220,0.03) 40%, transparent 65%)`,
-                    pointerEvents: 'none',
-                    transition: 'background 0.15s ease-out',
-                    zIndex: 1,
-                  }} />
-                  {/* Main card */}
-                  <div style={{
-                    borderRadius: 23,
-                    background: 'linear-gradient(170deg, rgba(14,12,28,0.97) 0%, rgba(20,16,40,0.95) 50%, rgba(32,24,56,0.93) 100%)',
-                    backdropFilter: 'blur(40px) saturate(1.3)',
-                    overflow: 'hidden',
-                    boxShadow: '0 24px 70px rgba(0,0,0,0.6), 0 0 100px rgba(100,70,180,0.06)',
-                  }}>
-                    {/* Image section */}
-                    <div style={{
-                      width: '100%',
-                      height: 180,
-                      backgroundImage: previewUrl ? `url(${previewUrl})` : undefined,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                      backgroundColor: 'rgba(20,16,40,0.8)',
-                      position: 'relative',
-                      overflow: 'hidden',
-                    }}>
-                      {/* Shimmer while image loads */}
-                      {!cachedBlob && (
-                        <div style={{
-                          position: 'absolute',
-                          inset: 0,
-                          background: 'linear-gradient(110deg, rgba(20,16,40,0) 30%, rgba(80,60,140,0.08) 50%, rgba(20,16,40,0) 70%)',
-                          backgroundSize: '200% 100%',
-                          animation: 'satShimmer 1.5s ease-in-out infinite',
-                        }} />
-                      )}
-                      {/* Gradient fade at bottom of image */}
-                      <div style={{
-                        position: 'absolute',
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        height: 70,
-                        background: 'linear-gradient(to top, rgba(14,12,28,0.97), transparent)',
-                      }} />
-                      {/* Close button */}
-                      <button
-                        onClick={closeExpandedCard}
-                        style={{
-                          position: 'absolute',
-                          top: 12,
-                          right: 12,
-                          width: 28,
-                          height: 28,
-                          borderRadius: '50%',
-                          background: 'rgba(0,0,0,0.45)',
-                          backdropFilter: 'blur(8px)',
-                          border: '1px solid rgba(255,255,255,0.08)',
-                          color: 'rgba(255,255,255,0.7)',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: 13,
-                          lineHeight: 1,
-                          padding: 0,
-                        }}
-                      >{'\u2715'}</button>
-                    </div>
-                    {/* Content section */}
-                    <div style={{ padding: '14px 26px 22px', textAlign: 'center' }}>
-                      {/* Source badge */}
-                      <div style={{
-                        fontSize: 8,
-                        fontWeight: 400,
-                        letterSpacing: '0.22em',
-                        textTransform: 'uppercase',
-                        color: 'rgba(170,155,210,0.45)',
-                        marginBottom: 4,
-                      }}>{cfg.legendSource}</div>
-                      {/* Observation date */}
-                      {obsLabel && (
-                        <div style={{
-                          fontSize: 9,
-                          fontWeight: 300,
-                          letterSpacing: '0.06em',
-                          color: 'rgba(160,145,210,0.35)',
-                          marginBottom: 12,
-                        }}>Last observation — {obsLabel}</div>
-                      )}
-                      {/* Title */}
-                      <div style={{
-                        fontSize: 22,
-                        fontWeight: 200,
-                        color: 'rgba(240,235,255,0.92)',
-                        letterSpacing: '0.02em',
-                        lineHeight: 1.2,
-                        marginBottom: 14,
-                      }}>{cfg.label}</div>
-                      {/* Expanded description */}
-                      <div style={{
-                        fontSize: 12,
-                        fontWeight: 300,
-                        color: 'rgba(190,180,220,0.5)',
-                        lineHeight: 1.75,
-                        letterSpacing: '0.01em',
-                        marginBottom: 18,
-                      }}>{cfg.expandedDescription}</div>
-                      {/* Decorative separator + icon */}
-                      <div style={{
-                        width: 28,
-                        height: 1,
-                        background: 'linear-gradient(90deg, transparent, rgba(140,120,200,0.2), transparent)',
-                        margin: '0 auto 12px',
-                      }} />
-                      <Satellite style={{
-                        width: 16,
-                        height: 16,
-                        color: 'rgba(140,120,200,0.25)',
-                      }} />
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-              </div>
-            </>
+            <MuseumExpandedCard
+              variant="purple"
+              motionKey="sat-expanded-card"
+              heroContent={{ type: 'image', url: previewUrl, shimmer: !cachedBlob }}
+              sourceLabel={cfg.legendSource}
+              date={obsLabel || undefined}
+              title={cfg.label}
+              description={cfg.expandedDescription}
+              footerIcon={<Satellite style={{ width: 16, height: 16 }} />}
+              onClose={closeExpandedCard}
+            />
           );
         })()}
       </AnimatePresence>
@@ -1815,419 +1270,64 @@ function WorldMapView() {
         })()}
       </AnimatePresence>
 
-      {/* Physical Layers Legend — Museum of the Future style (earthy palette) */}
+      {/* Physical Layers Legend */}
       <AnimatePresence>
         {(() => {
           if (activePhysicalLayers.length === 0) return null;
+          const PhysIconMap: Record<string, React.ComponentType<any>> = { Waves, Mountain, MountainSnow, Droplets, Flame, Zap, Sun };
           return (
-            <motion.div
-              ref={physicalLegendRef}
-              key="phys-legend"
-              initial={{ opacity: 0, scale: 0.88, y: 24 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.88, y: 24 }}
-              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-              style={{
-                position: 'fixed',
-                bottom: 28,
-                right: 20,
-                zIndex: 50,
-                pointerEvents: 'none',
-                transform: `perspective(800px) rotateX(${physicalLegendTilt.rx}deg) rotateY(${physicalLegendTilt.ry}deg)`,
-                transition: 'transform 0.2s cubic-bezier(0.23, 1, 0.32, 1)',
-                transformStyle: 'preserve-3d',
-                willChange: 'transform',
-              }}
-            >
-              {/* Gradient border wrapper */}
-              <div style={{
-                position: 'relative',
-                borderRadius: 24,
-                padding: 1,
-                background: 'linear-gradient(170deg, rgba(180,140,80,0.2) 0%, rgba(160,120,60,0.1) 40%, rgba(100,80,40,0.05) 100%)',
-              }}>
-                {/* Ambient earthy glow */}
-                <div style={{
-                  position: 'absolute',
-                  inset: -6,
-                  borderRadius: 30,
-                  background: 'radial-gradient(ellipse at 50% 30%, rgba(180,140,60,0.07) 0%, transparent 70%)',
-                  filter: 'blur(12px)',
-                  pointerEvents: 'none',
-                }} />
-                {/* Main card */}
-                <div style={{
-                  position: 'relative',
-                  background: 'linear-gradient(170deg, rgba(18,16,12,0.95) 0%, rgba(22,18,12,0.93) 50%, rgba(36,28,16,0.9) 100%)',
-                  backdropFilter: 'blur(40px) saturate(1.3)',
-                  borderRadius: 23,
-                  padding: '20px 24px 18px',
-                  minWidth: 250,
-                  maxWidth: 310,
-                  boxShadow: '0 20px 60px rgba(0,0,0,0.55), 0 0 80px rgba(160,120,60,0.05), 0 0 0 0.5px rgba(255,255,255,0.03) inset',
-                  overflow: 'hidden',
-                  textAlign: 'center',
-                }}>
-                  {/* Cursor-following shine */}
-                  <div style={{
-                    position: 'absolute',
-                    inset: 0,
-                    borderRadius: 'inherit',
-                    background: `radial-gradient(circle at ${physicalLegendTilt.shineX}% ${physicalLegendTilt.shineY}%, rgba(200,170,100,0.12) 0%, rgba(180,140,80,0.04) 40%, transparent 65%)`,
-                    pointerEvents: 'none',
-                    transition: 'background 0.15s ease-out',
-                  }} />
-                  {/* Header */}
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                    marginBottom: 16,
-                    paddingBottom: 12,
-                    borderBottom: '1px solid rgba(180,140,80,0.06)',
-                  }}>
-                    <div style={{ position: 'relative', width: 5, height: 5 }}>
-                      <div style={{
-                        position: 'absolute',
-                        inset: -3,
-                        borderRadius: '50%',
-                        background: 'rgba(212,168,83,0.12)',
-                        animation: 'pulse 3s ease-in-out infinite',
-                      }} />
-                      <div style={{
-                        width: 5,
-                        height: 5,
-                        borderRadius: '50%',
-                        background: '#d4a853',
-                        boxShadow: '0 0 8px rgba(212,168,83,0.4)',
-                      }} />
-                    </div>
-                    <span style={{
-                      fontSize: 9,
-                      fontWeight: 300,
-                      letterSpacing: '0.24em',
-                      textTransform: 'uppercase',
-                      color: 'rgba(190,170,130,0.5)',
-                    }}>Physical Layers</span>
-                  </div>
-                  {/* LOD controls row */}
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                    marginBottom: 14,
-                    paddingBottom: 12,
-                    borderBottom: '1px solid rgba(180,140,80,0.06)',
-                    pointerEvents: 'auto',
-                  }}>
-                    {(['auto', 'low', 'med', 'high'] as const).map((l) => (
-                      <div
-                        key={l}
-                        onClick={() => mapControls.handleSetNaturalLod(l)}
-                        style={{
-                          fontSize: 7,
-                          fontWeight: 300,
-                          letterSpacing: '0.12em',
-                          textTransform: 'uppercase',
-                          color: mapControls.naturalLod === l ? 'rgba(212,168,83,0.8)' : 'rgba(190,170,130,0.3)',
-                          background: mapControls.naturalLod === l
-                            ? 'linear-gradient(135deg, rgba(180,140,60,0.12) 0%, rgba(140,100,40,0.06) 100%)'
-                            : 'transparent',
-                          padding: '3px 8px',
-                          borderRadius: 10,
-                          border: `1px solid ${mapControls.naturalLod === l ? 'rgba(180,140,80,0.15)' : 'rgba(180,140,80,0.05)'}`,
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
-                        }}
-                        onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.opacity = '0.7'; }}
-                        onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.opacity = '1'; }}
-                      >{l}</div>
-                    ))}
-                  </div>
-                  {/* Active layers — clickable, scrollable */}
-                  <div
-                    className="phys-legend-scroll"
-                    style={{
-                      maxHeight: 260,
-                      overflowY: 'auto',
-                      overflowX: 'hidden',
-                      marginRight: -8,
-                      paddingRight: 8,
-                    }}
-                  >
-                  {activePhysicalLayers.map((key, i) => {
-                    const cfg = PHYSICAL_LAYER_CONFIG[key];
-                    return (
-                      <div
-                        key={key}
-                        onClick={() => setExpandedPhysicalLayer(key)}
-                        style={{
-                          position: 'relative',
-                          marginBottom: i < activePhysicalLayers.length - 1 ? 14 : 0,
-                          paddingBottom: i < activePhysicalLayers.length - 1 ? 14 : 0,
-                          borderBottom: i < activePhysicalLayers.length - 1 ? '1px solid rgba(180,140,80,0.04)' : 'none',
-                          cursor: 'pointer',
-                          pointerEvents: 'auto',
-                          transition: 'opacity 0.15s',
-                        }}
-                        onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.opacity = '0.75'; }}
-                        onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.opacity = '1'; }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                          {/* Layer type visual representation */}
-                          <div style={{ width: 28, height: 20, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {key === 'rivers' && (
-                              <svg width="28" height="18" viewBox="0 0 28 18" fill="none">
-                                <path d="M2 14 C8 14, 8 4, 14 4 C20 4, 20 14, 26 14" stroke={cfg.color} strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.9" />
-                                <path d="M4 16 C8 16, 10 10, 14 10" stroke={cfg.color} strokeWidth="1" strokeLinecap="round" fill="none" opacity="0.4" />
-                              </svg>
-                            )}
-                            {key === 'ranges' && (
-                              <svg width="28" height="18" viewBox="0 0 28 18" fill="none">
-                                <path d="M1 16 L7 5 L10 9 L14 2 L18 9 L21 5 L27 16Z" fill={cfg.color} fillOpacity="0.2" stroke={cfg.color} strokeWidth="1" strokeDasharray="3 2" strokeLinecap="round" opacity="0.8" />
-                              </svg>
-                            )}
-                            {key === 'peaks' && (
-                              <svg width="28" height="18" viewBox="0 0 28 18" fill="none">
-                                <path d="M14 2 L20 16 L8 16Z" fill={cfg.color} fillOpacity="0.15" stroke={cfg.color} strokeWidth="1" opacity="0.8" />
-                                <circle cx="14" cy="5" r="1.5" fill="#fff" fillOpacity="0.6" />
-                              </svg>
-                            )}
-                            {key === 'lakes' && (
-                              <svg width="28" height="18" viewBox="0 0 28 18" fill="none">
-                                <ellipse cx="14" cy="10" rx="11" ry="6" fill={cfg.color} fillOpacity="0.25" stroke={cfg.color} strokeWidth="1" opacity="0.8" />
-                                <path d="M7 9 Q14 7, 21 9" stroke={cfg.color} strokeWidth="0.5" fill="none" opacity="0.4" />
-                              </svg>
-                            )}
-                            {key === 'volcanoes' && (
-                              <svg width="28" height="18" viewBox="0 0 28 18" fill="none">
-                                <path d="M10 16 L14 6 L18 16" fill={cfg.color} fillOpacity="0.15" stroke={cfg.color} strokeWidth="1" opacity="0.7" />
-                                <circle cx="14" cy="4" r="2.5" fill={cfg.color} fillOpacity="0.3" stroke={cfg.color} strokeWidth="0.8" opacity="0.9" />
-                                <circle cx="14" cy="4" r="1" fill="#ff8c00" fillOpacity="0.8" />
-                              </svg>
-                            )}
-                            {key === 'fault-lines' && (
-                              <svg width="28" height="18" viewBox="0 0 28 18" fill="none">
-                                <path d="M2 14 L8 6 L14 12 L20 4 L26 10" stroke={cfg.color} strokeWidth="1.5" strokeDasharray="4 2" strokeLinecap="round" fill="none" opacity="0.9" />
-                                <path d="M8 6 L6 2" stroke={cfg.color} strokeWidth="0.8" fill="none" opacity="0.4" />
-                                <path d="M20 4 L22 1" stroke={cfg.color} strokeWidth="0.8" fill="none" opacity="0.4" />
-                              </svg>
-                            )}
-                            {key === 'deserts' && (
-                              <svg width="28" height="18" viewBox="0 0 28 18" fill="none">
-                                <rect x="2" y="4" width="24" height="12" rx="3" fill={cfg.color} fillOpacity="0.2" stroke={cfg.color} strokeWidth="1" strokeDasharray="3 2" opacity="0.7" />
-                                <circle cx="9" cy="9" r="1" fill={cfg.color} fillOpacity="0.4" />
-                                <circle cx="14" cy="11" r="0.8" fill={cfg.color} fillOpacity="0.3" />
-                                <circle cx="19" cy="8" r="1" fill={cfg.color} fillOpacity="0.4" />
-                              </svg>
-                            )}
-                          </div>
-                          <div style={{
-                            fontSize: 12,
-                            fontWeight: 200,
-                            color: 'rgba(240,230,210,0.9)',
-                            letterSpacing: '0.06em',
-                          }}>{cfg.label}</div>
-                        </div>
-                        <div style={{
-                          fontSize: 10,
-                          fontWeight: 200,
-                          color: 'rgba(190,170,130,0.4)',
-                          lineHeight: 1.55,
-                          letterSpacing: '0.015em',
-                          marginBottom: 6,
-                          paddingLeft: 38,
-                        }}>{cfg.legendNote}</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 38 }}>
-                          <span style={{
-                            display: 'inline-block',
-                            fontSize: 7,
-                            fontWeight: 400,
-                            letterSpacing: '0.18em',
-                            textTransform: 'uppercase',
-                            color: 'rgba(180,140,80,0.4)',
-                            background: 'linear-gradient(135deg, rgba(160,120,60,0.08) 0%, rgba(120,90,40,0.04) 100%)',
-                            padding: '3px 10px',
-                            borderRadius: 20,
-                            border: '1px solid rgba(180,140,80,0.08)',
-                          }}>{cfg.legendSource}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  </div>
+            <MuseumLegend
+              colorScheme={EARTHY_SCHEME}
+              motionKey="phys-legend"
+              headerLabel="Physical Layers"
+              items={activePhysicalLayers.map(key => {
+                const cfg = PHYSICAL_LAYER_CONFIG[key];
+                const iconSvgs: Record<string, React.ReactNode> = {
+                  rivers: <svg width="28" height="18" viewBox="0 0 28 18" fill="none"><path d="M2 14 C8 14, 8 4, 14 4 C20 4, 20 14, 26 14" stroke={cfg.color} strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.9" /><path d="M4 16 C8 16, 10 10, 14 10" stroke={cfg.color} strokeWidth="1" strokeLinecap="round" fill="none" opacity="0.4" /></svg>,
+                  ranges: <svg width="28" height="18" viewBox="0 0 28 18" fill="none"><path d="M1 16 L7 5 L10 9 L14 2 L18 9 L21 5 L27 16Z" fill={cfg.color} fillOpacity="0.2" stroke={cfg.color} strokeWidth="1" strokeDasharray="3 2" strokeLinecap="round" opacity="0.8" /></svg>,
+                  peaks: <svg width="28" height="18" viewBox="0 0 28 18" fill="none"><path d="M14 2 L20 16 L8 16Z" fill={cfg.color} fillOpacity="0.15" stroke={cfg.color} strokeWidth="1" opacity="0.8" /><circle cx="14" cy="5" r="1.5" fill="#fff" fillOpacity="0.6" /></svg>,
+                  lakes: <svg width="28" height="18" viewBox="0 0 28 18" fill="none"><ellipse cx="14" cy="10" rx="11" ry="6" fill={cfg.color} fillOpacity="0.25" stroke={cfg.color} strokeWidth="1" opacity="0.8" /><path d="M7 9 Q14 7, 21 9" stroke={cfg.color} strokeWidth="0.5" fill="none" opacity="0.4" /></svg>,
+                  volcanoes: <svg width="28" height="18" viewBox="0 0 28 18" fill="none"><path d="M10 16 L14 6 L18 16" fill={cfg.color} fillOpacity="0.15" stroke={cfg.color} strokeWidth="1" opacity="0.7" /><circle cx="14" cy="4" r="2.5" fill={cfg.color} fillOpacity="0.3" stroke={cfg.color} strokeWidth="0.8" opacity="0.9" /><circle cx="14" cy="4" r="1" fill="#ff8c00" fillOpacity="0.8" /></svg>,
+                  'fault-lines': <svg width="28" height="18" viewBox="0 0 28 18" fill="none"><path d="M2 14 L8 6 L14 12 L20 4 L26 10" stroke={cfg.color} strokeWidth="1.5" strokeDasharray="4 2" strokeLinecap="round" fill="none" opacity="0.9" /><path d="M8 6 L6 2" stroke={cfg.color} strokeWidth="0.8" fill="none" opacity="0.4" /><path d="M20 4 L22 1" stroke={cfg.color} strokeWidth="0.8" fill="none" opacity="0.4" /></svg>,
+                  deserts: <svg width="28" height="18" viewBox="0 0 28 18" fill="none"><rect x="2" y="4" width="24" height="12" rx="3" fill={cfg.color} fillOpacity="0.2" stroke={cfg.color} strokeWidth="1" strokeDasharray="3 2" opacity="0.7" /><circle cx="9" cy="9" r="1" fill={cfg.color} fillOpacity="0.4" /><circle cx="14" cy="11" r="0.8" fill={cfg.color} fillOpacity="0.3" /><circle cx="19" cy="8" r="1" fill={cfg.color} fillOpacity="0.4" /></svg>,
+                };
+                return {
+                  key, label: cfg.label, note: cfg.legendNote, source: cfg.legendSource,
+                  icon: <div style={{ width: 28, height: 20, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{iconSvgs[key]}</div>,
+                  iconIndent: 38,
+                };
+              })}
+              onItemClick={(key) => setExpandedPhysicalLayer(key as PhysicalLayerType)}
+              scrollClassName="phys-legend-scroll"
+              controls={
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 14, paddingBottom: 12, borderBottom: '1px solid rgba(180,140,80,0.06)', pointerEvents: 'auto' }}>
+                  {(['auto', 'low', 'med', 'high'] as const).map((l) => (
+                    <div key={l} onClick={() => mapControls.handleSetNaturalLod(l)} style={{ fontSize: 7, fontWeight: 300, letterSpacing: '0.12em', textTransform: 'uppercase', color: mapControls.naturalLod === l ? 'rgba(212,168,83,0.8)' : 'rgba(190,170,130,0.3)', background: mapControls.naturalLod === l ? 'linear-gradient(135deg, rgba(180,140,60,0.12) 0%, rgba(140,100,40,0.06) 100%)' : 'transparent', padding: '3px 8px', borderRadius: 10, border: `1px solid ${mapControls.naturalLod === l ? 'rgba(180,140,80,0.15)' : 'rgba(180,140,80,0.05)'}`, cursor: 'pointer', transition: 'all 0.2s ease' }} onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.opacity = '0.7'; }} onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.opacity = '1'; }}>{l}</div>
+                  ))}
                 </div>
-              </div>
-            </motion.div>
+              }
+            />
           );
         })()}
       </AnimatePresence>
 
-      {/* Physical Layers — Expanded Card Popup (Museum of the Future) */}
+      {/* Physical Layers — Expanded Card */}
       <AnimatePresence>
         {expandedPhysicalLayer && (() => {
           const cfg = PHYSICAL_LAYER_CONFIG[expandedPhysicalLayer];
-          const PhysIconMap: Record<string, React.ComponentType<any>> = { Waves, Mountain, MountainSnow, Droplets, Flame, Zap, Sun };
-          const LayerIcon = PhysIconMap[cfg.iconName] || Mountain;
+          const PhysIconMap2: Record<string, React.ComponentType<any>> = { Waves, Mountain, MountainSnow, Droplets, Flame, Zap, Sun };
+          const LayerIcon = PhysIconMap2[cfg.iconName] || Mountain;
           return (
-            <>
-              <motion.div
-                key="phys-card-overlay"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.25 }}
-                onClick={closePhysicalExpandedCard}
-                style={{
-                  position: 'fixed',
-                  inset: 0,
-                  zIndex: 55,
-                  background: 'rgba(0,0,0,0.35)',
-                  backdropFilter: 'blur(6px)',
-                }}
-              />
-              {/* Outer wrapper handles 3D tilt */}
-              <div
-                ref={physicalCardRef}
-                onMouseMove={handlePhysicalCardMouseMove}
-                onMouseLeave={handlePhysicalCardMouseLeave}
-                style={{
-                  position: 'fixed',
-                  bottom: 40,
-                  right: 24,
-                  zIndex: 60,
-                  width: 340,
-                  transform: `perspective(800px) rotateX(${physicalCardTilt.rx}deg) rotateY(${physicalCardTilt.ry}deg)`,
-                  transition: 'transform 0.18s cubic-bezier(0.23, 1, 0.32, 1)',
-                  transformStyle: 'preserve-3d',
-                  willChange: 'transform',
-                }}
-              >
-              <motion.div
-                key="phys-expanded-card"
-                initial={{ opacity: 0, scale: 0.85, y: 40 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.85, y: 40 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-              >
-                {/* Gradient border */}
-                <div style={{
-                  borderRadius: 24,
-                  padding: 1,
-                  background: 'linear-gradient(170deg, rgba(180,140,80,0.25) 0%, rgba(160,120,60,0.1) 40%, rgba(100,80,40,0.05) 100%)',
-                  position: 'relative',
-                }}>
-                  {/* Cursor-following shine */}
-                  <div style={{
-                    position: 'absolute',
-                    inset: 0,
-                    borderRadius: 'inherit',
-                    background: `radial-gradient(circle at ${physicalCardTilt.shineX}% ${physicalCardTilt.shineY}%, rgba(200,170,100,0.1) 0%, rgba(180,140,80,0.03) 40%, transparent 65%)`,
-                    pointerEvents: 'none',
-                    transition: 'background 0.15s ease-out',
-                    zIndex: 1,
-                  }} />
-                  {/* Main card */}
-                  <div style={{
-                    borderRadius: 23,
-                    background: 'linear-gradient(170deg, rgba(18,16,12,0.97) 0%, rgba(24,20,14,0.95) 50%, rgba(40,32,18,0.93) 100%)',
-                    backdropFilter: 'blur(40px) saturate(1.3)',
-                    overflow: 'hidden',
-                    boxShadow: '0 24px 70px rgba(0,0,0,0.6), 0 0 100px rgba(160,120,60,0.06)',
-                  }}>
-                    {/* Hero visual section */}
-                    <div style={{
-                      width: '100%',
-                      height: 180,
-                      backgroundImage: `url(${cfg.heroSvg})`,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                      backgroundColor: 'rgba(18,16,12,0.8)',
-                      position: 'relative',
-                      overflow: 'hidden',
-                    }}>
-                      {/* Gradient fade at bottom */}
-                      <div style={{
-                        position: 'absolute',
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        height: 70,
-                        background: 'linear-gradient(to top, rgba(18,16,12,0.97), transparent)',
-                      }} />
-                      {/* Close button */}
-                      <button
-                        onClick={closePhysicalExpandedCard}
-                        style={{
-                          position: 'absolute',
-                          top: 12,
-                          right: 12,
-                          width: 28,
-                          height: 28,
-                          borderRadius: '50%',
-                          background: 'rgba(0,0,0,0.45)',
-                          backdropFilter: 'blur(8px)',
-                          border: '1px solid rgba(255,255,255,0.08)',
-                          color: 'rgba(255,255,255,0.7)',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: 13,
-                          lineHeight: 1,
-                          padding: 0,
-                        }}
-                      >{'\u2715'}</button>
-                    </div>
-                    {/* Content section */}
-                    <div style={{ padding: '14px 26px 22px', textAlign: 'center' }}>
-                      {/* Source badge */}
-                      <div style={{
-                        fontSize: 8,
-                        fontWeight: 400,
-                        letterSpacing: '0.22em',
-                        textTransform: 'uppercase',
-                        color: 'rgba(190,170,130,0.45)',
-                        marginBottom: 12,
-                      }}>{cfg.legendSource}</div>
-                      {/* Title */}
-                      <div style={{
-                        fontSize: 22,
-                        fontWeight: 200,
-                        color: 'rgba(240,230,210,0.92)',
-                        letterSpacing: '0.02em',
-                        lineHeight: 1.2,
-                        marginBottom: 14,
-                      }}>{cfg.label}</div>
-                      {/* Expanded description */}
-                      <div style={{
-                        fontSize: 12,
-                        fontWeight: 300,
-                        color: 'rgba(190,170,130,0.5)',
-                        lineHeight: 1.75,
-                        letterSpacing: '0.01em',
-                        marginBottom: 18,
-                      }}>{cfg.expandedDescription}</div>
-                      {/* Decorative separator + icon */}
-                      <div style={{
-                        width: 28,
-                        height: 1,
-                        background: 'linear-gradient(90deg, transparent, rgba(180,140,80,0.2), transparent)',
-                        margin: '0 auto 12px',
-                      }} />
-                      <LayerIcon style={{
-                        width: 16,
-                        height: 16,
-                        color: 'rgba(180,140,80,0.25)',
-                      }} />
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-              </div>
-            </>
+            <MuseumExpandedCard
+              variant="earthy"
+              motionKey="phys-expanded-card"
+              heroContent={{ type: 'image', url: cfg.heroSvg }}
+              sourceLabel={cfg.legendSource}
+              title={cfg.label}
+              description={cfg.expandedDescription}
+              footerIcon={<LayerIcon style={{ width: 16, height: 16 }} />}
+              onClose={closePhysicalExpandedCard}
+            />
           );
         })()}
       </AnimatePresence>

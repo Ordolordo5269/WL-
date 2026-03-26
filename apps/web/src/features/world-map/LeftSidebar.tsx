@@ -161,6 +161,13 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
     choropleth?.handleHideAll();
   }, [choropleth]);
 
+  // Deactivate International Organizations highlights when leaving the section
+  const deactivateOrganizations = useCallback(() => {
+    try { (window as any).__wl_mapRef?.highlightIso3ToColorMap?.({}); } catch {}
+    try { (document as any).__wl_map_comp?.highlightIso3ToColorMap?.({}); } catch {}
+    try { onSetOrganizationIsoFilter?.([]); } catch {}
+  }, [onSetOrganizationIsoFilter]);
+
   // Wrap onClose to cleanup active modes
   const _onClose = useCallback(() => {
     if (activeItem === 'satellite intel') {
@@ -172,9 +179,12 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
     if (activeItem === 'physical layers') {
       deactivateAllNaturalLayers();
     }
+    if (activeItem === 'international organizations') {
+      deactivateOrganizations();
+    }
     setActiveItem('home');
     _onCloseRaw();
-  }, [activeItem, deactivateAllOverlays, deactivateAllStats, deactivateAllNaturalLayers, _onCloseRaw]);
+  }, [activeItem, deactivateAllOverlays, deactivateAllStats, deactivateAllNaturalLayers, deactivateOrganizations, _onCloseRaw]);
   const [rotateSpeed, setRotateSpeed] = useState<number>(3);
   const [terrainEnabled, setTerrainEnabled] = useState<boolean>(false);
   const [terrainEx, setTerrainEx] = useState<number>(1);
@@ -305,6 +315,10 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
       if (activeItem === 'physical layers') {
         deactivateAllNaturalLayers();
       }
+      // If leaving International Organizations, clear highlights
+      if (activeItem === 'international organizations') {
+        deactivateOrganizations();
+      }
       setActiveItem('');
       return;
     }
@@ -349,6 +363,11 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
       deactivateAllNaturalLayers();
     }
 
+    // If leaving International Organizations for another section, clear highlights
+    if (activeItem === 'international organizations') {
+      deactivateOrganizations();
+    }
+
     setActiveItem(itemKey);
 
     // Prefetch + auto-activate Night Lights when entering Satellite Intel
@@ -378,7 +397,7 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
     if (item.onClick) {
       item.onClick();
     }
-  }, [activeItem, earthOverlays, onToggleEarthOverlay, deactivateAllOverlays, deactivateAllStats, deactivateAllNaturalLayers, onOpenConflictTracker, onOpenCompareCountries, onToggleHistoryMode, onHistoryToSatellite, onSatelliteToHistory]);
+  }, [activeItem, earthOverlays, onToggleEarthOverlay, deactivateAllOverlays, deactivateAllStats, deactivateAllNaturalLayers, deactivateOrganizations, onOpenConflictTracker, onOpenCompareCountries, onToggleHistoryMode, onHistoryToSatellite, onSatelliteToHistory]);
 
   return (
     <>
