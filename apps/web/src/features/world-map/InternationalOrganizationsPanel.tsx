@@ -17,9 +17,8 @@ export default function InternationalOrganizationsPanel({ onSetOrganizationIsoFi
     trade_orgs: false,
     security_orgs: false
   });
-  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
-  const [loadingKeys, setLoadingKeys] = useState<Set<string>>(new Set());
-  const [isoToColor, setIsoToColor] = useState<Record<string, string>>({});
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [loadingKey, setLoadingKey] = useState<string | null>(null);
 
 
   const groups = useMemo(() => {
@@ -51,12 +50,23 @@ export default function InternationalOrganizationsPanel({ onSetOrganizationIsoFi
     return { un, regional, trade, security };
   }, [query]);
 
-  async function applySelectionChange(orgKey: string, checked: boolean) {
-    const newSelected = new Set(selectedKeys);
-    if (checked) newSelected.add(orgKey); else newSelected.delete(orgKey);
-    setSelectedKeys(newSelected);
+  function clearMap() {
+    try { (window as any).__wl_mapRef?.highlightIso3ToColorMap?.({}); } catch {}
+    try { (document as any).__wl_map_comp?.highlightIso3ToColorMap?.({}); } catch {}
+    try { onSetOrganizationIsoFilter?.([]); } catch {}
+  }
 
-    // Get organization metadata
+  async function applySelectionChange(orgKey: string) {
+    // Toggle: if already selected, deselect
+    if (selectedKey === orgKey) {
+      setSelectedKey(null);
+      clearMap();
+      return;
+    }
+
+    // Select new org (replaces previous)
+    setSelectedKey(orgKey);
+
     const meta = ORGANIZATIONS.find(o => o.key === orgKey);
     if (!meta) {
       console.warn(`Organization ${orgKey} not found in config`);
@@ -64,90 +74,32 @@ export default function InternationalOrganizationsPanel({ onSetOrganizationIsoFi
     }
     const orgColor = meta.color || '#22c55e';
 
-    // Fetch/update iso map incrementally
-    let nextIsoMap: Record<string, string> = {};
-    if (checked) {
-      // Add the new organization - preserve existing colors for countries already colored
-      setLoadingKeys(prev => new Set([...prev, orgKey]));
-      try {
-        const { iso3 } = await buildOrgHighlight(orgKey as any);
-        // Merge with existing selections, but don't overwrite existing colors
-        nextIsoMap = { ...isoToColor };
-        for (const i of iso3) {
-          const isoUpper = i.toUpperCase();
-          // Only set color if country not already colored (first org selected wins for overlapping countries)
-          if (!nextIsoMap[isoUpper]) {
-            nextIsoMap[isoUpper] = orgColor;
-          }
-        }
-      } finally {
-        setLoadingKeys(prev => { const n = new Set(prev); n.delete(orgKey); return n; });
+    setLoadingKey(orgKey);
+    try {
+      const { iso3 } = await buildOrgHighlight(orgKey as any);
+      const colorMap: Record<string, string> = {};
+      for (const i of iso3) {
+        const normalizedColor = orgColor.startsWith('#') ? orgColor.toUpperCase() : `#${orgColor.toUpperCase()}`;
+        colorMap[i.toUpperCase()] = normalizedColor;
       }
-    } else {
-      // Rebuild completely from remaining selections to ensure removed countries are cleared
-      // Process in selection order to maintain consistent coloring for overlapping countries
-      const remainingKeys = Array.from(newSelected);
-      const rebuilt: Record<string, string> = {};
-      for (const k of remainingKeys) {
-        const kMeta = ORGANIZATIONS.find(o => o.key === k);
-        if (!kMeta) continue;
-        const kColor = kMeta.color || '#22c55e';
-        setLoadingKeys(prev => new Set([...prev, k]));
-        try {
-          const { iso3 } = await buildOrgHighlight(k as any);
-          for (const i of iso3) {
-            const isoUpper = i.toUpperCase();
-            // First org processed wins for overlapping countries
-            if (!rebuilt[isoUpper]) {
-              rebuilt[isoUpper] = kColor;
-            }
-          }
-        } catch {}
-        finally {
-          setLoadingKeys(prev => { const n = new Set(prev); n.delete(k); return n; });
-        }
-      }
-      nextIsoMap = rebuilt;
-    }
-    setIsoToColor(nextIsoMap);
 
-    // Normalize all colors to uppercase and ensure they're valid hex
-    const normalizedMap: Record<string, string> = {};
-    for (const [iso, color] of Object.entries(nextIsoMap)) {
-      // Ensure color is uppercase and valid hex
-      const normalizedColor = color.startsWith('#') ? color.toUpperCase() : `#${color.toUpperCase()}`;
-      normalizedMap[iso] = normalizedColor;
-    }
-
-    // Apply to map immediately - pass empty object if no selections
-    try { 
-      // Try window.__wl_mapRef first (the script-generated proxy)
+      // Apply to map
       const windowMapRef = (window as any).__wl_mapRef;
-      if (windowMapRef && windowMapRef.highlightIso3ToColorMap) {
-        console.log('[IOP] Applying colors to map via window:', normalizedMap);
-        windowMapRef.highlightIso3ToColorMap(normalizedMap);
-        return;
-      }
-      
-      // Fallback: try document.__wl_map_comp directly
       const docMapRef = (document as any).__wl_map_comp;
-      if (docMapRef && docMapRef.highlightIso3ToColorMap) {
-        console.log('[IOP] Applying colors to map via document:', normalizedMap);
-        docMapRef.highlightIso3ToColorMap(normalizedMap);
-        return;
+      if (windowMapRef?.highlightIso3ToColorMap) {
+        console.log('[IOP] Applying colors to map via window:', colorMap);
+        windowMapRef.highlightIso3ToColorMap(colorMap);
+      } else if (docMapRef?.highlightIso3ToColorMap) {
+        console.log('[IOP] Applying colors to map via document:', colorMap);
+        docMapRef.highlightIso3ToColorMap(colorMap);
+      } else {
+        console.warn('[IOP] Map ref not available');
       }
-      
-      console.warn('[IOP] Map ref not available', { 
-        hasWindowRef: !!windowMapRef, 
-        hasDocRef: !!docMapRef 
-      });
-    } catch (err) {
-      console.error('[IOP] Error updating map:', err);
-    }
-    if (onSetOrganizationIsoFilter) {
-      try { 
-        onSetOrganizationIsoFilter(Object.keys(normalizedMap)); 
-      } catch {}
+      if (onSetOrganizationIsoFilter) {
+        try { onSetOrganizationIsoFilter(Object.keys(colorMap)); } catch {}
+      }
+    } finally {
+      setLoadingKey(null);
     }
   }
 
@@ -192,14 +144,16 @@ export default function InternationalOrganizationsPanel({ onSetOrganizationIsoFi
             )}
             <div style={{ display: 'grid', gap: 8 }}>
               {items.map((o) => {
-                const isChecked = selectedKeys.has(o.key);
-                const isLoading = loadingKeys.has(o.key);
+                const isChecked = selectedKey === o.key;
+                const isLoading = loadingKey === o.key;
                 return (
                   <label key={o.key} style={{ display: 'flex', gap: 10, alignItems: 'center', cursor: 'pointer' }}>
                     <input
-                      type="checkbox"
+                      type="radio"
+                      name="iop-org"
                       checked={isChecked}
-                      onChange={async (e) => { await applySelectionChange(o.key, e.target.checked); }}
+                      onChange={async () => { await applySelectionChange(o.key); }}
+                      onClick={async (e) => { if (isChecked) { e.preventDefault(); await applySelectionChange(o.key); } }}
                       style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#3b82f6' }}
                     />
                     <span style={{ flex: 1, color: '#e2e8f0', fontSize: 14 }}>{o.name}</span>
@@ -281,14 +235,12 @@ export default function InternationalOrganizationsPanel({ onSetOrganizationIsoFi
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 12 }}>
         <div style={{ fontSize: 13, color: '#94a3b8' }}>
-          {selectedKeys.size === 0 ? 'No organizations selected' : `${selectedKeys.size} ${selectedKeys.size === 1 ? 'organization' : 'organizations'} selected`}
+          {selectedKey ? `1 organization selected` : 'No organizations selected'}
         </div>
         <button
           onClick={() => {
-            setSelectedKeys(new Set());
-            setIsoToColor({});
-            try { (window as any).__wl_mapRef?.highlightIso3ToColorMap?.({}); } catch {}
-            try { onSetOrganizationIsoFilter?.([]); } catch {}
+            setSelectedKey(null);
+            clearMap();
           }}
           className="settings-chip"
           style={{

@@ -1743,7 +1743,7 @@ function WorldMapView() {
                     <div style={{
                       width: '100%',
                       height: 180,
-                      backgroundImage: `url(${cfg.heroSvg})`,
+                      backgroundImage: `url(${cfg.heroImage})`,
                       backgroundSize: 'cover',
                       backgroundPosition: 'center',
                       backgroundColor: 'rgba(18,16,12,0.8)',
