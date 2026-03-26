@@ -3832,3 +3832,224 @@
   justify-content: space-between;
   font-size: 10px;
 }
+
+/* ── Statistics Panel (redesign) ── */
+.stats-panel {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(71, 85, 105, 0.35);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+.stats-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(71, 85, 105, 0.25);
+}
+
+.stats-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.stats-panel-icon {
+  width: 28px;
+  height: 28px;
+  background: rgba(59, 130, 246, 0.15);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stats-panel-icon svg {
+  width: 14px;
+  height: 14px;
+  stroke: #60a5fa;
+  fill: none;
+}
+
+.stats-panel-badge {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.stats-search-box {
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(71, 85, 105, 0.25);
+}
+
+.stats-search-wrap {
+  position: relative;
+}
+
+.stats-search-wrap svg {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  stroke: #64748b;
+  fill: none;
+  pointer-events: none;
+}
+
+.stats-search-input {
+  width: 100%;
+  padding: 6px 10px 6px 28px;
+  font-size: 12px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(71, 85, 105, 0.4);
+  border-radius: 8px;
+  color: #e2e8f0;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.stats-search-input::placeholder { color: #4b5563; }
+.stats-search-input:focus { border-color: rgba(59, 130, 246, 0.5); }
+
+.stats-category-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(71, 85, 105, 0.25);
+  overflow-x: auto;
+}
+
+.stats-category-tab {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 20px;
+  border: 1px solid rgba(71, 85, 105, 0.4);
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.stats-category-tab:hover { border-color: rgba(148, 163, 184, 0.5); }
+
+.stats-category-tab.active {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+  border-color: transparent;
+}
+
+.stats-indicator-list {
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.stats-indicator-row {
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(71, 85, 105, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: background 0.1s;
+}
+
+.stats-indicator-row:last-child { border-bottom: none; }
+.stats-indicator-row:hover { background: rgba(30, 41, 59, 0.5); }
+
+.stats-indicator-accent {
+  width: 3px;
+  height: 32px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.stats-indicator-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.stats-indicator-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stats-indicator-meta {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stats-toggle {
+  width: 34px;
+  height: 18px;
+  border-radius: 20px;
+  background: rgba(71, 85, 105, 0.5);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+  border: none;
+  flex-shrink: 0;
+}
+
+.stats-toggle.on { background: rgba(59, 130, 246, 0.6); }
+
+.stats-toggle::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: white;
+  border-radius: 50%;
+  top: 3px;
+  left: 3px;
+  transition: transform 0.2s;
+}
+
+.stats-toggle.on::after { transform: translateX(16px); }
+
+.stats-indicator-legend {
+  padding: 0 14px 10px 27px;
+}
+
+.stats-panel-footer {
+  padding: 8px 14px;
+  border-top: 1px solid rgba(71, 85, 105, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.stats-visible-count {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.stats-footer-btn {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(71, 85, 105, 0.4);
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.stats-footer-btn:hover {
+  background: rgba(30, 41, 59, 0.6);
+  color: #e2e8f0;
+}
