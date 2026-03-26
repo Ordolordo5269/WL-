@@ -225,12 +225,9 @@ export interface PhysicalLayerConfig {
   expandedDescription: string;
   iconName: string;
   gradient: string;
-  /** Path to the hero image for the expanded card */
-  heroImage: string;
+  /** Hero image path for the expanded card */
+  heroSvg: string;
 }
-
-/* Hero images for expanded layer cards — static images in /public/layers/ */
-
 
 export const PHYSICAL_LAYER_CONFIG: Record<PhysicalLayerType, PhysicalLayerConfig> = {
   rivers: {
@@ -241,7 +238,7 @@ export const PHYSICAL_LAYER_CONFIG: Record<PhysicalLayerType, PhysicalLayerConfi
     expandedDescription: 'WorldLore\u2019s hydrological monitoring network traces every major river system on Earth \u2014 from the arterial Amazon basin to the frozen deltas of Siberia. Each watercourse is catalogued by discharge volume, watershed, and seasonal flow patterns.',
     iconName: 'Waves',
     gradient: 'linear-gradient(135deg, #1a3a5c 0%, #4aa3df 60%, #2a6fa8 100%)',
-    heroImage: '/layers/rivers.webp',
+    heroSvg: '/layers/rivers.webp',
   },
   ranges: {
     label: 'Mountain Ranges',
@@ -251,7 +248,7 @@ export const PHYSICAL_LAYER_CONFIG: Record<PhysicalLayerType, PhysicalLayerConfi
     expandedDescription: 'Continental mountain ranges catalogued by our terrain intelligence division. Every major orogen \u2014 from the Himalayan collision zone to the ancient Appalachian fold belt \u2014 is mapped with elevation profiles, geological age, and tectonic origin.',
     iconName: 'Mountain',
     gradient: 'linear-gradient(135deg, #5c3a1a 0%, #b08968 60%, #8b6b4a 100%)',
-    heroImage: '/layers/ranges.webp',
+    heroSvg: '/layers/ranges.webp',
   },
   peaks: {
     label: 'Peaks',
@@ -261,7 +258,7 @@ export const PHYSICAL_LAYER_CONFIG: Record<PhysicalLayerType, PhysicalLayerConfi
     expandedDescription: 'WorldLore\u2019s elevation index tracks every significant summit on the planet. Each peak is recorded with precise altitude, topographic prominence, and first ascent data \u2014 from the 8,000-metre giants of the Karakoram to isolated volcanic cones.',
     iconName: 'MountainSnow',
     gradient: 'linear-gradient(135deg, #6b5a3a 0%, #a0855b 50%, #d4c5a0 100%)',
-    heroImage: '/layers/peaks.webp',
+    heroSvg: '/layers/peaks.webp',
   },
   lakes: {
     label: 'Lakes',
@@ -271,7 +268,7 @@ export const PHYSICAL_LAYER_CONFIG: Record<PhysicalLayerType, PhysicalLayerConfi
     expandedDescription: 'Every major inland water body on Earth \u2014 glacial lakes, rift basins, reservoirs, and endorheic seas \u2014 catalogued by surface area, depth, and hydrological connectivity. Our network monitors seasonal fluctuations and long-term trends.',
     iconName: 'Droplets',
     gradient: 'linear-gradient(135deg, #1a3a6c 0%, #5b9bd5 60%, #2e78c4 100%)',
-    heroImage: '/layers/lakes.webp',
+    heroSvg: '/layers/lakes.webp',
   },
   volcanoes: {
     label: 'Volcanoes',
@@ -281,7 +278,7 @@ export const PHYSICAL_LAYER_CONFIG: Record<PhysicalLayerType, PhysicalLayerConfi
     expandedDescription: 'WorldLore\u2019s geothermal surveillance tracks every Holocene volcano on the planet. Each entry records eruption history, volcanic type, current alert level, and tectonic setting \u2014 from the Ring of Fire\u2019s subduction arcs to mid-ocean ridge hotspots.',
     iconName: 'Flame',
     gradient: 'linear-gradient(135deg, #4a1a0a 0%, #e84b1a 50%, #ff8c00 100%)',
-    heroImage: '/layers/volcanoes.webp',
+    heroSvg: '/layers/volcanoes.webp',
   },
   'fault-lines': {
     label: 'Fault Lines',
@@ -291,7 +288,7 @@ export const PHYSICAL_LAYER_CONFIG: Record<PhysicalLayerType, PhysicalLayerConfi
     expandedDescription: 'Tectonic plate boundaries and major crustal fracture zones mapped by WorldLore\u2019s seismic intelligence division. Every convergent, divergent, and transform boundary is traced \u2014 the living scars where Earth\u2019s lithosphere breaks and reshapes itself.',
     iconName: 'Zap',
     gradient: 'linear-gradient(135deg, #4a2010 0%, #ff6b35 50%, #ff9a5c 100%)',
-    heroImage: '/layers/fault-lines.webp',
+    heroSvg: '/layers/fault-lines.webp',
   },
   deserts: {
     label: 'Deserts',
@@ -301,7 +298,7 @@ export const PHYSICAL_LAYER_CONFIG: Record<PhysicalLayerType, PhysicalLayerConfi
     expandedDescription: 'WorldLore\u2019s climate division maps every major arid and hyper-arid region on the planet. From the Sahara\u2019s ergs to the Atacama\u2019s absolute desert, each zone is classified by aridity index, surface type, and desertification trends.',
     iconName: 'Sun',
     gradient: 'linear-gradient(135deg, #6b4a1a 0%, #d4a853 50%, #e8c97a 100%)',
-    heroImage: '/layers/deserts.webp',
+    heroSvg: '/layers/deserts.webp',
   },
 };
 
