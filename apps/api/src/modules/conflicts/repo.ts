@@ -25,12 +25,20 @@ export async function findMany(filters: ConflictFilters) {
     if (filters.to) where.startDate.lte = new Date(filters.to);
   }
 
+  if (filters.dataSource && filters.dataSource !== 'all') {
+    where.dataSource = filters.dataSource;
+  }
+
+  if (filters.typeOfViolence) {
+    where.typeOfViolence = filters.typeOfViolence;
+  }
+
   return prisma.conflict.findMany({
     where,
     include: {
       casualties: true,
       factions: { include: { support: true } },
-      _count: { select: { events: true } },
+      _count: { select: { events: true, ucdpEvents: true } },
     },
     orderBy: { startDate: 'desc' },
   });
@@ -45,6 +53,8 @@ export async function findBySlug(slug: string) {
       events: { orderBy: { date: 'desc' } },
       updates: { orderBy: { date: 'desc' } },
       news: { orderBy: { publishedAt: 'desc' }, take: 20 },
+      ucdpEvents: { orderBy: { dateStart: 'desc' }, take: 100 },
+      _count: { select: { ucdpEvents: true } },
     },
   });
 }

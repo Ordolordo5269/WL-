@@ -22,6 +22,8 @@ export function useConflicts(filters: ConflictFiltersParams = {}) {
       if (filters.country) params.set('country', filters.country);
       if (filters.from) params.set('from', filters.from);
       if (filters.to) params.set('to', filters.to);
+      if (filters.dataSource) params.set('dataSource', filters.dataSource);
+      if (filters.typeOfViolence) params.set('typeOfViolence', String(filters.typeOfViolence));
 
       const qs = params.toString();
       const res = await http.get<ApiResponse>(`/api/conflicts${qs ? `?${qs}` : ''}`);

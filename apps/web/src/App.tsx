@@ -425,7 +425,10 @@ function WorldMapView() {
   };
 
   const handleConflictClick = (conflictId: string) => {
-    const conflict = conflictsDatabase.find(c => c.id === conflictId);
+    // Find conflict in current map data or fallback to static
+    const ucdpConflict = conflictsForMap.find((c: any) => c.id === conflictId);
+    const staticConflict = conflictsDatabase.find(c => c.id === conflictId);
+    const conflict = ucdpConflict || staticConflict;
     if (conflict) {
       setSelectedCountry(null);
       setSelectedConflictId(conflictId);
@@ -471,10 +474,11 @@ function WorldMapView() {
     ), [countries, selectedCountry]
   );
 
-  const conflictsForMap = useMemo(() =>
-    sidebars.conflict ? conflictsDatabase : [],
-    [sidebars.conflict]
-  );
+  // UCDP conflicts for map — driven by ConflictTracker's filtered results
+  const [conflictsForMap, setConflictsForMap] = useState<any[]>([]);
+  const handleConflictsChange = useCallback((c: any[]) => setConflictsForMap(c), []);
+  // Clear map when tracker closes
+  useEffect(() => { if (!sidebars.conflict) setConflictsForMap([]); }, [sidebars.conflict]);
 
   return (
     <div className="relative w-full h-full overflow-hidden">
@@ -1420,6 +1424,7 @@ function WorldMapView() {
           onBack={handleCloseConflictTracker}
           onCenterMap={handleCenterMapOnConflict}
           onConflictSelect={handleConflictSelect}
+          onConflictsChange={handleConflictsChange}
         />
       )}
 

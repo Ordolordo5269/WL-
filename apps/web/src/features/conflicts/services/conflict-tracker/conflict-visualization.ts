@@ -50,6 +50,8 @@ const getStatusColorExpression = () => [
   'war', COLORS.WAR,
   'warm', COLORS.WARM,
   'improving', COLORS.IMPROVING,
+  'one_sided', '#a855f7',
+  'frozen', '#eab308',
   COLORS.CONFLICT_MARKER // fallback
 ] as any;
 
@@ -202,24 +204,463 @@ export const ConflictVisualization = {
         map.setFilter(LAYERS.COUNTRY_BORDER, filter);
       }
 
-      console.log('[DEBUG] Updated country highlights with ISO:', isoCodes);
     } catch {
       console.error('[ERROR] Failed to update country highlights');
     }
   },
 
   /**
+   * Build shared GeoJSON from conflicts (reused across layer modes)
+   */
+  _buildConflictGeoJSON(conflicts: ConflictData[]): GeoJSON.FeatureCollection {
+    return {
+      type: 'FeatureCollection',
+      features: conflicts
+        .filter(c => c.coordinates?.lat && c.coordinates?.lng)
+        .map(c => {
+          const deaths = Array.isArray((c as any).casualties)
+            ? ((c as any).casualties as any[]).reduce((s: number, x: any) => s + (x.total || 0), 0)
+            : 0;
+          return {
+            type: 'Feature' as const,
+            geometry: { type: 'Point' as const, coordinates: [c.coordinates.lng, c.coordinates.lat] },
+            properties: {
+              id: c.id,
+              name: (c as any).name || c.country,
+              status: c.status,
+              deaths,
+              typeOfViolence: (c as any).typeOfViolence ?? 1,
+              radius: Math.max(4, Math.min(28, 4 + Math.log1p(deaths) * 2.8)),
+            },
+          };
+        }),
+    };
+  },
+
+  /**
+   * Ensure the shared source exists or update it
+   */
+  _ensureSource(map: mapboxgl.Map, conflicts: ConflictData[]) {
+    const sourceId = 'ucdp-conflict-points';
+    const geojson = this._buildConflictGeoJSON(conflicts);
+    if (map.getSource(sourceId)) {
+      (map.getSource(sourceId) as mapboxgl.GeoJSONSource).setData(geojson);
+    } else {
+      map.addSource(sourceId, { type: 'geojson', data: geojson });
+    }
+    return sourceId;
+  },
+
+  /**
+   * Conflict-level markers — one dot per conflict, distinct style per violence type.
+   * Fade out at zoom >= 6 as individual event dots take over.
+   */
+  addSimpleMarkers(map: mapboxgl.Map, conflicts: ConflictData[]) {
+    const sourceId = this._ensureSource(map, conflicts);
+
+    const sizeByDeaths = (base: number, scale: number): any => [
+      'interpolate', ['linear'], ['get', 'deaths'],
+      0, base, 100, base + scale, 1000, base + scale * 2, 10000, base + scale * 3.5,
+    ];
+
+    // Conflict markers fade out at high zoom (events take over)
+    const fadeOpacity = (lo: number, hi: number): any => [
+      'interpolate', ['linear'], ['zoom'],
+      0, lo, 4, hi, 7, hi * 0.3,
+    ];
+
+    // ── Type 1: State-based — solid filled red circles ──
+    if (!map.getLayer('ucdp-t1-glow')) {
+      map.addLayer({ id: 'ucdp-t1-glow', type: 'circle', source: sourceId,
+        filter: ['==', ['get', 'typeOfViolence'], 1],
+        paint: {
+          'circle-radius': sizeByDeaths(8, 5), 'circle-color': '#ef4444',
+          'circle-opacity': fadeOpacity(0.08, 0.15), 'circle-blur': 1,
+        },
+      });
+    }
+    if (!map.getLayer('ucdp-t1-dot')) {
+      map.addLayer({ id: 'ucdp-t1-dot', type: 'circle', source: sourceId,
+        filter: ['==', ['get', 'typeOfViolence'], 1],
+        paint: {
+          'circle-radius': sizeByDeaths(3, 2), 'circle-color': '#ef4444',
+          'circle-opacity': fadeOpacity(0.7, 0.85),
+          'circle-stroke-width': 1, 'circle-stroke-color': 'rgba(255,255,255,0.35)',
+        },
+      });
+    }
+
+    // ── Type 2: Non-state — hollow orange rings ──
+    if (!map.getLayer('ucdp-t2-ring')) {
+      map.addLayer({ id: 'ucdp-t2-ring', type: 'circle', source: sourceId,
+        filter: ['==', ['get', 'typeOfViolence'], 2],
+        paint: {
+          'circle-radius': sizeByDeaths(4, 2), 'circle-color': 'transparent',
+          'circle-stroke-width': ['interpolate', ['linear'], ['get', 'deaths'], 0, 1.2, 100, 1.8, 1000, 2.5],
+          'circle-stroke-color': '#f97316', 'circle-stroke-opacity': fadeOpacity(0.6, 0.8),
+        },
+      });
+    }
+
+    // ── Type 3: One-sided — purple glow ──
+    if (!map.getLayer('ucdp-t3-glow')) {
+      map.addLayer({ id: 'ucdp-t3-glow', type: 'circle', source: sourceId,
+        filter: ['==', ['get', 'typeOfViolence'], 3],
+        paint: {
+          'circle-radius': sizeByDeaths(10, 6), 'circle-color': '#a855f7',
+          'circle-opacity': fadeOpacity(0.1, 0.2), 'circle-blur': 0.9,
+        },
+      });
+    }
+    if (!map.getLayer('ucdp-t3-core')) {
+      map.addLayer({ id: 'ucdp-t3-core', type: 'circle', source: sourceId,
+        filter: ['==', ['get', 'typeOfViolence'], 3],
+        paint: {
+          'circle-radius': sizeByDeaths(2, 1.2), 'circle-color': '#c084fc',
+          'circle-opacity': fadeOpacity(0.7, 0.9),
+        },
+      });
+    }
+  },
+
+  removeSimpleMarkers(map: mapboxgl.Map) {
+    ['ucdp-t1-glow', 'ucdp-t1-dot', 'ucdp-t2-ring', 'ucdp-t3-glow', 'ucdp-t3-core'].forEach(id => {
+      if (map.getLayer(id)) map.removeLayer(id);
+    });
+  },
+
+  /**
+   * Load individual UCDP events from /api/ucdp/geo as a detail layer.
+   * Visible at zoom >= 4, fades in as you zoom into a region.
+   */
+  async loadEventDetailLayer(map: mapboxgl.Map, apiBase: string) {
+    const sourceId = 'ucdp-event-detail';
+    if (map.getSource(sourceId)) return;
+
+    try {
+      const res = await fetch(`${apiBase}/api/ucdp/geo`);
+      if (!res.ok) return;
+      const events: { latitude: number; longitude: number; bestEstimate: number; typeOfViolence: number }[] = await res.json();
+
+      const geojson: GeoJSON.FeatureCollection = {
+        type: 'FeatureCollection',
+        features: events.map(e => ({
+          type: 'Feature' as const,
+          geometry: { type: 'Point' as const, coordinates: [e.longitude, e.latitude] },
+          properties: { deaths: e.bestEstimate, type: e.typeOfViolence },
+        })),
+      };
+
+      map.addSource(sourceId, { type: 'geojson', data: geojson });
+
+      const typeColor: any = ['match', ['get', 'type'], 1, '#ef4444', 2, '#f97316', 3, '#c084fc', '#6b7280'];
+
+      map.addLayer({
+        id: 'ucdp-evt-dot',
+        type: 'circle',
+        source: sourceId,
+        minzoom: 4,
+        paint: {
+          'circle-radius': [
+            'interpolate', ['linear'], ['zoom'],
+            4, ['interpolate', ['linear'], ['get', 'deaths'], 0, 0.8, 10, 1.2, 100, 2],
+            8, ['interpolate', ['linear'], ['get', 'deaths'], 0, 2, 10, 3, 100, 5, 1000, 8],
+          ],
+          'circle-color': typeColor,
+          'circle-opacity': ['interpolate', ['linear'], ['zoom'], 4, 0.12, 6, 0.4, 8, 0.65],
+          'circle-stroke-width': 0,
+        },
+      });
+    } catch { /* detail layer is optional */ }
+  },
+
+  removeEventDetailLayer(map: mapboxgl.Map) {
+    if (map.getLayer('ucdp-evt-dot')) map.removeLayer('ucdp-evt-dot');
+    if (map.getSource('ucdp-event-detail')) map.removeSource('ucdp-event-detail');
+  },
+
+  /**
+   * Mapbox GL heatmap layer using deaths as weight.
+   */
+  /**
+   * Subtle heatmap that blends with WorldLore's dark globe aesthetic.
+   * Deep crimson/ember tones — feels like the earth is smoldering.
+   */
+  addHeatmapLayer(map: mapboxgl.Map, conflicts: ConflictData[]) {
+    const sourceId = this._ensureSource(map, conflicts);
+    const layerId = 'ucdp-heatmap';
+
+    if (!map.getLayer(layerId)) {
+      map.addLayer({
+        id: layerId,
+        type: 'heatmap',
+        source: sourceId,
+        paint: {
+          'heatmap-weight': [
+            'interpolate', ['linear'], ['get', 'deaths'],
+            0, 0.05,
+            25, 0.15,
+            100, 0.35,
+            500, 0.6,
+            2000, 0.85,
+            10000, 1,
+          ],
+          'heatmap-intensity': [
+            'interpolate', ['linear'], ['zoom'],
+            0, 0.6,
+            3, 1,
+            6, 1.8,
+          ],
+          'heatmap-radius': [
+            'interpolate', ['linear'], ['zoom'],
+            0, 12,
+            3, 25,
+            6, 45,
+            10, 65,
+          ],
+          'heatmap-color': [
+            'interpolate', ['linear'], ['heatmap-density'],
+            0,    'rgba(0, 0, 0, 0)',
+            0.05, 'rgba(80, 10, 20, 0.15)',
+            0.15, 'rgba(120, 15, 25, 0.3)',
+            0.3,  'rgba(160, 30, 30, 0.45)',
+            0.5,  'rgba(200, 50, 30, 0.55)',
+            0.7,  'rgba(230, 80, 30, 0.65)',
+            0.85, 'rgba(245, 130, 50, 0.7)',
+            1,    'rgba(255, 180, 80, 0.75)',
+          ],
+          'heatmap-opacity': [
+            'interpolate', ['linear'], ['zoom'],
+            0, 0.7,
+            6, 0.55,
+            10, 0.4,
+          ],
+        },
+      });
+    }
+  },
+
+  removeHeatmapLayer(map: mapboxgl.Map) {
+    if (map.getLayer('ucdp-heatmap')) map.removeLayer('ucdp-heatmap');
+  },
+
+  /**
+   * Switch between map layer modes: 'markers' | 'bubbles' | 'heatmap'
+   */
+  setMapMode(map: mapboxgl.Map, mode: string, conflicts: ConflictData[]) {
+    // Remove all modes first
+    this.removeSimpleMarkers(map);
+    this.removeConflictBubbles(map);
+    this.removeHeatmapLayer(map);
+
+    switch (mode) {
+      case 'markers':
+        this.addSimpleMarkers(map, conflicts);
+        break;
+      case 'bubbles':
+        this.addConflictBubbles(map, conflicts);
+        break;
+      case 'heatmap':
+        this.addHeatmapLayer(map, conflicts);
+        break;
+    }
+  },
+
+  /**
+   * Remove all UCDP point layers (any mode)
+   */
+  removeAllPointLayers(map: mapboxgl.Map) {
+    this.removeSimpleMarkers(map);
+    this.removeConflictBubbles(map);
+    this.removeHeatmapLayer(map);
+    this.removeEventDetailLayer(map);
+    if (map.getSource('ucdp-conflict-points')) map.removeSource('ucdp-conflict-points');
+  },
+
+  /**
+   * Add/update UCDP conflict bubble markers on the map.
+   * Bubble radius ∝ log(deaths), color = status.
+   */
+  addConflictBubbles(map: mapboxgl.Map, conflicts: ConflictData[]) {
+    const sourceId = 'ucdp-conflict-bubbles';
+    const layerGlow = 'ucdp-bubble-glow';
+    const layerCircle = 'ucdp-bubble-circle';
+    const layerLabel = 'ucdp-bubble-label';
+
+    const geojson: GeoJSON.FeatureCollection = {
+      type: 'FeatureCollection',
+      features: conflicts
+        .filter(c => c.coordinates?.lat && c.coordinates?.lng)
+        .map(c => {
+          const deaths = Array.isArray((c as any).casualties)
+            ? ((c as any).casualties as any[]).reduce((s: number, x: any) => s + (x.total || 0), 0)
+            : 0;
+          return {
+            type: 'Feature' as const,
+            geometry: { type: 'Point' as const, coordinates: [c.coordinates.lng, c.coordinates.lat] },
+            properties: {
+              id: c.id,
+              name: (c as any).name || c.country,
+              status: c.status,
+              deaths,
+              // log scale for radius: min 4px, max 28px
+              radius: Math.max(4, Math.min(28, 4 + Math.log1p(deaths) * 2.8)),
+            },
+          };
+        }),
+    };
+
+    if (map.getSource(sourceId)) {
+      (map.getSource(sourceId) as mapboxgl.GeoJSONSource).setData(geojson);
+    } else {
+      map.addSource(sourceId, { type: 'geojson', data: geojson });
+
+      // Glow layer
+      map.addLayer({
+        id: layerGlow,
+        type: 'circle',
+        source: sourceId,
+        paint: {
+          'circle-radius': ['*', ['get', 'radius'], 1.8],
+          'circle-color': getStatusColorExpression(),
+          'circle-opacity': 0.12,
+          'circle-blur': 1,
+        },
+      });
+
+      // Main bubble
+      map.addLayer({
+        id: layerCircle,
+        type: 'circle',
+        source: sourceId,
+        paint: {
+          'circle-radius': ['get', 'radius'],
+          'circle-color': getStatusColorExpression(),
+          'circle-opacity': 0.7,
+          'circle-stroke-width': 1.2,
+          'circle-stroke-color': 'rgba(255,255,255,0.4)',
+        },
+      });
+
+      // Death count label
+      map.addLayer({
+        id: layerLabel,
+        type: 'symbol',
+        source: sourceId,
+        filter: ['>', ['get', 'deaths'], 50],
+        layout: {
+          'text-field': ['get', 'deaths'],
+          'text-size': 9,
+          'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'],
+          'text-allow-overlap': false,
+        },
+        paint: {
+          'text-color': '#ffffff',
+          'text-halo-color': 'rgba(0,0,0,0.6)',
+          'text-halo-width': 1,
+        },
+      });
+    }
+  },
+
+  /**
+   * Remove bubble layers
+   */
+  removeConflictBubbles(map: mapboxgl.Map) {
+    ['ucdp-bubble-label', 'ucdp-bubble-circle', 'ucdp-bubble-glow'].forEach(id => {
+      if (map.getLayer(id)) map.removeLayer(id);
+    });
+    if (map.getSource('ucdp-conflict-bubbles')) map.removeSource('ucdp-conflict-bubbles');
+  },
+
+  /**
+   * Highlight countries by conflict intensity (death count gradient)
+   * Uses fill-color interpolated by total deaths in that country.
+   */
+  addCountryHeatmap(map: mapboxgl.Map, conflicts: ConflictData[], countrySource = 'country-boundaries') {
+    const layerId = 'ucdp-country-heatmap';
+    const borderLayerId = 'ucdp-country-heatmap-border';
+
+    // Aggregate deaths per ISO
+    const deathsByISO = new Map<string, number>();
+    for (const c of conflicts) {
+      const deaths = Array.isArray((c as any).casualties)
+        ? ((c as any).casualties as any[]).reduce((s: number, x: any) => s + (x.total || 0), 0)
+        : 0;
+      const isos = (c as any).involvedISO as string[] | undefined;
+      if (isos) {
+        for (const iso of isos) {
+          deathsByISO.set(iso, (deathsByISO.get(iso) || 0) + deaths);
+        }
+      }
+    }
+
+    if (deathsByISO.size === 0) return;
+
+    const allISOs = [...deathsByISO.keys()];
+    const isoFilter = ['in', ['coalesce', ['get', 'iso_3166_1_alpha_3'], ''], ['literal', allISOs]];
+
+    // Build match expression for fill-color
+    const colorEntries: any[] = [];
+    for (const [iso, deaths] of deathsByISO) {
+      let fillColor: string;
+      if (deaths >= 1000) fillColor = 'rgba(140, 20, 20, 0.2)';
+      else if (deaths >= 100) fillColor = 'rgba(160, 30, 25, 0.14)';
+      else if (deaths >= 10) fillColor = 'rgba(180, 50, 30, 0.09)';
+      else fillColor = 'rgba(150, 60, 40, 0.05)';
+      colorEntries.push(iso, fillColor);
+    }
+
+    const colorExpr = ['match', ['coalesce', ['get', 'iso_3166_1_alpha_3'], ''], ...colorEntries, 'rgba(0,0,0,0)'] as any;
+
+    if (map.getLayer(layerId)) {
+      map.setFilter(layerId, isoFilter);
+      map.setPaintProperty(layerId, 'fill-color', colorExpr);
+    } else {
+      // Insert before conflict fill layer to keep proper z-order
+      const beforeLayer = map.getLayer(LAYERS.COUNTRY_FILL) ? LAYERS.COUNTRY_FILL : undefined;
+
+      map.addLayer({
+        id: layerId,
+        type: 'fill',
+        source: countrySource,
+        'source-layer': 'country_boundaries',
+        filter: isoFilter,
+        paint: { 'fill-color': colorExpr },
+      }, beforeLayer);
+
+      map.addLayer({
+        id: borderLayerId,
+        type: 'line',
+        source: countrySource,
+        'source-layer': 'country_boundaries',
+        filter: isoFilter,
+        paint: {
+          'line-color': 'rgba(160, 40, 30, 0.2)',
+          'line-width': 0.6,
+        },
+      }, beforeLayer);
+    }
+  },
+
+  removeCountryHeatmap(map: mapboxgl.Map) {
+    ['ucdp-country-heatmap-border', 'ucdp-country-heatmap'].forEach(id => {
+      if (map.getLayer(id)) map.removeLayer(id);
+    });
+  },
+
+  /**
    * Actualiza los datos de los marcadores de conflicto (deshabilitado — puntos eliminados)
    */
   updateConflictMarkers(_map: mapboxgl.Map, _conflictGeoJSON: ConflictGeoJSON) {
-    // No-op: marcadores de conflicto eliminados del mapa
+    // No-op: legacy
   },
 
   /**
    * Controla la visibilidad de los marcadores de conflicto (deshabilitado — puntos eliminados)
    */
   setConflictMarkersVisibility(_map: mapboxgl.Map, _visible: boolean) {
-    // No-op: marcadores de conflicto eliminados del mapa
+    // No-op: legacy
   },
 
   /**
