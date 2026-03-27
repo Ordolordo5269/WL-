@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ConflictStatus } from '@prisma/client';
 
-const conflictStatusEnum = z.enum(['WAR', 'WARM', 'IMPROVING', 'RESOLVED', 'FROZEN']);
+const conflictStatusEnum = z.enum(['WAR', 'WARM', 'IMPROVING', 'RESOLVED', 'FROZEN', 'ONE_SIDED']);
 
 // ── V2 schemas (existing) ──
 
@@ -11,6 +11,8 @@ export const conflictFiltersSchema = z.object({
   country: z.string().optional(),
   from: z.string().optional(),
   to: z.string().optional(),
+  dataSource: z.enum(['ucdp', 'manual', 'all']).optional(),
+  typeOfViolence: z.string().transform(Number).pipe(z.number().int().min(1).max(3)).optional(),
 });
 
 export const conflictParamsSchema = z.object({

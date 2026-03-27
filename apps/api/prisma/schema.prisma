@@ -410,6 +410,7 @@ enum ConflictStatus {
   IMPROVING
   RESOLVED
   FROZEN
+  ONE_SIDED
 }
 
 model Conflict {
@@ -429,18 +430,32 @@ model Conflict {
   sources           String[] // Array of source strings
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
-  
+
+  // UCDP enrichment fields
+  ucdpConflictId    Int?              // UCDP conflict_new_id for linking
+  dyadName          String?           // e.g. "Government of Iran - Government of Israel"
+  sideA             String?           // UCDP side_a
+  sideB             String?           // UCDP side_b
+  typeOfViolence    Int?              // 1=state-based, 2=non-state, 3=one-sided
+  ucdpCountryId     Int?              // Gleditsch-Ward country code
+  adminRegion       String?           // adm_1 from UCDP
+  dataSource        String   @default("manual") // "ucdp", "manual"
+  lastSyncedAt      DateTime?         // When UCDP data was last synced
+
   // Relations
   casualties        ConflictCasualty[]
   factions          ConflictFaction[]
   events            ConflictEvent[]
   news              ConflictNews[]
   updates           ConflictUpdate[]
-  
+  ucdpEvents        UcdpGedEvent[]
+
   @@index([status])
   @@index([region])
   @@index([startDate])
   @@index([country])
+  @@index([ucdpConflictId])
+  @@index([dataSource])
 }
 
 model ConflictCasualty {
@@ -525,8 +540,53 @@ model ConflictNews {
   imageUrl      String?
   
   conflict      Conflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
-  
+
   @@index([conflictId, publishedAt])
+}
+
+model UcdpGedEvent {
+  id                String   @id @default(uuid()) @db.Uuid
+  ucdpEventId       Int      @unique
+  year              Int
+  conflictName      String
+  dyadName          String
+  sideA             String
+  sideB             String
+  dateStart         DateTime
+  dateEnd           DateTime
+  deathsA           Int      @default(0)
+  deathsB           Int      @default(0)
+  deathsCivilians   Int      @default(0)
+  deathsUnknown     Int      @default(0)
+  bestEstimate      Int      @default(0)
+  highEstimate      Int      @default(0)
+  lowEstimate       Int      @default(0)
+  country           String
+  countryId         Int
+  region            String
+  latitude          Float
+  longitude         Float
+  whereDescription  String?
+  adm1              String?
+  adm2              String?
+  typeOfViolence    Int      // 1=state-based, 2=non-state, 3=one-sided
+  sourceArticle     String?  @db.Text
+  sourceHeadline    String?  @db.Text
+  conflictNewId     Int?     // UCDP conflict_new_id
+  dyadNewId         Int?     // UCDP dyad_new_id
+
+  // Link to parent Conflict
+  conflictId        String?  @db.Uuid
+  conflict          Conflict? @relation(fields: [conflictId], references: [id], onDelete: SetNull)
+
+  createdAt         DateTime @default(now())
+
+  @@index([conflictId])
+  @@index([dateStart])
+  @@index([country])
+  @@index([typeOfViolence])
+  @@index([year])
+  @@index([conflictName])
 }
 
 // ============================

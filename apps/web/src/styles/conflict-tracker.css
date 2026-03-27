@@ -1014,4 +1014,678 @@
   font-size: 0.75rem;
   color: #94a3b8;
   font-weight: 500;
-} 
+}
+
+/* ============================================
+   UCDP-SPECIFIC STYLES
+   ============================================ */
+
+/* Summary bar at the top */
+.ucdp-summary-bar {
+  display: flex;
+  gap: 12px;
+  padding: 6px 16px 8px;
+  border-bottom: 0.5px solid rgba(148, 163, 184, 0.06);
+  align-items: center;
+}
+
+.ucdp-summary-stat {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.7rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.ucdp-summary-source {
+  margin-left: auto;
+  font-size: 0.6rem;
+  color: #475569;
+  letter-spacing: 0.03em;
+}
+
+/* Map layer mode toggle */
+.ucdp-map-toggle {
+  display: flex;
+  gap: 2px;
+  padding: 4px 14px 2px;
+}
+
+.ucdp-map-toggle-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 0;
+  font-size: 0.625rem;
+  font-weight: 500;
+  color: #64748b;
+  background: transparent;
+  border: 1px solid rgba(148, 163, 184, 0.08);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.ucdp-map-toggle-btn:hover {
+  color: #94a3b8;
+  background: rgba(30, 41, 59, 0.4);
+}
+
+.ucdp-map-toggle-btn.active {
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+/* Intensity step selector */
+.ucdp-intensity-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 14px 2px;
+}
+
+.ucdp-intensity-label {
+  font-size: 0.6rem;
+  color: #64748b;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.ucdp-intensity-steps {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+}
+
+.ucdp-intensity-step {
+  flex: 1;
+  padding: 3px 0;
+  font-size: 0.6rem;
+  font-weight: 500;
+  color: #64748b;
+  background: transparent;
+  border: 1px solid rgba(148, 163, 184, 0.08);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  text-align: center;
+}
+
+.ucdp-intensity-step:hover {
+  color: #94a3b8;
+  background: rgba(30, 41, 59, 0.4);
+}
+
+.ucdp-intensity-step.active {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* Map legend */
+.ucdp-map-legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 14px 5px;
+  flex-wrap: wrap;
+}
+
+.ucdp-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.6rem;
+  color: #94a3b8;
+}
+
+.ucdp-legend-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ucdp-legend-size {
+  font-style: italic;
+  color: #475569;
+  margin-left: auto;
+}
+
+.ucdp-legend-gradient {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(90deg,
+    rgba(103,0,31,0.3) 0%,
+    rgba(178,24,43,0.5) 20%,
+    rgba(239,68,68,0.7) 40%,
+    rgba(249,115,22,0.8) 60%,
+    rgba(253,186,116,0.9) 80%,
+    rgba(255,255,224,0.95) 100%
+  );
+}
+
+.ucdp-legend-gradient-labels {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 0.55rem;
+  color: #64748b;
+  margin-top: -1px;
+}
+
+/* ── Filter bar with chips ── */
+.ucdp-filters-bar {
+  padding: 8px 14px 6px;
+  border-bottom: 0.5px solid rgba(148, 163, 184, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ucdp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.ucdp-chip {
+  padding: 3px 8px;
+  font-size: 0.6rem;
+  font-weight: 500;
+  color: #64748b;
+  background: transparent;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  white-space: nowrap;
+}
+
+.ucdp-chip:hover {
+  color: #94a3b8;
+  border-color: rgba(148, 163, 184, 0.25);
+}
+
+.ucdp-chip.active {
+  color: #e2e8f0;
+  background: rgba(148, 163, 184, 0.1);
+  border-color: currentColor;
+}
+
+.ucdp-chip-sep {
+  width: 1px;
+  height: 12px;
+  background: rgba(148, 163, 184, 0.12);
+  margin: 0 2px;
+}
+
+.ucdp-inline-search {
+  width: 100%;
+  padding: 5px 10px;
+  font-size: 0.7rem;
+  color: #e2e8f0;
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.15s ease;
+  font-family: inherit;
+}
+
+.ucdp-inline-search::placeholder { color: #475569; }
+.ucdp-inline-search:focus { border-color: rgba(59, 130, 246, 0.4); }
+
+.ucdp-stats-line {
+  display: flex;
+  gap: 8px;
+  font-size: 0.6rem;
+  color: #475569;
+  align-items: center;
+}
+
+.ucdp-clear-btn {
+  margin-left: auto;
+  padding: 1px 6px;
+  font-size: 0.55rem;
+  color: #64748b;
+  background: transparent;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.ucdp-clear-btn:hover {
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* Heat bar at top of conflict card */
+.ucdp-heat-bar {
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  margin: -10px -12px 6px -12px;
+  opacity: 0.7;
+  transition: width 0.4s ease;
+}
+
+/* Deaths badge — right-aligned in header */
+.ucdp-deaths-badge {
+  margin-left: auto;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fca5a5;
+  letter-spacing: 0.02em;
+}
+
+/* Conflict card — name row */
+.conflict-card-name {
+  font-size: 0.825rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin: 4px 0;
+  line-height: 1.3;
+}
+
+/* Minor conflicts section */
+.ucdp-minor-section {
+  margin-top: 8px;
+  border-top: 0.5px solid rgba(148, 163, 184, 0.1);
+  padding-top: 4px;
+}
+
+.ucdp-minor-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  background: rgba(30, 41, 59, 0.3);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: 6px;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 4px;
+}
+
+.ucdp-minor-toggle:hover {
+  background: rgba(30, 41, 59, 0.5);
+  color: #cbd5e1;
+}
+
+.ucdp-minor-hint {
+  margin-left: auto;
+  font-size: 0.625rem;
+  color: #475569;
+}
+
+.conflict-card-minor {
+  opacity: 0.75;
+  padding: 8px 10px !important;
+}
+
+.conflict-card-minor .conflict-card-name {
+  font-size: 0.75rem;
+}
+
+.conflict-card-minor .conflict-card-meta {
+  font-size: 0.625rem;
+}
+
+/* Side A vs Side B in card */
+.ucdp-sides {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.675rem;
+  color: #94a3b8;
+  margin: 2px 0 6px;
+  flex-wrap: wrap;
+}
+
+.ucdp-side-a, .ucdp-side-b {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 45%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ucdp-side-a { color: #93c5fd; }
+.ucdp-side-b { color: #fca5a5; }
+.ucdp-vs { color: #475569; font-weight: 700; font-size: 0.6rem; }
+
+/* Violence type badge */
+.ucdp-violence-badge {
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.85;
+}
+
+/* ── Detail Card UCDP Styles ── */
+
+/* Top bar: back + badges */
+.ucdp-detail-top {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px 6px;
+  border-bottom: 0.5px solid rgba(148, 163, 184, 0.06);
+}
+
+.ucdp-detail-top-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ucdp-detail-back {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  background: rgba(30, 41, 59, 0.5);
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.ucdp-detail-back:hover {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.3);
+  color: #93c5fd;
+}
+
+/* Matchup — side A vs side B as the visual hero */
+.ucdp-detail-matchup {
+  padding: 10px 14px 12px;
+  border-bottom: 0.5px solid rgba(148, 163, 184, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ucdp-detail-actor {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.825rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.ucdp-actor-a { color: #93c5fd; }
+.ucdp-actor-b { color: #fca5a5; }
+
+.ucdp-detail-vs-center {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0 2px 22px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #475569;
+  letter-spacing: 0.1em;
+}
+
+.ucdp-detail-location {
+  font-weight: 500;
+  color: #64748b;
+  letter-spacing: 0;
+}
+
+/* Quick stats row */
+.ucdp-quick-stats {
+  display: flex;
+  gap: 2px;
+  padding: 8px 14px;
+  border-bottom: 0.5px solid rgba(148, 163, 184, 0.06);
+}
+
+.ucdp-quick-stat {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 6px;
+}
+
+.ucdp-quick-stat-value {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.ucdp-quick-stat-label {
+  font-size: 0.6rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Section styling */
+.ucdp-section {
+  margin-bottom: 14px;
+}
+
+.ucdp-section-title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 8px;
+}
+
+/* Info grid */
+.ucdp-info-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ucdp-info-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.ucdp-info-label {
+  color: #64748b;
+  min-width: 70px;
+}
+
+.ucdp-info-value {
+  color: #cbd5e1;
+  font-weight: 500;
+}
+
+/* Country chips */
+.ucdp-country-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 4px;
+  font-size: 0.675rem;
+  font-weight: 600;
+  color: #93c5fd;
+  letter-spacing: 0.04em;
+}
+
+/* Source chips */
+.ucdp-source-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  background: rgba(148, 163, 184, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 4px;
+  font-size: 0.65rem;
+  color: #94a3b8;
+}
+
+/* ── Event Card ── */
+.ucdp-event-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-left: 3px solid #f97316;
+  border-radius: 6px;
+  padding: 8px 10px;
+  transition: background 0.15s ease;
+}
+
+.ucdp-event-card.clickable {
+  cursor: pointer;
+}
+
+.ucdp-event-card.clickable:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.ucdp-event-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 3px;
+}
+
+.ucdp-event-date {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.ucdp-event-deaths {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fca5a5;
+}
+
+.ucdp-event-location {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  color: #cbd5e1;
+  margin-bottom: 3px;
+}
+
+.ucdp-event-breakdown {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.625rem;
+  margin: 3px 0;
+}
+
+.ucdp-death-a { color: #93c5fd; }
+.ucdp-death-b { color: #fdba74; }
+.ucdp-death-civ { color: #fca5a5; }
+.ucdp-death-unk { color: #94a3b8; }
+
+.ucdp-event-headline {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: #e2e8f0;
+  margin-bottom: 3px;
+  line-height: 1.35;
+}
+
+.ucdp-event-dyad {
+  font-size: 0.625rem;
+  color: #64748b;
+  margin-top: 3px;
+}
+
+/* ── Casualty bars ── */
+.ucdp-casualties-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ucdp-casualty-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ucdp-casualty-label {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  min-width: 110px;
+  flex-shrink: 0;
+}
+
+.ucdp-casualty-bar-bg {
+  flex: 1;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.ucdp-casualty-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.ucdp-casualty-value {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  min-width: 48px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.ucdp-casualty-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 8px;
+  margin-top: 6px;
+  border-top: 0.5px solid rgba(148, 163, 184, 0.1);
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+
+.ucdp-casualty-total strong {
+  color: #f1f5f9;
+}
+
+.ucdp-casualty-range {
+  font-size: 0.625rem;
+  color: #64748b;
+  font-style: italic;
+}

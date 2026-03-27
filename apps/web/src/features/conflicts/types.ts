@@ -1,6 +1,6 @@
 // ── API v2 response types ──
 
-export type ConflictStatus = 'WAR' | 'WARM' | 'FROZEN' | 'IMPROVING' | 'RESOLVED';
+export type ConflictStatus = 'WAR' | 'WARM' | 'FROZEN' | 'IMPROVING' | 'RESOLVED' | 'ONE_SIDED';
 
 export interface ConflictCasualty {
   id: string;
@@ -56,6 +56,37 @@ export interface ConflictNews {
   imageUrl: string | null;
 }
 
+/** Raw UCDP GED event from the backend */
+export interface UcdpEvent {
+  id: string;
+  ucdpEventId: number;
+  year: number;
+  conflictName: string;
+  dyadName: string;
+  sideA: string;
+  sideB: string;
+  dateStart: string;
+  dateEnd: string;
+  deathsA: number;
+  deathsB: number;
+  deathsCivilians: number;
+  deathsUnknown: number;
+  bestEstimate: number;
+  highEstimate: number;
+  lowEstimate: number;
+  country: string;
+  countryId: number;
+  region: string;
+  latitude: number;
+  longitude: number;
+  whereDescription: string | null;
+  adm1: string | null;
+  adm2: string | null;
+  typeOfViolence: number;
+  sourceArticle: string | null;
+  sourceHeadline: string | null;
+}
+
 export interface ConflictV2 {
   id: string;
   slug: string;
@@ -73,13 +104,23 @@ export interface ConflictV2 {
   sources: string[];
   casualties: ConflictCasualty[];
   factions: ConflictFaction[];
-  _count: { events: number };
+  _count: { events: number; ucdpEvents?: number };
+
+  // UCDP fields
+  sideA?: string;
+  sideB?: string;
+  dyadName?: string;
+  typeOfViolence?: number;
+  dataSource?: 'ucdp' | 'manual';
+  lastSyncedAt?: string;
+  ucdpConflictId?: number;
 }
 
 export interface ConflictDetail extends ConflictV2 {
   events: ConflictEvent[];
   updates: ConflictUpdate[];
   news: ConflictNews[];
+  ucdpEvents?: UcdpEvent[];
 }
 
 export interface ConflictFiltersParams {
@@ -88,6 +129,8 @@ export interface ConflictFiltersParams {
   country?: string;
   from?: string;
   to?: string;
+  dataSource?: 'ucdp' | 'manual' | 'all';
+  typeOfViolence?: number;
 }
 
 // ── Severity helpers ──
@@ -95,6 +138,7 @@ export interface ConflictFiltersParams {
 const STATUS_SEVERITY: Record<ConflictStatus, number> = {
   WAR: 5,
   WARM: 3,
+  ONE_SIDED: 4,
   FROZEN: 2,
   IMPROVING: 1,
   RESOLVED: 0,
@@ -106,6 +150,7 @@ export function statusToSeverity(status: ConflictStatus): number {
 
 export function severityColor(severity: number): string {
   if (severity >= 5) return '#ef4444'; // red
+  if (severity >= 4) return '#dc2626'; // dark red (one-sided)
   if (severity >= 3) return '#f97316'; // orange
   if (severity >= 2) return '#eab308'; // yellow
   if (severity >= 1) return '#22c55e'; // green
@@ -116,9 +161,28 @@ export function statusLabel(status: ConflictStatus): string {
   const labels: Record<ConflictStatus, string> = {
     WAR: 'War',
     WARM: 'Warm',
+    ONE_SIDED: 'One-sided',
     FROZEN: 'Frozen',
     IMPROVING: 'Improving',
     RESOLVED: 'Resolved',
   };
   return labels[status] ?? status;
+}
+
+export function violenceTypeLabel(type: number): string {
+  switch (type) {
+    case 1: return 'State-based';
+    case 2: return 'Non-state';
+    case 3: return 'One-sided';
+    default: return 'Unknown';
+  }
+}
+
+export function violenceTypeColor(type: number): string {
+  switch (type) {
+    case 1: return '#ef4444'; // red - state-based
+    case 2: return '#f97316'; // orange - non-state
+    case 3: return '#a855f7'; // purple - one-sided
+    default: return '#6b7280';
+  }
 }

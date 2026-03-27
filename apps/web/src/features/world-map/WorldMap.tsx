@@ -2446,6 +2446,8 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       try { geocoder.off('result', handleGeocoderResult); geocoder.onRemove(); } catch {}
       try { conflictDataManager.current?.cleanup(); } catch {}
       if (mapRef.current) {
+        try { ConflictVisualization.removeAllPointLayers(mapRef.current); } catch {}
+        try { ConflictVisualization.removeCountryHeatmap(mapRef.current); } catch {}
         try { ConflictVisualization.cleanup(mapRef.current); } catch {}
         try { mapRef.current.remove(); } catch {}
         mapRef.current = null;
@@ -2481,32 +2483,42 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     }
   }, [conflicts]);
 
-  // ✅ MEJORADO: Actualizar marcadores y países en conflicto con cleanup
+  // UCDP conflict map visualization
   useEffect(() => {
-    const update = () => {
-      if (mapRef.current && isMapLoaded) {
-        const conflictGeoJSON = conflictsToGeoJSON(conflicts as any);
-        ConflictVisualization.updateConflictMarkers(mapRef.current, conflictGeoJSON as any);
-        ConflictVisualization.updateVisualization(mapRef.current, selectedConflictId ?? null, conflicts as any);
-      } else {
-        // ✅ MEJORADO: Usar ref para timeout y limpiarlo
-        const timeoutId = setTimeout(update, 100);
-        // Guardar el timeout ID para cleanup si es necesario
-        if (deferredTimeoutRef.current) {
-          clearTimeout(deferredTimeoutRef.current);
-        }
-        deferredTimeoutRef.current = timeoutId;
+    const map = mapRef.current;
+    if (!map || !isMapLoaded) return;
+
+    const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+    if (conflicts.length === 0) {
+      ConflictVisualization.removeAllPointLayers(map);
+      ConflictVisualization.removeHeatmapLayer(map);
+      ConflictVisualization.removeCountryHeatmap(map);
+      ConflictVisualization.updateCountryHighlights(map, []);
+      return;
+    }
+
+    if (selectedConflictId) {
+      // Focused on one conflict — show only its marker + countries
+      const selected = conflicts.find((c: any) => c.id === selectedConflictId);
+      if (selected) {
+        ConflictVisualization.removeAllPointLayers(map);
+        ConflictVisualization.removeHeatmapLayer(map);
+        ConflictVisualization.removeCountryHeatmap(map);
+        ConflictVisualization.updateVisualization(map, selectedConflictId, conflicts as any);
+        ConflictVisualization.addSimpleMarkers(map, [selected] as any);
       }
-    };
-    update();
-    
-    // ✅ NUEVO: Cleanup del timeout si el componente se desmonta
-    return () => {
-      if (deferredTimeoutRef.current) {
-        clearTimeout(deferredTimeoutRef.current);
-        deferredTimeoutRef.current = null;
-      }
-    };
+    } else {
+      // Global overview:
+      //   - Conflict markers (visible at low zoom, fade out at high zoom)
+      //   - Heatmap + country fills (background)
+      //   - Individual event dots (appear at zoom >= 4, get bigger on zoom in)
+      ConflictVisualization.updateVisualization(map, null, conflicts as any);
+      ConflictVisualization.addSimpleMarkers(map, conflicts as any);
+      ConflictVisualization.addHeatmapLayer(map, conflicts as any);
+      ConflictVisualization.addCountryHeatmap(map, conflicts as any);
+      ConflictVisualization.loadEventDetailLayer(map, apiBase);
+    }
   }, [conflicts, selectedConflictId, isMapLoaded]);
 
   // Función para resetear la vista del mapa

@@ -1,456 +1,272 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, TrendingUp, Calendar, Users, MapPin, ExternalLink, X } from 'lucide-react';
-import type { Conflict } from '../../types';
-import ConflictService from './services/conflict-service';
-import type { NewsArticle } from '../../types';
-import ConflictDetailCard from './ConflictDetailCard';
-import ConflictSearchBar from './ConflictSearchBar';
-import ConflictTrackerFilters, { type AdvancedFilters } from './ConflictTrackerFilters';
-import ConflictAPIService, { type ConflictFilters as APIFilters } from './services/conflict-api';
+import { AlertTriangle, Calendar, Skull, MapPin, X, Shield, Users2, ChevronDown, ChevronUp } from 'lucide-react';
+import { useConflicts } from './useConflicts';
 import { useConflictWebSocket } from './useConflictWebSocket';
+import { useQueryClient } from '@tanstack/react-query';
+import ConflictDetailCard from './ConflictDetailCard';
+import type { ConflictV2, ConflictFiltersParams } from './types';
+import { statusLabel, severityColor, statusToSeverity, violenceTypeLabel, violenceTypeColor } from './types';
 
 interface ConflictTrackerProps {
   onBack: () => void;
   onCenterMap?: (coordinates: { lat: number; lng: number }) => void;
   onConflictSelect?: (conflictId: string | null) => void;
+  onConflictsChange?: (conflicts: ConflictV2[]) => void;
 }
 
-export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect }: ConflictTrackerProps) {
-  const [conflicts, setConflicts] = useState<Conflict[]>([]);
-  const [news, setNews] = useState<NewsArticle[]>([]);
-  const [selectedRegion, setSelectedRegion] = useState<string>('All');
-  const [selectedStatus, setSelectedStatus] = useState<string>('All');
-  const [selectedNewsRegion, setSelectedNewsRegion] = useState<string>('All');
-  const [loading, setLoading] = useState<boolean>(true);
-  const [newsLoading, setNewsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'conflicts' | 'news'>('conflicts');
-  const [selectedConflict, setSelectedConflict] = useState<Conflict | null>(null);
-  
-  // New state for enhanced filtering
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({});
-  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 1, hasMore: false });
-  const conflictsRef = useRef<Conflict[]>([]);
+function cleanText(s: string): string {
+  return s.replace(/XXX\d*/g, 'Undisclosed').trim();
+}
+function cleanActorName(name: string): string {
+  if (/^XXX\d*$/.test(name.trim())) return 'Undisclosed actor';
+  return cleanText(name);
+}
+function getDeaths(c: ConflictV2): number {
+  return c.casualties?.reduce((s, cas) => s + cas.total, 0) ?? 0;
+}
 
-  // Helper function to load news
-  const loadNews = useCallback(async (region?: string) => {
-    try {
-      setNewsLoading(true);
-      let newsData: NewsArticle[];
+const REGIONS = ['Africa', 'Americas', 'Asia', 'Europe', 'Middle East'];
+const TYPES = [
+  { value: 1, label: 'State' },
+  { value: 2, label: 'Non-state' },
+  { value: 3, label: 'One-sided' },
+];
 
-      if (region && region !== 'All') {
-        // Get countries from the selected region
-        const regionConflicts = await ConflictService.getFilteredConflicts(region);
-        const regionCountries = [...new Set(regionConflicts.map(c => c.country))];
-        
-        // Fetch news for all countries in the region
-        const regionNewsPromises = regionCountries.map(country => 
-          ConflictService.getNewsForCountry(country)
-        );
-        
-        const regionNewsArrays = await Promise.all(regionNewsPromises);
-        const regionNews = regionNewsArrays.flat();
-        
-        // Remove duplicates and sort by date
-        newsData = regionNews.filter((news, index, self) => 
-          index === self.findIndex(n => n.title === news.title)
-        ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      } else {
-        // Load general news
-        newsData = await ConflictService.getAllNews();
-      }
-      
-      setNews(newsData);
-    } catch (error) {
-      console.error('Error loading news:', error);
-    } finally {
-      setNewsLoading(false);
+export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect, onConflictsChange }: ConflictTrackerProps) {
+  const [filters, setFilters] = useState<ConflictFiltersParams>({ dataSource: 'ucdp' });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedConflict, setSelectedConflict] = useState<ConflictV2 | null>(null);
+  const [showMinor, setShowMinor] = useState(false);
+  const queryClient = useQueryClient();
+
+  const { data, isLoading, error } = useConflicts(filters);
+  const conflicts = data?.conflicts ?? [];
+
+  useConflictWebSocket(useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['conflicts'] });
+  }, [queryClient]));
+
+  const { major, minor, totalDeaths, filteredCount } = useMemo(() => {
+    let filtered = conflicts;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      filtered = conflicts.filter(c =>
+        c.name.toLowerCase().includes(q) ||
+        c.country.toLowerCase().includes(q) ||
+        (c.sideA && c.sideA.toLowerCase().includes(q)) ||
+        (c.sideB && c.sideB.toLowerCase().includes(q))
+      );
     }
-  }, []);
+    const sorted = [...filtered].sort((a, b) => getDeaths(b) - getDeaths(a));
+    const majorList: ConflictV2[] = [];
+    const minorList: ConflictV2[] = [];
+    let deaths = 0;
+    for (const c of sorted) {
+      const d = getDeaths(c);
+      deaths += d;
+      if (d > 10) majorList.push(c); else minorList.push(c);
+    }
+    return { major: majorList, minor: minorList, totalDeaths: deaths, filteredCount: sorted.length };
+  }, [conflicts, searchQuery]);
 
-  // Reset page to 1 when filters change
+  // Sync filtered conflicts to map
   useEffect(() => {
-    setPagination(prev => ({ ...prev, page: 1 }));
-  }, [selectedRegion, selectedStatus, searchQuery, advancedFilters]);
+    onConflictsChange?.(major.concat(minor));
+  }, [major, minor, onConflictsChange]);
 
-  // Load conflicts with filters
-  useEffect(() => {
-    const loadConflicts = async () => {
-      try {
-        setError(null);
-        setLoading(true);
-        
-        // Build API filters
-        const apiFilters: APIFilters = {
-          page: pagination.page,
-          limit: 20
-        };
-        
-        if (selectedRegion !== 'All') apiFilters.region = selectedRegion;
-        if (selectedStatus !== 'All') {
-          apiFilters.status = selectedStatus as 'War' | 'Warm' | 'Improving';
-        }
-        if (searchQuery) apiFilters.search = searchQuery;
-        
-        // Add advanced filters
-        if (advancedFilters.activeOnly) apiFilters.activeOnly = true;
-        if (advancedFilters.sortBy) apiFilters.sortBy = advancedFilters.sortBy;
-        if (advancedFilters.sortOrder) apiFilters.sortOrder = advancedFilters.sortOrder;
-        
-        const result = await ConflictAPIService.getAllConflicts(apiFilters);
-        setConflicts(result.data);
-        conflictsRef.current = result.data;
-        setPagination(result.pagination);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error loading conflict data:', error);
-        setError('Failed to load conflict data. Please try again later.');
-        // Fallback to static data
-        setConflicts(ConflictService.getAllConflictsSync());
-        setLoading(false);
-      }
-    };
+  const handleConflictClick = (conflict: ConflictV2) => {
+    setSelectedConflict(conflict);
+    onConflictSelect?.(conflict.id);
+    onCenterMap?.(conflict.coordinates);
+  };
 
-    loadConflicts();
-  }, [selectedRegion, selectedStatus, searchQuery, advancedFilters, pagination.page]);
+  const handleBack = () => {
+    setSelectedConflict(null);
+    onConflictSelect?.(null);
+  };
 
-  // WebSocket: listen for realtime conflict updates
-  useConflictWebSocket((update) => {
-    setConflicts((prev) => {
-      let next = prev;
-      switch (update.type) {
-        case 'created':
-          if (update.data) {
-            next = [update.data as Conflict, ...prev];
-          }
-          break;
-        case 'updated':
-        case 'status-changed':
-        case 'casualty-updated':
-          if (update.data) {
-            next = prev.map(c => c.id === update.id ? { ...c, ...(update.data as Partial<Conflict>) } : c);
-          }
-          break;
-        case 'deleted':
-          next = prev.filter(c => c.id !== update.id);
-          break;
-      }
-      conflictsRef.current = next;
+  const toggleType = (t: number) => {
+    setFilters(prev => {
+      const next = { ...prev };
+      if (next.typeOfViolence === t) delete next.typeOfViolence;
+      else next.typeOfViolence = t;
       return next;
     });
-  });
+  };
 
-  // Load region-specific news when news region filter changes
-  useEffect(() => {
-    if (activeTab === 'news') {
-      loadNews(selectedNewsRegion);
-    }
-  }, [selectedNewsRegion, activeTab, loadNews]);
-
-  // Memoized data to prevent unnecessary recalculations
-  const regions = useMemo(() => ConflictService.getAvailableRegions(), []);
-  const statuses = useMemo(() => ConflictService.getAvailableStatuses(), []);
-  
-  // Get available conflict types from conflicts
-  const availableConflictTypes = useMemo(() => {
-    const types = new Set<string>();
-    conflicts.forEach(c => {
-      if (c.conflictType) types.add(c.conflictType);
+  const toggleRegion = (r: string) => {
+    setFilters(prev => {
+      const next = { ...prev };
+      if (next.region === r) delete next.region;
+      else next.region = r;
+      return next;
     });
-    return Array.from(types).sort();
-  }, [conflicts]);
-
-  // Use conflicts directly (already filtered by API)
-  const filteredConflicts = conflicts;
-
-  // Enhanced conflict click handler
-  const handleConflictClickEnhanced = (conflict: Conflict) => {
-    setSelectedConflict(conflict);
-    if (onConflictSelect) {
-      onConflictSelect(conflict.id);
-    }
-    if (onCenterMap) {
-      onCenterMap(conflict.coordinates);
-    }
   };
 
-  // Back to conflicts list
-  const handleBackToConflicts = () => {
-    setSelectedConflict(null);
-    if (onConflictSelect) {
-      onConflictSelect(null);
-    }
-  };
+  const maxDeaths = major.length > 0 ? getDeaths(major[0]) : 1;
+  const hasFilters = !!filters.region || !!filters.typeOfViolence || !!searchQuery;
 
-  // Optimized tab change handler
-  const handleTabChange = useCallback((tab: 'conflicts' | 'news') => {
-    setActiveTab(tab);
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return (
-      <motion.div 
-        className="conflict-tracker"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-      >
+      <motion.div className="conflict-tracker" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
         <div className="conflict-tracker-header">
           <h1 className="conflict-tracker-title">CONFLICT TRACKER</h1>
-          <button onClick={onBack} className="conflict-tracker-close-btn">
-            <X className="h-5 w-5" />
-          </button>
+          <button onClick={onBack} className="conflict-tracker-close-btn"><X className="h-5 w-5" /></button>
         </div>
         <div className="conflict-tracker-content">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px' }}>
-            <div style={{ color: '#94a3b8' }}>Loading conflict data...</div>
-          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', color: '#94a3b8' }}>Loading...</div>
         </div>
       </motion.div>
     );
   }
 
   return (
-    <motion.div 
+    <motion.div
       className="conflict-tracker"
       initial={{ x: '-100%', opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: '-100%', opacity: 0 }}
-      transition={{ 
-        type: 'spring',
-        stiffness: 300,
-        damping: 30,
-        duration: 0.3
-      }}
+      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
     >
-      {/* Header */}
+      {/* Header with inline filters */}
       <div className="conflict-tracker-header">
         <h1 className="conflict-tracker-title">CONFLICT TRACKER</h1>
-        <button onClick={onBack} className="conflict-tracker-close-btn">
-          <X className="h-5 w-5" />
-        </button>
+        <button onClick={onBack} className="conflict-tracker-close-btn"><X className="h-5 w-5" /></button>
       </div>
 
       {!selectedConflict && (
-        <>
-          {/* Tab Navigation */}
-          <div className="conflict-tracker-tabs">
-            <button
-              className={`conflict-tracker-tab${activeTab === 'conflicts' ? ' active' : ''}`}
-              onClick={() => handleTabChange('conflicts')}
-            >
-              Conflicts <span className="conflict-tracker-tab-count">({filteredConflicts.length})</span>
-            </button>
-            <button
-              className={`conflict-tracker-tab${activeTab === 'news' ? ' active' : ''}`}
-              onClick={() => handleTabChange('news')}
-            >
-              News <span className="conflict-tracker-tab-count">({news.length})</span>
-            </button>
+        <div className="ucdp-filters-bar">
+          {/* Type chips */}
+          <div className="ucdp-chips">
+            {TYPES.map(t => (
+              <button
+                key={t.value}
+                className={`ucdp-chip${filters.typeOfViolence === t.value ? ' active' : ''}`}
+                style={filters.typeOfViolence === t.value ? { borderColor: violenceTypeColor(t.value), color: violenceTypeColor(t.value) } : undefined}
+                onClick={() => toggleType(t.value)}
+              >
+                {t.label}
+              </button>
+            ))}
+            <span className="ucdp-chip-sep" />
+            {/* Region chips */}
+            {REGIONS.map(r => (
+              <button
+                key={r}
+                className={`ucdp-chip${filters.region === r ? ' active' : ''}`}
+                onClick={() => toggleRegion(r)}
+              >
+                {r}
+              </button>
+            ))}
           </div>
-
-          {/* Search Bar */}
-          {activeTab === 'conflicts' && (
-            <div style={{ padding: '8px 16px' }}>
-              <ConflictSearchBar
-                value={searchQuery}
-                onChange={setSearchQuery}
-                placeholder="Search conflicts..."
-              />
-            </div>
-          )}
-
-          {/* Basic Filters */}
-          {activeTab === 'conflicts' && (
-            <div className="conflict-tracker-selects">
-              <select
-                value={selectedRegion}
-                onChange={(e) => setSelectedRegion(e.target.value)}
-                className="conflict-tracker-filter-select"
-              >
-                <option value="All">All Regions</option>
-                {regions.map(region => (
-                  <option key={region} value={region}>{region}</option>
-                ))}
-              </select>
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="conflict-tracker-filter-select"
-              >
-                <option value="All">All Statuses</option>
-                {statuses.map(status => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Advanced Filters */}
-          {activeTab === 'conflicts' && (
-            <div style={{ padding: '0 16px 8px' }}>
-              <ConflictTrackerFilters
-                filters={advancedFilters}
-                onFiltersChange={setAdvancedFilters}
-                availableConflictTypes={availableConflictTypes}
-                onClear={() => {
-                  setAdvancedFilters({});
-                  setSearchQuery('');
-                  setSelectedRegion('All');
-                  setSelectedStatus('All');
-                }}
-              />
-            </div>
-          )}
-          {activeTab === 'news' && (
-            <div className="conflict-tracker-selects">
-              <select
-                value={selectedNewsRegion}
-                onChange={(e) => setSelectedNewsRegion(e.target.value)}
-                className="conflict-tracker-filter-select"
-              >
-                <option value="All">All Regions</option>
-                {regions.map(region => (
-                  <option key={region} value={region}>{region}</option>
-                ))}
-              </select>
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Content */}
-      <div className="conflict-tracker-content">
-        {selectedConflict ? (
-          // Detailed view for selected conflict
-          <ConflictDetailCard conflict={selectedConflict} onBack={handleBackToConflicts} />
-        ) : (
-          // Regular conflicts list or news
-          <div>
-            {activeTab === 'conflicts' ? (
-              <div>
-                <div className="conflict-tracker-section-header">
-                  <AlertTriangle size={16} strokeWidth={1.5} />
-                  <h3>Active Conflicts ({filteredConflicts.length})</h3>
-                </div>
-                {error ? (
-                  <div className="conflict-tracker-empty">
-                    <AlertTriangle size={20} strokeWidth={1.5} style={{ color: '#fca5a5' }} />
-                    <p style={{ color: '#fca5a5' }}>Error Loading Data</p>
-                    <p style={{ color: '#fca5a5' }}>{error}</p>
-                  </div>
-                ) : filteredConflicts.length === 0 ? (
-                  <div className="conflict-tracker-empty">
-                    <AlertTriangle size={20} strokeWidth={1.5} />
-                    <p>No conflicts found</p>
-                    <p>Try adjusting your filters</p>
-                  </div>
-                ) : (
-                  <div>
-                    {filteredConflicts.length > 0 ? (
-                      <>
-                        {filteredConflicts.map((conflict) => (
-                          <motion.div
-                            key={conflict.id}
-                            className="conflict-card"
-                            onClick={() => handleConflictClickEnhanced(conflict)}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.2 }}
-                          >
-                            <div className="conflict-card-header">
-                              <MapPin size={16} strokeWidth={1.5} /> {conflict.country}
-                              <span className={`conflict-card-status status-${conflict.status.toLowerCase()}`}>{conflict.status}</span>
-                            </div>
-                            <div className="conflict-card-description">{conflict.description}</div>
-                            <div className="conflict-card-meta">
-                              <span><Users size={14} strokeWidth={1.5} /> <strong>{ConflictService.formatCasualties(conflict.casualties)}</strong> casualties</span>
-                              <span><Calendar size={14} strokeWidth={1.5} /> {new Date(conflict.date).toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-                            </div>
-                          </motion.div>
-                        ))}
-                        {/* Pagination */}
-                        {pagination.totalPages > 1 && (
-                          <div className="conflict-pagination">
-                            <button
-                              onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
-                              disabled={pagination.page === 1}
-                              className="pagination-btn"
-                            >
-                              Previous
-                            </button>
-                            <span className="pagination-info">
-                              Page {pagination.page} of {pagination.totalPages} ({pagination.total} total)
-                            </span>
-                            <button
-                              onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
-                              disabled={!pagination.hasMore}
-                              className="pagination-btn"
-                            >
-                              Next
-                            </button>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <div className="conflict-tracker-empty">
-                        <AlertTriangle size={20} strokeWidth={1.5} />
-                        <p>No conflicts found</p>
-                        <p>Try adjusting your filters</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div>
-                <div className="conflict-tracker-section-header">
-                  <TrendingUp size={16} strokeWidth={1.5} />
-                  <h3>Recent News ({news.length})</h3>
-                </div>
-                {newsLoading ? (
-                  <div className="conflict-tracker-loading">
-                    <div style={{ width: '20px', height: '20px', border: '2px solid #3b82f6', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-                    <p>Loading news...</p>
-                  </div>
-                ) : (
-                  <div>
-                    {news.slice(0, 10).map((article) => (
-                      <div
-                        key={article.id}
-                        className="conflict-card news"
-                        onClick={() => window.open(article.url, '_blank')}
-                      >
-                        <div className="conflict-card-header">
-                          <ExternalLink size={16} strokeWidth={1.5} /> {article.title}
-                        </div>
-                        <div className="conflict-card-description">{article.description}</div>
-                        <div className="conflict-card-meta">
-                          <span>{article.source}</span>
-                          <span><Calendar size={14} strokeWidth={1.5} /> {new Date(article.date).toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-                        </div>
-                      </div>
-                    ))}
-                    {news.length === 0 && (
-                      <div className="conflict-tracker-empty">
-                        <ExternalLink size={20} strokeWidth={1.5} />
-                        <p>No news available at the moment</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+          {/* Search */}
+          <input
+            type="text"
+            className="ucdp-inline-search"
+            placeholder="Search..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+          />
+          {/* Stats line */}
+          <div className="ucdp-stats-line">
+            <span>{filteredCount} conflicts</span>
+            <span>{totalDeaths.toLocaleString()} deaths</span>
+            {hasFilters && (
+              <button className="ucdp-clear-btn" onClick={() => { setFilters({ dataSource: 'ucdp' }); setSearchQuery(''); }}>Clear</button>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Conflict feed */}
+      <div className="conflict-tracker-content">
+        {selectedConflict ? (
+          <ConflictDetailCard conflict={selectedConflict} onBack={handleBack} onCenterMap={onCenterMap} />
+        ) : error ? (
+          <div className="conflict-tracker-empty">
+            <AlertTriangle size={20} style={{ color: '#fca5a5' }} />
+            <p style={{ color: '#fca5a5' }}>Error loading data</p>
+          </div>
+        ) : filteredCount === 0 ? (
+          <div className="conflict-tracker-empty">
+            <AlertTriangle size={20} />
+            <p>No conflicts found</p>
+          </div>
+        ) : (
+          <>
+            {major.map((conflict) => {
+              const deaths = getDeaths(conflict);
+              const severity = statusToSeverity(conflict.status);
+              const color = severityColor(severity);
+              const heatPct = Math.max(3, (deaths / maxDeaths) * 100);
+
+              return (
+                <motion.div
+                  key={conflict.id}
+                  className="conflict-card"
+                  onClick={() => handleConflictClick(conflict)}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <div className="ucdp-heat-bar" style={{ width: `${heatPct}%`, background: color }} />
+                  <div className="conflict-card-header">
+                    <span className="conflict-card-status" style={{ background: `${color}22`, color, border: `1px solid ${color}44` }}>
+                      {statusLabel(conflict.status)}
+                    </span>
+                    {conflict.typeOfViolence && (
+                      <span className="ucdp-violence-badge" style={{ color: violenceTypeColor(conflict.typeOfViolence) }}>
+                        {violenceTypeLabel(conflict.typeOfViolence)}
+                      </span>
+                    )}
+                    <span className="ucdp-deaths-badge"><Skull size={11} /> {deaths.toLocaleString()}</span>
+                  </div>
+                  <div className="conflict-card-name">{cleanText(conflict.name)}</div>
+                  {conflict.sideA && conflict.sideB && (
+                    <div className="ucdp-sides">
+                      <span className="ucdp-side-a"><Shield size={11} /> {cleanActorName(conflict.sideA)}</span>
+                      <span className="ucdp-vs">vs</span>
+                      <span className="ucdp-side-b"><Users2 size={11} /> {cleanActorName(conflict.sideB)}</span>
+                    </div>
+                  )}
+                  <div className="conflict-card-meta">
+                    <span><MapPin size={13} /> {conflict.country}</span>
+                    <span><Calendar size={13} /> {new Date(conflict.startDate).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}</span>
+                  </div>
+                </motion.div>
+              );
+            })}
+
+            {minor.length > 0 && (
+              <div className="ucdp-minor-section">
+                <button className="ucdp-minor-toggle" onClick={() => setShowMinor(!showMinor)}>
+                  {showMinor ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  <span>Minor conflicts ({minor.length})</span>
+                </button>
+                {showMinor && minor.map((conflict) => {
+                  const deaths = getDeaths(conflict);
+                  const color = severityColor(statusToSeverity(conflict.status));
+                  return (
+                    <motion.div key={conflict.id} className="conflict-card conflict-card-minor" onClick={() => handleConflictClick(conflict)} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                      <div className="conflict-card-header">
+                        <span className="conflict-card-status" style={{ background: `${color}22`, color, border: `1px solid ${color}44` }}>{statusLabel(conflict.status)}</span>
+                        <span className="ucdp-deaths-badge">{deaths}</span>
+                      </div>
+                      <div className="conflict-card-name">{cleanText(conflict.name)}</div>
+                      <div className="conflict-card-meta"><span><MapPin size={12} /> {conflict.country}</span></div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      {/* Footer */}
       <div className="conflict-tracker-footer">
         <p className="footer-text">
-          Data sources: <a href="#" className="footer-sources">ACLED</a>, <a href="#" className="footer-sources">Crisis Group</a>, <a href="#" className="footer-sources">NewsAPI</a>
+          Source: <a href="https://ucdp.uu.se/" target="_blank" rel="noreferrer" className="footer-sources">UCDP</a> — Uppsala Conflict Data Program
         </p>
       </div>
     </motion.div>
