@@ -45,7 +45,7 @@ export interface MapRefType {
   setCitiesVisible?: (visible: boolean) => void;
   setSatelliteTrackingLayers?: (enabled: boolean) => void;
   updateSatellitePositions?: (features: any[]) => void;
-  showSatelliteGroundTrack?: (coords: [number, number][], category: string) => void;
+  showSatelliteGroundTrack?: (coords: [number, number][], category: string, country?: string) => void;
   removeSatelliteGroundTrack?: () => void;
   enterSatellitePOV?: (noradId: number, category?: string) => void;
   exitSatellitePOV?: () => void;

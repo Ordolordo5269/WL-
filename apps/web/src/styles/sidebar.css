@@ -702,6 +702,23 @@
 .mapboxgl-popup.history-popup .mapboxgl-popup-tip {
   border-top-color: rgba(15, 23, 42, 0.92) !important;
 }
+
+/* Satellite hover tooltip */
+.sat-hover-popup .mapboxgl-popup-content {
+  background: rgba(10, 15, 30, 0.92);
+  border: 1px solid rgba(100, 100, 180, 0.3);
+  border-radius: 8px;
+  padding: 6px 10px;
+  color: #e2e8f0;
+  font-size: 12px;
+  line-height: 1.4;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  pointer-events: none;
+}
+.sat-hover-popup .mapboxgl-popup-tip {
+  border-top-color: rgba(10, 15, 30, 0.92);
+}
 .history-popup-content .popup-title {
   font-size: 14px;
   font-weight: 800;

@@ -4,34 +4,147 @@ import { prisma } from '../../db/client';
 
 // ─── In-memory TLE cache (2-hour TTL per CelesTrak guidelines) ──────
 const CACHE_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
-const VALID_GROUPS = new Set(['starlink', 'military', 'navigation', 'weather', 'stations', 'active', 'gps-ops', 'geo']);
+const VALID_GROUPS = new Set(['starlink', 'military', 'navigation', 'weather', 'stations', 'active', 'gps-ops', 'geo', 'classified']);
 
 // Composite groups: merge multiple CelesTrak groups into one response
 const COMPOSITE_GROUPS: Record<string, string[]> = {
-  military:   ['military', 'molniya'],      // defense/intel + Russian military comms
+  military:   [
+    'military',   // PRAETORIAN (SDA), SAPPHIRE
+    'geo',        // USA-*, WGS, SBIRS, MUOS, AEHF, SKYNET, SYRACUSE, UFO, etc.
+    'resource',   // YAOGAN, GAOFEN (Chinese ISR)
+    'visual',     // COSMOS (RU mil), HELIOS, SHIJIAN
+    'musson',     // COSMOS (RU meteorological-mil)
+    'gnss',       // COSMOS/GLONASS mil-adjacent, LUCH relay
+    'science',    // SHIJIAN experimental mil
+    'geodetic',   // COSMOS (geodetic mil)
+    'weather',    // DMSP (DoD weather)
+    'sarsat',     // COSMOS (SAR), LUCH relay
+  ],
+  classified: ['analyst'],                    // ~495 classified objects tracked by amateur observers
   navigation: ['gnss'],                     // GPS, GLONASS, BeiDou, Galileo, IRNSS, QZSS
   weather:    ['weather', 'sarsat'],        // meteorological + search-and-rescue
   stations:   ['stations', 'tdrss'],        // space stations (ISS, CSS) + NASA relay
 };
+
+// Supplemental NAME-based fetches for satellites not in any CelesTrak GROUP
+const SUPPLEMENTAL_NAME_FETCHES: Record<string, string[]> = {
+  military: [
+    'MERIDIAN',       // Russia — HEO military comms
+    'XTAR',           // Spain/USA — NATO X-band comms
+    'EROS',           // Israel — reconnaissance
+    'GOKTURK',        // Turkey — reconnaissance
+    'KONDOR-FKA',     // Russia — SAR radar military
+    'GSAT-7',         // India — military comms
+    'CMS-03',         // India — military comms (GSAT-7R)
+    'ATHENA-FIDUS',   // France/Italy — military comms
+    'FALCON EYE',     // UAE — reconnaissance
+    'PAZ',            // Spain — SAR radar military
+    'COSMO-SKYMED',   // Italy — SAR radar constellation
+    'CSG',            // Italy — COSMO-SkyMed 2nd gen
+    'PLEIADES NEO',   // France — high-res reconnaissance
+    'RISAT',          // India — SAR radar (military)
+    'CARTOSAT',       // India — optical reconnaissance
+    'EGYPTSAT',       // Egypt — observation/military
+  ],
+  stations: ['ETALON'],
+};
+
+// For groups shared with military that contain non-military sats, filter by name pattern
+const MILITARY_NAME_FILTER = /^(USA[-\s]|WGS|MUOS|SBIRS|GSSAP|NOSS|DMSP|DSP\s|AEHF|MILSTAR|NROL|TRUMPET|SDS\s|FLTSATCOM|UFO[\s-]|DSCS|SKYNET|ANASIS|SYRACUSE|SICRAL|XTAR|CSO[-\s]|BARS|LOTOS|PION|RAZDAN|LUCH|MERIDIAN|RADUGA|YAOGAN|GAOFEN|SHIJIAN|KOSMOS|COSMOS|COSMO-SKYMED|CSG|SAR[\s-]LUPE|SARAH|HELIOS|OFEK|SAPPHIRE|PRAETORIAN|MOLNIYA|COMSATBW|KOMPSAT|ARIRANG)/i;
+// Groups where ALL satellites are military (no filtering needed)
+const MILITARY_UNFILTERED_GROUPS = new Set(['military']);
+
+// Known inactive/retired NORAD IDs to exclude from military overlay
+const MILITARY_EXCLUDED_NORADS = new Set([
+  // DSP (replaced by SBIRS)
+  26356, 26880, 28158,
+  // MILSTAR-1 (replaced by AEHF)
+  22988, 23712,
+  // FLTSATCOM 8 (retired 1990s)
+  20253,
+  // UFO 2, UFO 4 (retired, exceeded design life)
+  22787, 23467,
+  // SKYNET 4C (retired, 1990)
+  20776,
+  // HELIOS 1B (decommissioned ~2012, replaced by CSO)
+  25977,
+  // RADUGA-1M 3 (exceeded design life)
+  39375,
+  // SHIJIAN-6 02A/B (end-of-life, 2004)
+  29505, 29506,
+  // COSMOS 2058/2084/2151 (1990-1991, dead Soviet-era satellites)
+  20465, 20663, 21422,
+  // ETALON 1/2 (passive geodetic reflectors, moved to stations)
+  19751, 20026,
+  // COSMOS Parus navigation (design life 2 years, all dead)
+  22219, 22236, 22286, 23087, 25590, // 2219, 2221, 2228, 2278, 2361 (1992-1998)
+  26818, 27436, 28380,               // 2378, 2389, 2407 (2001-2004)
+  // COSMOS Musson geodetic/calibration (1993, dead)
+  22626, // 2242
+  // COSMOS Oko early warning (replaced by EKS/Tundra, all dead)
+  27818, 28521, 31792, 32052, 35635, // 2398, 2414, 2428, 2429, 2454 (2003-2009)
+  // COSMOS GLONASS-M 719-723 (2007-2008, withdrawn from constellation)
+  32276, 32275, 32393, 32395, // 2432, 2433, 2434, 2436
+  // RISAT-1 (2012, design life 5 years, dead)
+  38248,
+  // CARTOSAT-1 (2005, dead), 2A (2008, dead), 2B (2010, likely dead)
+  28649, 32783, 36795,
+  // EGYPTSAT-1 (2007, failed 2010), EGYPTSAT-2 (2014, lost contact 2015)
+  31117, 39678,
+  // GEO dead — high inclination drift (>8°), no station-keeping, confirmed retired
+  25019,  // USA 134 (1998, NRO classified, inc 12.7°)
+  26575,  // USA 153 (1999, NRO classified, inc 11.5°)
+  26715,  // USA 157 / MILSTAR-2 2 (2001, replaced by AEHF, inc 11.5°)
+  27168,  // USA 164 / MILSTAR-2 3 (2002, replaced by AEHF, inc 11.1°)
+  27691,  // USA 167 (2003, NRO classified, inc 10.8°)
+  27711,  // USA 169 / MILSTAR-2 4 (2003, replaced by AEHF, inc 12.2°)
+  27875,  // USA 170 (2003, NRO classified, inc 10.3°)
+  25967,  // UFO 10 / USA 146 (1999, replaced by MUOS, inc 9.8°)
+  28117,  // UFO 11 / USA 174 (2003, replaced by MUOS, inc 8.9°)
+  37951,  // LUCH-5A (2011, no station-keeping, inc 8.5°)
+  38977,  // LUCH-5B (2012, no station-keeping, inc 10.3°)
+  36868,  // AEHF-1 / USA 214 (2010, inc 8.0°, likely retired — AEHF-4/5/6 cover its role)
+  // LEO dead — far beyond design life
+  21949,  // USA 81 (1991, NRO classified LEO, 35 years — no LEO sat survives this long)
+  // COSMO-SKYMED 1 (31598), 2 (32376), 3 (33412) — still tracked by CelesTrak with current TLEs, kept active
+  32289,  // YAOGAN-3 (2007, first-gen Chinese recon, design life 3-5 years)
+  33446,  // YAOGAN-4 (2008, same generation)
+  36110,  // YAOGAN-7 (2009, same generation)
+  36834,  // YAOGAN-10 (2010, same generation)
+  36519,  // COSMOS 2463 (2010, likely Lotos-S SIGINT, design life 5-7 years)
+  // HEO dead — exceeded design life (7 years) by 2x
+  37212,  // MERIDIAN 3 (2010, 16 years, design life 7)
+  37398,  // MERIDIAN 4 (2011, 15 years, design life 7)
+  // LEO dead — exceeded design life
+  29268,  // ARIRANG-2 / KOMPSAT-2 (2006, design life 3 years, end of mission confirmed)
+  // COSMO-SKYMED 3 (33412) — still tracked, kept active
+]);
 
 // Country inference from satellite name patterns
 const COUNTRY_PATTERNS: [RegExp, string][] = [
   [/^USA[ -]|^DMSP|^GPS |^GPS-|^GPS ?B|^NAVSTAR|^WGS|^AEHF|^SBIRS|^GSSAP|^MUOS|^NOSS|^DSP|^MILSTAR|^GOES|^NOAA|^SUOMI|^JPSS|^CYGFM|^EWS-G|^TDRS|^TERRA$|^AQUA$|^AURA$|^SWIFT$|^GPM|^MMS |^FGRST|^TIMED$|^SORCE$|^THEMIS/i, 'US'],
   [/^STARLINK/i, 'US'],
   [/^ISS |^PROGRESS|^SOYUZ|^NAUKA/i, 'RU'],
-  [/^KOSMOS|^COSMOS|^METEOR-M|^GLONASS|^ELEKTRO|^ARKTIKA|^LUCH|^RAZDAN|^BARS-M|^LOTOS|^PION|^MOLNIYA|^MERIDIAN|^RADUGA/i, 'RU'],
-  [/^FENGYUN|^FY-|^TIANMU|^COMS|^GK-|^BEIDOU|^SHIJIAN|^YAOGAN|^GAOFEN|^JILIN/i, 'CN'],
+  [/^KOSMOS|^COSMOS|^METEOR-M|^GLONASS|^ELEKTRO|^ARKTIKA|^LUCH|^RAZDAN|^BARS-M|^LOTOS|^PION|^MOLNIYA|^MERIDIAN|^RADUGA|^ETALON/i, 'RU'],
+  [/^FENGYUN|^FY-|^TIANMU|^COMS[^A]|^GK-|^BEIDOU|^SHIJIAN|^YAOGAN|^GAOFEN|^JILIN/i, 'CN'],
   [/^CSS |^TIANHE|^WENTIAN|^MENGTIAN|^TIANZHOU|^SHENZHOU/i, 'CN'],
   [/^METEOSAT|^METOP|^GALILEO|^GSAT01|^GSAT02|^GSAT03|^EGNOS/i, 'EU'],
   [/^HIMAWARI|^QZSS|^MICHIBIKI/i, 'JP'],
-  [/^INSAT|^IRNSS|^GSAT(?!0)|^CARTOSAT|^OCEANSAT|^GAGAN/i, 'IN'],
+  [/^INSAT|^IRNSS|^GSAT|^CMS-0|^CARTOSAT|^OCEANSAT|^GAGAN/i, 'IN'],
   [/^SAPPHIRE/i, 'CA'],
-  [/^PRAETORIAN|^CREW DRAGON|^HST$|^HTV/i, 'US'],
-  [/^OFEK|^EROS/i, 'IL'],
-  [/^SAR-LUPE|^SARAH/i, 'DE'],
-  [/^HELIOS|^CSO-|^PLEIADES/i, 'FR'],
+  [/^PRAETORIAN|^CREW DRAGON|^HST$|^HTV|^XTAR|^UFO/i, 'US'],
+  [/^OFEK|^EROS|^OPTSAT/i, 'IL'],
+  [/^SAR-LUPE|^SARAH|^COMSATBW/i, 'DE'],
+  [/^HELIOS|^CSO[-\s]|^PLEIADES|^SYRACUSE|^ATHENA.FIDUS/i, 'FR'],
   [/^SKYNET|^SENTINEL/i, 'GB'],
-  [/^KOMPSAT|^ANASIS/i, 'KR'],
+  [/^KOMPSAT|^ARIRANG|^ANASIS/i, 'KR'],
+  [/^GOKTURK/i, 'TR'],
+  [/^KONDOR/i, 'RU'],
+  [/^FALCON EYE/i, 'AE'],
+  [/^PAZ$/i, 'ES'],
+  [/^COSMO.SKYMED|^CSG-|^SICRAL/i, 'IT'],
+  [/^RISAT|^CARTOSAT/i, 'IN'],
+  [/^EGYPTSAT|^MISRSAT/i, 'EG'],
 ];
 
 function inferCountry(name: string): string {
@@ -47,6 +160,8 @@ interface CachedTLE {
 }
 
 const tleCache = new Map<string, CachedTLE>();
+// Prevent cache stampede: only one in-flight fetch per group at a time
+const inflightFetches = new Map<string, Promise<unknown[]>>();
 
 // ─── OMM JSON → TLE line conversion ────────────────────────────────
 // CelesTrak FORMAT=json returns OMM parameters without TLE_LINE1/TLE_LINE2.
@@ -193,10 +308,26 @@ export async function getSatelliteTLE(req: Request, res: Response) {
     return;
   }
 
+  // Stampede protection: if another request is already fetching this group, wait for it
+  const inflight = inflightFetches.get(group);
+  if (inflight) {
+    try {
+      const data = await inflight;
+      res.set('Cache-Control', 'public, max-age=7200, stale-while-revalidate=3600');
+      res.set('X-Cache', 'COALESCED');
+      res.json(data);
+      return;
+    } catch {
+      // If the in-flight request failed, fall through to try ourselves
+    }
+  }
+
   // Determine which CelesTrak groups to fetch (may be composite)
   const groupsToFetch = COMPOSITE_GROUPS[group] || [group];
 
+  const fetchPromise = (async () => {
   try {
+    // Note: inflightFetches.set() called immediately after this IIFE is created
     // Fetch all sub-groups in parallel
     const responses = await Promise.all(
       groupsToFetch.map(g =>
@@ -207,17 +338,57 @@ export async function getSatelliteTLE(req: Request, res: Response) {
       )
     );
 
+    // Fetch supplemental NAME-based satellites (not in any GROUP)
+    const nameQueries = SUPPLEMENTAL_NAME_FETCHES[group] || [];
+    const nameResponses = nameQueries.length > 0
+      ? await Promise.all(
+          nameQueries.map(name =>
+            axios.get(`https://celestrak.org/NORAD/elements/gp.php?NAME=${name}&FORMAT=json`, {
+              timeout: 15_000,
+              headers: { 'Accept': 'application/json' },
+            }).catch(() => ({ data: [] }))
+          )
+        )
+      : [];
+
     // Merge and deduplicate by NORAD_CAT_ID
     const seen = new Set<number>();
     const allOmm: any[] = [];
-    for (const response of responses) {
-      const arr = Array.isArray(response.data) ? response.data : [];
+    for (let gi = 0; gi < responses.length; gi++) {
+      const subGroup = groupsToFetch[gi];
+      const arr = Array.isArray(responses[gi].data) ? responses[gi].data : [];
+      const needsFilter = group === 'military' && !MILITARY_UNFILTERED_GROUPS.has(subGroup);
       for (const omm of arr) {
         const id = omm.NORAD_CAT_ID;
-        if (id && !seen.has(id)) {
-          seen.add(id);
-          allOmm.push(omm);
+        if (!id || seen.has(id)) continue;
+        if (needsFilter && !MILITARY_NAME_FILTER.test(omm.OBJECT_NAME || '')) continue;
+        // Exclude known inactive/retired military satellites
+        if (group === 'military') {
+          if (MILITARY_EXCLUDED_NORADS.has(id)) continue;
+          // Skip very old COSMOS (pre-1990, all dead)
+          if ((omm.OBJECT_NAME || '').startsWith('COSMOS') && id < 20000) continue;
         }
+        seen.add(id);
+        allOmm.push(omm);
+      }
+    }
+    // Add supplemental NAME results (apply same exclusion filters)
+    for (let ni = 0; ni < nameResponses.length; ni++) {
+      const queryName = nameQueries[ni];
+      const arr = Array.isArray(nameResponses[ni].data) ? nameResponses[ni].data : [];
+      for (const omm of arr) {
+        const id = omm.NORAD_CAT_ID;
+        const name = omm.OBJECT_NAME || '';
+        if (!id || seen.has(id)) continue;
+        // Skip false positives from substring matching (e.g. RISAT matches MARISAT)
+        if (!name.toUpperCase().startsWith(queryName.toUpperCase())) continue;
+        // Exclude known inactive satellites
+        if (group === 'military') {
+          if (MILITARY_EXCLUDED_NORADS.has(id)) continue;
+          if (name.startsWith('COSMOS') && id < 20000) continue;
+        }
+        seen.add(id);
+        allOmm.push(omm);
       }
     }
 
@@ -238,17 +409,25 @@ export async function getSatelliteTLE(req: Request, res: Response) {
       .filter(Boolean);
 
     tleCache.set(group, { data, expiresAt: Date.now() + CACHE_TTL_MS });
+    return data;
+  } catch (err: any) {
+    // Serve stale cache if CelesTrak is down
+    if (cached) return cached.data as unknown[];
+    throw err;
+  } finally {
+    inflightFetches.delete(group);
+  }
+  })();
 
+  // Register BEFORE awaiting so concurrent requests find it
+  inflightFetches.set(group, fetchPromise);
+
+  try {
+    const data = await fetchPromise;
     res.set('Cache-Control', 'public, max-age=7200, stale-while-revalidate=3600');
     res.set('X-Cache', 'MISS');
     res.json(data);
   } catch (err: any) {
-    // Serve stale cache if CelesTrak is down
-    if (cached) {
-      res.set('X-Cache', 'STALE');
-      res.json(cached.data);
-      return;
-    }
     console.error('[satellite/tle] CelesTrak proxy error:', err.message);
     res.status(502).json({ error: 'Failed to fetch TLE data from CelesTrak' });
   }
@@ -257,6 +436,8 @@ export async function getSatelliteTLE(req: Request, res: Response) {
 // ─── Satellite Profiles ─────────────────────────────────────────────
 // Returns all profiles for client-side regex lookup (cached 1h)
 let profilesCache: { data: any[]; expiresAt: number } | null = null;
+// Force cache invalidation on restart
+profilesCache = null;
 
 export async function getSatelliteProfiles(_req: Request, res: Response) {
   if (profilesCache && profilesCache.expiresAt > Date.now()) {

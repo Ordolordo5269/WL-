@@ -4,16 +4,19 @@ import StatisticsPanel from './StatisticsPanel';
 import { AVAILABLE_HISTORY_YEARS, snapToAvailableYear } from '../../utils/historical-years';
 import { Crosshair, Settings, Info, Globe, Users, BarChart3, Map, User, GitCompare, Satellite } from 'lucide-react';
 import { type NasaOverlayType, NASA_EARTH_OVERLAYS, NASA_EARTH_OVERLAY_KEYS, prefetchNightLightsTiles, getNasaObservationDate } from './map/mapAppearance';
+import { MILITARY_COUNTRY_COLORS } from './map/satellite-visualization';
+import { COUNTRY_FLAGS, COUNTRY_NAMES } from './map/satellite-database';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSatelliteTracking, type SatCategory } from './useSatelliteTracking';
 import type { ChoroplethState } from './useChoropleth';
 
 const SAT_CATEGORY_META: Record<SatCategory, { label: string; count: string; color: string }> = {
-  military:   { label: 'Military & Intel',  count: '~120', color: '#ff4444' },
+  military:   { label: 'Military & Intel',  count: '~168', color: '#ff4444' },
+  classified: { label: 'Classified',        count: '~495', color: '#ff8800' },
   navigation: { label: 'Navigation (GNSS)', count: '~130', color: '#ffaa22' },
   weather:    { label: 'Weather & SAR',     count: '~150', color: '#44aaff' },
-  stations:   { label: 'Stations & Relay',  count: '~40',  color: '#d4a0ff' },
+  stations:   { label: 'Stations & Relay',  count: '~42',  color: '#d4a0ff' },
   starlink:   { label: 'Starlink',          count: '~10,000', color: '#00ff88' },
 };
 
@@ -70,6 +73,7 @@ interface LeftSidebarProps {
   countries?: Array<{ iso3: string; name: string; flagUrl?: string }>;
   countriesLoading?: boolean;
   onOpenCompareCountries?: () => void;
+  onTrackingCategoriesChange?: (cats: Record<SatCategory, boolean>) => void;
 }
 
 interface MenuItem {
@@ -80,25 +84,48 @@ interface MenuItem {
   iconBg?: string;
 }
 
-export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConflictTracker, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetGlobeTheme, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, choropleth, onToggleHistoryMode, onSetHistoryYear, onResetHistoryPresentation, historyEnabled: _historyEnabled = false, historyYear = null, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, naturalLod = 'auto', onSetNaturalLod, earthOverlays, onToggleEarthOverlay, onHistoryToSatellite, onSatelliteToHistory }: LeftSidebarProps) {
+export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConflictTracker, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetGlobeTheme, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, choropleth, onToggleHistoryMode, onSetHistoryYear, onResetHistoryPresentation, historyEnabled: _historyEnabled = false, historyYear = null, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, naturalLod = 'auto', onSetNaturalLod, earthOverlays, onToggleEarthOverlay, onHistoryToSatellite, onSatelliteToHistory, onTrackingCategoriesChange }: LeftSidebarProps) {
   const [activeItem, setActiveItem] = useState<string>('home');
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
 
   // ── Satellite Live Tracking ──
   const satTracking = useSatelliteTracking();
+  const [hiddenCountries, setHiddenCountries] = useState<Set<string>>(new Set());
+  const hiddenCountriesRef = useRef<Set<string>>(hiddenCountries);
+  hiddenCountriesRef.current = hiddenCountries;
+  const [countryFilterOpen, setCountryFilterOpen] = useState(false);
+
+  const toggleCountryFilter = useCallback((code: string) => {
+    setHiddenCountries(prev => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code); else next.add(code);
+      return next;
+    });
+  }, []);
+
+  // Sync tracking categories up to App.tsx for legend rendering
+  useEffect(() => {
+    onTrackingCategoriesChange?.(satTracking.categories);
+  }, [satTracking.categories, onTrackingCategoriesChange]);
 
   // Bridge: wire worker output to map layers via __wl_map_comp
   useEffect(() => {
     const mapComp = () => (document as any).__wl_map_comp;
 
     satTracking.setOnPositions((features: any[]) => {
-      mapComp()?.updateSatellitePositions?.(features);
-      mapComp()?.updateSatellitePOVPositions?.(features);
+      const hidden = hiddenCountriesRef.current;
+      const filtered = hidden.size > 0
+        ? features.filter((f: any) => !(f.properties?.category === 'military' && hidden.has(f.properties?.country)))
+        : features;
+      mapComp()?.updateSatellitePositions?.(filtered);
+      mapComp()?.updateSatellitePOVPositions?.(filtered);
+      // Emit live data for POV HUD
+      window.dispatchEvent(new CustomEvent('wl-satellite-positions', { detail: { features } }));
     });
 
-    satTracking.setOnGroundTrack((noradId: number, coords: [number, number][], category: string) => {
-      mapComp()?.showSatelliteGroundTrack?.(coords, category);
+    satTracking.setOnGroundTrack((noradId: number, coords: [number, number][], category: string, country: string) => {
+      mapComp()?.showSatelliteGroundTrack?.(coords, category, country);
     });
 
     // Listen for satellite clicks + POV mode — request ground track
@@ -618,7 +645,7 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
                             Real-time satellite positions via CelesTrak (SGP4).
                           </div>
                           <div className="settings-row" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
-                            {(['military', 'weather', 'stations', 'starlink'] as SatCategory[]).map(cat => {
+                            {(['military', 'classified', 'weather', 'stations', 'starlink'] as SatCategory[]).map(cat => {
                               const meta = SAT_CATEGORY_META[cat];
                               const enabled = satTracking.categories[cat];
                               const isLoading = satTracking.loading[cat];
@@ -644,6 +671,104 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
                                       >Hide</button>
                                     </div>
                                   </div>
+                                  {cat === 'military' && enabled && (() => {
+                                    const counts = satTracking.getCountryCounts('military');
+                                    const hasFilters = hiddenCountries.size > 0;
+                                    const sortedCountries = Object.entries(MILITARY_COUNTRY_COLORS)
+                                      .sort((a, b) => (counts[b[0]] || 0) - (counts[a[0]] || 0));
+                                    return (
+                                      <div style={{ marginTop: 8 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                          <button
+                                            onClick={() => setCountryFilterOpen(prev => !prev)}
+                                            style={{
+                                              display: 'flex', alignItems: 'center', gap: 5,
+                                              padding: '4px 10px', borderRadius: 10, cursor: 'pointer',
+                                              background: countryFilterOpen ? 'rgba(100,90,180,0.15)' : 'rgba(60,55,90,0.2)',
+                                              border: `1px solid ${countryFilterOpen ? 'rgba(130,120,200,0.35)' : 'rgba(100,95,140,0.25)'}`,
+                                              color: 'rgba(190,180,230,0.7)', fontSize: 10, fontWeight: 500,
+                                              fontFamily: 'inherit', transition: 'all 0.15s ease',
+                                            }}
+                                          >
+                                            <span style={{ fontSize: 11 }}>🌍</span>
+                                            Filter by country
+                                            <span style={{ fontSize: 8, opacity: 0.5 }}>{countryFilterOpen ? '▾' : '▸'}</span>
+                                          </button>
+                                          {hasFilters && (
+                                            <>
+                                              <span style={{ fontSize: 9, color: 'rgba(255,140,100,0.65)' }}>
+                                                {hiddenCountries.size} hidden
+                                              </span>
+                                              <span
+                                                onClick={() => setHiddenCountries(new Set())}
+                                                style={{ fontSize: 9, color: 'rgba(140,160,255,0.6)', cursor: 'pointer' }}
+                                              >
+                                                Reset
+                                              </span>
+                                            </>
+                                          )}
+                                        </div>
+                                        {countryFilterOpen && (
+                                          <div className="hide-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4, maxHeight: 200, overflowY: 'auto' }}>
+                                            {sortedCountries.map(([code, color]) => {
+                                              const hidden = hiddenCountries.has(code);
+                                              const count = counts[code] || 0;
+                                              const flag = COUNTRY_FLAGS[code] || '';
+                                              const name = COUNTRY_NAMES[code] || code;
+                                              return (
+                                                <div
+                                                  key={code}
+                                                  onClick={() => toggleCountryFilter(code)}
+                                                  style={{
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                    padding: '4px 8px', borderRadius: 8, cursor: 'pointer',
+                                                    background: hidden ? 'rgba(30,30,40,0.2)' : `${color}10`,
+                                                    border: `1px solid ${hidden ? 'rgba(60,60,70,0.2)' : color + '30'}`,
+                                                    transition: 'all 0.15s ease',
+                                                    opacity: hidden ? 0.45 : 1,
+                                                  }}
+                                                >
+                                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                    <span style={{
+                                                      width: 8, height: 8, borderRadius: '50%',
+                                                      background: hidden ? 'rgba(80,80,90,0.4)' : color,
+                                                      display: 'inline-block', flexShrink: 0,
+                                                      boxShadow: hidden ? 'none' : `0 0 5px ${color}55`,
+                                                    }} />
+                                                    <span style={{ fontSize: 11 }}>{flag}</span>
+                                                    <span style={{
+                                                      fontSize: 10, fontWeight: 500,
+                                                      color: hidden ? 'rgba(150,150,170,0.4)' : 'rgba(220,215,240,0.85)',
+                                                      textDecoration: hidden ? 'line-through' : 'none',
+                                                    }}>
+                                                      {name}
+                                                    </span>
+                                                    <span style={{ fontSize: 9, color: 'rgba(160,150,200,0.4)' }}>
+                                                      {count}
+                                                    </span>
+                                                  </div>
+                                                  <div style={{
+                                                    width: 28, height: 14, borderRadius: 7,
+                                                    background: hidden ? 'rgba(60,60,70,0.4)' : color + '55',
+                                                    position: 'relative', transition: 'background 0.15s',
+                                                  }}>
+                                                    <div style={{
+                                                      width: 10, height: 10, borderRadius: '50%',
+                                                      background: hidden ? 'rgba(100,100,110,0.6)' : '#fff',
+                                                      position: 'absolute', top: 2,
+                                                      left: hidden ? 2 : 16,
+                                                      transition: 'left 0.15s ease',
+                                                      boxShadow: hidden ? 'none' : `0 0 4px ${color}88`,
+                                                    }} />
+                                                  </div>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
                                   {cat === 'starlink' && (
                                     <div style={{ fontSize: 9, color: 'rgba(255,200,100,0.5)', marginTop: 2, letterSpacing: '0.02em' }}>
                                       Large constellation — may impact performance on older devices

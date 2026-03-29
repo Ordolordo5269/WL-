@@ -1,8 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 
-export type SatCategory = 'starlink' | 'military' | 'weather' | 'stations';
+export type SatCategory = 'starlink' | 'military' | 'weather' | 'stations' | 'classified';
 
-const SAT_CATEGORIES: SatCategory[] = ['military', 'navigation', 'weather', 'stations', 'starlink'];
+const SAT_CATEGORIES: SatCategory[] = ['military', 'classified', 'navigation', 'weather', 'stations', 'starlink'];
 
 const STORAGE_KEY = 'wl-satellite-tracking';
 function saveCatState(cat: SatCategory, v: boolean) {
@@ -17,6 +17,7 @@ const API_URL = import.meta.env.VITE_API_BASE_URL || '';
 export function useSatelliteTracking() {
   const [categories, setCategories] = useState<Record<SatCategory, boolean>>({
     military: false,
+    classified: false,
     navigation: false,
     weather: false,
     stations: false,
@@ -24,6 +25,7 @@ export function useSatelliteTracking() {
   });
   const [loading, setLoading] = useState<Record<SatCategory, boolean>>({
     military: false,
+    classified: false,
     navigation: false,
     weather: false,
     stations: false,
@@ -35,8 +37,8 @@ export function useSatelliteTracking() {
   const workerRef = useRef<Worker | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const onPositionsRef = useRef<((features: any[]) => void) | null>(null);
-  const onGroundTrackRef = useRef<((noradId: number, coords: [number, number][], category: string) => void) | null>(null);
-  const categoryDataRef = useRef<Record<SatCategory, any[] | null>>({ military: null, navigation: null, weather: null, stations: null, starlink: null });
+  const onGroundTrackRef = useRef<((noradId: number, coords: [number, number][], category: string, country: string) => void) | null>(null);
+  const categoryDataRef = useRef<Record<SatCategory, any[] | null>>({ military: null, classified: null, navigation: null, weather: null, stations: null, starlink: null });
 
   // Initialize worker
   const ensureWorker = useCallback(() => {
@@ -52,7 +54,8 @@ export function useSatelliteTracking() {
         onPositionsRef.current?.(e.data.features);
       } else if (e.data.type === 'groundtrack') {
         const cat = findCategoryForNorad(e.data.noradId);
-        onGroundTrackRef.current?.(e.data.noradId, e.data.coordinates, cat);
+        const country = findCountryForNorad(e.data.noradId);
+        onGroundTrackRef.current?.(e.data.noradId, e.data.coordinates, cat, country);
       }
     };
     w.onerror = (err) => {
@@ -68,6 +71,15 @@ export function useSatelliteTracking() {
       if (data?.some((d: any) => d.NORAD_CAT_ID === noradId)) return cat;
     }
     return 'military';
+  };
+
+  const findCountryForNorad = (noradId: number): string => {
+    for (const cat of SAT_CATEGORIES) {
+      const data = categoryDataRef.current[cat];
+      const sat = data?.find((d: any) => d.NORAD_CAT_ID === noradId);
+      if (sat) return sat.COUNTRY || '';
+    }
+    return '';
   };
 
   // Start tick interval
@@ -152,8 +164,8 @@ export function useSatelliteTracking() {
       workerRef.current.terminate();
       workerRef.current = null;
     }
-    categoryDataRef.current = { military: null, navigation: null, weather: null, stations: null, starlink: null };
-    setCategories({ military: false, navigation: false, weather: false, stations: false, starlink: false });
+    categoryDataRef.current = { military: null, classified: null, navigation: null, weather: null, stations: null, starlink: null };
+    setCategories({ military: false, classified: false, navigation: false, weather: false, stations: false, starlink: false });
     setTrackingActive(false);
     setSelectedSatellite(null);
   }, [stopTicking]);
@@ -175,7 +187,17 @@ export function useSatelliteTracking() {
     requestGroundTrack,
     cleanup,
     setOnPositions: (cb: (features: any[]) => void) => { onPositionsRef.current = cb; },
-    setOnGroundTrack: (cb: (noradId: number, coords: [number, number][], category: string) => void) => { onGroundTrackRef.current = cb; },
+    setOnGroundTrack: (cb: (noradId: number, coords: [number, number][], category: string, country: string) => void) => { onGroundTrackRef.current = cb; },
+    getCountryCounts: (cat: SatCategory): Record<string, number> => {
+      const data = categoryDataRef.current[cat];
+      if (!data) return {};
+      const counts: Record<string, number> = {};
+      for (const s of data) {
+        const c = (s as any).COUNTRY || '?';
+        counts[c] = (counts[c] || 0) + 1;
+      }
+      return counts;
+    },
     SAT_CATEGORIES,
   };
 }
