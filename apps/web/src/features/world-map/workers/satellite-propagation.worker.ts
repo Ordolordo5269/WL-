@@ -5,7 +5,7 @@
 import * as satellite from 'satellite.js';
 
 // ─── Types ──────────────────────────────────────────────────────────
-export type SatCategory = 'starlink' | 'military' | 'weather' | 'stations' | 'navigation';
+export type SatCategory = 'starlink' | 'military' | 'navigation' | 'weather' | 'stations' | 'classified';
 
 interface SatRecord {
   satrec: satellite.SatRec;
@@ -14,6 +14,7 @@ interface SatRecord {
   category: SatCategory;
   objectId: string;
   country: string;
+  constellation: string;
 }
 
 interface AddMessage {
@@ -81,6 +82,7 @@ function propagateAll(): PositionResult {
           alt: Math.round(alt),
           objectId: rec.objectId,
           country: rec.country,
+          constellation: rec.constellation,
         },
       });
     } catch {
@@ -157,6 +159,7 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
             category: msg.category,
             objectId: entry.OBJECT_ID || '',
             country: entry.COUNTRY || '',
+            constellation: entry.CONSTELLATION || '',
           });
         } catch {
           // Skip unparseable TLEs

@@ -1633,10 +1633,10 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       if (!map) return;
       SatelliteVisualization.updatePositions(map, features);
     },
-    showSatelliteGroundTrack: (coords: [number, number][], category: string, country?: string) => {
+    showSatelliteGroundTrack: (coords: [number, number][], category: string, country?: string, constellation?: string) => {
       const map = mapRef.current;
       if (!map) return;
-      SatelliteVisualization.showGroundTrack(map, coords, category, country);
+      SatelliteVisualization.showGroundTrack(map, coords, category, country, constellation);
     },
     removeSatelliteGroundTrack: () => {
       const map = mapRef.current;

@@ -24,6 +24,18 @@ const COLORS = {
   fallback: '#ffffff',
 } as const;
 
+// ─── GNSS constellation colors ────────────────────────────────────
+export const GNSS_CONSTELLATION_COLORS: Record<string, string> = {
+  gps:     '#4488ff',  // USA — blue
+  glonass: '#ff4444',  // Russia — red
+  galileo: '#ffd700',  // EU — gold
+  beidou:  '#ff8800',  // China — orange
+  navic:   '#ff6633',  // India — coral
+  qzss:    '#00cccc',  // Japan — cyan
+  sbas:    '#88cc44',  // Multi — lime
+};
+const GNSS_FALLBACK_COLOR = '#ffaa22';
+
 // ─── Military country colors ──────────────────────────────────────
 export const MILITARY_COUNTRY_COLORS: Record<string, string> = {
   US: '#4488ff',
@@ -43,6 +55,23 @@ export const MILITARY_COUNTRY_COLORS: Record<string, string> = {
   CA: '#ee5577',
 };
 const MILITARY_FALLBACK_COLOR = '#aaaaaa';
+
+// ─── Weather program colors ─────────────────────────────────────
+export const WEATHER_PROGRAM_COLORS: Record<string, string> = {
+  goes:     '#ff5555',  // USA — red
+  jpss:     '#55bbff',  // USA — light blue
+  meteosat: '#ffd700',  // EU — gold (Meteosat GEO)
+  metop:    '#ccaa00',  // EU — dark gold (MetOp polar)
+  fengyun:  '#ff8833',  // China — orange
+  tianmu:   '#ffcc44',  // China — amber
+  himawari: '#ff66aa',  // Japan — pink
+  meteor:   '#44ddaa',  // Russia — teal
+  arktika:  '#33bb99',  // Russia — dark teal
+  elektro:  '#66cc66',  // Russia — green
+  insat:    '#cc77ff',  // India — purple
+  kompsat:  '#00cccc',  // South Korea — cyan
+};
+const WEATHER_FALLBACK_COLOR = '#44aaff';
 
 // ─── Color helpers for SVG recoloring ─────────────────────────────
 function hexToRgb(hex: string): [number, number, number] {
@@ -74,10 +103,32 @@ function recolorMilitarySvg(baseSvg: string, mainColor: string): string {
     .replace(/#F09595/gi, highlight);
 }
 
+// Recolors sat-navigation.svg: body (#C8841A) + antenna (#ffaa22) → mainColor
+function recolorNavigationSvg(baseSvg: string, mainColor: string): string {
+  const dark = adjustBrightness(mainColor, 0.55);
+  return baseSvg
+    .replace(/#C8841A/gi, mainColor)
+    .replace(/#8B5A0E/gi, dark)
+    .replace(/#ffaa22/gi, mainColor);
+}
+
+// Recolors sat-weather.svg: body (#1D9E75), panels (#185FA5), accents (#5DCAA5)
+function recolorWeatherSvg(baseSvg: string, mainColor: string): string {
+  const dark = adjustBrightness(mainColor, 0.45);
+  const accent = adjustBrightness(mainColor, 0.7);
+  return baseSvg
+    .replace(/#1D9E75/gi, mainColor)
+    .replace(/#0F6E56/gi, dark)
+    .replace(/#085041/gi, dark)
+    .replace(/#185FA5/gi, accent)
+    .replace(/#0C447C/gi, dark)
+    .replace(/#5DCAA5/gi, accent);
+}
+
 // ─── Icon registration ─────────────────────────────────────────────
 const ICON_IDS = {
   classified: 'sat-military',
-  navigation: 'sat-stations',
+  navigation: 'sat-navigation',
   weather: 'sat-weather',
   stations: 'sat-stations',
 } as const;
@@ -86,6 +137,7 @@ const ICON_PATHS: Record<string, string> = {
   'sat-military': '/icons/sat-military.svg',
   'sat-weather': '/icons/sat-weather.svg',
   'sat-stations': '/icons/sat-stations.svg',
+  'sat-navigation': '/icons/sat-navigation.svg',
 };
 
 let iconsLoaded = false;
@@ -130,6 +182,82 @@ async function loadSatelliteIcons(map: mapboxgl.Map) {
   } catch {
     console.warn('[satellite] Failed to generate country military icons');
   }
+
+  // Generate constellation-colored navigation icons
+  try {
+    const res = await fetch('/icons/sat-navigation.svg');
+    const baseSvg = await res.text();
+    for (const [key, color] of Object.entries(GNSS_CONSTELLATION_COLORS)) {
+      const iconId = `sat-navigation-${key}`;
+      if (map.hasImage(iconId)) continue;
+      const svg = recolorNavigationSvg(baseSvg, color);
+      const dataUri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+      try { await loadImageAsync(map, iconId, dataUri); }
+      catch { /* skip */ }
+    }
+  } catch {
+    console.warn('[satellite] Failed to generate constellation navigation icons');
+  }
+
+  // Generate program-colored weather icons
+  try {
+    const res = await fetch('/icons/sat-weather.svg');
+    const baseSvg = await res.text();
+    for (const [key, color] of Object.entries(WEATHER_PROGRAM_COLORS)) {
+      const iconId = `sat-weather-${key}`;
+      if (map.hasImage(iconId)) continue;
+      const svg = recolorWeatherSvg(baseSvg, color);
+      const dataUri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+      try { await loadImageAsync(map, iconId, dataUri); }
+      catch { /* skip */ }
+    }
+  } catch {
+    console.warn('[satellite] Failed to generate program weather icons');
+  }
+}
+
+// ─── Module-level filter state ──────────────────────────────────────
+let _hiddenConstellations: Set<string> = new Set();
+let _hiddenWeatherPrograms: Set<string> = new Set();
+
+function _rebuildCategoryFilters(map: mapboxgl.Map) {
+  if (!map.getLayer(LAYER_ICON_ID)) return;
+  const navHidden = _hiddenConstellations.size > 0;
+  const wxHidden = _hiddenWeatherPrograms.size > 0;
+
+  if (!navHidden && !wxHidden) {
+    // No filters — show everything
+    try {
+      map.setFilter(LAYER_ICON_ID, ['in', ['get', 'category'], ['literal', ['military', 'classified', 'navigation', 'weather', 'stations']]]);
+      map.setFilter(LAYER_GLOW_ID, null as any);
+    } catch { /* layer may not exist */ }
+    return;
+  }
+
+  const visibleNav = Object.keys(GNSS_CONSTELLATION_COLORS).filter(k => !_hiddenConstellations.has(k));
+  const visibleWx = Object.keys(WEATHER_PROGRAM_COLORS).filter(k => !_hiddenWeatherPrograms.has(k));
+
+  // Base categories that pass through unfiltered
+  const baseCats = ['military', 'classified', 'stations'];
+  if (!navHidden) baseCats.push('navigation');
+  if (!wxHidden) baseCats.push('weather');
+
+  const iconFilter: any[] = ['any', ['in', ['get', 'category'], ['literal', baseCats]]];
+  const glowFilter: any[] = ['any', ['!in', ['get', 'category'], ['literal', ['navigation', 'weather'].filter(c => (c === 'navigation' ? navHidden : wxHidden))]]];
+
+  if (navHidden) {
+    iconFilter.push(['all', ['==', ['get', 'category'], 'navigation'], ['in', ['get', 'constellation'], ['literal', visibleNav]]]);
+    glowFilter.push(['all', ['==', ['get', 'category'], 'navigation'], ['in', ['get', 'constellation'], ['literal', visibleNav]]]);
+  }
+  if (wxHidden) {
+    iconFilter.push(['all', ['==', ['get', 'category'], 'weather'], ['in', ['get', 'constellation'], ['literal', visibleWx]]]);
+    glowFilter.push(['all', ['==', ['get', 'category'], 'weather'], ['in', ['get', 'constellation'], ['literal', visibleWx]]]);
+  }
+
+  try {
+    map.setFilter(LAYER_ICON_ID, iconFilter as any);
+    map.setFilter(LAYER_GLOW_ID, glowFilter as any);
+  } catch { /* layer may not exist */ }
 }
 
 // ─── Public API ─────────────────────────────────────────────────────
@@ -181,11 +309,19 @@ export const SatelliteVisualization = {
             ...Object.entries(MILITARY_COUNTRY_COLORS).flat(),
             MILITARY_FALLBACK_COLOR,
           ],
+          ['==', ['get', 'category'], 'navigation'],
+          ['match', ['get', 'constellation'],
+            ...Object.entries(GNSS_CONSTELLATION_COLORS).flat(),
+            GNSS_FALLBACK_COLOR,
+          ],
+          ['==', ['get', 'category'], 'weather'],
+          ['match', ['get', 'constellation'],
+            ...Object.entries(WEATHER_PROGRAM_COLORS).flat(),
+            WEATHER_FALLBACK_COLOR,
+          ],
           ['match', ['get', 'category'],
             'starlink', COLORS.starlink,
             'classified', COLORS.classified,
-            'navigation', COLORS.navigation,
-            'weather', COLORS.weather,
             'stations', COLORS.stations,
             COLORS.fallback,
           ],
@@ -215,11 +351,19 @@ export const SatelliteVisualization = {
             ...Object.entries(MILITARY_COUNTRY_COLORS).flat(),
             MILITARY_FALLBACK_COLOR,
           ],
+          ['==', ['get', 'category'], 'navigation'],
+          ['match', ['get', 'constellation'],
+            ...Object.entries(GNSS_CONSTELLATION_COLORS).flat(),
+            GNSS_FALLBACK_COLOR,
+          ],
+          ['==', ['get', 'category'], 'weather'],
+          ['match', ['get', 'constellation'],
+            ...Object.entries(WEATHER_PROGRAM_COLORS).flat(),
+            WEATHER_FALLBACK_COLOR,
+          ],
           ['match', ['get', 'category'],
             'starlink', COLORS.starlink,
             'classified', COLORS.classified,
-            'navigation', COLORS.navigation,
-            'weather', COLORS.weather,
             'stations', COLORS.stations,
             COLORS.fallback,
           ],
@@ -265,10 +409,18 @@ export const SatelliteVisualization = {
             ['image', 'sat-military-fallback'],
             ['image', 'sat-military'],
           ],
+          ['==', ['get', 'category'], 'navigation'],
+          ['coalesce',
+            ['image', ['concat', 'sat-navigation-', ['get', 'constellation']]],
+            ['image', 'sat-navigation'],
+          ],
+          ['==', ['get', 'category'], 'weather'],
+          ['coalesce',
+            ['image', ['concat', 'sat-weather-', ['get', 'constellation']]],
+            ['image', 'sat-weather'],
+          ],
           ['match', ['get', 'category'],
             'classified', ICON_IDS.classified,
-            'navigation', ICON_IDS.navigation,
-            'weather', ICON_IDS.weather,
             'stations', ICON_IDS.stations,
             'sat-military',
           ],
@@ -309,8 +461,19 @@ export const SatelliteVisualization = {
     source.setData({ type: 'FeatureCollection', features });
   },
 
-  /** Show ground track line for a selected satellite */
-  showGroundTrack(map: mapboxgl.Map, coordinates: [number, number][], category: string, country?: string) {
+  /** Hide/show navigation constellations */
+  setHiddenConstellations(map: mapboxgl.Map, hidden: Set<string>) {
+    _hiddenConstellations = hidden;
+    _rebuildCategoryFilters(map);
+  },
+
+  /** Hide/show weather programs */
+  setHiddenWeatherPrograms(map: mapboxgl.Map, hidden: Set<string>) {
+    _hiddenWeatherPrograms = hidden;
+    _rebuildCategoryFilters(map);
+  },
+
+  showGroundTrack(map: mapboxgl.Map, coordinates: [number, number][], category: string, country?: string, constellation?: string) {
     this.removeGroundTrack(map);
 
     if (coordinates.length < 2) return;
@@ -341,6 +504,10 @@ export const SatelliteVisualization = {
 
     const color = category === 'military' && country
       ? (MILITARY_COUNTRY_COLORS[country] || MILITARY_FALLBACK_COLOR)
+      : category === 'navigation' && constellation
+      ? (GNSS_CONSTELLATION_COLORS[constellation] || GNSS_FALLBACK_COLOR)
+      : category === 'weather' && constellation
+      ? (WEATHER_PROGRAM_COLORS[constellation] || WEATHER_FALLBACK_COLOR)
       : (COLORS[category as keyof typeof COLORS] || COLORS.fallback);
 
     map.addLayer(

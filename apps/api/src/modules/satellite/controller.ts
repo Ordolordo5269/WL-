@@ -3,7 +3,7 @@ import axios from 'axios';
 import { prisma } from '../../db/client';
 
 // ─── In-memory TLE cache (2-hour TTL per CelesTrak guidelines) ──────
-const CACHE_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours — TLE data changes slowly
 const VALID_GROUPS = new Set(['starlink', 'military', 'navigation', 'weather', 'stations', 'active', 'gps-ops', 'geo', 'classified']);
 
 // Composite groups: merge multiple CelesTrak groups into one response
@@ -22,7 +22,7 @@ const COMPOSITE_GROUPS: Record<string, string[]> = {
   ],
   classified: ['analyst'],                    // ~495 classified objects tracked by amateur observers
   navigation: ['gnss'],                     // GPS, GLONASS, BeiDou, Galileo, IRNSS, QZSS
-  weather:    ['weather', 'sarsat'],        // meteorological + search-and-rescue
+  weather:    ['weather'],                  // meteorological only (sarsat removed — contains GPS/GLONASS/Galileo nav sats)
   stations:   ['stations', 'tdrss'],        // space stations (ISS, CSS) + NASA relay
 };
 
@@ -47,12 +47,22 @@ const SUPPLEMENTAL_NAME_FETCHES: Record<string, string[]> = {
     'EGYPTSAT',       // Egypt — observation/military
   ],
   stations: ['ETALON'],
+  weather: ['ELEKTRO-L'],  // Elektro-L 3/4/5 not in CelesTrak weather group
 };
 
 // For groups shared with military that contain non-military sats, filter by name pattern
 const MILITARY_NAME_FILTER = /^(USA[-\s]|WGS|MUOS|SBIRS|GSSAP|NOSS|DMSP|DSP\s|AEHF|MILSTAR|NROL|TRUMPET|SDS\s|FLTSATCOM|UFO[\s-]|DSCS|SKYNET|ANASIS|SYRACUSE|SICRAL|XTAR|CSO[-\s]|BARS|LOTOS|PION|RAZDAN|LUCH|MERIDIAN|RADUGA|YAOGAN|GAOFEN|SHIJIAN|KOSMOS|COSMOS|COSMO-SKYMED|CSG|SAR[\s-]LUPE|SARAH|HELIOS|OFEK|SAPPHIRE|PRAETORIAN|MOLNIYA|COMSATBW|KOMPSAT|ARIRANG)/i;
 // Groups where ALL satellites are military (no filtering needed)
 const MILITARY_UNFILTERED_GROUPS = new Set(['military']);
+
+// Known inactive/retired NORAD IDs to exclude from navigation overlay
+const NAVIGATION_EXCLUDED_NORADS = new Set([
+  // IRNSS-1A (39199) — primary atomic clocks all failed Mar 2017; replaced by IRNSS-1I
+  // Not providing navigation service; kept in orbit but not part of active NavIC constellation
+  39199,
+  // GPS SVN 49 / PRN 01 (32711) — anomaly during testing, never entered service, decommissioned 2012
+  32711,
+]);
 
 // Known inactive/retired NORAD IDs to exclude from military overlay
 const MILITARY_EXCLUDED_NORADS = new Set([
@@ -120,16 +130,79 @@ const MILITARY_EXCLUDED_NORADS = new Set([
   // COSMO-SKYMED 3 (33412) — still tracked, kept active
 ]);
 
+// Known retired/inactive weather satellite NORAD IDs
+const WEATHER_EXCLUDED_NORADS = new Set([
+  35491,  // GOES 14 (2009, in orbital storage since 2020)
+  43226,  // GOES 17 (2018, degraded ABI cooler, replaced by GOES 18, orbital storage)
+  36411,  // EWS-G2 / GOES 15 (2010, transferred to Space Force, decommissioned 2024)
+  36744,  // COMS 1 (2010, design life 7 years, replaced by GEO-KOMPSAT-2A)
+  32958,  // FENGYUN 3A (2008, 18 years, far exceeds 5-year design life)
+  37214,  // FENGYUN 3B (2010, 16 years, far exceeds 5-year design life)
+  40367,  // FENGYUN 2G (2014, design life 4 years, backup only)
+  28912,  // METEOSAT-9 MSG-2 (2005, 21 years, backup/standby)
+  40069,  // METEOR-M 2 (2014, partially degraded, replaced by M2-2/3/4)
+  28054,  // DMSP F16 (2003, 23 years, severely degraded)
+  37344,  // ELEKTRO-L 1 (2011, decommissioned)
+  23327,  // ELEKTRO GOMS 1 (1994, decommissioned)
+  // Additional confirmed decommissions
+  29499,  // METOP-A (2006, officially decommissioned by ESA November 2021; replaced by METOP-C)
+  40376,  // DMSP F19 (2014, primary SSUSI instrument failed Feb 2016, officially decommissioned Oct 2016)
+  27509,  // METEOSAT-8 MSG-1 (2002, decommissioned April 2018; replaced by MSG-3/4)
+  29640,  // FENGYUN 2D (2006, 20 years, CMA ended primary operations ~2015, well past design life)
+  33463,  // FENGYUN 2E (2008, 18 years, CMA ended primary operations ~2019, standby/end-of-life)
+]);
+
+// Weather program inference from satellite name patterns
+const WEATHER_PROGRAM_PATTERNS: [RegExp, string][] = [
+  [/^GOES/i,                               'goes'],
+  [/NOAA|JPSS|SUOMI|DMSP|CYGFM/i,         'jpss'],
+  [/METEOSAT/i,                             'meteosat'],
+  [/METOP/i,                               'metop'],
+  [/FENGYUN|FY-/i,                         'fengyun'],
+  [/TIANMU/i,                              'tianmu'],
+  [/HIMAWARI/i,                            'himawari'],
+  [/ARKTIKA/i,                             'arktika'],
+  [/METEOR-M/i,                            'meteor'],
+  [/ELEKTRO/i,                             'elektro'],
+  [/INSAT-3D/i,                            'insat'],
+  [/GEO-KOMPSAT|KOMPSAT/i,                'kompsat'],
+];
+
+function inferWeatherProgram(name: string): string {
+  for (const [pattern, program] of WEATHER_PROGRAM_PATTERNS) {
+    if (pattern.test(name)) return program;
+  }
+  return 'other';
+}
+
+// GNSS constellation inference from satellite name patterns
+const GNSS_CONSTELLATION_PATTERNS: [RegExp, string][] = [
+  [/^GPS |^GPS-|^NAVSTAR/i,               'gps'],
+  [/^COSMOS 2/i,                           'glonass'],  // All GLONASS-M/K in gnss group
+  [/^GSAT0/i,                              'galileo'],  // Galileo FOC/IOV (GSAT01xx, GSAT02xx…)
+  [/^BEIDOU/i,                             'beidou'],
+  [/^IRNSS-|^NVS-/i,                       'navic'],
+  [/^QZS/i,                                'qzss'],
+  [/WAAS|EGNOS|GAGAN|SDCM|SOUTHPAN|^LUCH 5/i, 'sbas'],
+];
+
+function inferConstellation(name: string): string {
+  for (const [pattern, constellation] of GNSS_CONSTELLATION_PATTERNS) {
+    if (pattern.test(name)) return constellation;
+  }
+  return 'sbas'; // Unknown nav satellite → augmentation fallback
+}
+
 // Country inference from satellite name patterns
 const COUNTRY_PATTERNS: [RegExp, string][] = [
-  [/^USA[ -]|^DMSP|^GPS |^GPS-|^GPS ?B|^NAVSTAR|^WGS|^AEHF|^SBIRS|^GSSAP|^MUOS|^NOSS|^DSP|^MILSTAR|^GOES|^NOAA|^SUOMI|^JPSS|^CYGFM|^EWS-G|^TDRS|^TERRA$|^AQUA$|^AURA$|^SWIFT$|^GPM|^MMS |^FGRST|^TIMED$|^SORCE$|^THEMIS/i, 'US'],
+  [/^USA[ -]|^DMSP|^GPS |^GPS-|^GPS ?B|^NAVSTAR|^WGS|^AEHF|^SBIRS|^GSSAP|^MUOS|^NOSS|^DSP|^MILSTAR|^GOES|^NOAA|^SUOMI|^JPSS|^CYGFM|^EWS-G|^TDRS|^TERRA$|^AQUA$|^AURA$|^SWIFT$|^GPM|^MMS |^FGRST|^TIMED$|^SORCE$|^THEMIS|^WAAS/i, 'US'],
   [/^STARLINK/i, 'US'],
   [/^ISS |^PROGRESS|^SOYUZ|^NAUKA/i, 'RU'],
-  [/^KOSMOS|^COSMOS|^METEOR-M|^GLONASS|^ELEKTRO|^ARKTIKA|^LUCH|^RAZDAN|^BARS-M|^LOTOS|^PION|^MOLNIYA|^MERIDIAN|^RADUGA|^ETALON/i, 'RU'],
-  [/^FENGYUN|^FY-|^TIANMU|^COMS[^A]|^GK-|^BEIDOU|^SHIJIAN|^YAOGAN|^GAOFEN|^JILIN/i, 'CN'],
+  [/^KOSMOS|^COSMOS|^METEOR-M|^GLONASS|^ELEKTRO|^ARKTIKA|^LUCH|^RAZDAN|^BARS-M|^LOTOS|^PION|^MOLNIYA|^MERIDIAN|^RADUGA|^ETALON|^SDCM/i, 'RU'],
+  [/^FENGYUN|^FY-|^TIANMU|^COMS[^A]|^GK-|^BEIDOU|^SHIJIAN|^YAOGAN|^GAOFEN|^JILIN|^BDSBAS/i, 'CN'],
   [/^CSS |^TIANHE|^WENTIAN|^MENGTIAN|^TIANZHOU|^SHENZHOU/i, 'CN'],
   [/^METEOSAT|^METOP|^GALILEO|^GSAT01|^GSAT02|^GSAT03|^EGNOS/i, 'EU'],
-  [/^HIMAWARI|^QZSS|^MICHIBIKI/i, 'JP'],
+  [/^HIMAWARI|^QZSS|^QZS-|^MICHIBIKI|^MSAS|^MTSAT/i, 'JP'],
   [/^INSAT|^IRNSS|^GSAT|^CMS-0|^CARTOSAT|^OCEANSAT|^GAGAN/i, 'IN'],
   [/^SAPPHIRE/i, 'CA'],
   [/^PRAETORIAN|^CREW DRAGON|^HST$|^HTV|^XTAR|^UFO/i, 'US'],
@@ -145,6 +218,7 @@ const COUNTRY_PATTERNS: [RegExp, string][] = [
   [/^COSMO.SKYMED|^CSG-|^SICRAL/i, 'IT'],
   [/^RISAT|^CARTOSAT/i, 'IN'],
   [/^EGYPTSAT|^MISRSAT/i, 'EG'],
+  [/SOUTHPAN/i, 'AU'],
 ];
 
 function inferCountry(name: string): string {
@@ -302,7 +376,7 @@ export async function getSatelliteTLE(req: Request, res: Response) {
   // Check cache
   const cached = tleCache.get(group);
   if (cached && cached.expiresAt > Date.now()) {
-    res.set('Cache-Control', 'public, max-age=7200, stale-while-revalidate=3600');
+    res.set('Cache-Control', 'public, max-age=21600, stale-while-revalidate=7200');
     res.set('X-Cache', 'HIT');
     res.json(cached.data);
     return;
@@ -313,7 +387,7 @@ export async function getSatelliteTLE(req: Request, res: Response) {
   if (inflight) {
     try {
       const data = await inflight;
-      res.set('Cache-Control', 'public, max-age=7200, stale-while-revalidate=3600');
+      res.set('Cache-Control', 'public, max-age=21600, stale-while-revalidate=7200');
       res.set('X-Cache', 'COALESCED');
       res.json(data);
       return;
@@ -362,12 +436,14 @@ export async function getSatelliteTLE(req: Request, res: Response) {
         const id = omm.NORAD_CAT_ID;
         if (!id || seen.has(id)) continue;
         if (needsFilter && !MILITARY_NAME_FILTER.test(omm.OBJECT_NAME || '')) continue;
-        // Exclude known inactive/retired military satellites
+        // Exclude known inactive/retired satellites
         if (group === 'military') {
           if (MILITARY_EXCLUDED_NORADS.has(id)) continue;
           // Skip very old COSMOS (pre-1990, all dead)
           if ((omm.OBJECT_NAME || '').startsWith('COSMOS') && id < 20000) continue;
         }
+        if (group === 'weather' && WEATHER_EXCLUDED_NORADS.has(id)) continue;
+        if (group === 'navigation' && NAVIGATION_EXCLUDED_NORADS.has(id)) continue;
         seen.add(id);
         allOmm.push(omm);
       }
@@ -387,6 +463,8 @@ export async function getSatelliteTLE(req: Request, res: Response) {
           if (MILITARY_EXCLUDED_NORADS.has(id)) continue;
           if (name.startsWith('COSMOS') && id < 20000) continue;
         }
+        if (group === 'weather' && WEATHER_EXCLUDED_NORADS.has(id)) continue;
+        if (group === 'navigation' && NAVIGATION_EXCLUDED_NORADS.has(id)) continue;
         seen.add(id);
         allOmm.push(omm);
       }
@@ -397,11 +475,15 @@ export async function getSatelliteTLE(req: Request, res: Response) {
       .map((omm: any) => {
         const tle = ommToTLELines(omm);
         if (!tle) return null;
+        const name = omm.OBJECT_NAME || 'UNKNOWN';
         return {
-          OBJECT_NAME: omm.OBJECT_NAME || 'UNKNOWN',
+          OBJECT_NAME: name,
           NORAD_CAT_ID: omm.NORAD_CAT_ID || 0,
           OBJECT_ID: omm.OBJECT_ID || '',
-          COUNTRY: inferCountry(omm.OBJECT_NAME || ''),
+          COUNTRY: inferCountry(name),
+          ...(group === 'navigation' ? { CONSTELLATION: inferConstellation(name) }
+            : group === 'weather' ? { CONSTELLATION: inferWeatherProgram(name) }
+            : {}),
           TLE_LINE1: tle.TLE_LINE1,
           TLE_LINE2: tle.TLE_LINE2,
         };
@@ -424,7 +506,7 @@ export async function getSatelliteTLE(req: Request, res: Response) {
 
   try {
     const data = await fetchPromise;
-    res.set('Cache-Control', 'public, max-age=7200, stale-while-revalidate=3600');
+    res.set('Cache-Control', 'public, max-age=21600, stale-while-revalidate=7200');
     res.set('X-Cache', 'MISS');
     res.json(data);
   } catch (err: any) {

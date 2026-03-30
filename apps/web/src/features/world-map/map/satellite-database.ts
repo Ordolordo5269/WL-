@@ -10,12 +10,14 @@ export const COUNTRY_FLAGS: Record<string, string> = {
   FR: '\uD83C\uDDEB\uD83C\uDDF7', DE: '\uD83C\uDDE9\uD83C\uDDEA', GB: '\uD83C\uDDEC\uD83C\uDDE7',
   TR: '\uD83C\uDDF9\uD83C\uDDF7', IT: '\uD83C\uDDEE\uD83C\uDDF9', ES: '\uD83C\uDDEA\uD83C\uDDF8',
   AE: '\uD83C\uDDE6\uD83C\uDDEA', EG: '\uD83C\uDDEA\uD83C\uDDEC',
+  AU: '\uD83C\uDDE6\uD83C\uDDFA',
 };
 export const COUNTRY_NAMES: Record<string, string> = {
   US: 'United States', CN: 'China', RU: 'Russia', EU: 'European Union',
   JP: 'Japan', IN: 'India', CA: 'Canada', KR: 'South Korea',
   IL: 'Israel', FR: 'France', DE: 'Germany', GB: 'United Kingdom',
   TR: 'Turkey', IT: 'Italy', ES: 'Spain', AE: 'UAE', EG: 'Egypt',
+  AU: 'Australia',
 };
 
 export interface SatelliteProfile {
