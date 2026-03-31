@@ -1689,3 +1689,78 @@
   color: #64748b;
   font-style: italic;
 }
+
+/* ── Refetch loading bar ── */
+.conflict-refetch-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa, #3b82f6);
+  background-size: 200% 100%;
+  animation: refetch-slide 1.2s ease-in-out infinite;
+  transform-origin: left;
+  z-index: 10;
+  border-radius: 0 0 1px 1px;
+}
+
+@keyframes refetch-slide {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Skeleton loading cards ── */
+.conflict-skeleton {
+  pointer-events: none;
+  margin: 0 14px 6px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+}
+
+.skeleton-line {
+  border-radius: 4px;
+  background: linear-gradient(90deg,
+    rgba(148, 163, 184, 0.06) 25%,
+    rgba(148, 163, 184, 0.12) 50%,
+    rgba(148, 163, 184, 0.06) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-badge {
+  width: 56px;
+  height: 18px;
+  margin-bottom: 8px;
+}
+
+.skeleton-title {
+  width: 75%;
+  height: 14px;
+  margin-bottom: 6px;
+}
+
+.skeleton-sides {
+  width: 90%;
+  height: 12px;
+  margin-bottom: 6px;
+}
+
+.skeleton-meta {
+  width: 60%;
+  height: 11px;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Updating state (subtle opacity while refetching) ── */
+.conflict-card-updating {
+  opacity: 0.7;
+  transition: opacity 0.3s ease;
+}

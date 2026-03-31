@@ -304,6 +304,12 @@ enum NaturalFeatureType {
   RIVER
   MOUNTAIN_RANGE
   PEAK
+  LAKE
+  VOLCANO
+  FAULT_LINE
+  DESERT
+  CONTINENTAL_SHELF
+  FOREST
 }
 
 enum NaturalLod {
@@ -480,10 +486,11 @@ model ConflictFaction {
   color         String?  // Hex color for map visualization
   goals         String[] // Array of goal strings
   allies        String[] // Array of ISO codes
-  
+  isActive      Boolean  @default(true)
+
   conflict      Conflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
   support       ConflictFactionSupport[]
-  
+
   @@index([conflictId])
 }
 
@@ -744,5 +751,79 @@ model GeoCache {
   @@index([iso2])
   @@index([type])
   @@index([expiresAt])
+}
+
+// ============================
+// Demographics: Languages (Joshua Project)
+// ============================
+
+model Language {
+  id           String   @id @default(uuid()) @db.Uuid
+  iso639_3     String   @unique @db.VarChar(3)
+  name         String
+  hubCountry   String?  @db.VarChar(3)
+  nbrCountries Int      @default(0)
+  speakers     BigInt   @default(0)
+  status       String?
+  family       String?
+  officialIn   String[] @default([])
+  lat          Float?
+  lng          Float?
+  jpData       Json?
+  syncedAt     DateTime @default(now())
+
+  @@index([family])
+  @@index([status])
+  @@index([speakers])
+}
+
+// ============================
+// Demographics: Religion Stats (Joshua Project)
+// ============================
+
+model ReligionStat {
+  id                 String   @id @default(uuid()) @db.Uuid
+  countryIso3        String   @unique @db.VarChar(3)
+  countryName        String?
+  population         BigInt   @default(0)
+  pctChristianity    Float    @default(0)
+  pctIslam           Float    @default(0)
+  pctBuddhism        Float    @default(0)
+  pctHinduism        Float    @default(0)
+  pctEthnicReligions Float    @default(0)
+  pctNonReligious    Float    @default(0)
+  pctOther           Float    @default(0)
+  pctUnknown         Float    @default(0)
+  primaryReligion    String?
+  syncedAt           DateTime @default(now())
+
+  @@index([primaryReligion])
+}
+
+// ============================
+// Demographics: Migration Corridors (UNHCR)
+// ============================
+
+model MigrationCorridor {
+  id               String   @id @default(uuid()) @db.Uuid
+  originIso3       String   @db.VarChar(3)
+  originName       String?
+  destinationIso3  String   @db.VarChar(3)
+  destinationName  String?
+  year             Int
+  refugees         Int      @default(0)
+  asylumSeekers    Int      @default(0)
+  returnedRefugees Int      @default(0)
+  idps             Int      @default(0)
+  stateless        Int      @default(0)
+  otherOfConcern   Int      @default(0)
+  otherInNeed      Int      @default(0)
+  hostCommunity    Int      @default(0)
+  syncedAt         DateTime @default(now())
+
+  @@unique([originIso3, destinationIso3, year])
+  @@index([originIso3])
+  @@index([destinationIso3])
+  @@index([year])
 }
 

@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import InternationalOrganizationsPanel from './InternationalOrganizationsPanel';
 import StatisticsPanel from './StatisticsPanel';
 import { AVAILABLE_HISTORY_YEARS, snapToAvailableYear } from '../../utils/historical-years';
-import { Crosshair, Settings, Info, Globe, Users, BarChart3, Map, User, GitCompare, Satellite } from 'lucide-react';
+import { Crosshair, Settings, Info, Globe, Users, Users2, BarChart3, Map, User, GitCompare, Satellite } from 'lucide-react';
 import { type NasaOverlayType, NASA_EARTH_OVERLAYS, NASA_EARTH_OVERLAY_KEYS, prefetchNightLightsTiles, getNasaObservationDate } from './map/mapAppearance';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -24,6 +24,7 @@ interface LeftSidebarProps {
   onClose: () => void;
   onCenterMap?: (coordinates: { lat: number; lng: number }) => void;
   onOpenConflictTracker?: () => void;
+  onOpenDemographics?: () => void;
   onSetBaseMapStyle?: (next: 'night' | 'light' | 'outdoors' | 'dark' | 'satellite-streets' | 'navigation-day' | 'earth-at-night' | 'nasa-night-lights' | 'nasa-black-marble') => void;
   onSetPlanetPreset?: (preset: 'default' | 'nebula' | 'sunset' | 'dawn' | 'arctic' | 'volcanic' | 'emerald' | 'midnight' | 'aurora' | 'sahara' | 'storm' | 'crimson' | 'rose' | 'void' | 'coral' | 'violet') => void;
   onSetStarIntensity?: (v: number) => void;
@@ -80,7 +81,7 @@ interface MenuItem {
   iconBg?: string;
 }
 
-export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConflictTracker, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetGlobeTheme, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, choropleth, onToggleHistoryMode, onSetHistoryYear, onResetHistoryPresentation, historyEnabled: _historyEnabled = false, historyYear = null, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, naturalLod = 'auto', onSetNaturalLod, earthOverlays, onToggleEarthOverlay, onHistoryToSatellite, onSatelliteToHistory }: LeftSidebarProps) {
+export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConflictTracker, onOpenDemographics, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetGlobeTheme, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, choropleth, onToggleHistoryMode, onSetHistoryYear, onResetHistoryPresentation, historyEnabled: _historyEnabled = false, historyYear = null, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, naturalLod = 'auto', onSetNaturalLod, earthOverlays, onToggleEarthOverlay, onHistoryToSatellite, onSatelliteToHistory }: LeftSidebarProps) {
   const [activeItem, setActiveItem] = useState<string>('home');
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
@@ -248,6 +249,12 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
       iconBg: 'rgba(59, 130, 246, 0.12)'
     },
     {
+      icon: <Users2 className="h-5 w-5 text-amber-400" />,
+      label: 'Demographics',
+      href: '#demographics',
+      iconBg: 'rgba(245, 158, 11, 0.12)'
+    },
+    {
       icon: <Users className="h-5 w-5 text-yellow-400" />,
       label: 'International Organizations',
       href: '#orgs',
@@ -383,6 +390,11 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
       return;
     }
 
+    if (item.label === 'Demographics' && onOpenDemographics) {
+      onOpenDemographics();
+      return;
+    }
+
     if (item.label === 'Compare Countries' && onOpenCompareCountries) {
       onOpenCompareCountries();
       return;
@@ -397,7 +409,7 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
     if (item.onClick) {
       item.onClick();
     }
-  }, [activeItem, earthOverlays, onToggleEarthOverlay, deactivateAllOverlays, deactivateAllStats, deactivateAllNaturalLayers, deactivateOrganizations, onOpenConflictTracker, onOpenCompareCountries, onToggleHistoryMode, onHistoryToSatellite, onSatelliteToHistory]);
+  }, [activeItem, earthOverlays, onToggleEarthOverlay, deactivateAllOverlays, deactivateAllStats, deactivateAllNaturalLayers, deactivateOrganizations, onOpenConflictTracker, onOpenDemographics, onOpenCompareCountries, onToggleHistoryMode, onHistoryToSatellite, onSatelliteToHistory]);
 
   return (
     <>

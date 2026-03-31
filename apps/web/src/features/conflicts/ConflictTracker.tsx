@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, Calendar, Skull, MapPin, X, Shield, Users2, ChevronDown, ChevronUp } from 'lucide-react';
 import { useConflicts } from './useConflicts';
 import { useConflictWebSocket } from './useConflictWebSocket';
@@ -7,6 +7,17 @@ import { useQueryClient } from '@tanstack/react-query';
 import ConflictDetailCard from './ConflictDetailCard';
 import type { ConflictV2, ConflictFiltersParams } from './types';
 import { statusLabel, severityColor, statusToSeverity, violenceTypeLabel, violenceTypeColor } from './types';
+
+function SkeletonCard({ minor = false }: { minor?: boolean }) {
+  return (
+    <div className={`conflict-card conflict-skeleton${minor ? ' conflict-card-minor' : ''}`}>
+      <div className="skeleton-line skeleton-badge" />
+      <div className="skeleton-line skeleton-title" />
+      {!minor && <div className="skeleton-line skeleton-sides" />}
+      <div className="skeleton-line skeleton-meta" />
+    </div>
+  );
+}
 
 interface ConflictTrackerProps {
   onBack: () => void;
@@ -40,7 +51,7 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect,
   const [showMinor, setShowMinor] = useState(false);
   const queryClient = useQueryClient();
 
-  const { data, isLoading, error } = useConflicts(filters);
+  const { data, isLoading, isFetching, error } = useConflicts(filters);
   const conflicts = data?.conflicts ?? [];
 
   useConflictWebSocket(useCallback(() => {
@@ -107,19 +118,7 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect,
   const maxDeaths = major.length > 0 ? getDeaths(major[0]) : 1;
   const hasFilters = !!filters.region || !!filters.typeOfViolence || !!searchQuery;
 
-  if (isLoading) {
-    return (
-      <motion.div className="conflict-tracker" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-        <div className="conflict-tracker-header">
-          <h1 className="conflict-tracker-title">CONFLICT TRACKER</h1>
-          <button onClick={onBack} className="conflict-tracker-close-btn"><X className="h-5 w-5" /></button>
-        </div>
-        <div className="conflict-tracker-content">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', color: '#94a3b8' }}>Loading...</div>
-        </div>
-      </motion.div>
-    );
-  }
+  const showSkeletons = isLoading && conflicts.length === 0;
 
   return (
     <motion.div
@@ -129,6 +128,19 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect,
       exit={{ x: '-100%', opacity: 0 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
     >
+      {/* Refetch indicator */}
+      <AnimatePresence>
+        {isFetching && !showSkeletons && (
+          <motion.div
+            className="conflict-refetch-bar"
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1.5, ease: 'easeInOut' }}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Header with inline filters */}
       <div className="conflict-tracker-header">
         <h1 className="conflict-tracker-title">CONFLICT TRACKER</h1>
@@ -189,6 +201,10 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect,
             <AlertTriangle size={20} style={{ color: '#fca5a5' }} />
             <p style={{ color: '#fca5a5' }}>Error loading data</p>
           </div>
+        ) : showSkeletons ? (
+          <>
+            {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+          </>
         ) : filteredCount === 0 ? (
           <div className="conflict-tracker-empty">
             <AlertTriangle size={20} />
@@ -196,7 +212,7 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect,
           </div>
         ) : (
           <>
-            {major.map((conflict) => {
+            {major.map((conflict, i) => {
               const deaths = getDeaths(conflict);
               const severity = statusToSeverity(conflict.status);
               const color = severityColor(severity);
@@ -205,10 +221,11 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect,
               return (
                 <motion.div
                   key={conflict.id}
-                  className="conflict-card"
+                  className={`conflict-card${isFetching ? ' conflict-card-updating' : ''}`}
                   onClick={() => handleConflictClick(conflict)}
-                  initial={{ opacity: 0, y: 6 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, delay: i * 0.03, ease: 'easeOut' }}
                 >
                   <div className="ucdp-heat-bar" style={{ width: `${heatPct}%`, background: color }} />
                   <div className="conflict-card-header">
@@ -244,11 +261,18 @@ export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect,
                   {showMinor ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                   <span>Minor conflicts ({minor.length})</span>
                 </button>
-                {showMinor && minor.map((conflict) => {
+                {showMinor && minor.map((conflict, i) => {
                   const deaths = getDeaths(conflict);
                   const color = severityColor(statusToSeverity(conflict.status));
                   return (
-                    <motion.div key={conflict.id} className="conflict-card conflict-card-minor" onClick={() => handleConflictClick(conflict)} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                    <motion.div
+                      key={conflict.id}
+                      className={`conflict-card conflict-card-minor${isFetching ? ' conflict-card-updating' : ''}`}
+                      onClick={() => handleConflictClick(conflict)}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2, delay: i * 0.02, ease: 'easeOut' }}
+                    >
                       <div className="conflict-card-header">
                         <span className="conflict-card-status" style={{ background: `${color}22`, color, border: `1px solid ${color}44` }}>{statusLabel(conflict.status)}</span>
                         <span className="ucdp-deaths-badge">{deaths}</span>

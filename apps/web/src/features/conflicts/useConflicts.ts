@@ -29,5 +29,7 @@ export function useConflicts(filters: ConflictFiltersParams = {}) {
       const res = await http.get<ApiResponse>(`/api/conflicts${qs ? `?${qs}` : ''}`);
       return { conflicts: res.data, count: res.count };
     },
+    staleTime: 2 * 60 * 1000,
+    placeholderData: (prev) => prev,
   });
 }

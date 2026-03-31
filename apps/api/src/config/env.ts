@@ -7,6 +7,7 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().min(1, 'CORS_ORIGIN is required'),
   JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters'),
   UCDP_API_TOKEN: z.string().optional(),
+  JOSHUA_PROJECT_API_KEY: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
