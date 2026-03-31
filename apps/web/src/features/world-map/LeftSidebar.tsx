@@ -4,17 +4,45 @@ import StatisticsPanel from './StatisticsPanel';
 import { AVAILABLE_HISTORY_YEARS, snapToAvailableYear } from '../../utils/historical-years';
 import { Crosshair, Settings, Info, Globe, Users, Users2, BarChart3, Map, User, GitCompare, Satellite } from 'lucide-react';
 import { type NasaOverlayType, NASA_EARTH_OVERLAYS, NASA_EARTH_OVERLAY_KEYS, prefetchNightLightsTiles, getNasaObservationDate } from './map/mapAppearance';
+import { MILITARY_COUNTRY_COLORS, GNSS_CONSTELLATION_COLORS, WEATHER_PROGRAM_COLORS } from './map/satellite-visualization';
+import { COUNTRY_FLAGS, COUNTRY_NAMES } from './map/satellite-database';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSatelliteTracking, type SatCategory } from './useSatelliteTracking';
 import type { ChoroplethState } from './useChoropleth';
 
 const SAT_CATEGORY_META: Record<SatCategory, { label: string; count: string; color: string }> = {
-  military:   { label: 'Military & Intel',  count: '~120', color: '#ff4444' },
-  navigation: { label: 'Navigation (GNSS)', count: '~130', color: '#ffaa22' },
-  weather:    { label: 'Weather & SAR',     count: '~150', color: '#44aaff' },
-  stations:   { label: 'Stations & Relay',  count: '~40',  color: '#d4a0ff' },
+  military:   { label: 'Military & Intel',  count: '~168', color: '#ff4444' },
+  classified: { label: 'Classified',        count: '~495', color: '#ff8800' },
+  navigation: { label: 'Navigation (GNSS)', count: '~168', color: '#ffaa22' },
+  weather:    { label: 'Weather & SAR',     count: '~63',  color: '#44aaff' },
+  stations:   { label: 'Stations & Relay',  count: '~42',  color: '#d4a0ff' },
   starlink:   { label: 'Starlink',          count: '~10,000', color: '#00ff88' },
+};
+
+const GNSS_CONSTELLATION_META: Record<string, { label: string; flag: string }> = {
+  gps:     { label: 'GPS',     flag: '🇺🇸' },
+  glonass: { label: 'GLONASS', flag: '🇷🇺' },
+  galileo: { label: 'Galileo', flag: '🇪🇺' },
+  beidou:  { label: 'BeiDou',  flag: '🇨🇳' },
+  navic:   { label: 'NavIC',   flag: '🇮🇳' },
+  qzss:    { label: 'QZSS',    flag: '🇯🇵' },
+  sbas:    { label: 'SBAS',    flag: '🛰️' },
+};
+
+const WEATHER_PROGRAM_META: Record<string, { label: string; flag: string }> = {
+  goes:     { label: 'GOES',           flag: '🇺🇸' },
+  jpss:     { label: 'JPSS / NOAA',    flag: '🇺🇸' },
+  meteosat: { label: 'Meteosat',       flag: '🇪🇺' },
+  metop:    { label: 'MetOp',          flag: '🇪🇺' },
+  fengyun:  { label: 'FengYun',        flag: '🇨🇳' },
+  tianmu:   { label: 'Tianmu-1',       flag: '🇨🇳' },
+  himawari: { label: 'Himawari',       flag: '🇯🇵' },
+  meteor:   { label: 'Meteor-M',          flag: '🇷🇺' },
+  arktika:  { label: 'Arktika-M',        flag: '🇷🇺' },
+  elektro:  { label: 'Elektro-L',      flag: '🇷🇺' },
+  insat:    { label: 'INSAT',          flag: '🇮🇳' },
+  kompsat:  { label: 'GEO-KOMPSAT',   flag: '🇰🇷' },
 };
 
 const LANDING_ABOUT_URL = `${import.meta.env.VITE_LANDING_URL ?? (import.meta.env.DEV ? 'http://localhost:5174' : '')}/about`;
@@ -71,6 +99,7 @@ interface LeftSidebarProps {
   countries?: Array<{ iso3: string; name: string; flagUrl?: string }>;
   countriesLoading?: boolean;
   onOpenCompareCountries?: () => void;
+  onTrackingCategoriesChange?: (cats: Record<SatCategory, boolean>) => void;
 }
 
 interface MenuItem {
@@ -81,25 +110,87 @@ interface MenuItem {
   iconBg?: string;
 }
 
-export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConflictTracker, onOpenDemographics, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetGlobeTheme, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, choropleth, onToggleHistoryMode, onSetHistoryYear, onResetHistoryPresentation, historyEnabled: _historyEnabled = false, historyYear = null, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, naturalLod = 'auto', onSetNaturalLod, earthOverlays, onToggleEarthOverlay, onHistoryToSatellite, onSatelliteToHistory }: LeftSidebarProps) {
+export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConflictTracker, onOpenDemographics, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetGlobeTheme, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, choropleth, onToggleHistoryMode, onSetHistoryYear, onResetHistoryPresentation, historyEnabled: _historyEnabled = false, historyYear = null, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, naturalLod = 'auto', onSetNaturalLod, earthOverlays, onToggleEarthOverlay, onHistoryToSatellite, onSatelliteToHistory, onTrackingCategoriesChange }: LeftSidebarProps) {
   const [activeItem, setActiveItem] = useState<string>('home');
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
 
   // ── Satellite Live Tracking ──
   const satTracking = useSatelliteTracking();
+  const [hiddenCountries, setHiddenCountries] = useState<Set<string>>(new Set());
+  const hiddenCountriesRef = useRef<Set<string>>(hiddenCountries);
+  hiddenCountriesRef.current = hiddenCountries;
+  const [countryFilterOpen, setCountryFilterOpen] = useState(false);
+
+  const [hiddenConstellations, setHiddenConstellations] = useState<Set<string>>(new Set());
+  const hiddenConstellationsRef = useRef<Set<string>>(hiddenConstellations);
+  hiddenConstellationsRef.current = hiddenConstellations;
+  const [constellationFilterOpen, setConstellationFilterOpen] = useState(false);
+
+  const [hiddenWeatherPrograms, setHiddenWeatherPrograms] = useState<Set<string>>(new Set());
+  const hiddenWeatherProgramsRef = useRef<Set<string>>(hiddenWeatherPrograms);
+  hiddenWeatherProgramsRef.current = hiddenWeatherPrograms;
+  const [weatherFilterOpen, setWeatherFilterOpen] = useState(false);
+
+  const toggleCountryFilter = useCallback((code: string) => {
+    setHiddenCountries(prev => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code); else next.add(code);
+      return next;
+    });
+  }, []);
+
+  const toggleConstellationFilter = useCallback((key: string) => {
+    setHiddenConstellations(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }, []);
+
+  const toggleWeatherProgramFilter = useCallback((key: string) => {
+    setHiddenWeatherPrograms(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }, []);
+
+  // Sync tracking categories up to App.tsx for legend rendering
+  useEffect(() => {
+    onTrackingCategoriesChange?.(satTracking.categories);
+  }, [satTracking.categories, onTrackingCategoriesChange]);
 
   // Bridge: wire worker output to map layers via __wl_map_comp
   useEffect(() => {
     const mapComp = () => (document as any).__wl_map_comp;
 
     satTracking.setOnPositions((features: any[]) => {
-      mapComp()?.updateSatellitePositions?.(features);
-      mapComp()?.updateSatellitePOVPositions?.(features);
+      const hiddenC = hiddenCountriesRef.current;
+      const hiddenCon = hiddenConstellationsRef.current;
+      const hiddenWP = hiddenWeatherProgramsRef.current;
+      let filtered = features;
+      if (hiddenC.size > 0)
+        filtered = filtered.filter((f: any) => !(f.properties?.category === 'military' && hiddenC.has(f.properties?.country)));
+      if (hiddenCon.size > 0)
+        filtered = filtered.filter((f: any) => !(f.properties?.category === 'navigation' && hiddenCon.has(f.properties?.constellation)));
+      if (hiddenWP.size > 0) {
+        const knownPrograms = Object.keys(WEATHER_PROGRAM_META);
+        filtered = filtered.filter((f: any) => {
+          if (f.properties?.category !== 'weather') return true;
+          const prog = f.properties?.constellation;
+          // Hide if program is explicitly hidden OR not a known program (e.g. 'other')
+          return knownPrograms.includes(prog) && !hiddenWP.has(prog);
+        });
+      }
+      mapComp()?.updateSatellitePositions?.(filtered);
+      mapComp()?.updateSatellitePOVPositions?.(filtered);
+      // Emit live data for POV HUD
+      window.dispatchEvent(new CustomEvent('wl-satellite-positions', { detail: { features } }));
     });
 
-    satTracking.setOnGroundTrack((noradId: number, coords: [number, number][], category: string) => {
-      mapComp()?.showSatelliteGroundTrack?.(coords, category);
+    satTracking.setOnGroundTrack((noradId: number, coords: [number, number][], category: string, country: string, constellation: string) => {
+      mapComp()?.showSatelliteGroundTrack?.(coords, category, country, constellation);
     });
 
     // Listen for satellite clicks + POV mode — request ground track
@@ -630,22 +721,30 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
                             Real-time satellite positions via CelesTrak (SGP4).
                           </div>
                           <div className="settings-row" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
-                            {(['military', 'weather', 'stations', 'starlink'] as SatCategory[]).map(cat => {
+                            {(['military', 'classified', 'navigation', 'weather', 'stations', 'starlink'] as SatCategory[]).map(cat => {
                               const meta = SAT_CATEGORY_META[cat];
                               const enabled = satTracking.categories[cat];
                               const isLoading = satTracking.loading[cat];
+                              const liveCount = satTracking.getCategoryCount(cat);
+                              const countLabel = liveCount !== null ? liveCount.toLocaleString() : meta.count;
                               return (
                                 <div className="section-card" style={{ marginBottom: 0 }} key={cat}>
                                   <div className="stats-header" style={{ marginBottom: 4 }}>
                                     <div className="stats-title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                       <span style={{ width: 8, height: 8, borderRadius: '50%', background: meta.color, display: 'inline-block', flexShrink: 0 }} />
                                       {meta.label}
-                                      <span style={{ fontSize: 10, color: 'rgba(160,150,200,0.5)', fontWeight: 400 }}>({meta.count})</span>
+                                      <span style={{ fontSize: 10, color: 'rgba(160,150,200,0.5)', fontWeight: 400 }}>({countLabel})</span>
                                     </div>
                                     <div className="chip-group">
                                       <button
                                         className={`chip ${enabled ? 'active' : ''}`}
-                                        onClick={() => !isLoading && handleToggleSatCategory(cat, true)}
+                                        onClick={() => {
+                                          if (isLoading) return;
+                                          handleToggleSatCategory(cat, true);
+                                          if (cat === 'military') setCountryFilterOpen(true);
+                                          if (cat === 'navigation') setConstellationFilterOpen(true);
+                                          if (cat === 'weather') setWeatherFilterOpen(true);
+                                        }}
                                         aria-pressed={enabled}
                                         disabled={isLoading}
                                       >{isLoading ? '...' : 'Show'}</button>
@@ -656,6 +755,162 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
                                       >Hide</button>
                                     </div>
                                   </div>
+                                  {cat === 'military' && enabled && (() => {
+                                    const counts = satTracking.getCountryCounts('military');
+                                    const hasFilters = hiddenCountries.size > 0;
+                                    const sortedCountries = Object.entries(MILITARY_COUNTRY_COLORS)
+                                      .sort((a, b) => (counts[b[0]] || 0) - (counts[a[0]] || 0));
+                                    return (
+                                      <div style={{ marginTop: 8 }}>
+                                        <div className="sat-filter-desc">
+                                          Reconnaissance, signals intelligence, early warning &amp; communications satellites — active operational assets tracked by country of origin.
+                                        </div>
+                                        <div className="sat-filter-bar">
+                                          <button
+                                            className={`sat-filter-btn ${countryFilterOpen ? 'open' : ''}`}
+                                            onClick={() => setCountryFilterOpen(prev => !prev)}
+                                          >
+                                            <span className="sat-filter-btn-icon">🌍</span>
+                                            Filter by country
+                                            <span className="sat-filter-btn-arrow">{countryFilterOpen ? '▾' : '▸'}</span>
+                                          </button>
+                                          {hasFilters && (
+                                            <>
+                                              <span className="sat-filter-hidden-count">
+                                                {hiddenCountries.size} hidden
+                                              </span>
+                                              <span className="sat-filter-reset" onClick={() => setHiddenCountries(new Set())}>
+                                                Reset
+                                              </span>
+                                            </>
+                                          )}
+                                        </div>
+                                        {countryFilterOpen && (
+                                          <div className="hide-scrollbar sat-filter-list">
+                                            {sortedCountries.map(([code, color]) => {
+                                              const hidden = hiddenCountries.has(code);
+                                              const count = counts[code] || 0;
+                                              const flag = COUNTRY_FLAGS[code] || '';
+                                              const name = COUNTRY_NAMES[code] || code;
+                                              return (
+                                                <div key={code} className={`sat-filter-item ${hidden ? 'is-hidden' : ''}`} style={{ '--fc': color } as any} onClick={() => toggleCountryFilter(code)}>
+                                                  <div className="sat-filter-item-left">
+                                                    <span className="sat-filter-dot" />
+                                                    <span className="sat-filter-flag">{flag}</span>
+                                                    <span className="sat-filter-label">{name}</span>
+                                                    <span className="sat-filter-count">{count}</span>
+                                                  </div>
+                                                  <div className="sat-filter-toggle"><div className="sat-filter-knob" /></div>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+                                  {cat === 'navigation' && enabled && (() => {
+                                    const counts = satTracking.getConstellationCounts();
+                                    const hasFilters = hiddenConstellations.size > 0;
+                                    return (
+                                      <div style={{ marginTop: 8 }}>
+                                        <div className="sat-filter-desc">
+                                          7 independent systems providing global &amp; regional PNT — GPS, GLONASS, Galileo, BeiDou, NavIC, QZSS and SBAS augmentation.
+                                        </div>
+                                        <div className="sat-filter-bar">
+                                          <button
+                                            className={`sat-filter-btn ${constellationFilterOpen ? 'open' : ''}`}
+                                            onClick={() => setConstellationFilterOpen(prev => !prev)}
+                                          >
+                                            <span className="sat-filter-btn-icon">🛰️</span>
+                                            Filter by constellation
+                                            <span className="sat-filter-btn-arrow">{constellationFilterOpen ? '▾' : '▸'}</span>
+                                          </button>
+                                          {hasFilters && (
+                                            <>
+                                              <span className="sat-filter-hidden-count">
+                                                {hiddenConstellations.size} hidden
+                                              </span>
+                                              <span className="sat-filter-reset" onClick={() => setHiddenConstellations(new Set())}>
+                                                Reset
+                                              </span>
+                                            </>
+                                          )}
+                                        </div>
+                                        {constellationFilterOpen && (
+                                          <div className="hide-scrollbar sat-filter-list">
+                                            {Object.entries(GNSS_CONSTELLATION_META).map(([key, meta]) => {
+                                              const color = GNSS_CONSTELLATION_COLORS[key];
+                                              const isHidden = hiddenConstellations.has(key);
+                                              const count = counts[key] || 0;
+                                              return (
+                                                <div key={key} className={`sat-filter-item ${isHidden ? 'is-hidden' : ''}`} style={{ '--fc': color } as any} onClick={() => toggleConstellationFilter(key)}>
+                                                  <div className="sat-filter-item-left">
+                                                    <span className="sat-filter-dot" />
+                                                    <span className="sat-filter-flag">{meta.flag}</span>
+                                                    <span className="sat-filter-label">{meta.label}</span>
+                                                    <span className="sat-filter-count">{count}</span>
+                                                  </div>
+                                                  <div className="sat-filter-toggle"><div className="sat-filter-knob" /></div>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+                                  {cat === 'weather' && enabled && (() => {
+                                    const counts = satTracking.getWeatherProgramCounts();
+                                    const hasFilters = hiddenWeatherPrograms.size > 0;
+                                    return (
+                                      <div style={{ marginTop: 8 }}>
+                                        <div className="sat-filter-desc">
+                                          Polar-orbiting &amp; geostationary platforms from 8 agencies — continuous atmospheric monitoring, ocean observation and SAR imaging.
+                                        </div>
+                                        <div className="sat-filter-bar">
+                                          <button
+                                            className={`sat-filter-btn ${weatherFilterOpen ? 'open' : ''}`}
+                                            onClick={() => setWeatherFilterOpen(prev => !prev)}
+                                          >
+                                            <span className="sat-filter-btn-icon">🌦️</span>
+                                            Filter by program
+                                            <span className="sat-filter-btn-arrow">{weatherFilterOpen ? '▾' : '▸'}</span>
+                                          </button>
+                                          {hasFilters && (
+                                            <>
+                                              <span className="sat-filter-hidden-count">
+                                                {hiddenWeatherPrograms.size} hidden
+                                              </span>
+                                              <span className="sat-filter-reset" onClick={() => setHiddenWeatherPrograms(new Set())}>
+                                                Reset
+                                              </span>
+                                            </>
+                                          )}
+                                        </div>
+                                        {weatherFilterOpen && (
+                                          <div className="hide-scrollbar sat-filter-list">
+                                            {Object.entries(WEATHER_PROGRAM_META).map(([key, meta]) => {
+                                              const color = WEATHER_PROGRAM_COLORS[key];
+                                              const isHidden = hiddenWeatherPrograms.has(key);
+                                              const count = counts[key] || 0;
+                                              return (
+                                                <div key={key} className={`sat-filter-item ${isHidden ? 'is-hidden' : ''}`} style={{ '--fc': color } as any} onClick={() => toggleWeatherProgramFilter(key)}>
+                                                  <div className="sat-filter-item-left">
+                                                    <span className="sat-filter-dot" />
+                                                    <span className="sat-filter-flag">{meta.flag}</span>
+                                                    <span className="sat-filter-label">{meta.label}</span>
+                                                    <span className="sat-filter-count">{count}</span>
+                                                  </div>
+                                                  <div className="sat-filter-toggle"><div className="sat-filter-knob" /></div>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
                                   {cat === 'starlink' && (
                                     <div style={{ fontSize: 9, color: 'rgba(255,200,100,0.5)', marginTop: 2, letterSpacing: '0.02em' }}>
                                       Large constellation — may impact performance on older devices

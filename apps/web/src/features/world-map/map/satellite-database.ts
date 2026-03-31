@@ -8,11 +8,16 @@ export const COUNTRY_FLAGS: Record<string, string> = {
   EU: '\uD83C\uDDEA\uD83C\uDDFA', JP: '\uD83C\uDDEF\uD83C\uDDF5', IN: '\uD83C\uDDEE\uD83C\uDDF3',
   CA: '\uD83C\uDDE8\uD83C\uDDE6', KR: '\uD83C\uDDF0\uD83C\uDDF7', IL: '\uD83C\uDDEE\uD83C\uDDF1',
   FR: '\uD83C\uDDEB\uD83C\uDDF7', DE: '\uD83C\uDDE9\uD83C\uDDEA', GB: '\uD83C\uDDEC\uD83C\uDDE7',
+  TR: '\uD83C\uDDF9\uD83C\uDDF7', IT: '\uD83C\uDDEE\uD83C\uDDF9', ES: '\uD83C\uDDEA\uD83C\uDDF8',
+  AE: '\uD83C\uDDE6\uD83C\uDDEA', EG: '\uD83C\uDDEA\uD83C\uDDEC',
+  AU: '\uD83C\uDDE6\uD83C\uDDFA',
 };
 export const COUNTRY_NAMES: Record<string, string> = {
   US: 'United States', CN: 'China', RU: 'Russia', EU: 'European Union',
   JP: 'Japan', IN: 'India', CA: 'Canada', KR: 'South Korea',
   IL: 'Israel', FR: 'France', DE: 'Germany', GB: 'United Kingdom',
+  TR: 'Turkey', IT: 'Italy', ES: 'Spain', AE: 'UAE', EG: 'Egypt',
+  AU: 'Australia',
 };
 
 export interface SatelliteProfile {
@@ -62,7 +67,7 @@ function toProfile(row: DBProfile): SatelliteProfile {
 
 async function loadProfiles(): Promise<void> {
   try {
-    const res = await fetch(`${API_BASE}/api/satellite/profiles`);
+    const res = await fetch(`${API_BASE}/api/satellite/profiles`, { cache: 'no-cache' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
     const rows: DBProfile[] = json.data || [];

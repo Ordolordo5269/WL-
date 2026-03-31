@@ -213,6 +213,72 @@ export const NASA_EARTH_OVERLAYS: Record<NasaOverlayType, NasaEarthOverlay> = {
 
 export const NASA_EARTH_OVERLAY_KEYS: NasaOverlayType[] = Object.keys(NASA_EARTH_OVERLAYS) as NasaOverlayType[];
 
+/* ─── Satellite Live Tracking Legend ─── */
+
+export type SatTrackingCategory = 'military' | 'classified' | 'navigation' | 'weather' | 'stations' | 'starlink';
+
+export interface SatTrackingLegendMeta {
+  label: string;
+  color: string;
+  count: string;
+  legendNote: string;
+  legendSource: string;
+  expandedDescription: string;
+}
+
+export const SAT_TRACKING_LEGEND: Record<SatTrackingCategory, SatTrackingLegendMeta> = {
+  military: {
+    label: 'Military & Intel',
+    color: '#ff4444',
+    count: '~168',
+    legendNote: 'Reconnaissance, signals intelligence, and early warning satellites — active operational assets only',
+    legendSource: 'CelesTrak • Live',
+    expandedDescription: 'Real-time tracking of military and intelligence satellites — reconnaissance platforms (KH-11 series), signals intelligence (NROL missions), missile early warning (SBIRS), and electronic surveillance assets. Orbital elements sourced from public TLE catalogs updated every few hours.',
+  },
+  classified: {
+    label: 'Classified',
+    color: '#ff8800',
+    count: '~495',
+    legendNote: 'Unacknowledged military and intelligence satellites tracked by amateur astronomers worldwide',
+    legendSource: 'CelesTrak Analyst • Live',
+    expandedDescription: 'Classified national security satellites not officially listed in public catalogs. Includes reconnaissance platforms (GSSAP, NOSS), signals intelligence, and foreign military assets from the US, Russia, China, France, Israel, and others. Orbital elements maintained by a global network of amateur satellite trackers using optical telescopes.',
+  },
+  navigation: {
+    label: 'Navigation (GNSS)',
+    color: '#ffaa22',
+    count: '~168',
+    legendNote: '7 independent constellations — GPS, GLONASS, Galileo, BeiDou, NavIC, QZSS and SBAS augmentation',
+    legendSource: 'CelesTrak • Live',
+    expandedDescription: 'Global Navigation Satellite Systems — the infrastructure that powers positioning, navigation and timing (PNT) for every phone, aircraft, and guided weapon on Earth. Each major power operates its own independent constellation: USA (GPS, 31 sats), Russia (GLONASS, 28), EU (Galileo, 28), China (BeiDou, 38), India (NavIC, 8), Japan (QZSS, 5). Augmented by SBAS geostationary platforms (WAAS, EGNOS, GAGAN, SDCM) that broadcast differential corrections for sub-meter accuracy. All orbiting at ~20,200 km MEO altitude with 12-hour periods, ensuring 24/7 global coverage.',
+  },
+  weather: {
+    label: 'Weather & SAR',
+    color: '#44aaff',
+    count: '~63',
+    legendNote: 'Meteorological and synthetic aperture radar satellites in sun-synchronous and geostationary orbits',
+    legendSource: 'CelesTrak • Live',
+    expandedDescription: 'Polar-orbiting weather platforms (NOAA, MetOp, FengYun) and geostationary sentinels (GOES, Himawari, Meteosat) alongside synthetic aperture radar imagers (Sentinel-1, RADARSAT). Continuous observation of atmospheric dynamics, ocean states, and terrain change detection from orbit.',
+  },
+  stations: {
+    label: 'Stations & Relay',
+    color: '#d4a0ff',
+    count: '~42',
+    legendNote: 'Space stations, crew vehicles, data relay satellites, and geodetic calibration platforms',
+    legendSource: 'CelesTrak • Live',
+    expandedDescription: 'International Space Station, Tiangong, and their associated crew and cargo vehicles — Dragon, Soyuz, Progress, Cygnus. Also includes the Tracking and Data Relay Satellite System (TDRSS) nodes that provide continuous communication links for every asset in low-Earth orbit.',
+  },
+  starlink: {
+    label: 'Starlink',
+    color: '#00ff88',
+    count: '~10,000',
+    legendNote: 'SpaceX mega-constellation providing global broadband from ~550 km low-Earth orbit shells',
+    legendSource: 'CelesTrak • Live',
+    expandedDescription: 'The largest satellite fleet in history. SpaceX Starlink V1.5 and V2 Mini satellites operating in ~550 km circular orbits at 53–97° inclinations. Over 6,000 operational units providing low-latency broadband connectivity across the globe, with new batches launching every few weeks.',
+  },
+};
+
+export const SAT_TRACKING_CATEGORIES: SatTrackingCategory[] = ['military', 'classified', 'navigation', 'weather', 'stations', 'starlink'];
+
 /* ─── Physical Layers Config ─── */
 
 export type PhysicalLayerType = 'rivers' | 'ranges' | 'peaks' | 'lakes' | 'volcanoes' | 'fault-lines' | 'deserts';

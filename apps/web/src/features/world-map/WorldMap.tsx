@@ -1633,10 +1633,10 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       if (!map) return;
       SatelliteVisualization.updatePositions(map, features);
     },
-    showSatelliteGroundTrack: (coords: [number, number][], category: string) => {
+    showSatelliteGroundTrack: (coords: [number, number][], category: string, country?: string, constellation?: string) => {
       const map = mapRef.current;
       if (!map) return;
-      SatelliteVisualization.showGroundTrack(map, coords, category);
+      SatelliteVisualization.showGroundTrack(map, coords, category, country, constellation);
     },
     removeSatelliteGroundTrack: () => {
       const map = mapRef.current;
@@ -1882,10 +1882,35 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
           }));
         }
       };
+      const hoverPopup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false, offset: 12, className: 'sat-hover-popup' });
       for (const layerId of layerIds) {
         map.on('click', layerId, clickHandler);
-        map.on('mouseenter', layerId, () => { map.getCanvas().style.cursor = 'pointer'; });
-        map.on('mouseleave', layerId, () => { map.getCanvas().style.cursor = ''; });
+        map.on('mouseenter', layerId, (e: mapboxgl.MapMouseEvent) => {
+          map.getCanvas().style.cursor = 'pointer';
+          if (e.features && e.features.length > 0) {
+            const props = e.features[0].properties || {};
+            const coords = (e.features[0].geometry as any).coordinates.slice() as [number, number];
+            const alt = props.alt ? `${Number(props.alt).toLocaleString()} km` : '';
+            hoverPopup
+              .setLngLat(coords)
+              .setHTML(`<strong>${props.name || 'Unknown'}</strong>${props.country ? ` · ${props.country}` : ''}${alt ? `<br/><span style="opacity:0.6;font-size:11px">${alt}</span>` : ''}`)
+              .addTo(map);
+          }
+        });
+        map.on('mousemove', layerId, (e: mapboxgl.MapMouseEvent) => {
+          if (e.features && e.features.length > 0) {
+            const props = e.features[0].properties || {};
+            const coords = (e.features[0].geometry as any).coordinates.slice() as [number, number];
+            const alt = props.alt ? `${Number(props.alt).toLocaleString()} km` : '';
+            hoverPopup
+              .setLngLat(coords)
+              .setHTML(`<strong>${props.name || 'Unknown'}</strong>${props.country ? ` · ${props.country}` : ''}${alt ? `<br/><span style="opacity:0.6;font-size:11px">${alt}</span>` : ''}`);
+          }
+        });
+        map.on('mouseleave', layerId, () => {
+          map.getCanvas().style.cursor = '';
+          hoverPopup.remove();
+        });
       }
     }
   }, []);
