@@ -40,6 +40,10 @@ export interface MapRefType {
   flyToCity?: (lat: number, lng: number, cityName?: string) => void;
   setCitiesData?: (cities: any[]) => void;
   setCitiesVisible?: (visible: boolean) => void;
+  setLedHalo?: (enabled: boolean) => void;
+  setLedHaloSpeed?: (ms: number) => void;
+  setLiveActivityLayer?: (id: string, enabled: boolean, data?: GeoJSON.FeatureCollection | null, extra?: any) => void;
+  setConflictLayer?: (enabled: boolean, data: any | null, onEventClick?: (event: any) => void) => void;
   setSatelliteTrackingLayers?: (enabled: boolean) => void;
   updateSatellitePositions?: (features: any[]) => void;
   showSatelliteGroundTrack?: (coords: [number, number][], category: string, country?: string, constellation?: string) => void;

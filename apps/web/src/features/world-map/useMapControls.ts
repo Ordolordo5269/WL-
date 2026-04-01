@@ -162,6 +162,14 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
     (document as any).__wl_map_comp?.setNaturalLod?.(lod);
   }, []);
 
+  const handleSetLedHalo = useCallback((enabled: boolean) => {
+    mapRef.current?.setLedHalo?.(enabled);
+  }, []);
+
+  const handleSetLedHaloSpeed = useCallback((ms: number) => {
+    mapRef.current?.setLedHaloSpeed?.(ms);
+  }, []);
+
   const handleToggleEarthOverlay = useCallback((type: NasaOverlayType, enabled: boolean) => {
     setEarthOverlays(prev => {
       const next = { ...prev, [type]: enabled };
@@ -315,6 +323,7 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
     handleToggleFaultLinesLayer, handleToggleDesertsLayer,
     handleSetOrganizationIsoFilter,
     handleToggleHistoryMode, handleSetHistoryYear, handleResetHistoryPresentation,
+    handleSetLedHalo, handleSetLedHaloSpeed,
     handleHistoryToSatellite, handleSatelliteToHistory,
     earthOverlays, handleToggleEarthOverlay, lastActivatedOverlay, handleToggleSatelliteIntelMode,
   };

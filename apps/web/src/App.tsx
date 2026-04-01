@@ -3,14 +3,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import WorldMap from './features/world-map/WorldMap';
 import LeftSidebar from './features/world-map/LeftSidebar';
 import CountrySidebar from './features/country-sidebar/CountrySidebar';
-import ConflictTracker from './features/conflicts/ConflictTracker';
+
 import CountryCard from './features/country/CountryCard';
 import MenuToggleButton from './features/world-map/MenuToggleButton';
 import CompareCountriesPopup from './features/compare/CompareCountriesPopup';
 import CompareCountriesView from './features/compare/CompareCountriesView';
-import { conflictsDatabase } from './data/conflicts-data';
 import { useChoropleth } from './features/world-map/useChoropleth';
 import { useMapControls } from './features/world-map/useMapControls';
+import { useLiveActivity } from './features/live-activity/useLiveActivity';
+import { useConflicts } from './features/conflicts/useConflicts';
+import LiveActivityLegend from './features/live-activity/LiveActivityLegend';
 import type { MapRefType } from './features/world-map/types';
 import { NASA_EARTH_OVERLAYS, getNasaPreviewUrl, getNasaObservationDate, INSTRUMENT_INFO, OVERLAY_INSTRUMENT_MAP, type NasaOverlayType, PHYSICAL_LAYER_CONFIG, PHYSICAL_LAYER_KEYS, type PhysicalLayerType, SAT_TRACKING_LEGEND, type SatTrackingCategory } from './features/world-map/map/mapAppearance';
 import { Satellite, Waves, Mountain, MountainSnow, Droplets, Flame, Zap, Sun } from 'lucide-react';
@@ -21,7 +23,8 @@ import type { SatCategory } from './features/world-map/useSatelliteTracking';
 import { MuseumLegend, MuseumExpandedCard, PURPLE_SCHEME, EARTHY_SCHEME } from './components/MuseumCard';
 import './index.css';
 import './styles/sidebar.css';
-import "./styles/conflict-tracker.css";
+import './styles/conflict-tracker.css';
+
 import "./styles/compare-countries.css";
 
 interface SatelliteClickData {
@@ -71,8 +74,6 @@ function WorldMapView() {
   const [countriesLoading, setCountriesLoading] = useState(true);
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedConflictId, setSelectedConflictId] = useState<string | null>(null);
-
   const mapRef = useRef<MapRefType | null>(null);
 
   // Callback ref to expose map ref when it's ready
@@ -84,6 +85,60 @@ function WorldMapView() {
   // Extracted hooks
   const choropleth = useChoropleth(mapRef);
   const mapControls = useMapControls(mapRef);
+  const liveActivity = useLiveActivity();
+  const conflicts = useConflicts();
+
+  // Wire conflict data to map layers
+  useEffect(() => {
+    mapRef.current?.setConflictLayer?.(
+      conflicts.enabled,
+      conflicts.data ?? null,
+      (event) => {
+        conflicts.handleSelectCountry(event.properties.country);
+        conflicts.handleSelectEvent(event);
+      },
+    );
+  }, [conflicts.enabled, conflicts.data]);
+
+  // Fly to conflict location
+  const handleConflictFlyTo = useCallback((lat: number, lng: number) => {
+    mapRef.current?.easeTo({ center: [lng, lat], zoom: 5, duration: 1500 });
+  }, []);
+
+  // Wire live-activity data to map layers
+  useEffect(() => {
+    mapRef.current?.setLiveActivityLayer?.('earthquakes', liveActivity.earthquakesEnabled, liveActivity.earthquakesData);
+  }, [liveActivity.earthquakesEnabled, liveActivity.earthquakesData]);
+
+  useEffect(() => {
+    mapRef.current?.setLiveActivityLayer?.('fires', liveActivity.firesEnabled, liveActivity.firesData);
+  }, [liveActivity.firesEnabled, liveActivity.firesData]);
+
+  useEffect(() => {
+    mapRef.current?.setLiveActivityLayer?.(
+      'radar', liveActivity.radarEnabled, null,
+      liveActivity.radarData ? { tileUrl: liveActivity.radarData.tileUrl } : undefined,
+    );
+  }, [liveActivity.radarEnabled, liveActivity.radarData]);
+
+  useEffect(() => {
+    mapRef.current?.setLiveActivityLayer?.('air-traffic', liveActivity.airTrafficEnabled, liveActivity.airTrafficData);
+  }, [liveActivity.airTrafficEnabled, liveActivity.airTrafficData]);
+
+  useEffect(() => {
+    mapRef.current?.setLiveActivityLayer?.('marine-traffic', liveActivity.marineTrafficEnabled, liveActivity.marineTrafficData);
+  }, [liveActivity.marineTrafficEnabled, liveActivity.marineTrafficData]);
+
+  useEffect(() => {
+    mapRef.current?.setLiveActivityLayer?.('satellites', liveActivity.satellitesEnabled, liveActivity.satellitesData);
+  }, [liveActivity.satellitesEnabled, liveActivity.satellitesData]);
+
+  useEffect(() => {
+    mapRef.current?.setLiveActivityLayer?.(
+      'weather', liveActivity.weatherEnabled, null,
+      { enabledSublayers: liveActivity.weatherLayers },
+    );
+  }, [liveActivity.weatherEnabled, liveActivity.weatherLayers]);
 
   // Satellite Intel — expanded overlay state
   const [expandedOverlay, setExpandedOverlay] = useState<NasaOverlayType | null>(null);
@@ -381,8 +436,7 @@ function WorldMapView() {
   // Unified sidebars state
   const [sidebars, setSidebars] = useState({
     country: false,
-    menu: false,
-    conflict: false
+    menu: false
   });
 
   // Compare Countries state
@@ -394,7 +448,7 @@ function WorldMapView() {
   });
 
   // Unified sidebars handler
-  const toggleSidebar = useCallback((type: 'country' | 'menu' | 'conflict', open: boolean) => {
+  const toggleSidebar = useCallback((type: 'country' | 'menu', open: boolean) => {
     setSidebars(prev => ({ ...prev, [type]: open }));
   }, []);
 
@@ -569,7 +623,6 @@ function WorldMapView() {
       <LeftSidebar
         isOpen={sidebars.menu}
         onClose={handleCloseLeftSidebar}
-        onOpenConflictTracker={handleOpenConflictTracker}
         // Natural layers props
         onToggleRiversLayer={mapControls.handleToggleRiversLayer}
         riversEnabled={mapControls.riversEnabled}
@@ -602,6 +655,8 @@ function WorldMapView() {
         onSetMinimalMode={mapControls.handleSetMinimalMode}
         onSetAutoRotate={mapControls.handleSetAutoRotate}
         onSetRotateSpeed={mapControls.handleSetRotateSpeed}
+        onSetLedHalo={mapControls.handleSetLedHalo}
+        onSetLedHaloSpeed={mapControls.handleSetLedHaloSpeed}
         choropleth={choropleth}
         onToggleHistoryMode={mapControls.handleToggleHistoryMode}
         onSetHistoryYear={mapControls.handleSetHistoryYear}
@@ -614,6 +669,34 @@ function WorldMapView() {
         countries={countriesForSelector}
         countriesLoading={countriesLoading}
         onOpenCompareCountries={handleOpenComparePopup}
+        // Live Activity
+        onToggleEarthquakes={liveActivity.handleToggleEarthquakes}
+        earthquakesEnabled={liveActivity.earthquakesEnabled}
+        onToggleFires={liveActivity.handleToggleFires}
+        firesEnabled={liveActivity.firesEnabled}
+        onToggleRadar={liveActivity.handleToggleRadar}
+        radarEnabled={liveActivity.radarEnabled}
+        onToggleAirTraffic={liveActivity.handleToggleAirTraffic}
+        airTrafficEnabled={liveActivity.airTrafficEnabled}
+        onToggleMarineTraffic={liveActivity.handleToggleMarineTraffic}
+        marineTrafficEnabled={liveActivity.marineTrafficEnabled}
+        onToggleSatellites={liveActivity.handleToggleSatellites}
+        satellitesEnabled={liveActivity.satellitesEnabled}
+        onToggleWeather={liveActivity.handleToggleWeather}
+        weatherEnabled={liveActivity.weatherEnabled}
+        weatherLayers={liveActivity.weatherLayers}
+        onToggleWeatherLayer={liveActivity.handleToggleWeatherLayer}
+        // Conflict Tracker
+        onToggleConflicts={conflicts.handleToggle}
+        conflictsEnabled={conflicts.enabled}
+        conflictsLoading={conflicts.isLoading}
+        conflictSummaries={conflicts.summaries}
+        conflictSelectedCountry={conflicts.selectedCountry}
+        onConflictSelectCountry={conflicts.handleSelectCountry}
+        conflictCountryEvents={conflicts.countryEvents}
+        conflictSelectedEvent={conflicts.selectedEvent}
+        onConflictSelectEvent={conflicts.handleSelectEvent}
+        onConflictFlyTo={handleConflictFlyTo}
         onTrackingCategoriesChange={setTrackingCategories}
       />
 
@@ -637,11 +720,19 @@ function WorldMapView() {
         onCountrySelect={handleCountrySelect}
         selectedCountry={selectedCountry}
         onResetView={handleResetView}
-        conflicts={conflictsForMap}
-        onConflictClick={handleConflictClick}
-        selectedConflictId={selectedConflictId}
         isLeftSidebarOpen={sidebars.menu}
         onMapReady={handleMapReady}
+      />
+
+      <LiveActivityLegend
+        earthquakesEnabled={liveActivity.earthquakesEnabled}
+        firesEnabled={liveActivity.firesEnabled}
+        radarEnabled={liveActivity.radarEnabled}
+        airTrafficEnabled={liveActivity.airTrafficEnabled}
+        marineTrafficEnabled={liveActivity.marineTrafficEnabled}
+        satellitesEnabled={liveActivity.satellitesEnabled}
+        weatherEnabled={liveActivity.weatherEnabled}
+        weatherLayers={liveActivity.weatherLayers}
       />
 
       {/* Vignette + nebula — Satellite Intel immersive */}

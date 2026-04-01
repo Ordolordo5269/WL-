@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { dataLimiter } from '../middleware/rate-limit.js';
 
 // Módulos CQS (nuevos desde el inicio)
-import conflictsRoutes from './conflicts.routes';
 import osintRoutes from './osint.routes';
 import insightsRoutes from './insights.routes';
 import dashboardRoutes from './dashboard.routes';
@@ -21,13 +20,14 @@ import historyRoutes from './history.routes';
 import naturalRoutes from './natural.routes';
 import predictionRoutes from './prediction.routes';
 import newsRoutes from './news.routes';
-import acledRoutes from './acled.routes';
 import authRoutes from './auth.routes';
 import userRoutes from './user.routes';
 import favoritesRoutes from './favorites.routes';
 import organizationRoutes from './organization.routes';
 import commoditiesRoutes from './commodities.routes';
 import environmentRoutes from './environment.routes';
+import liveActivityRoutes from './live-activity.routes';
+import conflictsRoutes from './conflicts.routes';
 import healthRoutes from './health.routes';
 import infrastructureRoutes from './infrastructure.routes';
 import fireRoutes from '../modules/fire/routes';
@@ -37,7 +37,6 @@ import ucdpRoutes from '../modules/ucdp/routes';
 const router = Router();
 
 // Módulos CQS
-router.use('/conflicts', conflictsRoutes);
 router.use('/osint', osintRoutes);
 router.use('/insights', insightsRoutes);
 router.use('/dashboard', dashboardRoutes);
@@ -56,13 +55,14 @@ router.use('/history', historyRoutes);
 router.use('/natural', naturalRoutes);
 router.use('/prediction', predictionRoutes);
 router.use('/news', newsRoutes);
-router.use('/acled', acledRoutes);
 router.use('/auth', authRoutes);
 router.use('/user', userRoutes);
 router.use('/favorites', favoritesRoutes);
 router.use('/organizations', organizationRoutes);
 router.use('/commodities', commoditiesRoutes);
 router.use('/environment', environmentRoutes);
+router.use('/live-activity', liveActivityRoutes);
+router.use('/conflicts', conflictsRoutes);
 router.use('/health', healthRoutes);
 router.use('/infrastructure', infrastructureRoutes);
 router.use('/fire', fireRoutes);

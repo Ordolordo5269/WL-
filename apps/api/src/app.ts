@@ -10,6 +10,10 @@ import { errorHandler } from './middleware/error.js';
 import { swaggerSpec } from './docs/swagger.js';
 import apiRouter from './routes/index.js';
 
+// BigInt cannot be serialized by JSON.stringify by default.
+// Prisma returns BigInt for some fields (e.g. AcledEvent.timestamp).
+(BigInt.prototype as any).toJSON = function () { return Number(this); };
+
 const app = express();
 
 // Security headers

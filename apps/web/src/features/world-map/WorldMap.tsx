@@ -1,6 +1,6 @@
 import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
-import { applyFog as appearanceApplyFog, setBaseFeaturesVisibility as appearanceSetBaseFeaturesVisibility, applyPhysicalModeTweaks as appearanceApplyPhysical, MAP_STYLES, type StyleKey, type PlanetPreset, applyStarIntensity as appearanceApplyStarIntensity, applySpacePreset as appearanceApplySpacePreset, applyThemeAtmosphere as appearanceApplyThemeAtmosphere, type SpacePreset, type GlobeThemeKey, GLOBE_THEMES, applyRasterOverlay, removeRasterOverlay, findRasterInsertionPoint, EARTH_AT_NIGHT_OVERLAY, NASA_NIGHT_LIGHTS_OVERLAY, NASA_BLACK_MARBLE_OVERLAYS, type RasterOverlay, type NasaOverlayType, NASA_EARTH_OVERLAYS, resolveNasaOverlaySources, warmUpResources } from './map/mapAppearance';
+import { applyFog as appearanceApplyFog, setBaseFeaturesVisibility as appearanceSetBaseFeaturesVisibility, applyPhysicalModeTweaks as appearanceApplyPhysical, MAP_STYLES, type StyleKey, type PlanetPreset, applyStarIntensity as appearanceApplyStarIntensity, applySpacePreset as appearanceApplySpacePreset, applyHaloColor as appearanceApplyHaloColor, applyThemeAtmosphere as appearanceApplyThemeAtmosphere, type SpacePreset, type GlobeThemeKey, GLOBE_THEMES, applyRasterOverlay, removeRasterOverlay, findRasterInsertionPoint, EARTH_AT_NIGHT_OVERLAY, NASA_NIGHT_LIGHTS_OVERLAY, NASA_BLACK_MARBLE_OVERLAYS, type RasterOverlay, type NasaOverlayType, NASA_EARTH_OVERLAYS, resolveNasaOverlaySources, warmUpResources } from './map/mapAppearance';
 import { applyTerrain, reapplyAfterStyleChange, loadPersistedTerrain, persistTerrain } from './map/terrain';
 import type { ChoroplethSpec } from './services/worldbank-gdp';
 import type { ChoroplethSpec as GdpPerCapitaChoroplethSpec } from './services/worldbank-gdp-per-capita';
@@ -10,7 +10,10 @@ import '../../styles/geocoder.css';
 import { ConflictVisualization } from '../conflicts/services/conflict-tracker/conflict-visualization';
 import { SatelliteVisualization } from './map/satellite-visualization';
 import { AVAILABLE_HISTORY_YEARS, snapToAvailableYear } from '../../utils/historical-years';
-import { ConflictDataManager, type ConflictData } from '../conflicts/services/conflict-tracker/conflict-data-manager';
+import { setLiveActivityLayer } from '../live-activity/live-activity-layers';
+import type { LiveActivityLayerId } from '../live-activity/types';
+import { setConflictLayer as applyConflictLayer } from '../conflicts/conflict-layers';
+import type { ConflictsResponse, ConflictFeature } from '../conflicts/types';
 
 // Mapbox token from environment variable (see frontend/.env)
 const _mbToken = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
@@ -26,9 +29,6 @@ mapboxgl.accessToken = _mbToken || '';
 interface WorldMapProps {
   onCountrySelect: (countryName: string) => void;
   selectedCountry: string | null;
-  conflicts?: ConflictData[];
-  onConflictClick?: (conflictId: string) => void;
-  selectedConflictId?: string | null;
   isLeftSidebarOpen?: boolean;
   /** Called once when map tiles + style finish loading (map.on('load')) */
   onMapReady?: () => void;
@@ -45,30 +45,12 @@ interface MapEaseToOptions {
   bearing?: number;
 }
 
-interface ConflictGeoJSON {
-  type: 'FeatureCollection';
-  features: Array<{
-    type: 'Feature';
-    geometry: {
-      type: 'Point';
-      coordinates: [number, number];
-    };
-    properties: {
-      id: string;
-      country: string;
-      status: string;
-      [key: string]: unknown;
-    };
-  }>;
-}
-
 type MetricId = 'gdp' | 'inflation' | 'gdp-per-capita' | 'gini' | 'exports' | 'life-expectancy' | 'military-expenditure' | 'democracy-index' | 'trade-gdp' | 'fuel-exports' | 'mineral-rents' | 'energy-imports' | 'cereal-production';
-const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMap: () => mapboxgl.Map | null; setChoropleth?: (metric: MetricId, spec: ChoroplethSpec | GdpPerCapitaChoroplethSpec | null) => void; setActiveChoropleth?: (metric: MetricId | null) => void; setHistoryEnabled?: (enabled: boolean) => void; setHistoryYear?: (year: number) => void; highlightIso3List?: (iso: string[], colorHex?: string) => void; highlightIso3ToColorMap?: (isoToColor: Record<string,string>) => void; setTerrainEnabled?: (v: boolean) => void; setTerrainExaggeration?: (n: number) => void }, WorldMapProps>(({ onCountrySelect, selectedCountry, conflicts = [], selectedConflictId, isLeftSidebarOpen = false, onMapReady }, ref) => {
+const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMap: () => mapboxgl.Map | null; setChoropleth?: (metric: MetricId, spec: ChoroplethSpec | GdpPerCapitaChoroplethSpec | null) => void; setActiveChoropleth?: (metric: MetricId | null) => void; setHistoryEnabled?: (enabled: boolean) => void; setHistoryYear?: (year: number) => void; highlightIso3List?: (iso: string[], colorHex?: string) => void; highlightIso3ToColorMap?: (isoToColor: Record<string,string>) => void; setTerrainEnabled?: (v: boolean) => void; setTerrainExaggeration?: (n: number) => void }, WorldMapProps>(({ onCountrySelect, selectedCountry, isLeftSidebarOpen = false, onMapReady }, ref) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const geocoderContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const selectedCountryId = useRef<string | number | null>(null);
-  const conflictDataManager = useRef<ConflictDataManager | null>(null);
   const isLeftSidebarOpenRef = useRef(isLeftSidebarOpen);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const historyEnabledRef = useRef<boolean>(false);
@@ -129,6 +111,11 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   const planetPresetRef = useRef<PlanetPreset>(planetPreset);
   useEffect(() => { planetPresetRef.current = planetPreset; }, [planetPreset]);
   const [starIntensity, setStarIntensityState] = useState<number>(0.6);
+  // LED Halo cycling
+  const ledHaloRef = useRef(false);
+  const ledHaloSpeedRef = useRef(50); // ms per hue step
+  const ledHaloIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const ledHaloHueRef = useRef(0);
   // Counter to invalidate pending globe theme style.load callbacks
   const globeThemeLoadId = useRef(0);
   // Counter to invalidate pending base map style.load callbacks
@@ -159,13 +146,6 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     handler: MapMouseEventHandler | MapTouchEventHandler | GeocoderEventHandler;
     layer?: string;
   }
-
-  // Inicializar el conflict data manager
-  useEffect(() => {
-    if (!conflictDataManager.current) {
-      conflictDataManager.current = new ConflictDataManager('conflicts');
-    }
-  }, []);
 
   // ✅ MEJORADO: Optimized map methods con tipos específicos
   const easeTo = useCallback((options: MapEaseToOptions) => {
@@ -1506,6 +1486,34 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       globeThemeLoadId.current++; // Cancel any pending theme style.load
       if (mapRef.current) appearanceApplySpacePreset(mapRef.current, preset);
     },
+    // LED Halo
+    setLedHalo: (enabled: boolean) => {
+      ledHaloRef.current = enabled;
+      if (enabled) {
+        if (ledHaloIntervalRef.current) clearInterval(ledHaloIntervalRef.current);
+        ledHaloIntervalRef.current = setInterval(() => {
+          if (!mapRef.current) return;
+          ledHaloHueRef.current = (ledHaloHueRef.current + 2) % 360;
+          appearanceApplyHaloColor(mapRef.current, ledHaloHueRef.current);
+        }, ledHaloSpeedRef.current);
+      } else {
+        if (ledHaloIntervalRef.current) { clearInterval(ledHaloIntervalRef.current); ledHaloIntervalRef.current = null; }
+        // Restore current planet preset fog
+        if (mapRef.current) appearanceApplyFog(mapRef.current, planetPreset);
+      }
+    },
+    setLedHaloSpeed: (ms: number) => {
+      ledHaloSpeedRef.current = ms;
+      // Restart interval if active
+      if (ledHaloRef.current && ledHaloIntervalRef.current) {
+        clearInterval(ledHaloIntervalRef.current);
+        ledHaloIntervalRef.current = setInterval(() => {
+          if (!mapRef.current) return;
+          ledHaloHueRef.current = (ledHaloHueRef.current + 2) % 360;
+          appearanceApplyHaloColor(mapRef.current, ledHaloHueRef.current);
+        }, ms);
+      }
+    },
     setGlobeTheme: (themeKey: GlobeThemeKey) => {
 
       const theme = GLOBE_THEMES[themeKey];
@@ -1679,6 +1687,16 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     setRotateSpeed: (degPerSec: number) => {
       rotationSpeedRef.current = Math.max(0, Number.isFinite(degPerSec) ? degPerSec : 0);
     },
+    setLiveActivityLayer: (id: LiveActivityLayerId, enabled: boolean, data?: GeoJSON.FeatureCollection | null, extra?: any) => {
+      const map = mapRef.current;
+      if (!map) return;
+      setLiveActivityLayer(map, id, enabled, data, extra);
+    },
+    setConflictLayer: (enabled: boolean, data: ConflictsResponse | null, onEventClick?: (event: ConflictFeature) => void) => {
+      const map = mapRef.current;
+      if (!map) return;
+      applyConflictLayer(map, enabled, data, onEventClick);
+    },
     // Earth Data overlays (toggleable NASA GIBS layers)
     // Satellite live tracking layers
     setSatelliteTrackingLayers: (enabled: boolean) => {
@@ -1846,7 +1864,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         activeEarthOverlaysRef.current.delete(type);
       }
     },
-  }), [easeTo, applyPhysicalModeTweaks, styleKey, setBaseFeaturesVisibility, updateOrgHighlightFilter, terrainOn, terrainExaggeration]);
+  }), [easeTo, applyFog, applyPhysicalModeTweaks, styleKey, setBaseFeaturesVisibility, updateOrgHighlightFilter, terrainOn, terrainExaggeration]);
 
   // Helper: (re-)add satellite layers + click handler if tracking is active
   const ensureSatelliteLayers = useCallback(async (map: mapboxgl.Map) => {
@@ -2047,12 +2065,6 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       } catch {}
     }
 
-    // Reagregar visualización de conflictos
-    try {
-      const conflictGeoJSON = conflictsToGeoJSON(conflicts);
-      ConflictVisualization.addLayers(map, 'country-boundaries', conflictGeoJSON);
-    } catch {}
-
     // Ensure org highlight layers exist after style changes
     ensureOrgHighlightLayers();
     updateOrgHighlightFilter(highlightedIsoOrgRef.current);
@@ -2232,7 +2244,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       SatelliteVisualization.resetIcons(); // Icons lost on style change
       ensureSatelliteLayers(map);
     }
-  }, [conflicts, handleCountrySelection, applyPhysicalModeTweaks, styleKey, minimalModeOn, setBaseFeaturesVisibility, ensureSatelliteLayers]);
+  }, [conflicts, handleCountrySelection, applyFog, applyPhysicalModeTweaks, styleKey, minimalModeOn, setBaseFeaturesVisibility, ensureSatelliteLayers]);
 
   // El toggle inline fue movido a la sidebar (Settings)
 
@@ -2464,8 +2476,8 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     );
     return () => {
       cleanupResources();
+      if (ledHaloIntervalRef.current) { clearInterval(ledHaloIntervalRef.current); ledHaloIntervalRef.current = null; }
       try { geocoder.off('result', handleGeocoderResult); geocoder.onRemove(); } catch {}
-      try { conflictDataManager.current?.cleanup(); } catch {}
       if (mapRef.current) {
         try { ConflictVisualization.removeAllPointLayers(mapRef.current); } catch {}
         try { ConflictVisualization.removeCountryHeatmap(mapRef.current); } catch {}
@@ -2652,25 +2664,5 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
 });
 
 WorldMap.displayName = 'WorldMap';
-
-// ✅ MEJORADO: Helper con tipos específicos
-function conflictsToGeoJSON(conflicts: ConflictData[]): ConflictGeoJSON {
-  return {
-    type: 'FeatureCollection',
-    features: conflicts.map(conflict => ({
-      type: 'Feature',
-      geometry: {
-        type: 'Point',
-        coordinates: [conflict.coordinates.lng, conflict.coordinates.lat]
-      },
-      properties: {
-        ...conflict,
-        id: conflict.id,
-        country: conflict.country,
-        status: conflict.status
-      }
-    }))
-  };
-}
 
 export default WorldMap;

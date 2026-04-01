@@ -612,6 +612,17 @@ export const SPACE_PRESETS: Record<SpacePreset, { 'space-color': string; 'star-i
   crimson: { 'space-color': 'rgb(50, 8, 8)',   'star-intensity': 0.6 },
 };
 
+export function applyHaloColor(map: mapboxgl.Map, hue: number) {
+  try {
+    const current = (map as any).getFog?.() || {};
+    map.setFog({
+      ...current,
+      color: `hsl(${hue}, 70%, 75%)`,
+      'high-color': `hsl(${hue}, 80%, 45%)`,
+    } as any);
+  } catch {}
+}
+
 export type GlobeThemeKey = 'mars' | 'lunar' | 'venus' | 'ice-world' | 'cyberpunk' | 'golden-age' | 'alien' | 'deep-ocean' | 'earth-at-night' | 'nasa-night-lights' | 'nasa-black-marble';
 
 export interface RasterOverlay {
