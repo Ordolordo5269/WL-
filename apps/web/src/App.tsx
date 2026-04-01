@@ -136,7 +136,9 @@ function WorldMapView() {
     setPovMode(null);
     povNoradRef.current = null;
     setPovLiveData(null);
-  }, []);
+    // Resume rotation — still in Satellite Intel
+    mapControls.handleSetAutoRotate(true);
+  }, [mapControls.handleSetAutoRotate]);
 
   useEffect(() => {
     if (!povMode) return;
