@@ -346,6 +346,44 @@ export const getEnvironmentByIso3: RequestHandler = async (req: Request, res: Re
   }
 };
 
+// ── Health ──
+
+export const getHealthByIso3: RequestHandler = async (req: Request, res: Response) => {
+  try {
+    const iso3Param = String(req.params.iso3 || '').toUpperCase();
+    if (!iso3Param || iso3Param.length !== 3) {
+      return res.status(400).json({ error: 'Invalid ISO3 code' });
+    }
+    const data = await service.getHealthData(iso3Param);
+    if (!data) {
+      return res.status(404).json({ error: 'Country not found' });
+    }
+    res.json(data);
+  } catch (error) {
+    console.error('getHealthByIso3 error:', error);
+    res.status(500).json({ error: 'Failed to fetch health data from database' });
+  }
+};
+
+// ── Infrastructure & Connectivity ──
+
+export const getInfrastructureByIso3: RequestHandler = async (req: Request, res: Response) => {
+  try {
+    const iso3Param = String(req.params.iso3 || '').toUpperCase();
+    if (!iso3Param || iso3Param.length !== 3) {
+      return res.status(400).json({ error: 'Invalid ISO3 code' });
+    }
+    const data = await service.getInfrastructureData(iso3Param);
+    if (!data) {
+      return res.status(404).json({ error: 'Country not found' });
+    }
+    res.json(data);
+  } catch (error) {
+    console.error('getInfrastructureByIso3 error:', error);
+    res.status(500).json({ error: 'Failed to fetch infrastructure data from database' });
+  }
+};
+
 // ── Batch ──
 
 export const getIndicatorBatch: RequestHandler = async (req: Request, res: Response) => {

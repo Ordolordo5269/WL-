@@ -22,6 +22,15 @@ export interface SocietyIndicators {
   populationDensity: IndicatorPoint; // SP.POP.DNST (people per sq. km)
   youthUnemploymentPct: IndicatorPoint;
   intentionalHomicidesPer100k: IndicatorPoint;
+  // Education expansion
+  educationExpenditurePctGdp: IndicatorPoint;
+  secondaryNetEnrollment: IndicatorPoint;
+  tertiaryGrossEnrollment: IndicatorPoint;
+  primaryPupilTeacherRatio: IndicatorPoint;
+  outOfSchoolChildrenPrimary: IndicatorPoint;
+  // Geopolitical expansion
+  suicideMortalityRate: IndicatorPoint;
+  causeOfDeathNoncommunicablePct: IndicatorPoint;
 }
 
 
@@ -61,7 +70,14 @@ class SocietyService {
         ruralPopulationPercent: { value: null, year: null },
         populationDensity: { value: null, year: null },
         youthUnemploymentPct: { value: null, year: null },
-        intentionalHomicidesPer100k: { value: null, year: null }
+        intentionalHomicidesPer100k: { value: null, year: null },
+        educationExpenditurePctGdp: { value: null, year: null },
+        secondaryNetEnrollment: { value: null, year: null },
+        tertiaryGrossEnrollment: { value: null, year: null },
+        primaryPupilTeacherRatio: { value: null, year: null },
+        outOfSchoolChildrenPrimary: { value: null, year: null },
+        suicideMortalityRate: { value: null, year: null },
+        causeOfDeathNoncommunicablePct: { value: null, year: null }
       };
     }
   }

@@ -10,6 +10,7 @@ const envSchema = z.object({
   AISSTREAM_KEY: z.string().optional(),
   ACLED_EMAIL: z.string().optional(),
   ACLED_PASSWORD: z.string().optional(),
+  UCDP_API_TOKEN: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
