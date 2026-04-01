@@ -36,9 +36,6 @@ export interface MapRefType {
   getAutoRotate?: () => boolean;
   getRotateSpeed?: () => number;
   getStarIntensity?: () => number;
-  setNightLightsPrevStyleOverride?: (style: string, planet: string, star: number) => void;
-  clearNightLightsPrevStyle?: () => void;
-  getNightLightsPrevStyle?: () => { style: string; planet: string; star: number } | null;
   dismissHistoryPopup?: () => void;
   flyToCity?: (lat: number, lng: number, cityName?: string) => void;
   setCitiesData?: (cities: any[]) => void;
@@ -51,4 +48,8 @@ export interface MapRefType {
   exitSatellitePOV?: () => void;
   updateSatellitePOVPositions?: (features: any[]) => void;
   isSatellitePOVActive?: () => boolean;
+  setSatelliteIntelMode?: (enabled: boolean) => void;
+  setNightLightsPrevStyleOverride?: (style: string, planet: string, star: number) => void;
+  clearNightLightsPrevStyle?: () => void;
+  getNightLightsPrevStyle?: () => { style: string; planet: string; star: number } | null;
 }

@@ -137,7 +137,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   const activeNasaSourceIds = useRef<string[]>([]);
   // Track active Earth Data overlay types (toggleable layers)
   const activeEarthOverlaysRef = useRef<Set<NasaOverlayType>>(new Set());
-  // Night Lights: save previous style/fog to restore on disable
+  // Satellite Intel immersive mode: save previous style/fog to restore on exit
   const nightLightsPrevStyle = useRef<{ style: StyleKey; planet: PlanetPreset; star: number } | null>(null);
   // Ocultar nombres/carreteras/fronteras
   const [minimalModeOn, setMinimalModeOn] = useState(false);
@@ -1183,17 +1183,81 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     getAutoRotate: () => spinRafRef.current !== null,
     getRotateSpeed: () => rotationSpeedRef.current,
     getStarIntensity: () => starIntensity,
-    // Allow external code to pre-set the style that Night Lights will restore on deactivation.
-    // Used when transitioning from History Mode → Satellite Intel so that the original
-    // (pre-History) style is captured instead of the transient 'navigation-day'.
+    // Allow external code to pre-set the style that Satellite Intel will restore on exit.
     setNightLightsPrevStyleOverride: (style: string, planet: string, star: number) => {
       nightLightsPrevStyle.current = { style: style as any, planet: planet as any, star };
     },
-    // Clear the night-lights restore state so deactivation won't trigger a style change.
-    // Used when transitioning from Satellite Intel → History Mode.
     clearNightLightsPrevStyle: () => { nightLightsPrevStyle.current = null; },
-    // Read the saved pre-night-lights style (the user's original style before Satellite Intel).
     getNightLightsPrevStyle: () => nightLightsPrevStyle.current ? { ...nightLightsPrevStyle.current } : null,
+    // Satellite Intel immersive mode: Earth at Night base + dark style + atmosphere.
+    setSatelliteIntelMode: (enabled: boolean) => {
+      const map = mapRef.current;
+      if (!map) return;
+      if (enabled) {
+        if (!nightLightsPrevStyle.current) {
+          nightLightsPrevStyle.current = { style: styleKeyRef.current, planet: planetPresetRef.current, star: starIntensity };
+        }
+        const alreadyDark = MAP_STYLES[styleKeyRef.current] === MAP_STYLES['dark'];
+        setStyleKey('dark');
+        styleKeyRef.current = 'dark';
+        const applyImmersive = () => {
+          appearanceApplyThemeAtmosphere(map, 'dawn', 'deep', 0.95);
+          const bid = findRasterInsertionPoint(map);
+          applyRasterOverlay(map, EARTH_AT_NIGHT_OVERLAY, bid);
+          // Re-apply any active Earth overlays on top
+          activeEarthOverlaysRef.current.forEach(ovType => {
+            const ovCfg = NASA_EARTH_OVERLAYS[ovType];
+            if (ovCfg) {
+              const b = findRasterInsertionPoint(map);
+              resolveNasaOverlaySources(ovType).forEach(src => {
+                if (src.tiles.length > 0) applyRasterOverlay(map, src, b);
+              });
+            }
+          });
+          reinitializeInteractiveLayers();
+        };
+        if (alreadyDark) {
+          applyImmersive();
+        } else {
+          map.setStyle(MAP_STYLES['dark']);
+          map.once('style.load', applyImmersive);
+        }
+        setPlanetPreset('dawn');
+        planetPresetRef.current = 'dawn';
+        setStarIntensityState(0.95);
+      } else {
+        removeRasterOverlay(map, EARTH_AT_NIGHT_OVERLAY.sourceId);
+        // Remove tiles of any remaining active overlays
+        activeEarthOverlaysRef.current.forEach(ovType => {
+          const ovCfg = NASA_EARTH_OVERLAYS[ovType];
+          if (ovCfg) ovCfg.sources.forEach(s => removeRasterOverlay(map, s.sourceId));
+        });
+        activeEarthOverlaysRef.current.clear();
+        if (nightLightsPrevStyle.current) {
+          const prev = nightLightsPrevStyle.current;
+          nightLightsPrevStyle.current = null;
+          const needsStyleChange = MAP_STYLES[styleKeyRef.current] !== MAP_STYLES[prev.style];
+          if (needsStyleChange) {
+            setStyleKey(prev.style);
+            styleKeyRef.current = prev.style;
+            map.setStyle(MAP_STYLES[prev.style]);
+            map.once('style.load', () => {
+              appearanceApplyFog(map, prev.planet);
+              reapplyAfterStyleChange(map, { enabled: terrainOn, exaggeration: terrainExaggeration, useHillshade: false });
+              reinitializeInteractiveLayers();
+              if (historyEnabledRef.current) {
+                updateHistory(historyYearRef.current);
+              }
+            });
+          } else {
+            appearanceApplyFog(map, prev.planet);
+          }
+          setPlanetPreset(prev.planet);
+          planetPresetRef.current = prev.planet;
+          setStarIntensityState(prev.star);
+        }
+      }
+    },
     setNaturalLayerEnabled: (type: NaturalLayerType, enabled: boolean) => {
       naturalEnabledRef.current = { ...naturalEnabledRef.current, [type]: enabled };
       if (!mapRef.current) return;
@@ -1342,7 +1406,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       globeThemeLoadId.current++; // Cancel any pending theme callbacks
       // If user manually changes style, invalidate Night Lights saved state
       // so re-entering Satellite Intel captures the fresh style instead
-      nightLightsPrevStyle.current = null;
+
       const sameUrl = MAP_STYLES[styleKeyRef.current] === MAP_STYLES[next];
       setStyleKey(next);
       styleKeyRef.current = next; // Update ref immediately to avoid stale checks on subsequent calls
@@ -1427,7 +1491,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     },
     setPlanetPreset: (preset: PlanetPreset) => {
       globeThemeLoadId.current++; // Cancel any pending theme style.load
-      nightLightsPrevStyle.current = null;
+
       setPlanetPreset(preset);
       planetPresetRef.current = preset; // Update ref immediately for other handlers
       if (mapRef.current) appearanceApplyFog(mapRef.current, preset);
@@ -1443,7 +1507,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       if (mapRef.current) appearanceApplySpacePreset(mapRef.current, preset);
     },
     setGlobeTheme: (themeKey: GlobeThemeKey) => {
-      nightLightsPrevStyle.current = null;
+
       const theme = GLOBE_THEMES[themeKey];
       if (!theme || !mapRef.current) return;
       const map = mapRef.current;
@@ -1468,7 +1532,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         // Re-apply active Earth Data overlays
         const bId = findRasterInsertionPoint(map);
         activeEarthOverlaysRef.current.forEach(type => {
-          const ovOpacity = type === 'night-lights' ? 0.45 : 1.0;
+          const ovOpacity = type === 'night-lights' ? 0.85 : 1.0;
           resolveNasaOverlaySources(type).forEach(src => {
             if (src.tiles.length > 0) applyRasterOverlay(map, src, bId, ovOpacity);
           });
@@ -1772,41 +1836,6 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       const cfg = NASA_EARTH_OVERLAYS[type];
       if (!cfg) return;
       if (enabled) {
-        // Night Lights: switch to dark immersive mode
-        if (type === 'night-lights') {
-          if (!nightLightsPrevStyle.current) {
-            nightLightsPrevStyle.current = { style: styleKeyRef.current, planet: planetPresetRef.current, star: starIntensity };
-          }
-          const alreadyDark = MAP_STYLES[styleKeyRef.current] === MAP_STYLES['dark'];
-          setStyleKey('dark');
-          styleKeyRef.current = 'dark';
-          activeEarthOverlaysRef.current.add(type);
-          const applyImmersive = () => {
-            appearanceApplyThemeAtmosphere(map, 'orbital', 'void', 1.0);
-            // Add all earth overlay tiles (including the one we just enabled)
-            activeEarthOverlaysRef.current.forEach(ovType => {
-              const ovCfg = NASA_EARTH_OVERLAYS[ovType];
-              if (ovCfg) {
-                const bid = findRasterInsertionPoint(map);
-                const opacity = ovType === 'night-lights' ? 0.45 : 1.0;
-                resolveNasaOverlaySources(ovType).forEach(src => {
-                  if (src.tiles.length > 0) applyRasterOverlay(map, src, bid, opacity);
-                });
-              }
-            });
-            reinitializeInteractiveLayers();
-          };
-          if (alreadyDark) {
-            applyImmersive();
-          } else {
-            map.setStyle(MAP_STYLES['dark']);
-            map.once('style.load', applyImmersive);
-          }
-          setPlanetPreset('orbital');
-          planetPresetRef.current = 'orbital';
-          setStarIntensityState(1.0);
-          return; // Skip the default tile-add below — applyImmersive handles it
-        }
         const beforeId = findRasterInsertionPoint(map);
         resolveNasaOverlaySources(type).forEach(src => {
           if (src.tiles.length > 0) applyRasterOverlay(map, src, beforeId);
@@ -1815,40 +1844,6 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       } else {
         cfg.sources.forEach(s => removeRasterOverlay(map, s.sourceId));
         activeEarthOverlaysRef.current.delete(type);
-        // Night Lights: deactivate ALL other overlays and restore previous style.
-        // This gives a clean exit from Satellite Intel immersive mode.
-        if (type === 'night-lights') {
-          // Remove tiles of any remaining active overlays
-          activeEarthOverlaysRef.current.forEach(ovType => {
-            const ovCfg = NASA_EARTH_OVERLAYS[ovType];
-            if (ovCfg) ovCfg.sources.forEach(s => removeRasterOverlay(map, s.sourceId));
-          });
-          activeEarthOverlaysRef.current.clear();
-          // Restore previous style & fog
-          if (nightLightsPrevStyle.current) {
-            const prev = nightLightsPrevStyle.current;
-            nightLightsPrevStyle.current = null;
-            const needsStyleChange = MAP_STYLES[styleKeyRef.current] !== MAP_STYLES[prev.style];
-            if (needsStyleChange) {
-              setStyleKey(prev.style);
-              styleKeyRef.current = prev.style;
-              map.setStyle(MAP_STYLES[prev.style]);
-              map.once('style.load', () => {
-                appearanceApplyFog(map, prev.planet);
-                reapplyAfterStyleChange(map, { enabled: terrainOn, exaggeration: terrainExaggeration, useHillshade: false });
-                reinitializeInteractiveLayers();
-                if (historyEnabledRef.current) {
-                  updateHistory(historyYearRef.current);
-                }
-              });
-            } else {
-              appearanceApplyFog(map, prev.planet);
-            }
-            setPlanetPreset(prev.planet);
-            planetPresetRef.current = prev.planet;
-            setStarIntensityState(prev.star);
-          }
-        }
       }
     },
   }), [easeTo, applyPhysicalModeTweaks, styleKey, setBaseFeaturesVisibility, updateOrgHighlightFilter, terrainOn, terrainExaggeration]);
@@ -1876,6 +1871,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
               alt: props.alt,
               objectId: props.objectId,
               country: props.country,
+              constellation: props.constellation,
               lon: coords[0],
               lat: coords[1],
             },
@@ -2492,7 +2488,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         if (!cfg) return;
         // Remove old sources and re-apply with fresh date
         cfg.sources.forEach(s => removeRasterOverlay(map, s.sourceId));
-        const refreshOpacity = type === 'night-lights' ? 0.45 : 1.0;
+        const refreshOpacity = type === 'night-lights' ? 0.85 : 1.0;
         resolveNasaOverlaySources(type).forEach(src => {
           if (src.tiles.length > 0) applyRasterOverlay(map, src, beforeId, refreshOpacity);
         });

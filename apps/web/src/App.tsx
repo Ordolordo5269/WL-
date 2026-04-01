@@ -14,8 +14,9 @@ import { useMapControls } from './features/world-map/useMapControls';
 import type { MapRefType } from './features/world-map/types';
 import { NASA_EARTH_OVERLAYS, getNasaPreviewUrl, getNasaObservationDate, INSTRUMENT_INFO, OVERLAY_INSTRUMENT_MAP, type NasaOverlayType, PHYSICAL_LAYER_CONFIG, PHYSICAL_LAYER_KEYS, type PhysicalLayerType, SAT_TRACKING_LEGEND, type SatTrackingCategory } from './features/world-map/map/mapAppearance';
 import { Satellite, Waves, Mountain, MountainSnow, Droplets, Flame, Zap, Sun } from 'lucide-react';
+import SpaceBackground from './components/SpaceBackground';
 import { getSatelliteProfileAsync, preloadSatelliteProfiles, COUNTRY_FLAGS, COUNTRY_NAMES, type SatelliteProfile } from './features/world-map/map/satellite-database';
-import { MILITARY_COUNTRY_COLORS } from './features/world-map/map/satellite-visualization';
+import { MILITARY_COUNTRY_COLORS, CLASSIFIED_ORBIT_COLORS } from './features/world-map/map/satellite-visualization';
 import type { SatCategory } from './features/world-map/useSatelliteTracking';
 import { MuseumLegend, MuseumExpandedCard, PURPLE_SCHEME, EARTHY_SCHEME } from './components/MuseumCard';
 import './index.css';
@@ -30,6 +31,7 @@ interface SatelliteClickData {
   alt: number;
   objectId: string;
   country: string;
+  constellation: string;
   lon: number;
   lat: number;
 }
@@ -115,17 +117,17 @@ function WorldMapView() {
   }, []);
 
   // ── Satellite POV Mode ──
-  const [povMode, setPovMode] = useState<{ noradId: number; name: string; country: string; category: string } | null>(null);
-  const [povLiveData, setPovLiveData] = useState<{ alt: number; lat: number; lon: number; speed: number } | null>(null);
+  const [povMode, setPovMode] = useState<{ noradId: number; name: string; country: string; constellation: string; category: string } | null>(null);
+  const [povLiveData, setPovLiveData] = useState<{ alt: number; lat: number; lon: number; period: number; inclination: number; apogee: number; perigee: number; velocity: number; energy: number; sunlit: boolean } | null>(null);
   const povNoradRef = useRef<number | null>(null);
 
   const enterPOV = useCallback((sat: SatelliteClickData) => {
     setExpandedSatellite(null);
     setSatCardTilt({ rx: 0, ry: 0, shineX: 50, shineY: 50 });
     mapRef.current?.enterSatellitePOV?.(sat.noradId, sat.category);
-    setPovMode({ noradId: sat.noradId, name: sat.name, country: sat.country, category: sat.category });
+    setPovMode({ noradId: sat.noradId, name: sat.name, country: sat.country, constellation: sat.constellation, category: sat.category });
     povNoradRef.current = sat.noradId;
-    setPovLiveData({ alt: sat.alt || 0, lat: sat.lat || 0, lon: sat.lon || 0, speed: 0 });
+    setPovLiveData({ alt: sat.alt || 0, lat: sat.lat || 0, lon: sat.lon || 0, period: 0, inclination: 0, apogee: 0, perigee: 0, velocity: 0, energy: 0, sunlit: true });
   }, []);
 
   const exitPOV = useCallback(() => {
@@ -159,11 +161,14 @@ function WorldMapView() {
       const alt = sat.properties?.alt || 0;
       const lat = coords?.[1] || 0;
       const lon = coords?.[0] || 0;
-      // Orbital speed: v = sqrt(GM / (R_earth + alt)) — km/s
-      const GM = 398600.4418; // km³/s²
-      const R = 6371 + alt;
-      const speed = R > 0 ? Math.sqrt(GM / R) : 0;
-      setPovLiveData({ alt, lat, lon, speed });
+      const period = sat.properties?.period || 0;
+      const inclination = sat.properties?.inclination || 0;
+      const apogee = sat.properties?.apogee || 0;
+      const perigee = sat.properties?.perigee || 0;
+      const velocity = sat.properties?.velocity || 0;
+      const energy = sat.properties?.energy || 0;
+      const sunlit = sat.properties?.sunlit !== false;
+      setPovLiveData({ alt, lat, lon, period, inclination, apogee, perigee, velocity, energy, sunlit });
     };
     window.addEventListener('wl-satellite-positions', handler);
     return () => window.removeEventListener('wl-satellite-positions', handler);
@@ -322,6 +327,24 @@ function WorldMapView() {
     frame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(frame);
   }, [anyOverlayActive]);
+
+  // Exit POV & close satellite card when ALL satellite activity stops
+  // (both earth overlays and tracking categories are off → user left Satellite Intel)
+  const satelliteIntelActive = anyOverlayActive || activeTrackingCategories.length > 0;
+  useEffect(() => {
+    if (satelliteIntelActive) return;
+    if (povMode) {
+      mapRef.current?.exitSatellitePOV?.();
+      mapRef.current?.removeSatelliteGroundTrack?.();
+      setPovMode(null);
+      povNoradRef.current = null;
+      setPovLiveData(null);
+    }
+    if (expandedSatellite) {
+      setExpandedSatellite(null);
+      setSatCardTilt({ rx: 0, ry: 0, shineX: 50, shineY: 50 });
+    }
+  }, [satelliteIntelActive]);
 
   // Overlay loading indicator — triggers when overlays change, clears on map idle
   const [overlayLoading, setOverlayLoading] = useState(false);
@@ -531,6 +554,9 @@ function WorldMapView() {
 
   return (
     <div className="relative w-full h-full overflow-hidden">
+      {/* Immersive space starfield — behind everything */}
+      <SpaceBackground active={satelliteIntelActive} />
+
       {/* Left menu toggle button */}
       <MenuToggleButton
         isOpen={sidebars.menu}
@@ -562,6 +588,7 @@ function WorldMapView() {
         // Earth Data (satellite) overlays
         earthOverlays={mapControls.earthOverlays}
         onToggleEarthOverlay={mapControls.handleToggleEarthOverlay}
+        onToggleSatelliteIntelMode={mapControls.handleToggleSatelliteIntelMode}
         onSetBaseMapStyle={mapControls.handleSetBaseMapStyle}
         onSetPlanetPreset={mapControls.handleSetPlanetPreset}
         onSetStarIntensity={mapControls.handleSetStarIntensity}
@@ -1002,20 +1029,19 @@ function WorldMapView() {
         {expandedTrackingCategory && (() => {
           const cfg = SAT_TRACKING_LEGEND[expandedTrackingCategory];
           // SVG hero with gradient background + orbital arc motif per category
-          const heroSvgs: Record<SatTrackingCategory, string> = {
+          const heroImages: Record<SatTrackingCategory, string> = {
             military: '/satellites/military-hero.jpg',
+            classified: '/satellites/classified-hero.jpg',
             navigation: '/satellites/navigation-hero.jpg',
             weather: '/satellites/weather-hero.jpg',
-            stations: `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="180"><defs><linearGradient id="g" x1="0" y1="0" x2="0.6" y2="1"><stop offset="0%" stop-color="#0e081a"/><stop offset="50%" stop-color="#150e2a"/><stop offset="100%" stop-color="#0e081a"/></linearGradient><radialGradient id="glow" cx="0.5" cy="0.5" r="0.3"><stop offset="0%" stop-color="#d4a0ff12"/><stop offset="100%" stop-color="transparent"/></radialGradient></defs><rect width="400" height="180" fill="url(#g)"/><!-- Star field --><circle cx="45" cy="25" r="0.6" fill="#fff" opacity="0.3"/><circle cx="120" cy="15" r="0.5" fill="#fff" opacity="0.2"/><circle cx="280" cy="20" r="0.7" fill="#fff" opacity="0.25"/><circle cx="350" cy="35" r="0.5" fill="#fff" opacity="0.2"/><circle cx="60" cy="70" r="0.4" fill="#fff" opacity="0.15"/><circle cx="340" cy="80" r="0.5" fill="#fff" opacity="0.2"/><circle cx="30" cy="120" r="0.4" fill="#fff" opacity="0.15"/><circle cx="370" cy="110" r="0.5" fill="#fff" opacity="0.18"/><!-- Earth horizon arc --><path d="M-80 185 Q200 135 480 185" fill="#1a1540" stroke="#d4a0ff12" stroke-width="1"/><!-- Atmospheric glow on horizon --><path d="M-80 185 Q200 140 480 185" fill="none" stroke="#4488ff0a" stroke-width="3"/><!-- Orbital path circle --><ellipse cx="200" cy="95" rx="150" ry="18" fill="none" stroke="#d4a0ff10" stroke-width="0.6" stroke-dasharray="4 8"/><!-- TDRSS relay arcs --><path d="M255 80 Q290 30 340 40" fill="none" stroke="#d4a0ff18" stroke-width="0.5" stroke-dasharray="3 4"/><circle cx="340" cy="40" r="2.5" fill="#d4a0ff" opacity="0.3"/><circle cx="340" cy="40" r="5" fill="#d4a0ff" opacity="0.06"/><path d="M145 80 Q110 30 60 40" fill="none" stroke="#d4a0ff18" stroke-width="0.5" stroke-dasharray="3 4"/><circle cx="60" cy="40" r="2.5" fill="#d4a0ff" opacity="0.3"/><circle cx="60" cy="40" r="5" fill="#d4a0ff" opacity="0.06"/><!-- Docked capsule hint --><rect x="253" y="85" width="10" height="7" rx="2" fill="#d4a0ff08" stroke="#d4a0ff20" stroke-width="0.5"/><!-- Glow behind station --><circle cx="200" cy="90" r="28" fill="url(#glow)"/><!-- Station (sat-stations.svg scaled 3.5x) --><g transform="translate(144,58) scale(3.5)"><rect x="11" y="13" width="10" height="6" rx="1.5" fill="#888780" stroke="#5F5E5A" stroke-width="0.6"/><rect x="5" y="14" width="6" height="4" rx="1" fill="#6B6A63" stroke="#5F5E5A" stroke-width="0.5"/><rect x="21" y="14" width="6" height="4" rx="1" fill="#6B6A63" stroke="#5F5E5A" stroke-width="0.5"/><rect x="1" y="15.5" width="30" height="1" rx="0.3" fill="#444441" stroke="#2C2C2A" stroke-width="0.3"/><rect x="2" y="9" width="9" height="5.5" rx="0.4" fill="#185FA5" stroke="#0C447C" stroke-width="0.5"/><line x1="4" y1="9" x2="4" y2="14.5" stroke="#0C447C" stroke-width="0.35"/><line x1="6.5" y1="9" x2="6.5" y2="14.5" stroke="#0C447C" stroke-width="0.35"/><line x1="9" y1="9" x2="9" y2="14.5" stroke="#0C447C" stroke-width="0.35"/><rect x="2" y="17.5" width="9" height="5.5" rx="0.4" fill="#185FA5" stroke="#0C447C" stroke-width="0.5"/><line x1="4" y1="17.5" x2="4" y2="23" stroke="#0C447C" stroke-width="0.35"/><line x1="6.5" y1="17.5" x2="6.5" y2="23" stroke="#0C447C" stroke-width="0.35"/><line x1="9" y1="17.5" x2="9" y2="23" stroke="#0C447C" stroke-width="0.35"/><rect x="21" y="9" width="9" height="5.5" rx="0.4" fill="#185FA5" stroke="#0C447C" stroke-width="0.5"/><line x1="23" y1="9" x2="23" y2="14.5" stroke="#0C447C" stroke-width="0.35"/><line x1="25.5" y1="9" x2="25.5" y2="14.5" stroke="#0C447C" stroke-width="0.35"/><line x1="28" y1="9" x2="28" y2="14.5" stroke="#0C447C" stroke-width="0.35"/><rect x="21" y="17.5" width="9" height="5.5" rx="0.4" fill="#185FA5" stroke="#0C447C" stroke-width="0.5"/><line x1="23" y1="17.5" x2="23" y2="23" stroke="#0C447C" stroke-width="0.35"/><line x1="25.5" y1="17.5" x2="25.5" y2="23" stroke="#0C447C" stroke-width="0.35"/><line x1="28" y1="17.5" x2="28" y2="23" stroke="#0C447C" stroke-width="0.35"/><path d="M14.5 13 Q16 10.5 17.5 13" fill="none" stroke="#888780" stroke-width="0.7"/><circle cx="16" cy="12.5" r="0.8" fill="#d4a0ff"/></g><text x="200" y="20" text-anchor="middle" fill="#d4a0ff44" font-family="monospace" font-size="8" letter-spacing="3">ISS  ·  TIANGONG  ·  TDRSS RELAY</text></svg>`)}`,
-            starlink: `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="180"><defs><linearGradient id="g" x1="0" y1="0" x2="0.7" y2="1"><stop offset="0%" stop-color="#061208"/><stop offset="50%" stop-color="#0a2010"/><stop offset="100%" stop-color="#061208"/></linearGradient><radialGradient id="glow" cx="0.5" cy="0.48" r="0.28"><stop offset="0%" stop-color="#00ff8812"/><stop offset="100%" stop-color="transparent"/></radialGradient></defs><rect width="400" height="180" fill="url(#g)"/><!-- Orbital shell arcs (550km formation) --><ellipse cx="200" cy="85" rx="180" ry="15" fill="none" stroke="#00ff880a" stroke-width="0.5" stroke-dasharray="3 8"/><ellipse cx="200" cy="85" rx="160" ry="22" fill="none" stroke="#00ff8808" stroke-width="0.4" stroke-dasharray="2 10"/><!-- Constellation grid — regular formation dots --><circle cx="55" cy="78" r="1.2" fill="#00ff88" opacity="0.25"/><circle cx="90" cy="74" r="1" fill="#00ff88" opacity="0.2"/><circle cx="125" cy="72" r="1.2" fill="#00ff88" opacity="0.3"/><circle cx="275" cy="72" r="1.2" fill="#00ff88" opacity="0.3"/><circle cx="310" cy="74" r="1" fill="#00ff88" opacity="0.2"/><circle cx="345" cy="78" r="1.2" fill="#00ff88" opacity="0.25"/><circle cx="70" cy="98" r="1" fill="#00ff88" opacity="0.18"/><circle cx="110" cy="95" r="1" fill="#00ff88" opacity="0.22"/><circle cx="290" cy="95" r="1" fill="#00ff88" opacity="0.22"/><circle cx="330" cy="98" r="1" fill="#00ff88" opacity="0.18"/><!-- Laser interlinks between neighbors --><line x1="55" y1="78" x2="90" y2="74" stroke="#00ff8815" stroke-width="0.4"/><line x1="90" y1="74" x2="125" y2="72" stroke="#00ff8815" stroke-width="0.4"/><line x1="125" y1="72" x2="160" y2="74" stroke="#00ff8810" stroke-width="0.3"/><line x1="240" y1="74" x2="275" y2="72" stroke="#00ff8810" stroke-width="0.3"/><line x1="275" y1="72" x2="310" y2="74" stroke="#00ff8815" stroke-width="0.4"/><line x1="310" y1="74" x2="345" y2="78" stroke="#00ff8815" stroke-width="0.4"/><!-- Coverage beams to surface --><path d="M185 105 L140 170" stroke="#00ff8812" stroke-width="0.5" stroke-dasharray="3 5"/><path d="M200 108 L200 175" stroke="#00ff8812" stroke-width="0.5" stroke-dasharray="3 5"/><path d="M215 105 L260 170" stroke="#00ff8812" stroke-width="0.5" stroke-dasharray="3 5"/><!-- Earth horizon --><path d="M-60 180 Q200 145 460 180" fill="#00ff8804" stroke="#00ff8810" stroke-width="0.8"/><!-- Glow behind satellite --><circle cx="200" cy="85" r="24" fill="url(#glow)"/><!-- Satellite (sat-starlink.svg scaled 3.5x) --><g transform="translate(144,52) scale(3.5)"><rect x="11" y="13" width="10" height="6" rx="1.5" fill="#1a1a2e" stroke="#EF9F27" stroke-width="0.5"/><rect x="12.5" y="14" width="7" height="4" rx="0.5" fill="#2d2d4a" stroke="#EF9F27" stroke-width="0.3"/><line x1="14.5" y1="14" x2="14.5" y2="18" stroke="#EF9F27" stroke-width="0.2" opacity=".5"/><line x1="16.5" y1="14" x2="16.5" y2="18" stroke="#EF9F27" stroke-width="0.2" opacity=".5"/><line x1="18.5" y1="14" x2="18.5" y2="18" stroke="#EF9F27" stroke-width="0.2" opacity=".5"/><line x1="12.5" y1="16" x2="19.5" y2="16" stroke="#EF9F27" stroke-width="0.2" opacity=".5"/><rect x="1" y="14" width="9" height="4" rx="0.5" fill="#0d1b3e" stroke="#3b7dd8" stroke-width="0.4"/><line x1="3.5" y1="14" x2="3.5" y2="18" stroke="#3b7dd8" stroke-width="0.3" opacity=".6"/><line x1="6" y1="14" x2="6" y2="18" stroke="#3b7dd8" stroke-width="0.3" opacity=".6"/><line x1="8" y1="14" x2="8" y2="18" stroke="#3b7dd8" stroke-width="0.3" opacity=".6"/><rect x="22" y="14" width="9" height="4" rx="0.5" fill="#0d1b3e" stroke="#3b7dd8" stroke-width="0.4"/><line x1="24" y1="14" x2="24" y2="18" stroke="#3b7dd8" stroke-width="0.3" opacity=".6"/><line x1="26.5" y1="14" x2="26.5" y2="18" stroke="#3b7dd8" stroke-width="0.3" opacity=".6"/><line x1="28.5" y1="14" x2="28.5" y2="18" stroke="#3b7dd8" stroke-width="0.3" opacity=".6"/><circle cx="11.5" cy="16" r="0.8" fill="#EF9F27" opacity=".6"/><circle cx="20.5" cy="16" r="0.8" fill="#EF9F27" opacity=".6"/><line x1="14" y1="19" x2="11" y2="27" stroke="#EF9F27" stroke-width="0.4" stroke-dasharray="1,1.5" opacity=".5"/><line x1="16" y1="19" x2="16" y2="28" stroke="#EF9F27" stroke-width="0.4" stroke-dasharray="1,1.5" opacity=".5"/><line x1="18" y1="19" x2="21" y2="27" stroke="#EF9F27" stroke-width="0.4" stroke-dasharray="1,1.5" opacity=".5"/></g><text x="200" y="20" text-anchor="middle" fill="#00ff8844" font-family="monospace" font-size="8" letter-spacing="3">LEO BROADBAND  ·  550 KM SHELL</text></svg>`)}`,
+            stations: '/satellites/stations-hero.jpg',
+            starlink: '/satellites/starlink-hero.jpg',
           };
           return (
             <MuseumExpandedCard
               variant="purple"
               motionKey="track-expanded-card"
-              heroContent={expandedTrackingCategory === 'military' || expandedTrackingCategory === 'navigation' || expandedTrackingCategory === 'weather'
-                ? { type: 'image', url: heroSvgs[expandedTrackingCategory] }
-                : { type: 'svg', svgDataUri: heroSvgs[expandedTrackingCategory] }}
+              heroContent={{ type: 'image', url: heroImages[expandedTrackingCategory] }}
               sourceLabel={cfg.legendSource}
               title={cfg.label}
               description={cfg.expandedDescription}
@@ -1033,15 +1059,27 @@ function WorldMapView() {
           const profile = expandedSatellite.profile;
           const catColor = sat.category === 'military'
             ? (MILITARY_COUNTRY_COLORS[sat.country] || '#aaaaaa')
-            : (({ navigation: '#ffaa22', weather: '#44aaff', stations: '#d4a0ff', starlink: '#00ff88', classified: '#ff8800' } as Record<string, string>)[sat.category] || '#ffffff');
-          // Resolve image URL with country fallback for military
-          const COUNTRY_IMG_MAP: Record<string, string> = { US: 'us', RU: 'russia', CN: 'china', IN: 'india', JP: 'japan', EU: 'eu' };
-          const resolvedImageUrl = profile.imageUrl && !profile.imageUrl.includes('military.jpg')
-            ? profile.imageUrl
-            : `/satellites/${COUNTRY_IMG_MAP[sat.country] || sat.country?.toLowerCase() || 'us'}.jpg`;
+            : sat.category === 'classified'
+            ? (CLASSIFIED_ORBIT_COLORS[sat.constellation] || '#cc8833')
+            : (({ navigation: '#ffaa22', weather: '#44aaff', stations: '#d4a0ff', starlink: '#00ff88' } as Record<string, string>)[sat.category] || '#ffffff');
           const flag = COUNTRY_FLAGS[sat.country] || '';
           const countryName = COUNTRY_NAMES[sat.country] || sat.country;
-          const iconPath = ({ military: '/icons/sat-military.svg', weather: '/icons/sat-weather.svg', stations: '/icons/sat-stations.svg' } as Record<string, string>)[sat.category];
+          // Orbit type metadata for classified satellites
+          const ORBIT_TYPE_META: Record<string, { label: string; icon: string; purpose: string; desc: string; imageUrl: string }> = {
+            leo: { label: 'Low Earth Orbit', icon: '🔭', purpose: 'RECONNAISSANCE / IMAGING', desc: 'Operates in LEO (< 2,000 km) — optimal altitude for high-resolution optical and radar imaging. Typical missions include close-look reconnaissance (IMINT), synthetic aperture radar (SAR), and signals collection during overpass windows. Known programs in this regime: US NROL (KH-series successors), French CSO, German SARAH, Israeli OFEK, Japanese IGS.', imageUrl: '/satellites/programs/classified-leo.jpg' },
+            meo: { label: 'Medium Earth Orbit', icon: '📡', purpose: 'SPACE DOMAIN AWARENESS', desc: 'Orbits between 2,000–35,000 km — used for persistent space surveillance and tracking of other satellites. Assets in MEO can monitor orbital debris, map adversary constellations, and maintain custody of objects across wide swaths. Often associated with space situational awareness (SSA) programs.', imageUrl: '/satellites/programs/classified-meo.jpg' },
+            geo: { label: 'Geostationary Orbit', icon: '🛰️', purpose: 'SIGINT / COMMS RELAY', desc: 'Stationed at ~35,786 km in geostationary orbit — appears fixed over one point on Earth. Ideal for continuous signals intelligence (SIGINT), communications relay, and missile early warning. Known programs: US GSSAP (geosynchronous space situational awareness), classified SIGINT birds, and wideband relay platforms.', imageUrl: '/satellites/programs/classified-geo.jpg' },
+            heo: { label: 'Highly Elliptical Orbit', icon: '⚡', purpose: 'EARLY WARNING / POLAR', desc: 'High eccentricity orbit (e > 0.25) — provides extended dwell time over high-latitude regions inaccessible to GEO. Used for infrared early warning (detecting ICBM launches), polar communications, and Arctic surveillance. Known type: Molniya-class orbits with 12-hour periods and high apogee over northern hemisphere.', imageUrl: '/satellites/programs/classified-heo.jpg' },
+          };
+          const orbitMeta = sat.category === 'classified' ? ORBIT_TYPE_META[sat.constellation] : null;
+          // Resolve image URL with country fallback for military
+          const COUNTRY_IMG_MAP: Record<string, string> = { US: 'us', RU: 'russia', CN: 'china', IN: 'india', JP: 'japan', EU: 'eu' };
+          const resolvedImageUrl = orbitMeta?.imageUrl
+            ? orbitMeta.imageUrl
+            : profile.imageUrl && !profile.imageUrl.includes('military.jpg')
+            ? profile.imageUrl
+            : `/satellites/${COUNTRY_IMG_MAP[sat.country] || sat.country?.toLowerCase() || 'us'}.jpg`;
+          const iconPath = ({ military: '/icons/sat-military.png', weather: '/icons/sat-weather.png', stations: '/icons/sat-stations.png' } as Record<string, string>)[sat.category];
           return (
             <>
               <motion.div
@@ -1171,14 +1209,14 @@ function WorldMapView() {
 
                       {/* Content section */}
                       <div style={{ padding: '14px 26px 22px' }}>
-                        {/* Country */}
-                        {sat.country && (
+                        {/* Country or Orbit type */}
+                        {(sat.country || orbitMeta) && (
                           <div style={{
                             fontSize: 8, fontWeight: 400, letterSpacing: '0.22em',
                             textTransform: 'uppercase',
-                            color: 'rgba(170,155,210,0.45)',
+                            color: orbitMeta ? `${catColor}90` : 'rgba(170,155,210,0.45)',
                             marginBottom: 6,
-                          }}>{flag}  {countryName}</div>
+                          }}>{orbitMeta ? `${orbitMeta.icon}  ${orbitMeta.label}` : `${flag}  ${countryName}`}</div>
                         )}
                         {/* Satellite name */}
                         <div style={{
@@ -1186,15 +1224,15 @@ function WorldMapView() {
                           color: 'rgba(240,235,255,0.92)',
                           letterSpacing: '0.02em', lineHeight: 1.2,
                           marginBottom: 4,
-                        }}>{sat.name}</div>
+                        }}>{orbitMeta && sat.name === 'UNKNOWN' ? `Classified Object #${sat.noradId}` : sat.name}</div>
                         {/* Program */}
                         <div style={{
                           fontSize: 11, fontWeight: 300,
                           color: 'rgba(160,145,210,0.5)',
                           marginBottom: 6,
-                        }}>{profile.program}</div>
+                        }}>{orbitMeta ? `${orbitMeta.label} — Analyst Tracked` : profile.program}</div>
                         {/* Purpose badge */}
-                        {profile.purpose && (
+                        {(orbitMeta?.purpose || profile.purpose) && (
                           <div style={{
                             fontSize: 8,
                             fontWeight: 500,
@@ -1207,7 +1245,7 @@ function WorldMapView() {
                             padding: '3px 10px',
                             display: 'inline-block',
                             marginBottom: 12,
-                          }}>{profile.purpose}</div>
+                          }}>{orbitMeta?.purpose || profile.purpose}</div>
                         )}
                         {/* Description */}
                         <div style={{
@@ -1215,7 +1253,7 @@ function WorldMapView() {
                           color: 'rgba(190,180,220,0.45)',
                           lineHeight: 1.75, letterSpacing: '0.01em',
                           marginBottom: 16,
-                        }}>{profile.description}</div>
+                        }}>{orbitMeta?.desc || profile.description}</div>
                         {/* Separator */}
                         <div style={{
                           width: 28, height: 1,
@@ -1295,7 +1333,7 @@ function WorldMapView() {
                           color: 'rgba(140,125,180,0.2)',
                           textAlign: 'center',
                           marginTop: 4,
-                        }}>CelesTrak \u00B7 WorldLore</div>
+                        }}>WorldLore</div>
                       </div>
                     </div>
                   </div>
@@ -1312,7 +1350,9 @@ function WorldMapView() {
           const flag = COUNTRY_FLAGS[povMode.country] || '';
           const hudColor = povMode.category === 'military'
             ? (MILITARY_COUNTRY_COLORS[povMode.country] || '#aaaaaa')
-            : (({ navigation: '#ffaa22', weather: '#44aaff', stations: '#d4a0ff', starlink: '#00ff88', classified: '#ff8800' } as Record<string, string>)[povMode.category] || '#ffffff');
+            : povMode.category === 'classified'
+            ? (CLASSIFIED_ORBIT_COLORS[povMode.constellation] || '#cc8833')
+            : (({ navigation: '#ffaa22', weather: '#44aaff', stations: '#d4a0ff', starlink: '#00ff88' } as Record<string, string>)[povMode.category] || '#ffffff');
           return (
             <motion.div
               key="sat-pov-hud"
@@ -1374,9 +1414,9 @@ function WorldMapView() {
                       </div>
                       <div style={{ textAlign: 'center' }}>
                         <div style={{ fontSize: 11, fontWeight: 500, color: 'rgba(240,235,255,0.85)', fontVariantNumeric: 'tabular-nums' }}>
-                          {povLiveData.speed.toFixed(2)} <span style={{ fontSize: 8, opacity: 0.5 }}>km/s</span>
+                          {(povLiveData.velocity ?? 0).toFixed(2)} <span style={{ fontSize: 8, opacity: 0.5 }}>km/s</span>
                         </div>
-                        <div style={{ fontSize: 7, color: `${hudColor}70`, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Speed</div>
+                        <div style={{ fontSize: 7, color: `${hudColor}70`, letterSpacing: '0.1em', textTransform: 'uppercase' }}>V Real</div>
                       </div>
                       <div style={{ textAlign: 'center' }}>
                         <div style={{ fontSize: 11, fontWeight: 500, color: 'rgba(240,235,255,0.85)', fontVariantNumeric: 'tabular-nums' }}>
@@ -1389,6 +1429,38 @@ function WorldMapView() {
                           {povLiveData.lon.toFixed(2)}°
                         </div>
                         <div style={{ fontSize: 7, color: `${hudColor}70`, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Lon</div>
+                      </div>
+                      <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.04)' }} />
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 11, fontWeight: 500, color: 'rgba(240,235,255,0.85)', fontVariantNumeric: 'tabular-nums' }}>
+                          {povLiveData.period >= 120 ? (povLiveData.period / 60).toFixed(1) : povLiveData.period} <span style={{ fontSize: 8, opacity: 0.5 }}>{povLiveData.period >= 120 ? 'h' : 'min'}</span>
+                        </div>
+                        <div style={{ fontSize: 7, color: `${hudColor}70`, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Period</div>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 11, fontWeight: 500, color: 'rgba(240,235,255,0.85)', fontVariantNumeric: 'tabular-nums' }}>
+                          {povLiveData.inclination.toFixed(1)}°
+                        </div>
+                        <div style={{ fontSize: 7, color: `${hudColor}70`, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Inc</div>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 11, fontWeight: 500, color: 'rgba(240,235,255,0.85)', fontVariantNumeric: 'tabular-nums' }}>
+                          {povLiveData.apogee.toLocaleString()} / {povLiveData.perigee.toLocaleString()} <span style={{ fontSize: 8, opacity: 0.5 }}>km</span>
+                        </div>
+                        <div style={{ fontSize: 7, color: `${hudColor}70`, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Apo / Per</div>
+                      </div>
+                      <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.04)' }} />
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 11, fontWeight: 500, color: 'rgba(240,235,255,0.85)', fontVariantNumeric: 'tabular-nums' }}>
+                          {(povLiveData.energy ?? 0).toFixed(1)} <span style={{ fontSize: 8, opacity: 0.5 }}>km²/s²</span>
+                        </div>
+                        <div style={{ fontSize: 7, color: `${hudColor}70`, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Energy</div>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 11, fontWeight: 500, color: (povLiveData.sunlit ?? true) ? '#ffd54f' : 'rgba(240,235,255,0.4)', fontVariantNumeric: 'tabular-nums' }}>
+                          {(povLiveData.sunlit ?? true) ? 'LIT' : 'SHADOW'}
+                        </div>
+                        <div style={{ fontSize: 7, color: `${hudColor}70`, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Solar</div>
                       </div>
                     </div>
                   )}
