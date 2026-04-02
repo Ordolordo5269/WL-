@@ -33,6 +33,9 @@ import infrastructureRoutes from './infrastructure.routes';
 import fireRoutes from '../modules/fire/routes';
 import satelliteRoutes from '../modules/satellite/routes';
 import ucdpRoutes from '../modules/ucdp/routes';
+import joshuaProjectRoutes from '../modules/joshua-project/routes';
+import unhcrRoutes from '../modules/unhcr/routes';
+import demographicsRoutes from '../modules/demographics/routes';
 
 const router = Router();
 
@@ -68,5 +71,8 @@ router.use('/infrastructure', infrastructureRoutes);
 router.use('/fire', fireRoutes);
 router.use('/satellite', satelliteRoutes);
 router.use('/ucdp', ucdpRoutes);
+router.use('/joshua-project', joshuaProjectRoutes);
+router.use('/unhcr', unhcrRoutes);
+router.use('/demographics', demographicsRoutes);
 
 export default router;

@@ -11,6 +11,7 @@ const envSchema = z.object({
   ACLED_EMAIL: z.string().optional(),
   ACLED_PASSWORD: z.string().optional(),
   UCDP_API_TOKEN: z.string().optional(),
+  JOSHUA_PROJECT_API_KEY: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

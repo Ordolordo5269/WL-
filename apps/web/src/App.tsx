@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import WorldMap from './features/world-map/WorldMap';
 import LeftSidebar from './features/world-map/LeftSidebar';
 import CountrySidebar from './features/country-sidebar/CountrySidebar';
-
+import ConflictTracker from './features/conflicts/ConflictTracker';
+import DemographicsPanel from './features/demographics/DemographicsPanel';
 import CountryCard from './features/country/CountryCard';
 import MenuToggleButton from './features/world-map/MenuToggleButton';
 import CompareCountriesPopup from './features/compare/CompareCountriesPopup';
@@ -26,6 +27,7 @@ import './styles/sidebar.css';
 import './styles/conflict-tracker.css';
 
 import "./styles/compare-countries.css";
+import "./styles/demographics.css";
 
 interface SatelliteClickData {
   noradId: number;
@@ -436,7 +438,9 @@ function WorldMapView() {
   // Unified sidebars state
   const [sidebars, setSidebars] = useState({
     country: false,
-    menu: false
+    menu: false,
+    conflict: false,
+    demographics: false
   });
 
   // Compare Countries state
@@ -448,7 +452,7 @@ function WorldMapView() {
   });
 
   // Unified sidebars handler
-  const toggleSidebar = useCallback((type: 'country' | 'menu', open: boolean) => {
+  const toggleSidebar = useCallback((type: 'country' | 'menu' | 'conflict' | 'demographics', open: boolean) => {
     setSidebars(prev => ({ ...prev, [type]: open }));
   }, []);
 
@@ -542,6 +546,15 @@ function WorldMapView() {
     setSelectedConflictId(null);
   }, [toggleSidebar]);
 
+  const handleOpenDemographics = useCallback(() => {
+    toggleSidebar('menu', false);
+    toggleSidebar('demographics', true);
+  }, [toggleSidebar]);
+
+  const handleCloseDemographics = useCallback(() => {
+    toggleSidebar('demographics', false);
+  }, [toggleSidebar]);
+
   const handleCenterMapOnConflict = (coordinates: { lat: number; lng: number }) => {
     if (mapRef.current) {
       mapRef.current.easeTo({
@@ -623,6 +636,8 @@ function WorldMapView() {
       <LeftSidebar
         isOpen={sidebars.menu}
         onClose={handleCloseLeftSidebar}
+        onOpenConflictTracker={handleOpenConflictTracker}
+        onOpenDemographics={handleOpenDemographics}
         // Natural layers props
         onToggleRiversLayer={mapControls.handleToggleRiversLayer}
         riversEnabled={mapControls.riversEnabled}
@@ -1749,6 +1764,26 @@ function WorldMapView() {
           onCenterMap={handleCenterMapOnConflict}
           onConflictSelect={handleConflictSelect}
           onConflictsChange={handleConflictsChange}
+        />
+      )}
+
+      {/* Demographics Panel */}
+      <AnimatePresence>
+        {sidebars.demographics && (
+          <motion.div
+            className="fixed inset-0 bg-black z-40 cursor-pointer"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.4 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            onClick={handleCloseDemographics}
+          />
+        )}
+      </AnimatePresence>
+      {sidebars.demographics && (
+        <DemographicsPanel
+          onBack={handleCloseDemographics}
+          onCenterMap={handleCenterMapOnConflict}
         />
       )}
 
