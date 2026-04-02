@@ -500,6 +500,49 @@ model Conflict {
   @@index([dataSource])
 }
 
+model ConflictCasualty {
+  id            String   @id @default(uuid()) @db.Uuid
+  conflictId    String   @db.Uuid
+  date          DateTime
+  military      Int?
+  civilian      Int?
+  total         Int
+  source        String?
+  notes         String?  @db.Text
+
+  conflict      Conflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
+
+  @@index([conflictId, date])
+}
+
+model ConflictFaction {
+  id            String   @id @default(uuid()) @db.Uuid
+  conflictId    String   @db.Uuid
+  name          String
+  color         String?
+  goals         String[]
+  allies        String[]
+
+  conflict      Conflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
+  support       ConflictFactionSupport[]
+
+  @@index([conflictId])
+}
+
+model ConflictFactionSupport {
+  id            String   @id @default(uuid()) @db.Uuid
+  factionId     String   @db.Uuid
+  supporterISO  String
+  supportType   String
+  weapons       String[]
+  aidValue      String?
+  strategicAssets String[]
+
+  faction       ConflictFaction @relation(fields: [factionId], references: [id], onDelete: Cascade)
+
+  @@index([factionId])
+}
+
 // Raw ACLED event — one row per ACLED record, research-grade fidelity
 model AcledEvent {
   id              String   @id @default(uuid()) @db.Uuid

@@ -7,7 +7,6 @@ import type { ChoroplethSpec as GdpPerCapitaChoroplethSpec } from './services/wo
 import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
 import '../../styles/geocoder.css';
-import { ConflictVisualization } from '../conflicts/services/conflict-tracker/conflict-visualization';
 import { SatelliteVisualization } from './map/satellite-visualization';
 import { AVAILABLE_HISTORY_YEARS, snapToAvailableYear } from '../../utils/historical-years';
 import { setLiveActivityLayer } from '../live-activity/live-activity-layers';
@@ -1864,7 +1863,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         activeEarthOverlaysRef.current.delete(type);
       }
     },
-  }), [easeTo, applyFog, applyPhysicalModeTweaks, styleKey, setBaseFeaturesVisibility, updateOrgHighlightFilter, terrainOn, terrainExaggeration]);
+  }), [easeTo, applyPhysicalModeTweaks, styleKey, setBaseFeaturesVisibility, updateOrgHighlightFilter, terrainOn, terrainExaggeration]);
 
   // Helper: (re-)add satellite layers + click handler if tracking is active
   const ensureSatelliteLayers = useCallback(async (map: mapboxgl.Map) => {
@@ -2244,7 +2243,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       SatelliteVisualization.resetIcons(); // Icons lost on style change
       ensureSatelliteLayers(map);
     }
-  }, [conflicts, handleCountrySelection, applyFog, applyPhysicalModeTweaks, styleKey, minimalModeOn, setBaseFeaturesVisibility, ensureSatelliteLayers]);
+  }, [handleCountrySelection, applyPhysicalModeTweaks, styleKey, minimalModeOn, setBaseFeaturesVisibility, ensureSatelliteLayers]);
 
   // El toggle inline fue movido a la sidebar (Settings)
 
@@ -2402,13 +2401,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         applyTerrain(map, { enabled: true, exaggeration: Math.max(1.5, persisted.ex), useHillshade: false });
       }
 
-      // Initialize conflict data manager and add conflict source
-      if (conflictDataManager.current) {
-        conflictDataManager.current.initialize(map);
-        conflictDataManager.current.addConflictSource(conflicts);
-      }
-
-      // Conflict visualization is now handled by CountryConflictVisualization
+      // Conflict visualization is now handled by conflict-layers.ts via applyConflictLayer
 
     // Clear persisted natural layers — they should only be active within the Physical Layers section
     try { localStorage.removeItem('wl-natural-layers'); } catch {}
@@ -2479,9 +2472,6 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       if (ledHaloIntervalRef.current) { clearInterval(ledHaloIntervalRef.current); ledHaloIntervalRef.current = null; }
       try { geocoder.off('result', handleGeocoderResult); geocoder.onRemove(); } catch {}
       if (mapRef.current) {
-        try { ConflictVisualization.removeAllPointLayers(mapRef.current); } catch {}
-        try { ConflictVisualization.removeCountryHeatmap(mapRef.current); } catch {}
-        try { ConflictVisualization.cleanup(mapRef.current); } catch {}
         try { mapRef.current.remove(); } catch {}
         mapRef.current = null;
       }
@@ -2509,50 +2499,8 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     return () => clearInterval(tid);
   }, []);
 
-  // Efecto para actualizar conflictos cuando cambien
-  useEffect(() => {
-    if (conflictDataManager.current?.hasConflictSource()) {
-      conflictDataManager.current.updateConflictData(conflicts);
-    }
-  }, [conflicts]);
-
-  // UCDP conflict map visualization
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !isMapLoaded) return;
-
-    const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-
-    if (conflicts.length === 0) {
-      ConflictVisualization.removeAllPointLayers(map);
-      ConflictVisualization.removeHeatmapLayer(map);
-      ConflictVisualization.removeCountryHeatmap(map);
-      ConflictVisualization.updateCountryHighlights(map, []);
-      return;
-    }
-
-    if (selectedConflictId) {
-      // Focused on one conflict — show only its marker + countries
-      const selected = conflicts.find((c: any) => c.id === selectedConflictId);
-      if (selected) {
-        ConflictVisualization.removeAllPointLayers(map);
-        ConflictVisualization.removeHeatmapLayer(map);
-        ConflictVisualization.removeCountryHeatmap(map);
-        ConflictVisualization.updateVisualization(map, selectedConflictId, conflicts as any);
-        ConflictVisualization.addSimpleMarkers(map, [selected] as any);
-      }
-    } else {
-      // Global overview:
-      //   - Conflict markers (visible at low zoom, fade out at high zoom)
-      //   - Heatmap + country fills (background)
-      //   - Individual event dots (appear at zoom >= 4, get bigger on zoom in)
-      ConflictVisualization.updateVisualization(map, null, conflicts as any);
-      ConflictVisualization.addSimpleMarkers(map, conflicts as any);
-      ConflictVisualization.addHeatmapLayer(map, conflicts as any);
-      ConflictVisualization.addCountryHeatmap(map, conflicts as any);
-      ConflictVisualization.loadEventDetailLayer(map, apiBase);
-    }
-  }, [conflicts, selectedConflictId, isMapLoaded]);
+  // Conflict visualization is now handled by conflict-layers.ts via applyConflictLayer
+  // (toggled from LeftSidebar → App.tsx → mapRef.setConflictLayer)
 
   // Función para resetear la vista del mapa
   const resetMapView = () => {
