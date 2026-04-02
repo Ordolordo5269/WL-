@@ -87,9 +87,12 @@ export function useSatelliteTracking() {
   };
 
   const findConstellationForNorad = (noradId: number): string => {
-    const data = categoryDataRef.current['navigation'];
-    const sat = data?.find((d: any) => d.NORAD_CAT_ID === noradId);
-    return sat?.CONSTELLATION || '';
+    for (const cat of ['navigation', 'weather', 'stations'] as SatCategory[]) {
+      const data = categoryDataRef.current[cat];
+      const sat = data?.find((d: any) => d.NORAD_CAT_ID === noradId);
+      if (sat?.CONSTELLATION) return sat.CONSTELLATION;
+    }
+    return '';
   };
 
   // Start tick interval
@@ -107,10 +110,10 @@ export function useSatelliteTracking() {
     }
   }, []);
 
-  // Fetch TLE data for a category
+  // Fetch TLE data for a category (no-store: server enriches data server-side, browser must never serve stale responses)
   const fetchTLE = useCallback(async (cat: SatCategory): Promise<any[]> => {
     console.log('[satellite] Fetching TLE for', cat, '...');
-    const res = await fetch(`${API_URL}/api/satellite/tle?group=${cat}`);
+    const res = await fetch(`${API_URL}/api/satellite/tle?group=${cat}`, { cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     console.log('[satellite] Got', data.length, 'entries for', cat, '- first:', data[0]?.OBJECT_NAME, 'has TLE:', !!data[0]?.TLE_LINE1);
@@ -147,7 +150,7 @@ export function useSatelliteTracking() {
       }
     } else {
       worker.postMessage({ type: 'remove', category: cat });
-      // Keep categoryDataRef cached — avoids re-fetch on Show→Hide→Show
+      categoryDataRef.current[cat] = null; // Clear cache so Show always re-fetches fresh data
 
       // Check if any category is still active
       setCategories(prev => {
@@ -201,18 +204,29 @@ export function useSatelliteTracking() {
     setOnGroundTrack: (cb: (noradId: number, coords: [number, number][], category: string, country: string, constellation: string) => void) => { onGroundTrackRef.current = cb; },
     categoryCounts,
     getCategoryCount: (cat: SatCategory): number | null => categoryCounts[cat],
-    getConstellationCounts: (): Record<string, number> => {
-      const data = categoryDataRef.current['navigation'];
+    getConstellationCounts: (cat: SatCategory = 'navigation'): Record<string, number> => {
+      const data = categoryDataRef.current[cat];
       if (!data) return {};
       const counts: Record<string, number> = {};
+      const fallback = cat === 'navigation' ? 'sbas' : 'other';
       for (const s of data) {
-        const c = (s as any).CONSTELLATION || 'sbas';
+        const c = (s as any).CONSTELLATION || fallback;
         counts[c] = (counts[c] || 0) + 1;
       }
       return counts;
     },
     getWeatherProgramCounts: (): Record<string, number> => {
       const data = categoryDataRef.current['weather'];
+      if (!data) return {};
+      const counts: Record<string, number> = {};
+      for (const s of data) {
+        const c = (s as any).CONSTELLATION || 'other';
+        counts[c] = (counts[c] || 0) + 1;
+      }
+      return counts;
+    },
+    getStationProgramCounts: (): Record<string, number> => {
+      const data = categoryDataRef.current['stations'];
       if (!data) return {};
       const counts: Record<string, number> = {};
       for (const s of data) {

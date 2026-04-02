@@ -44,17 +44,23 @@ body {
   backface-visibility: hidden;
 }
 
-/* Ocultar el borde atmosférico del globo desplazando el canvas hacia arriba.
-   horizon-blend:0 (mapAppearance.ts) reduce la franja, y este offset
-   oculta cualquier resto visible del borde del globo. */
+/* Pequeño offset para ocultar artefactos menores del borde del globo */
 .mapboxgl-map {
-  top: -60px !important;
-  height: calc(100% + 60px) !important;
+  top: -8px !important;
+  height: calc(100% + 8px) !important;
 }
 
-/* Ocultar logo de Mapbox */
-.mapboxgl-ctrl-logo {
+/* Ocultar todos los controles/branding de Mapbox */
+.mapboxgl-ctrl-logo,
+.mapboxgl-ctrl-attrib,
+.mapboxgl-ctrl-attrib-inner,
+.mapboxgl-ctrl-bottom-left,
+.mapboxgl-ctrl-bottom-right,
+.mapboxgl-compact-show {
   display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 /* Optimizaciones globales para animaciones */
@@ -77,6 +83,15 @@ body {
   transform: translateZ(0);
   will-change: transform;
   contain: layout style paint;
+}
+
+/* Space background — shooting-star canvas overlay */
+.space-background-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  transition: opacity 1.5s ease;
 }
 
 @keyframes satShimmer {
@@ -169,4 +184,135 @@ body {
 .hover-lift:hover {
   transform: translateY(-1px);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* ── Live Activity Legend ────────────────────────────── */
+.live-activity-legend {
+  position: fixed;
+  bottom: 24px;
+  right: 16px;
+  z-index: 30;
+  background: rgba(10, 10, 30, 0.88);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 10px 14px;
+  min-width: 160px;
+  max-width: 220px;
+  font-family: 'Inter', sans-serif;
+  pointer-events: auto;
+}
+
+.live-legend-title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 8px;
+}
+
+.live-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+}
+
+.live-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.live-legend-gradient {
+  width: 32px;
+  height: 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.live-legend-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  white-space: nowrap;
+}
+
+.live-legend-range {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-left: auto;
+}
+
+.live-legend-weather-subs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-left: 18px;
+  margin-top: 2px;
+  margin-bottom: 2px;
+}
+
+.live-legend-weather-chip {
+  font-size: 9px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(160, 160, 255, 0.15);
+  border: 1px solid rgba(160, 160, 255, 0.25);
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+
+/* ── Satellite Popup ────────────────────────────────── */
+.satellite-popup .mapboxgl-popup-content {
+  background: rgba(10, 10, 30, 0.92);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 10px;
+  padding: 0;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  min-width: 180px;
+}
+.satellite-popup .mapboxgl-popup-tip {
+  border-top-color: rgba(10, 10, 30, 0.92);
+}
+.satellite-popup .mapboxgl-popup-close-button {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 16px;
+  right: 6px;
+  top: 4px;
+}
+.satellite-popup-content {
+  padding: 10px 14px;
+}
+.satellite-popup-content .popup-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffd700;
+  margin-bottom: 6px;
+}
+.satellite-popup-content .popup-body {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.75);
+  line-height: 1.5;
+}
+.satellite-popup-content .popup-meta {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.45);
+}
+.sat-cat-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #fff;
+  padding: 2px 7px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  opacity: 0.9;
 }

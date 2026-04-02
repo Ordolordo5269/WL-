@@ -46,7 +46,7 @@ const SUPPLEMENTAL_NAME_FETCHES: Record<string, string[]> = {
     'CARTOSAT',       // India — optical reconnaissance
     'EGYPTSAT',       // Egypt — observation/military
   ],
-  stations: ['ETALON'],
+  stations: ['LUCH', 'EDRS', 'TIANLIAN'],
   weather: ['ELEKTRO-L'],  // Elektro-L 3/4/5 not in CelesTrak weather group
 };
 
@@ -193,6 +193,43 @@ function inferConstellation(name: string): string {
   return 'sbas'; // Unknown nav satellite → augmentation fallback
 }
 
+// Stations program inference from satellite name patterns
+// Stations: exclude decommissioned satellites and debris
+const STATIONS_EXCLUDED_NORADS = new Set([
+  19548,  // TDRS 3  (1988, decommissioned 2010)
+  21639,  // TDRS 5  (1991, decommissioned 2011)
+  22314,  // TDRS 6  (1993, decommissioned 2022)
+  27651,  // SORCE   (1999, decommissioned Feb 2020)
+  23426,  // LUCH    (Cosmos 1700, 1985, decommissioned)
+  23680,  // LUCH-1  (Cosmos 2054, 1989, decommissioned)
+]);
+// Debris/jettisoned objects pattern — matches ISS OBJECT*, LUCH DEB, FREGAT DEB, etc.
+const STATIONS_DEBRIS_PATTERN = /\bDEB\b|\bOBJECT\b/i;
+
+const STATION_PROGRAM_PATTERNS: [RegExp, string][] = [
+  // ISS — main station body only (modules & visiting vehicles share same orbit = 1 dot on map)
+  [/^ISS \(ZARYA\)$/i, 'iss'],
+  // CSS — main station body only
+  [/^CSS \(TIANHE\)$/i, 'css'],
+  // TDRS relay network
+  [/^TDRS/i, 'tdrs'],
+  // NASA science missions (relay through TDRS)
+  [/^HST$|^TERRA$|^AQUA$|^AURA$|^SWIFT$|^THEMIS|^FGRST|^GPM|^MMS\s|^TIMED$|^NOAA/i, 'science'],
+  // Russian relay
+  [/^LUCH|^OLYMP/i, 'luch'],
+  // European Data Relay
+  [/^EDRS/i, 'edrs'],
+  // Chinese relay
+  [/^TIANLIAN/i, 'tianlian'],
+];
+
+function inferStationProgram(name: string): string {
+  for (const [pattern, program] of STATION_PROGRAM_PATTERNS) {
+    if (pattern.test(name)) return program;
+  }
+  return 'other';
+}
+
 // Country inference from satellite name patterns
 const COUNTRY_PATTERNS: [RegExp, string][] = [
   [/^USA[ -]|^DMSP|^GPS |^GPS-|^GPS ?B|^NAVSTAR|^WGS|^AEHF|^SBIRS|^GSSAP|^MUOS|^NOSS|^DSP|^MILSTAR|^GOES|^NOAA|^SUOMI|^JPSS|^CYGFM|^EWS-G|^TDRS|^TERRA$|^AQUA$|^AURA$|^SWIFT$|^GPM|^MMS |^FGRST|^TIMED$|^SORCE$|^THEMIS|^WAAS/i, 'US'],
@@ -228,6 +265,20 @@ function inferCountry(name: string): string {
   return '';
 }
 
+// Orbit type inference from OMM orbital elements (for classified/analyst satellites)
+function inferOrbitType(omm: any): string {
+  const ecc = omm.ECCENTRICITY ?? 0;
+  const mm = omm.MEAN_MOTION ?? 0;
+  // HEO: high eccentricity (Molniya-type, Tundra, etc.)
+  if (ecc > 0.25) return 'heo';
+  // GEO: ~1 revolution per sidereal day
+  if (mm > 0.9 && mm < 1.1) return 'geo';
+  // LEO: > ~11.25 rev/day corresponds to altitude < ~2,000 km
+  if (mm > 11.25) return 'leo';
+  // MEO: everything in between
+  return 'meo';
+}
+
 interface CachedTLE {
   data: unknown[];
   expiresAt: number;
@@ -236,6 +287,30 @@ interface CachedTLE {
 const tleCache = new Map<string, CachedTLE>();
 // Prevent cache stampede: only one in-flight fetch per group at a time
 const inflightFetches = new Map<string, Promise<unknown[]>>();
+
+// ─── Disk-backed cache (survives server restarts) ────────────────────
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { join } from 'path';
+
+const DISK_CACHE_DIR = join(__dirname, '..', '..', '..', '.tle-cache');
+if (!existsSync(DISK_CACHE_DIR)) mkdirSync(DISK_CACHE_DIR, { recursive: true });
+
+function loadDiskCache(group: string): CachedTLE | null {
+  try {
+    const file = join(DISK_CACHE_DIR, `${group}.json`);
+    if (!existsSync(file)) return null;
+    const raw = JSON.parse(readFileSync(file, 'utf-8'));
+    if (raw?.data?.length > 0) return raw as CachedTLE;
+  } catch { /* corrupt file */ }
+  return null;
+}
+
+function saveDiskCache(group: string, entry: CachedTLE) {
+  try {
+    const file = join(DISK_CACHE_DIR, `${group}.json`);
+    writeFileSync(file, JSON.stringify(entry));
+  } catch { /* best-effort */ }
+}
 
 // ─── OMM JSON → TLE line conversion ────────────────────────────────
 // CelesTrak FORMAT=json returns OMM parameters without TLE_LINE1/TLE_LINE2.
@@ -373,8 +448,12 @@ export async function getSatelliteTLE(req: Request, res: Response) {
     return;
   }
 
-  // Check cache
-  const cached = tleCache.get(group);
+  // Check memory cache, then disk cache
+  let cached = tleCache.get(group);
+  if (!cached) {
+    const disk = loadDiskCache(group);
+    if (disk) { tleCache.set(group, disk); cached = disk; }
+  }
   if (cached && cached.expiresAt > Date.now()) {
     res.set('Cache-Control', 'public, max-age=21600, stale-while-revalidate=7200');
     res.set('X-Cache', 'HIT');
@@ -408,6 +487,11 @@ export async function getSatelliteTLE(req: Request, res: Response) {
         axios.get(`https://celestrak.org/NORAD/elements/gp.php?GROUP=${g}&FORMAT=json`, {
           timeout: 30_000,
           headers: { 'Accept': 'application/json' },
+        }).catch(err => {
+          // CelesTrak returns 403 when data hasn't changed since last fetch — not an error
+          if (err?.response?.status === 403) console.log(`[satellite] CelesTrak 403 for GROUP=${g} (rate-limited, data unchanged)`);
+          else console.warn(`[satellite] Failed to fetch GROUP=${g}:`, err?.message);
+          return { data: [] };
         })
       )
     );
@@ -444,6 +528,10 @@ export async function getSatelliteTLE(req: Request, res: Response) {
         }
         if (group === 'weather' && WEATHER_EXCLUDED_NORADS.has(id)) continue;
         if (group === 'navigation' && NAVIGATION_EXCLUDED_NORADS.has(id)) continue;
+        if (group === 'stations') {
+          if (STATIONS_EXCLUDED_NORADS.has(id)) continue;
+          if (STATIONS_DEBRIS_PATTERN.test(omm.OBJECT_NAME || '')) continue;
+        }
         seen.add(id);
         allOmm.push(omm);
       }
@@ -465,6 +553,10 @@ export async function getSatelliteTLE(req: Request, res: Response) {
         }
         if (group === 'weather' && WEATHER_EXCLUDED_NORADS.has(id)) continue;
         if (group === 'navigation' && NAVIGATION_EXCLUDED_NORADS.has(id)) continue;
+        if (group === 'stations') {
+          if (STATIONS_EXCLUDED_NORADS.has(id)) continue;
+          if (STATIONS_DEBRIS_PATTERN.test(name)) continue;
+        }
         seen.add(id);
         allOmm.push(omm);
       }
@@ -483,14 +575,26 @@ export async function getSatelliteTLE(req: Request, res: Response) {
           COUNTRY: inferCountry(name),
           ...(group === 'navigation' ? { CONSTELLATION: inferConstellation(name) }
             : group === 'weather' ? { CONSTELLATION: inferWeatherProgram(name) }
+            : group === 'stations' ? { CONSTELLATION: inferStationProgram(name) }
+            : group === 'classified' ? { CONSTELLATION: inferOrbitType(omm) }
             : {}),
           TLE_LINE1: tle.TLE_LINE1,
           TLE_LINE2: tle.TLE_LINE2,
         };
       })
-      .filter(Boolean);
+      .filter(Boolean)
+      // Stations: remove cubesats deployed from ISS/CSS that aren't station/relay satellites
+      .filter((entry: any) => !(group === 'stations' && entry.CONSTELLATION === 'other'));
 
-    tleCache.set(group, { data, expiresAt: Date.now() + CACHE_TTL_MS });
+    // If all sub-groups were rate-limited (403) we get 0 results — serve stale cache
+    if (data.length === 0 && cached && cached.data.length > 0) {
+      console.log(`[satellite] All sub-groups empty for ${group}, serving stale cache (${(cached.data as any[]).length} entries)`);
+      return cached.data as unknown[];
+    }
+
+    const cacheEntry = { data, expiresAt: Date.now() + CACHE_TTL_MS };
+    tleCache.set(group, cacheEntry);
+    if (data.length > 0) saveDiskCache(group, cacheEntry); // only save non-empty to disk
     return data;
   } catch (err: any) {
     // Serve stale cache if CelesTrak is down

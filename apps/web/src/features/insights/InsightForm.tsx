@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { Send, Lock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import type { ConflictV2 } from '../conflicts/types';
 import type { CountryEntity } from './useCountryEntities';
 
 interface Props {
-  conflicts: ConflictV2[];
+  conflicts: Array<{ id: string; name: string }>;
   countries: CountryEntity[];
   isLoading: boolean;
   onSubmit: (data: { entityType: 'conflict' | 'country'; entityId: string; question?: string }) => void;

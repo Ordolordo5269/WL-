@@ -1,4 +1,44 @@
-// ── API v2 response types ──
+export type ConflictSeverity = 'critical' | 'high' | 'medium' | 'low';
+
+export interface ConflictEventProperties {
+  id: string;
+  date: string;
+  eventType: string;
+  subEventType: string;
+  disorderType: string;
+  actor1: string;
+  actor2: string;
+  country: string;
+  iso: string;
+  region: string;
+  fatalities: number;
+  severity: ConflictSeverity;
+  notes: string;
+}
+
+export interface ConflictFeature {
+  type: 'Feature';
+  geometry: { type: 'Point'; coordinates: [number, number] };
+  properties: ConflictEventProperties;
+}
+
+export interface ConflictSummary {
+  country: string;
+  iso: string;
+  totalEvents: number;
+  totalFatalities: number;
+  severity: ConflictSeverity;
+  active: boolean;
+  lastEventDate: string;
+  lat: number;
+  lng: number;
+}
+
+export interface ConflictsResponse {
+  type: 'FeatureCollection';
+  features: ConflictFeature[];
+  summary: ConflictSummary[];
+}
 
 export type ConflictStatus = 'WAR' | 'WARM' | 'FROZEN' | 'IMPROVING' | 'RESOLVED' | 'ONE_SIDED';
 
@@ -92,6 +132,7 @@ export interface ConflictV2 {
   slug: string;
   name: string;
   country: string;
+  iso: string;
   region: string;
   conflictType: string;
   description: string;

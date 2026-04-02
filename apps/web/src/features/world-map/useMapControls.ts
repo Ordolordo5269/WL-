@@ -162,46 +162,49 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
     (document as any).__wl_map_comp?.setNaturalLod?.(lod);
   }, []);
 
+  const handleSetLedHalo = useCallback((enabled: boolean) => {
+    mapRef.current?.setLedHalo?.(enabled);
+  }, []);
+
+  const handleSetLedHaloSpeed = useCallback((ms: number) => {
+    mapRef.current?.setLedHaloSpeed?.(ms);
+  }, []);
+
   const handleToggleEarthOverlay = useCallback((type: NasaOverlayType, enabled: boolean) => {
-    if (type === 'night-lights') {
-      // Toggling night-lights resets ALL other overlays — it's the primary
-      // Satellite Intel overlay, so Show = clean start, Hide = clean exit.
+    setEarthOverlays(prev => {
+      const next = { ...prev, [type]: enabled };
+      if (enabled) {
+        setLastActivatedOverlay(type);
+      } else if (type === lastActivatedOverlay) {
+        const fallback = NASA_EARTH_OVERLAY_KEYS.find(k => k !== type && next[k]) ?? null;
+        setLastActivatedOverlay(fallback);
+      }
+      return next;
+    });
+    saveEL(type, enabled);
+    (document as any).__wl_map_comp?.setNasaOverlayEnabled?.(type, enabled);
+  }, [lastActivatedOverlay]);
+
+  // Satellite Intel immersive mode — separate from individual overlay toggles.
+  // Activates Earth at Night base + dark style + atmosphere.
+  // Deactivation clears ALL overlays and restores previous style.
+  const handleToggleSatelliteIntelMode = useCallback((enabled: boolean) => {
+    if (enabled) {
+      mapRef.current?.setSatelliteIntelMode?.(true);
+    } else {
+      // Deactivate all overlay state
       setEarthOverlays(prev => {
         const next = { ...prev };
         for (const k of NASA_EARTH_OVERLAY_KEYS) {
-          if (k === 'night-lights') { next[k] = enabled; saveEL(k, enabled); }
-          else { next[k] = false; saveEL(k, false); }
+          next[k] = false;
+          saveEL(k, false);
         }
         return next;
       });
-      setLastActivatedOverlay(enabled ? 'night-lights' : null);
-      // Remove tiles of other overlays from the map
-      if (!enabled) {
-        // handled by setNasaOverlayEnabled internally
-      } else {
-        // Deactivate other overlays on the map before activating night-lights
-        for (const k of NASA_EARTH_OVERLAY_KEYS) {
-          if (k !== 'night-lights') {
-            (document as any).__wl_map_comp?.setNasaOverlayEnabled?.(k, false);
-          }
-        }
-      }
-    } else {
-      setEarthOverlays(prev => {
-        const next = { ...prev, [type]: enabled };
-        if (enabled) {
-          setLastActivatedOverlay(type);
-        } else if (type === lastActivatedOverlay) {
-          const fallback = NASA_EARTH_OVERLAY_KEYS.find(k => k !== type && next[k]) ?? null;
-          setLastActivatedOverlay(fallback);
-        }
-        return next;
-      });
-      if (!enabled) saveEL(type, false);
-      if (enabled) saveEL(type, true);
+      setLastActivatedOverlay(null);
+      mapRef.current?.setSatelliteIntelMode?.(false);
     }
-    (document as any).__wl_map_comp?.setNasaOverlayEnabled?.(type, enabled);
-  }, [lastActivatedOverlay]);
+  }, []);
 
   const handleSetOrganizationIsoFilter = useCallback((iso3: string[], color?: string) => {
     setOrgIsoFilter(iso3);
@@ -210,59 +213,32 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
   }, []);
 
   // Atomic transition: History Mode → Satellite Intel
-  // Disables history mode WITHOUT restoring the intermediate base map,
-  // then pre-seeds the night-lights restore state with the original (pre-History) style
-  // so that leaving Satellite Intel later brings the user back to their original globe.
   const handleHistoryToSatellite = useCallback(() => {
     const prev = preHistoryStateRef.current;
-    // Disable History Mode layers/UI but skip restoring the base map style
-    // (Satellite Intel will set its own 'dark' style immediately)
     setHistoryEnabled(false);
     mapRef.current?.setHistoryEnabled?.(false);
-    // Disable minimal mode BEFORE activating night-lights so that
-    // reinitializeInteractiveLayers (called inside applyImmersive) sees the
-    // correct minimalModeOn=false and doesn't hide base features.
     mapRef.current?.setMinimalMode?.(false);
-    // Stop the History Mode rotation — Satellite Intel doesn't auto-rotate
     mapRef.current?.setAutoRotate?.(false);
     preHistoryStateRef.current = null;
 
-    // Pre-seed the night-lights restore state with the original pre-History style
     if (prev) {
       mapRef.current?.setNightLightsPrevStyleOverride?.(prev.baseMap, 'default', prev.starIntensity);
     }
 
-    // Activate night-lights overlay (this will switch to 'dark' + immersive mode).
-    // Note: the style change to 'dark' is async — applyImmersive runs on style.load
-    // and calls reinitializeInteractiveLayers which will re-add country layers.
-    handleToggleEarthOverlay('night-lights' as NasaOverlayType, true);
-  }, [handleToggleEarthOverlay]);
+    handleToggleSatelliteIntelMode(true);
+  }, [handleToggleSatelliteIntelMode]);
 
   // Atomic transition: Satellite Intel → History Mode
-  // Reads the original pre-Satellite style, clears night-lights restore state so
-  // deactivation won't trigger a competing async style change, deactivates all
-  // overlays, then enters History Mode with the original style saved for later restore.
   const handleSatelliteToHistory = useCallback(() => {
-    // Read the user's original style that was saved when night-lights was activated
     const nlPrev = mapRef.current?.getNightLightsPrevStyle?.();
-    // Clear it so the overlay deactivation below won't start an async style change
     mapRef.current?.clearNightLightsPrevStyle?.();
 
-    // Deactivate all overlays (tiles removed, but no style.load race)
-    if (earthOverlays) {
-      for (const [key, active] of Object.entries(earthOverlays)) {
-        if (active) {
-          handleToggleEarthOverlay(key as NasaOverlayType, false);
-        }
-      }
-    }
+    handleToggleSatelliteIntelMode(false);
 
-    // Activate History Mode — directly switch to navigation-day
     setHistoryEnabled(true);
     setHistoryYear(null);
     mapRef.current?.setHistoryEnabled?.(true);
 
-    // Save the user's original style (pre-Satellite) so exiting History restores it
     const originalStyle = nlPrev?.style ?? 'night';
     const originalStar = nlPrev?.star ?? 0.6;
     preHistoryStateRef.current = {
@@ -272,13 +248,11 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
       starIntensity: originalStar,
     };
 
-    // Skip fade so the globe stays visible and rotation is immediately
-    // apparent while textures load — same feel as History→Satellite.
     mapRef.current?.setBaseMapStyle?.('navigation-day', { skipFade: true });
     mapRef.current?.setRotateSpeed?.(1);
     mapRef.current?.setStarIntensity?.(0.9);
     mapRef.current?.setAutoRotate?.(true);
-  }, [earthOverlays, handleToggleEarthOverlay]);
+  }, [handleToggleSatelliteIntelMode]);
 
   const handleToggleHistoryMode = useCallback((enabled: boolean, opts?: { skipRestore?: boolean }) => {
     setHistoryEnabled(enabled);
@@ -349,7 +323,8 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
     handleToggleFaultLinesLayer, handleToggleDesertsLayer,
     handleSetOrganizationIsoFilter,
     handleToggleHistoryMode, handleSetHistoryYear, handleResetHistoryPresentation,
+    handleSetLedHalo, handleSetLedHaloSpeed,
     handleHistoryToSatellite, handleSatelliteToHistory,
-    earthOverlays, handleToggleEarthOverlay, lastActivatedOverlay,
+    earthOverlays, handleToggleEarthOverlay, lastActivatedOverlay, handleToggleSatelliteIntelMode,
   };
 }

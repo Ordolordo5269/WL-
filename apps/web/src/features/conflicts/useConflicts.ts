@@ -1,11 +1,7 @@
+import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { http } from '../../lib/http';
-import type { ConflictV2, ConflictFiltersParams } from './types';
-
-interface ApiResponse {
-  data: ConflictV2[];
-  count: number;
-}
+import { conflictApi } from './api';
+import type { ConflictFeature, ConflictSummary } from './types';
 
 export interface ConflictsResult {
   conflicts: ConflictV2[];

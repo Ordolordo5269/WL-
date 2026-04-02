@@ -2,9 +2,11 @@ import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import InternationalOrganizationsPanel from './InternationalOrganizationsPanel';
 import StatisticsPanel from './StatisticsPanel';
 import { AVAILABLE_HISTORY_YEARS, snapToAvailableYear } from '../../utils/historical-years';
-import { Crosshair, Settings, Info, Globe, Users, Users2, BarChart3, Map, User, GitCompare, Satellite } from 'lucide-react';
+import { Crosshair, Settings, Info, Globe, Users, Users2, BarChart3, Map, User, GitCompare, Radio, Satellite } from 'lucide-react';
+import ConflictPanel from '../conflicts/ConflictPanel';
+import type { ConflictSummary, ConflictFeature } from '../conflicts/types';
 import { type NasaOverlayType, NASA_EARTH_OVERLAYS, NASA_EARTH_OVERLAY_KEYS, prefetchNightLightsTiles, getNasaObservationDate } from './map/mapAppearance';
-import { MILITARY_COUNTRY_COLORS, GNSS_CONSTELLATION_COLORS, WEATHER_PROGRAM_COLORS } from './map/satellite-visualization';
+import { MILITARY_COUNTRY_COLORS, CLASSIFIED_ORBIT_COLORS, GNSS_CONSTELLATION_COLORS, WEATHER_PROGRAM_COLORS, STATION_PROGRAM_COLORS } from './map/satellite-visualization';
 import { COUNTRY_FLAGS, COUNTRY_NAMES } from './map/satellite-database';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -12,11 +14,11 @@ import { useSatelliteTracking, type SatCategory } from './useSatelliteTracking';
 import type { ChoroplethState } from './useChoropleth';
 
 const SAT_CATEGORY_META: Record<SatCategory, { label: string; count: string; color: string }> = {
-  military:   { label: 'Military & Intel',  count: '~168', color: '#ff4444' },
-  classified: { label: 'Classified',        count: '~495', color: '#ff8800' },
+  military:   { label: 'Military & Intel',  count: '~171', color: '#ff4444' },
+  classified: { label: 'Classified',        count: '~497', color: '#ff8800' },
   navigation: { label: 'Navigation (GNSS)', count: '~168', color: '#ffaa22' },
   weather:    { label: 'Weather & SAR',     count: '~63',  color: '#44aaff' },
-  stations:   { label: 'Stations & Relay',  count: '~42',  color: '#d4a0ff' },
+  stations:   { label: 'Stations & Relay',  count: '~39',  color: '#d4a0ff' },
   starlink:   { label: 'Starlink',          count: '~10,000', color: '#00ff88' },
 };
 
@@ -45,6 +47,16 @@ const WEATHER_PROGRAM_META: Record<string, { label: string; flag: string }> = {
   kompsat:  { label: 'GEO-KOMPSAT',   flag: '🇰🇷' },
 };
 
+const STATION_PROGRAM_META: Record<string, { label: string; flag: string }> = {
+  iss:      { label: 'ISS',                  flag: '🌍' },
+  css:      { label: 'China Space Station',  flag: '🇨🇳' },
+  tdrs:     { label: 'TDRS',                 flag: '🇺🇸' },
+  science:  { label: 'NASA Science',         flag: '🇺🇸' },
+  luch:     { label: 'LUCH / Olymp',         flag: '🇷🇺' },
+  edrs:     { label: 'EDRS',                 flag: '🇪🇺' },
+  tianlian: { label: 'Tianlian',             flag: '🇨🇳' },
+};
+
 const LANDING_ABOUT_URL = `${import.meta.env.VITE_LANDING_URL ?? (import.meta.env.DEV ? 'http://localhost:5174' : '')}/about`;
 
 interface LeftSidebarProps {
@@ -65,6 +77,8 @@ interface LeftSidebarProps {
   onSetMinimalMode?: (v: boolean) => void;
   onSetAutoRotate?: (v: boolean) => void;
   onSetRotateSpeed?: (degPerSec: number) => void;
+  onSetLedHalo?: (v: boolean) => void;
+  onSetLedHaloSpeed?: (ms: number) => void;
   choropleth?: ChoroplethState;
   // History Mode controls
   onToggleHistoryMode?: (enabled: boolean, opts?: { skipRestore?: boolean }) => void;
@@ -96,9 +110,38 @@ interface LeftSidebarProps {
   // Earth Data (NASA) overlays
   earthOverlays?: Record<NasaOverlayType, boolean>;
   onToggleEarthOverlay?: (type: NasaOverlayType, enabled: boolean) => void;
+  onToggleSatelliteIntelMode?: (enabled: boolean) => void;
   countries?: Array<{ iso3: string; name: string; flagUrl?: string }>;
   countriesLoading?: boolean;
   onOpenCompareCountries?: () => void;
+  // Live Activity layers
+  onToggleEarthquakes?: (enabled: boolean) => void;
+  earthquakesEnabled?: boolean;
+  onToggleFires?: (enabled: boolean) => void;
+  firesEnabled?: boolean;
+  onToggleRadar?: (enabled: boolean) => void;
+  radarEnabled?: boolean;
+  onToggleAirTraffic?: (enabled: boolean) => void;
+  airTrafficEnabled?: boolean;
+  onToggleMarineTraffic?: (enabled: boolean) => void;
+  marineTrafficEnabled?: boolean;
+  onToggleSatellites?: (enabled: boolean) => void;
+  satellitesEnabled?: boolean;
+  onToggleWeather?: (enabled: boolean) => void;
+  weatherEnabled?: boolean;
+  weatherLayers?: string[];
+  onToggleWeatherLayer?: (layer: string) => void;
+  // Conflict Tracker
+  onToggleConflicts?: (enabled: boolean) => void;
+  conflictsEnabled?: boolean;
+  conflictsLoading?: boolean;
+  conflictSummaries?: ConflictSummary[];
+  conflictSelectedCountry?: string | null;
+  onConflictSelectCountry?: (country: string | null) => void;
+  conflictCountryEvents?: ConflictFeature[];
+  conflictSelectedEvent?: ConflictFeature | null;
+  onConflictSelectEvent?: (event: ConflictFeature | null) => void;
+  onConflictFlyTo?: (lat: number, lng: number) => void;
   onTrackingCategoriesChange?: (cats: Record<SatCategory, boolean>) => void;
 }
 
@@ -110,13 +153,16 @@ interface MenuItem {
   iconBg?: string;
 }
 
-export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConflictTracker, onOpenDemographics, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetGlobeTheme, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, choropleth, onToggleHistoryMode, onSetHistoryYear, onResetHistoryPresentation, historyEnabled: _historyEnabled = false, historyYear = null, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, naturalLod = 'auto', onSetNaturalLod, earthOverlays, onToggleEarthOverlay, onHistoryToSatellite, onSatelliteToHistory, onTrackingCategoriesChange }: LeftSidebarProps) {
+export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConflictTracker, onOpenDemographics, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetGlobeTheme, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, onSetLedHalo, onSetLedHaloSpeed, choropleth, onToggleHistoryMode, onSetHistoryYear, onResetHistoryPresentation, historyEnabled: _historyEnabled = false, historyYear = null, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, naturalLod = 'auto', onSetNaturalLod, earthOverlays, onToggleEarthOverlay, onToggleSatelliteIntelMode, onHistoryToSatellite, onSatelliteToHistory, onToggleEarthquakes, earthquakesEnabled = false, onToggleFires, firesEnabled = false, onToggleRadar, radarEnabled = false, onToggleAirTraffic, airTrafficEnabled = false, onToggleMarineTraffic, marineTrafficEnabled = false, onToggleSatellites, satellitesEnabled = false, onToggleWeather, weatherEnabled = false, weatherLayers = [], onToggleWeatherLayer, onToggleConflicts, conflictsEnabled = false, conflictsLoading = false, conflictSummaries = [], conflictSelectedCountry = null, onConflictSelectCountry, conflictCountryEvents = [], conflictSelectedEvent = null, onConflictSelectEvent, onConflictFlyTo, onTrackingCategoriesChange }: LeftSidebarProps) {
   const [activeItem, setActiveItem] = useState<string>('home');
+  const [conflictView, setConflictView] = useState(false);
+  const [physicalSections, setPhysicalSections] = useState({ geo: true, climate: true, terrain: true });
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
 
   // ── Satellite Live Tracking ──
   const satTracking = useSatelliteTracking();
+  const lastFeaturesRef = useRef<any[]>([]);
   const [hiddenCountries, setHiddenCountries] = useState<Set<string>>(new Set());
   const hiddenCountriesRef = useRef<Set<string>>(hiddenCountries);
   hiddenCountriesRef.current = hiddenCountries;
@@ -131,6 +177,16 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
   const hiddenWeatherProgramsRef = useRef<Set<string>>(hiddenWeatherPrograms);
   hiddenWeatherProgramsRef.current = hiddenWeatherPrograms;
   const [weatherFilterOpen, setWeatherFilterOpen] = useState(false);
+
+  const [hiddenStationPrograms, setHiddenStationPrograms] = useState<Set<string>>(new Set());
+  const hiddenStationProgramsRef = useRef<Set<string>>(hiddenStationPrograms);
+  hiddenStationProgramsRef.current = hiddenStationPrograms;
+  const [stationFilterOpen, setStationFilterOpen] = useState(false);
+
+  const [hiddenClassifiedOrbits, setHiddenClassifiedOrbits] = useState<Set<string>>(new Set());
+  const hiddenClassifiedOrbitsRef = useRef<Set<string>>(hiddenClassifiedOrbits);
+  hiddenClassifiedOrbitsRef.current = hiddenClassifiedOrbits;
+  const [classifiedOrbitFilterOpen, setClassifiedOrbitFilterOpen] = useState(false);
 
   const toggleCountryFilter = useCallback((code: string) => {
     setHiddenCountries(prev => {
@@ -156,33 +212,67 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
     });
   }, []);
 
+  const toggleStationProgramFilter = useCallback((key: string) => {
+    setHiddenStationPrograms(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }, []);
+
+  const toggleClassifiedOrbitFilter = useCallback((key: string) => {
+    setHiddenClassifiedOrbits(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }, []);
+
   // Sync tracking categories up to App.tsx for legend rendering
   useEffect(() => {
     onTrackingCategoriesChange?.(satTracking.categories);
   }, [satTracking.categories, onTrackingCategoriesChange]);
+
+  // Shared filter logic — applies all active sub-filters to a feature array
+  const applyFilters = useCallback((features: any[]) => {
+    const hiddenC = hiddenCountriesRef.current;
+    const hiddenCC = hiddenClassifiedOrbitsRef.current;
+    const hiddenCon = hiddenConstellationsRef.current;
+    const hiddenWP = hiddenWeatherProgramsRef.current;
+    const hiddenSP = hiddenStationProgramsRef.current;
+    let filtered = features;
+    if (hiddenC.size > 0)
+      filtered = filtered.filter((f: any) => !(f.properties?.category === 'military' && hiddenC.has(f.properties?.country)));
+    if (hiddenCC.size > 0)
+      filtered = filtered.filter((f: any) => !(f.properties?.category === 'classified' && hiddenCC.has(f.properties?.constellation)));
+    if (hiddenCon.size > 0)
+      filtered = filtered.filter((f: any) => !(f.properties?.category === 'navigation' && hiddenCon.has(f.properties?.constellation)));
+    if (hiddenWP.size > 0) {
+      const knownPrograms = Object.keys(WEATHER_PROGRAM_META);
+      filtered = filtered.filter((f: any) => {
+        if (f.properties?.category !== 'weather') return true;
+        const prog = f.properties?.constellation;
+        return knownPrograms.includes(prog) && !hiddenWP.has(prog);
+      });
+    }
+    if (hiddenSP.size > 0) {
+      const knownPrograms = Object.keys(STATION_PROGRAM_META);
+      filtered = filtered.filter((f: any) => {
+        if (f.properties?.category !== 'stations') return true;
+        const prog = f.properties?.constellation;
+        return knownPrograms.includes(prog) && !hiddenSP.has(prog);
+      });
+    }
+    return filtered;
+  }, []);
 
   // Bridge: wire worker output to map layers via __wl_map_comp
   useEffect(() => {
     const mapComp = () => (document as any).__wl_map_comp;
 
     satTracking.setOnPositions((features: any[]) => {
-      const hiddenC = hiddenCountriesRef.current;
-      const hiddenCon = hiddenConstellationsRef.current;
-      const hiddenWP = hiddenWeatherProgramsRef.current;
-      let filtered = features;
-      if (hiddenC.size > 0)
-        filtered = filtered.filter((f: any) => !(f.properties?.category === 'military' && hiddenC.has(f.properties?.country)));
-      if (hiddenCon.size > 0)
-        filtered = filtered.filter((f: any) => !(f.properties?.category === 'navigation' && hiddenCon.has(f.properties?.constellation)));
-      if (hiddenWP.size > 0) {
-        const knownPrograms = Object.keys(WEATHER_PROGRAM_META);
-        filtered = filtered.filter((f: any) => {
-          if (f.properties?.category !== 'weather') return true;
-          const prog = f.properties?.constellation;
-          // Hide if program is explicitly hidden OR not a known program (e.g. 'other')
-          return knownPrograms.includes(prog) && !hiddenWP.has(prog);
-        });
-      }
+      lastFeaturesRef.current = features;
+      const filtered = applyFilters(features);
       mapComp()?.updateSatellitePositions?.(filtered);
       mapComp()?.updateSatellitePOVPositions?.(filtered);
       // Emit live data for POV HUD
@@ -206,10 +296,22 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
     };
   }, []);
 
+  // Immediately re-filter when any sub-filter changes (don't wait for next worker tick)
+  useEffect(() => {
+    if (lastFeaturesRef.current.length === 0) return;
+    const mapComp = (document as any).__wl_map_comp;
+    const filtered = applyFilters(lastFeaturesRef.current);
+    mapComp?.updateSatellitePositions?.(filtered);
+    mapComp?.updateSatellitePOVPositions?.(filtered);
+  }, [hiddenCountries, hiddenClassifiedOrbits, hiddenConstellations, hiddenWeatherPrograms, hiddenStationPrograms, applyFilters]);
+
   const handleToggleSatCategory = useCallback(async (cat: SatCategory, enabled: boolean) => {
     const mapComp = (document as any).__wl_map_comp;
     if (enabled) {
       mapComp?.setSatelliteTrackingLayers?.(true);
+      // Start immersive globe rotation on first overlay activation
+      mapComp?.setRotateSpeed?.(1);
+      mapComp?.setAutoRotate?.(true);
     } else {
       // Always remove ground track when toggling a category off
       mapComp?.removeSatelliteGroundTrack?.();
@@ -218,24 +320,23 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
     const anyStillOn = Object.entries({ ...satTracking.categories, [cat]: enabled }).some(([, v]) => v);
     if (!anyStillOn) {
       mapComp?.setSatelliteTrackingLayers?.(false);
+      mapComp?.setAutoRotate?.(false);
     }
   }, [satTracking]);
 
   // Cleanup satellite tracking when leaving Satellite Intel
   const cleanupSatelliteTracking = useCallback(() => {
     satTracking.cleanup();
-    (document as any).__wl_map_comp?.setSatelliteTrackingLayers?.(false);
+    const mapComp = (document as any).__wl_map_comp;
+    mapComp?.setSatelliteTrackingLayers?.(false);
+    mapComp?.setAutoRotate?.(false);
   }, [satTracking]);
 
-  // Deactivate all active earth overlays + satellite tracking when leaving Satellite Intel
+  // Deactivate immersive mode + all earth overlays + satellite tracking when leaving Satellite Intel
   const deactivateAllOverlays = useCallback(() => {
-    if (earthOverlays && onToggleEarthOverlay) {
-      for (const [key, active] of Object.entries(earthOverlays)) {
-        if (active) onToggleEarthOverlay(key as NasaOverlayType, false);
-      }
-    }
+    onToggleSatelliteIntelMode?.(false);
     cleanupSatelliteTracking();
-  }, [earthOverlays, onToggleEarthOverlay, cleanupSatelliteTracking]);
+  }, [onToggleSatelliteIntelMode, cleanupSatelliteTracking]);
 
   // Deactivate all active natural/physical layers when leaving Physical Layers
   const deactivateAllNaturalLayers = useCallback(() => {
@@ -281,6 +382,8 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
   const [terrainEnabled, setTerrainEnabled] = useState<boolean>(false);
   const [terrainEx, setTerrainEx] = useState<number>(1);
   const [autoRotate, setAutoRotate] = useState<boolean>(false);
+  const [ledHaloEnabled, setLedHaloEnabled] = useState<boolean>(false);
+  const [ledHaloSpeed, setLedHaloSpeed] = useState<number>(50);
   const [starIntensity, setStarIntensityLocal] = useState<number>(0.6);
   const yearScrollRef = useRef<HTMLDivElement | null>(null);
   const wheelRafRef = useRef<number | null>(null);
@@ -310,16 +413,22 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
 
   const menuItems: MenuItem[] = useMemo(() => [
     {
-      icon: <Crosshair className="h-5 w-5 text-red-400" />,
-      label: 'Conflict Tracker',
-      href: '#home',
-      iconBg: 'rgba(239, 68, 68, 0.12)'
-    },
-    {
       icon: <Globe className="h-5 w-5 text-cyan-400" />,
       label: 'History Mode',
       href: '#history',
       iconBg: 'rgba(6, 182, 212, 0.12)'
+    },
+    {
+      icon: <Crosshair className="h-5 w-5 text-red-400" />,
+      label: 'Conflict Tracker',
+      href: '#conflicts',
+      iconBg: 'rgba(239, 68, 68, 0.12)'
+    },
+    {
+      icon: <Radio className="h-5 w-5 text-orange-400" />,
+      label: 'Live Activity',
+      href: '#live',
+      iconBg: 'rgba(251, 146, 60, 0.12)'
     },
     {
       icon: <Map className="h-5 w-5 text-green-400" />,
@@ -390,6 +499,12 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
       if (item.onClick) {
         item.onClick();
       }
+      return;
+    }
+
+    // Conflict Tracker opens its own dedicated view
+    if (item.label === 'Conflict Tracker') {
+      setConflictView(true);
       return;
     }
 
@@ -468,12 +583,10 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
 
     setActiveItem(itemKey);
 
-    // Prefetch + auto-activate Night Lights when entering Satellite Intel
+    // Activate Earth at Night immersive mode when entering Satellite Intel
     if (item.label === 'Satellite Intel') {
       prefetchNightLightsTiles();
-      if (!earthOverlays?.['night-lights']) {
-        onToggleEarthOverlay?.('night-lights', true);
-      }
+      onToggleSatelliteIntelMode?.(true);
     }
 
     if (item.label === 'Conflict Tracker' && onOpenConflictTracker) {
@@ -500,13 +613,30 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
     if (item.onClick) {
       item.onClick();
     }
-  }, [activeItem, earthOverlays, onToggleEarthOverlay, deactivateAllOverlays, deactivateAllStats, deactivateAllNaturalLayers, deactivateOrganizations, onOpenConflictTracker, onOpenDemographics, onOpenCompareCountries, onToggleHistoryMode, onHistoryToSatellite, onSatelliteToHistory]);
+  }, [activeItem, onToggleSatelliteIntelMode, earthOverlays, onToggleEarthOverlay, deactivateAllOverlays, deactivateAllStats, deactivateAllNaturalLayers, deactivateOrganizations, onOpenConflictTracker, onOpenDemographics, onOpenCompareCountries, onToggleHistoryMode, onHistoryToSatellite, onSatelliteToHistory]);
 
   return (
     <>
       {isOpen && (
             <div className="left-sidebar">
 
+              {/* ── Conflict Tracker full-view ── */}
+              {conflictView ? (
+                <ConflictPanel
+                  summaries={conflictSummaries}
+                  selectedCountry={conflictSelectedCountry}
+                  onSelectCountry={onConflictSelectCountry ?? (() => {})}
+                  countryEvents={conflictCountryEvents}
+                  selectedEvent={conflictSelectedEvent}
+                  onSelectEvent={onConflictSelectEvent ?? (() => {})}
+                  onFlyTo={onConflictFlyTo ?? (() => {})}
+                  isLoading={conflictsLoading}
+                  enabled={conflictsEnabled}
+                  onToggle={onToggleConflicts ?? (() => {})}
+                  onBack={() => setConflictView(false)}
+                />
+              ) : (
+              <>
               <div className="left-sidebar-header mb-4" style={{ minHeight: '64px' }}>
                 <h1 className="left-sidebar-title">WorldLore</h1>
               </div>
@@ -523,7 +653,7 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
                           handleItemClick(item);
                         }}
                         className={`left-sidebar-item ${
-                          activeItem === item.label.toLowerCase() ? 'active' : ''
+                          activeItem === item.label.toLowerCase() || (item.label === 'Conflict Tracker' && conflictView) ? 'active' : ''
                         }`}
                       >
                         <div className="left-sidebar-item-icon" style={{ background: item.iconBg }}>
@@ -532,143 +662,160 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
                         <span className="left-sidebar-item-label">
                           {item.label}
                         </span>
+                        {item.label === 'Conflict Tracker' && conflictsEnabled && (
+                          <span className="conflict-live-dot" />
+                        )}
                         {activeItem === item.label.toLowerCase() && (
                           <div className="left-sidebar-item-indicator" />
                         )}
                       </a>
 
+                      {item.label === 'Live Activity' && activeItem === 'live activity' && (
+                        <div className="mt-3 ml-12 mr-3 settings-panel" aria-label="Live Activity">
+                          <div className="settings-subtitle" style={{ marginBottom: 8 }}>
+                            Real-time tracking of moving objects.
+                          </div>
+                          <div className="layer-row">
+                            <span className={`layer-row-dot ${radarEnabled ? 'on' : ''}`} />
+                            <span className="layer-row-name">Weather Radar</span>
+                            <button className={`toggle-switch ${radarEnabled ? 'on' : ''}`} onClick={() => onToggleRadar?.(!radarEnabled)} aria-label="Toggle radar" />
+                          </div>
+                          <div className="layer-row">
+                            <span className={`layer-row-dot ${airTrafficEnabled ? 'on' : ''}`} />
+                            <span className="layer-row-name">Air Traffic</span>
+                            <button className={`toggle-switch ${airTrafficEnabled ? 'on' : ''}`} onClick={() => onToggleAirTraffic?.(!airTrafficEnabled)} aria-label="Toggle air traffic" />
+                          </div>
+                          <div className="layer-row">
+                            <span className={`layer-row-dot ${marineTrafficEnabled ? 'on' : ''}`} />
+                            <span className="layer-row-name">Marine Traffic</span>
+                            <button className={`toggle-switch ${marineTrafficEnabled ? 'on' : ''}`} onClick={() => onToggleMarineTraffic?.(!marineTrafficEnabled)} aria-label="Toggle marine traffic" />
+                          </div>
+                          <div className="layer-row">
+                            <span className={`layer-row-dot ${satellitesEnabled ? 'on' : ''}`} />
+                            <span className="layer-row-name">Satellites</span>
+                            <button className={`toggle-switch ${satellitesEnabled ? 'on' : ''}`} onClick={() => onToggleSatellites?.(!satellitesEnabled)} aria-label="Toggle satellites" />
+                          </div>
+                        </div>
+                      )}
+
                       {item.label === 'Physical Layers' && activeItem === 'physical layers' && (
                         <div className="mt-3 ml-12 mr-3 settings-panel" aria-label="Physical Layers">
-                          <div className="section-header" style={{ marginBottom: 8 }}>
-                            <h3>Physical Layers</h3>
+                          {/* ── GEOPHYSICAL ── */}
+                          <div className="layer-section">
+                            <div className="layer-section-header" onClick={() => setPhysicalSections(p => ({ ...p, geo: !p.geo }))}>
+                              <span className="layer-section-dot" style={{ background: '#ef4444', color: '#ef4444' }} />
+                              <span className="layer-section-label">Geophysical</span>
+                              <svg className={`layer-section-chevron ${physicalSections.geo ? 'open' : ''}`} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" /></svg>
+                            </div>
+                            {physicalSections.geo && (<>
+                              <div className="layer-row">
+                                <span className={`layer-row-dot ${earthquakesEnabled ? 'on' : ''}`} />
+                                <span className="layer-row-name">Earthquakes</span>
+                                <button className={`toggle-switch ${earthquakesEnabled ? 'on' : ''}`} onClick={() => onToggleEarthquakes?.(!earthquakesEnabled)} aria-label="Toggle earthquakes" />
+                              </div>
+                              <div className="layer-row">
+                                <span className={`layer-row-dot ${volcanoesEnabled ? 'on' : ''}`} />
+                                <span className="layer-row-name">Volcanoes</span>
+                                <button className={`toggle-switch ${volcanoesEnabled ? 'on' : ''}`} onClick={() => onToggleVolcanoesLayer?.(!volcanoesEnabled)} aria-label="Toggle volcanoes" />
+                              </div>
+                              <div className="layer-row">
+                                <span className={`layer-row-dot ${faultLinesEnabled ? 'on' : ''}`} />
+                                <span className="layer-row-name">Fault Lines</span>
+                                <button className={`toggle-switch ${faultLinesEnabled ? 'on' : ''}`} onClick={() => onToggleFaultLinesLayer?.(!faultLinesEnabled)} aria-label="Toggle fault lines" />
+                              </div>
+                            </>)}
                           </div>
-                          <div className="settings-subtitle" style={{ marginBottom: 12 }}>
-                            Toggle natural features layers and choose the detail level.
+
+                          {/* ── CLIMATE & WEATHER ── */}
+                          <div className="layer-section">
+                            <div className="layer-section-header" onClick={() => setPhysicalSections(p => ({ ...p, climate: !p.climate }))}>
+                              <span className="layer-section-dot" style={{ background: '#f59e0b', color: '#f59e0b' }} />
+                              <span className="layer-section-label">Climate & Weather</span>
+                              <svg className={`layer-section-chevron ${physicalSections.climate ? 'open' : ''}`} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" /></svg>
+                            </div>
+                            {physicalSections.climate && (<>
+                              <div className="layer-row">
+                                <span className={`layer-row-dot ${weatherEnabled ? 'on' : ''}`} />
+                                <span className="layer-row-name">Weather Overlay</span>
+                                <button className={`toggle-switch ${weatherEnabled ? 'on' : ''}`} onClick={() => onToggleWeather?.(!weatherEnabled)} aria-label="Toggle weather" />
+                              </div>
+                              {weatherEnabled && (
+                                <div className="layer-sub-chips">
+                                  {([['temp_new','Temp'],['clouds_new','Clouds'],['precipitation_new','Rain'],['wind_new','Wind'],['pressure_new','Pressure']] as [string,string][]).map(([id,label]) => (
+                                    <button key={id} className={`layer-sub-chip ${weatherLayers.includes(id) ? 'active' : ''}`} onClick={() => onToggleWeatherLayer?.(id)}>{label}</button>
+                                  ))}
+                                </div>
+                              )}
+                              <div className="layer-row">
+                                <span className={`layer-row-dot ${firesEnabled ? 'on' : ''}`} />
+                                <span className="layer-row-name">Active Fires</span>
+                                <button className={`toggle-switch ${firesEnabled ? 'on' : ''}`} onClick={() => onToggleFires?.(!firesEnabled)} aria-label="Toggle fires" />
+                              </div>
+                              <div className="layer-row">
+                                <span className={`layer-row-dot ${desertsEnabled ? 'on' : ''}`} />
+                                <span className="layer-row-name">Deserts</span>
+                                <button className={`toggle-switch ${desertsEnabled ? 'on' : ''}`} onClick={() => onToggleDesertsLayer?.(!desertsEnabled)} aria-label="Toggle deserts" />
+                              </div>
+                            </>)}
                           </div>
-                          {/* Layers grid */}
-                          <div className="settings-row" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
-                            {/* Rivers card */}
-                            <div className="section-card" style={{ marginBottom: 0 }}>
-                              <div className="stats-header" style={{ marginBottom: 6 }}>
-                                <div className="stats-title">Rivers</div>
-                                <div className="chip-group">
-                                  <button
-                                    className={`chip ${riversEnabled ? 'active' : ''}`}
-                                    onClick={() => onToggleRiversLayer?.(true)}
-                                    aria-pressed={riversEnabled}
-                                    aria-label="Show rivers"
-                                  >Show</button>
-                                  <button
-                                    className={`chip ${!riversEnabled ? 'active' : ''}`}
-                                    onClick={() => onToggleRiversLayer?.(false)}
-                                    aria-pressed={!riversEnabled}
-                                    aria-label="Hide rivers"
-                                  >Hide</button>
-                                </div>
-                              </div>
-                              <div className="stats-subtitle">Global rivers and lake centerlines.</div>
+
+                          {/* ── TERRAIN & WATER ── */}
+                          <div className="layer-section">
+                            <div className="layer-section-header" onClick={() => setPhysicalSections(p => ({ ...p, terrain: !p.terrain }))}>
+                              <span className="layer-section-dot" style={{ background: '#10b981', color: '#10b981' }} />
+                              <span className="layer-section-label">Terrain & Water</span>
+                              <svg className={`layer-section-chevron ${physicalSections.terrain ? 'open' : ''}`} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" /></svg>
                             </div>
-                            {/* Mountain Ranges card */}
-                            <div className="section-card" style={{ marginBottom: 0 }}>
-                              <div className="stats-header" style={{ marginBottom: 6 }}>
-                                <div className="stats-title">Mountain Ranges</div>
-                                <div className="chip-group">
-                                  <button
-                                    className={`chip ${mountainRangesEnabled ? 'active' : ''}`}
-                                    onClick={() => onToggleMountainRangesLayer?.(true)}
-                                    aria-pressed={mountainRangesEnabled}
-                                    aria-label="Show mountain ranges"
-                                  >Show</button>
-                                  <button
-                                    className={`chip ${!mountainRangesEnabled ? 'active' : ''}`}
-                                    onClick={() => onToggleMountainRangesLayer?.(false)}
-                                    aria-pressed={!mountainRangesEnabled}
-                                    aria-label="Hide mountain ranges"
-                                  >Hide</button>
-                                </div>
+                            {physicalSections.terrain && (<>
+                              <div className="layer-row">
+                                <span className={`layer-row-dot ${riversEnabled ? 'on' : ''}`} />
+                                <span className="layer-row-name">Rivers</span>
+                                <button className={`toggle-switch ${riversEnabled ? 'on' : ''}`} onClick={() => onToggleRiversLayer?.(!riversEnabled)} aria-label="Toggle rivers" />
                               </div>
-                              <div className="stats-subtitle">Range polygons with outline for visibility.</div>
-                            </div>
-                            {/* Peaks card */}
-                            <div className="section-card" style={{ marginBottom: 0 }}>
-                              <div className="stats-header" style={{ marginBottom: 6 }}>
-                                <div className="stats-title">Peaks</div>
-                                <div className="chip-group">
-                                  <button
-                                    className={`chip ${peaksEnabled ? 'active' : ''}`}
-                                    onClick={() => onTogglePeaksLayer?.(true)}
-                                    aria-pressed={peaksEnabled}
-                                    aria-label="Show peaks"
-                                  >Show</button>
-                                  <button
-                                    className={`chip ${!peaksEnabled ? 'active' : ''}`}
-                                    onClick={() => onTogglePeaksLayer?.(false)}
-                                    aria-pressed={!peaksEnabled}
-                                    aria-label="Hide peaks"
-                                  >Hide</button>
-                                </div>
+                              <div className="layer-row">
+                                <span className={`layer-row-dot ${lakesEnabled ? 'on' : ''}`} />
+                                <span className="layer-row-name">Lakes</span>
+                                <button className={`toggle-switch ${lakesEnabled ? 'on' : ''}`} onClick={() => onToggleLakesLayer?.(!lakesEnabled)} aria-label="Toggle lakes" />
                               </div>
-                              <div className="stats-subtitle">Major elevation points with modern markers.</div>
-                            </div>
-                            {/* Lakes card */}
-                            <div className="section-card" style={{ marginBottom: 0 }}>
-                              <div className="stats-header" style={{ marginBottom: 6 }}>
-                                <div className="stats-title">Lakes</div>
-                                <div className="chip-group">
-                                  <button className={`chip ${lakesEnabled ? 'active' : ''}`} onClick={() => onToggleLakesLayer?.(true)} aria-pressed={lakesEnabled} aria-label="Show lakes">Show</button>
-                                  <button className={`chip ${!lakesEnabled ? 'active' : ''}`} onClick={() => onToggleLakesLayer?.(false)} aria-pressed={!lakesEnabled} aria-label="Hide lakes">Hide</button>
-                                </div>
+                              <div className="layer-row">
+                                <span className={`layer-row-dot ${mountainRangesEnabled ? 'on' : ''}`} />
+                                <span className="layer-row-name">Mountain Ranges</span>
+                                <button className={`toggle-switch ${mountainRangesEnabled ? 'on' : ''}`} onClick={() => onToggleMountainRangesLayer?.(!mountainRangesEnabled)} aria-label="Toggle mountain ranges" />
                               </div>
-                              <div className="stats-subtitle">Major lakes and inland water bodies.</div>
-                            </div>
-                            {/* Volcanoes card */}
-                            <div className="section-card" style={{ marginBottom: 0 }}>
-                              <div className="stats-header" style={{ marginBottom: 6 }}>
-                                <div className="stats-title">Volcanoes</div>
-                                <div className="chip-group">
-                                  <button className={`chip ${volcanoesEnabled ? 'active' : ''}`} onClick={() => onToggleVolcanoesLayer?.(true)} aria-pressed={volcanoesEnabled} aria-label="Show volcanoes">Show</button>
-                                  <button className={`chip ${!volcanoesEnabled ? 'active' : ''}`} onClick={() => onToggleVolcanoesLayer?.(false)} aria-pressed={!volcanoesEnabled} aria-label="Hide volcanoes">Hide</button>
-                                </div>
+                              <div className="layer-row">
+                                <span className={`layer-row-dot ${peaksEnabled ? 'on' : ''}`} />
+                                <span className="layer-row-name">Peaks</span>
+                                <button className={`toggle-switch ${peaksEnabled ? 'on' : ''}`} onClick={() => onTogglePeaksLayer?.(!peaksEnabled)} aria-label="Toggle peaks" />
                               </div>
-                              <div className="stats-subtitle">Holocene volcanoes (Smithsonian GVP).</div>
-                            </div>
-                            {/* Fault Lines card */}
-                            <div className="section-card" style={{ marginBottom: 0 }}>
-                              <div className="stats-header" style={{ marginBottom: 6 }}>
-                                <div className="stats-title">Fault Lines</div>
-                                <div className="chip-group">
-                                  <button className={`chip ${faultLinesEnabled ? 'active' : ''}`} onClick={() => onToggleFaultLinesLayer?.(true)} aria-pressed={faultLinesEnabled} aria-label="Show fault lines">Show</button>
-                                  <button className={`chip ${!faultLinesEnabled ? 'active' : ''}`} onClick={() => onToggleFaultLinesLayer?.(false)} aria-pressed={!faultLinesEnabled} aria-label="Hide fault lines">Hide</button>
-                                </div>
-                              </div>
-                              <div className="stats-subtitle">Tectonic plate boundaries worldwide.</div>
-                            </div>
-                            {/* Deserts card */}
-                            <div className="section-card" style={{ marginBottom: 0 }}>
-                              <div className="stats-header" style={{ marginBottom: 6 }}>
-                                <div className="stats-title">Deserts</div>
-                                <div className="chip-group">
-                                  <button className={`chip ${desertsEnabled ? 'active' : ''}`} onClick={() => onToggleDesertsLayer?.(true)} aria-pressed={desertsEnabled} aria-label="Show deserts">Show</button>
-                                  <button className={`chip ${!desertsEnabled ? 'active' : ''}`} onClick={() => onToggleDesertsLayer?.(false)} aria-pressed={!desertsEnabled} aria-label="Hide deserts">Hide</button>
-                                </div>
-                              </div>
-                              <div className="stats-subtitle">Major desert regions by Natural Earth.</div>
-                            </div>
+                            </>)}
                           </div>
-                          {/* Divider */}
-                          <div style={{ height: 1, background: 'rgba(71,85,105,0.35)', margin: '12px 0' }} />
-                          {/* LOD controls */}
-                          <div className="settings-title" style={{ marginBottom: 6 }}>Detail level (LOD)</div>
-                          <div className="settings-row settings-row-2col">
-                            {(['auto','low','med','high'] as const).map(l => (
-                              <button
-                                key={l}
-                                className={`settings-chip ${naturalLod === l ? 'active' : ''}`}
-                                onClick={() => onSetNaturalLod?.(l)}
-                                aria-pressed={naturalLod === l}
-                                aria-label={`Set detail level ${l}`}
-                              >{l.toUpperCase()}</button>
-                            ))}
+
+                          {/* ── LOD Slider ── */}
+                          <div style={{ height: 1, background: 'rgba(71,85,105,0.25)', margin: '6px 0 8px' }} />
+                          <div className="lod-slider-block">
+                            <div className="lod-slider-header">
+                              <span className="lod-slider-label">Detail Level</span>
+                              <span className="lod-slider-value">{naturalLod}</span>
+                            </div>
+                            <input
+                              type="range"
+                              min={0}
+                              max={3}
+                              step={1}
+                              value={['auto','low','med','high'].indexOf(naturalLod)}
+                              onChange={(e) => {
+                                const lods = ['auto','low','med','high'] as const;
+                                onSetNaturalLod?.(lods[Number(e.target.value)]);
+                              }}
+                              className="lod-slider"
+                              aria-label="Detail level"
+                            />
+                            <div className="lod-ticks">
+                              <span className="lod-tick">Auto</span>
+                              <span className="lod-tick">Low</span>
+                              <span className="lod-tick">Med</span>
+                              <span className="lod-tick">High</span>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -715,10 +862,10 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
 
                           {/* ── Live Tracking ── */}
                           <div className="section-header" style={{ marginTop: 18, marginBottom: 8 }}>
-                            <h3>Live Tracking</h3>
+                            <h3>Space Monitor</h3>
                           </div>
                           <div className="settings-subtitle" style={{ marginBottom: 12 }}>
-                            Real-time satellite positions via CelesTrak (SGP4).
+                            Real-time satellite positions powered by WorldLore.
                           </div>
                           <div className="settings-row" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
                             {(['military', 'classified', 'navigation', 'weather', 'stations', 'starlink'] as SatCategory[]).map(cat => {
@@ -742,8 +889,10 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
                                           if (isLoading) return;
                                           handleToggleSatCategory(cat, true);
                                           if (cat === 'military') setCountryFilterOpen(true);
+                                          if (cat === 'classified') setClassifiedOrbitFilterOpen(true);
                                           if (cat === 'navigation') setConstellationFilterOpen(true);
                                           if (cat === 'weather') setWeatherFilterOpen(true);
+                                          if (cat === 'stations') setStationFilterOpen(true);
                                         }}
                                         aria-pressed={enabled}
                                         disabled={isLoading}
@@ -800,6 +949,66 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
                                                     <span className="sat-filter-label">{name}</span>
                                                     <span className="sat-filter-count">{count}</span>
                                                   </div>
+                                                  <div className="sat-filter-toggle"><div className="sat-filter-knob" /></div>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+                                  {cat === 'classified' && enabled && (() => {
+                                    const counts = satTracking.getConstellationCounts('classified');
+                                    const hasFilters = hiddenClassifiedOrbits.size > 0;
+                                    const ORBIT_META: Record<string, { label: string; icon: string; desc: string }> = {
+                                      leo: { label: 'LEO', icon: '🔭', desc: 'Reconnaissance / Imaging' },
+                                      meo: { label: 'MEO', icon: '📡', desc: 'Space Domain Awareness' },
+                                      geo: { label: 'GEO', icon: '🛰️', desc: 'SIGINT / Comms Relay' },
+                                      heo: { label: 'HEO', icon: '⚡', desc: 'Early Warning / Polar' },
+                                    };
+                                    const sortedOrbits = Object.entries(CLASSIFIED_ORBIT_COLORS)
+                                      .sort((a, b) => (counts[b[0]] || 0) - (counts[a[0]] || 0));
+                                    return (
+                                      <div style={{ marginTop: 8 }}>
+                                        <div className="sat-filter-desc">
+                                          Unacknowledged national security satellites tracked by amateur astronomers — orbit type reveals probable mission based on orbital mechanics.
+                                        </div>
+                                        <div className="sat-filter-bar">
+                                          <button
+                                            className={`sat-filter-btn ${classifiedOrbitFilterOpen ? 'open' : ''}`}
+                                            onClick={() => setClassifiedOrbitFilterOpen(prev => !prev)}
+                                          >
+                                            <span className="sat-filter-btn-icon">🔒</span>
+                                            Filter by orbit type
+                                            <span className="sat-filter-btn-arrow">{classifiedOrbitFilterOpen ? '▾' : '▸'}</span>
+                                          </button>
+                                          {hasFilters && (
+                                            <>
+                                              <span className="sat-filter-hidden-count">
+                                                {hiddenClassifiedOrbits.size} hidden
+                                              </span>
+                                              <span className="sat-filter-reset" onClick={() => setHiddenClassifiedOrbits(new Set())}>
+                                                Reset
+                                              </span>
+                                            </>
+                                          )}
+                                        </div>
+                                        {classifiedOrbitFilterOpen && (
+                                          <div className="hide-scrollbar sat-filter-list">
+                                            {sortedOrbits.map(([key, color]) => {
+                                              const hidden = hiddenClassifiedOrbits.has(key);
+                                              const count = counts[key] || 0;
+                                              const meta = ORBIT_META[key] || { label: key.toUpperCase(), icon: '🛰️', desc: '' };
+                                              return (
+                                                <div key={key} className={`sat-filter-item ${hidden ? 'is-hidden' : ''}`} style={{ '--fc': color } as any} onClick={() => toggleClassifiedOrbitFilter(key)}>
+                                                  <div className="sat-filter-item-left">
+                                                    <span className="sat-filter-dot" />
+                                                    <span className="sat-filter-flag">{meta.icon}</span>
+                                                    <span className="sat-filter-label">{meta.label}</span>
+                                                    <span className="sat-filter-count">{count}</span>
+                                                  </div>
+                                                  <span style={{ fontSize: 10, opacity: 0.5, marginLeft: 4 }}>{meta.desc}</span>
                                                   <div className="sat-filter-toggle"><div className="sat-filter-knob" /></div>
                                                 </div>
                                               );
@@ -911,6 +1120,57 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
                                       </div>
                                     );
                                   })()}
+                                  {cat === 'stations' && enabled && (() => {
+                                    const counts = satTracking.getStationProgramCounts();
+                                    const hasFilters = hiddenStationPrograms.size > 0;
+                                    return (
+                                      <div style={{ marginTop: 8 }}>
+                                        <div className="sat-filter-desc">
+                                          Crewed stations, data relay networks &amp; science missions — ISS, CSS, TDRS, NASA Science, LUCH, EDRS &amp; Tianlian.
+                                        </div>
+                                        <div className="sat-filter-bar">
+                                          <button
+                                            className={`sat-filter-btn ${stationFilterOpen ? 'open' : ''}`}
+                                            onClick={() => setStationFilterOpen(prev => !prev)}
+                                          >
+                                            <span className="sat-filter-btn-icon">🛰️</span>
+                                            Filter by program
+                                            <span className="sat-filter-btn-arrow">{stationFilterOpen ? '▾' : '▸'}</span>
+                                          </button>
+                                          {hasFilters && (
+                                            <>
+                                              <span className="sat-filter-hidden-count">
+                                                {hiddenStationPrograms.size} hidden
+                                              </span>
+                                              <span className="sat-filter-reset" onClick={() => setHiddenStationPrograms(new Set())}>
+                                                Reset
+                                              </span>
+                                            </>
+                                          )}
+                                        </div>
+                                        {stationFilterOpen && (
+                                          <div className="hide-scrollbar sat-filter-list">
+                                            {Object.entries(STATION_PROGRAM_META).map(([key, meta]) => {
+                                              const color = STATION_PROGRAM_COLORS[key];
+                                              const isHidden = hiddenStationPrograms.has(key);
+                                              const count = counts[key] || 0;
+                                              return (
+                                                <div key={key} className={`sat-filter-item ${isHidden ? 'is-hidden' : ''}`} style={{ '--fc': color } as any} onClick={() => toggleStationProgramFilter(key)}>
+                                                  <div className="sat-filter-item-left">
+                                                    <span className="sat-filter-dot" />
+                                                    <span className="sat-filter-flag">{meta.flag}</span>
+                                                    <span className="sat-filter-label">{meta.label}</span>
+                                                    <span className="sat-filter-count">{count}</span>
+                                                  </div>
+                                                  <div className="sat-filter-toggle"><div className="sat-filter-knob" /></div>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
                                   {cat === 'starlink' && (
                                     <div style={{ fontSize: 9, color: 'rgba(255,200,100,0.5)', marginTop: 2, letterSpacing: '0.02em' }}>
                                       Large constellation — may impact performance on older devices
@@ -921,7 +1181,7 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
                             })}
                           </div>
                           <div style={{ fontSize: 9, color: 'rgba(160,150,200,0.35)', marginTop: 8, letterSpacing: '0.02em' }}>
-                            Source: CelesTrak · Positions updated every 2s · Click a satellite for details
+                            Source: WorldLore · Positions updated every 2s · Click a satellite for details
                           </div>
                         </div>
                       )}
@@ -1122,6 +1382,49 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
                             </div>
                           </div>
 
+                          {/* LED Halo */}
+                          <div className="settings-group">
+                            <div className="settings-group-header">
+                              <div className="settings-group-title">LED Halo</div>
+                              <div className="settings-group-meta">Glow</div>
+                            </div>
+                            <div className="settings-group-description">Cycle the globe atmosphere through rainbow colors like LED lights.</div>
+                            <div className="settings-row segmented">
+                              <button
+                                className={`settings-chip ${ledHaloEnabled ? 'active' : ''}`}
+                                onClick={() => { setLedHaloEnabled(true); onSetLedHalo?.(true); }}
+                                aria-pressed={ledHaloEnabled}
+                              >On</button>
+                              <button
+                                className={`settings-chip ${!ledHaloEnabled ? 'active' : ''}`}
+                                onClick={() => { setLedHaloEnabled(false); onSetLedHalo?.(false); }}
+                                aria-pressed={!ledHaloEnabled}
+                              >Off</button>
+                            </div>
+                            {ledHaloEnabled && (
+                              <div className="settings-slider-block">
+                                <div className="settings-slider-header">
+                                  <span>Speed</span>
+                                  <span className="settings-slider-value">{ledHaloSpeed}ms</span>
+                                </div>
+                                <input
+                                  type="range"
+                                  min={10}
+                                  max={200}
+                                  step={5}
+                                  value={ledHaloSpeed}
+                                  onChange={(e) => {
+                                    const v = Number(e.target.value);
+                                    setLedHaloSpeed(v);
+                                    onSetLedHaloSpeed?.(v);
+                                  }}
+                                  className="settings-slider"
+                                  aria-label="LED halo speed"
+                                />
+                              </div>
+                            )}
+                          </div>
+
                           {/* Terrain */}
                           <div className="settings-group">
                             <div className="settings-group-header">
@@ -1237,6 +1540,8 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
               </div>
 
               <div className="left-sidebar-footer" />
+              </>
+              )}
             </div>
         )}
       </>

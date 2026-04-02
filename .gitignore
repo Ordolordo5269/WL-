@@ -47,3 +47,4 @@ Thumbs.db
 # Cache
 .eslintcache
 .cache/
+.tle-cache/
