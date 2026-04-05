@@ -407,247 +407,101 @@ model HistoricalAreaGeometry {
 }
 
 // ============================
-// Conflict Tracker (ACLED-driven)
+// Conflict Tracker
 // ============================
 
 enum ConflictStatus {
-  WAR
-  WARM
-  IMPROVING
-  RESOLVED
+  ACTIVE
   FROZEN
-  ONE_SIDED
+  ENDED
 }
 
-// Aggregate conflict — editorial grouping of ACLED events
-model AcledConflict {
-  id              String   @id @default(uuid()) @db.Uuid
-  slug            String   @unique
-  name            String
-  country         String
-  region          String
-  description     String   @db.Text
-  status          ConflictStatus
+enum ConflictType {
+  INTERSTATE
+  CIVIL_WAR
+  INSURGENCY
+  TERRITORIAL
+  ETHNIC
+  OTHER
+}
 
-  // ACLED sync filters — define which events belong to this conflict
-  filterCountry   String?            // ACLED country name for auto-sync
-  filterIso       Int?               // ISO 3166-1 numeric code
-  filterActors    String[]           // Actor name patterns to match
-  filterDateFrom  DateTime?          // Earliest event date to fetch
-  filterDateTo    DateTime?          // Latest event date (null = ongoing)
+enum FactionType {
+  STATE
+  MILITIA
+  REBEL
+  TERRORIST
+  OTHER
+}
 
-  // Editorial metadata
-  involvedISO     String[]           // ISO alpha-3 codes of involved countries
-  coordinates     Json               // { lat, lng } — map center
-  startDate       DateTime
-  escalationDate  DateTime?
-  endDate         DateTime?
-  sources         String[]
-
-  // Cached aggregates (updated by sync job)
-  totalEvents     Int      @default(0)
-  totalFatalities Int      @default(0)
-  lastEventDate   DateTime?
-
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  // Relations
-  events          AcledEvent[]
-
-  @@index([status])
-  @@index([region])
-  @@index([country])
-  @@index([startDate])
-  @@index([filterIso])
+enum SupportType {
+  MILITARY
+  DIPLOMATIC
+  ECONOMIC
 }
 
 model Conflict {
-  id                String   @id @default(uuid()) @db.Uuid
-  slug              String   @unique
-  name              String
-  country           String
-  region            String
-  conflictType      String
-  description       String   @db.Text
-  status            ConflictStatus
-  startDate         DateTime
-  escalationDate    DateTime?
-  endDate           DateTime?
-  coordinates       Json     // { lat: number, lng: number }
-  involvedISO       String[] // Array of ISO 3166-1 alpha-3 codes
-  sources           String[] // Array of source strings
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  // UCDP enrichment fields
-  ucdpConflictId    Int?              // UCDP conflict_new_id for linking
-  dyadName          String?           // e.g. "Government of Iran - Government of Israel"
-  sideA             String?           // UCDP side_a
-  sideB             String?           // UCDP side_b
-  typeOfViolence    Int?              // 1=state-based, 2=non-state, 3=one-sided
-  ucdpCountryId     Int?              // Gleditsch-Ward country code
-  adminRegion       String?           // adm_1 from UCDP
-  dataSource        String   @default("manual") // "ucdp", "manual"
-  lastSyncedAt      DateTime?         // When UCDP data was last synced
-
-  // Relations
-  casualties        ConflictCasualty[]
-  factions          ConflictFaction[]
-  events            ConflictEvent[]
-  news              ConflictNews[]
-  updates           ConflictUpdate[]
-  ucdpEvents        UcdpGedEvent[]
+  id                 String            @id @default(uuid())
+  name               String
+  countryIso         String            @db.VarChar(3)
+  lng                Float
+  lat                Float
+  status             ConflictStatus
+  type               ConflictType
+  description        String?
+  startDate          DateTime?
+  endDate            DateTime?
+  casualtiesEstimate Int?
+  factions           ConflictFaction[]
+  supportLinks       SupportLink[]
 
   @@index([status])
-  @@index([region])
-  @@index([country])
-  @@index([ucdpConflictId])
-  @@index([dataSource])
-}
-
-model ConflictCasualty {
-  id            String   @id @default(uuid()) @db.Uuid
-  conflictId    String   @db.Uuid
-  date          DateTime
-  military      Int?
-  civilian      Int?
-  total         Int
-  source        String?
-  notes         String?  @db.Text
-
-  conflict      Conflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
-
-  @@index([conflictId, date])
+  @@index([countryIso])
 }
 
 model ConflictFaction {
-  id            String   @id @default(uuid()) @db.Uuid
-  conflictId    String   @db.Uuid
-  name          String
-  color         String?
-  goals         String[]
-  allies        String[]
-  isActive      Boolean  @default(true)
+  conflictId String
+  factionId  String
+  side       String   @db.VarChar(1)
+  casualties Int?
+  conflict   Conflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
+  faction    Faction  @relation(fields: [factionId], references: [id], onDelete: Cascade)
 
-  conflict      Conflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
-  support       ConflictFactionSupport[]
-
+  @@id([conflictId, factionId])
   @@index([conflictId])
-}
-
-model ConflictFactionSupport {
-  id            String   @id @default(uuid()) @db.Uuid
-  factionId     String   @db.Uuid
-  supporterISO  String
-  supportType   String
-  weapons       String[]
-  aidValue      String?
-  strategicAssets String[]
-
-  faction       ConflictFaction @relation(fields: [factionId], references: [id], onDelete: Cascade)
-
   @@index([factionId])
 }
 
-// Raw ACLED event — one row per ACLED record, research-grade fidelity
-model AcledEvent {
-  id              String   @id @default(uuid()) @db.Uuid
-  eventIdCnty     String   @unique              // ACLED event_id_cnty (e.g. "SYR12345")
-  eventDate       DateTime                      // Parsed from event_date — KEY for "last 30 days" filter
-  year            Int                            // Year of event
-  timePrecision   Int      @default(1)           // 1=exact, 2=approximate, 3=estimated
-  disorderType    String?                        // "Political violence", "Demonstrations", etc.
-  eventType       String                         // "Battles", "Explosions/Remote violence", etc.
-  subEventType    String                         // "Armed clash", "Shelling/artillery", etc.
-  actor1          String                         // Who did it
-  assocActor1     String?                        // Associated actors for actor1
-  inter1          Int                            // Actor type: 1=State,2=Rebel,3=Political militia,...
-  actor2          String?                        // Against whom
-  assocActor2     String?                        // Associated actors for actor2
-  inter2          Int?                           // Actor2 type code
-  interaction     Int                            // Two-digit code combining inter1+inter2
-  civilianTargeting String?                      // "Civilian targeting" or null
-  iso             Int                            // ISO numeric country code
-  country         String                         // Country name (ACLED canonical)
-  region          String                         // ACLED region name
-  admin1          String?                        // First-level admin division
-  admin2          String?                        // Second-level admin division
-  admin3          String?                        // Third-level admin division
-  location        String?                        // Specific location name
-  latitude        Float                          // 4-decimal lat
-  longitude       Float                          // 4-decimal lng
-  geoPrecision    Int?                           // 1=exact, 2=near, 3=area-level
-  source          String?  @db.Text              // Semicolon-separated sources
-  sourceScale     String?                        // "Local","Subnational","National","International"
-  notes           String?  @db.Text              // Event description — the "what happened"
-  fatalities      Int      @default(0)           // Reported fatalities
-  tags            String?  @db.Text              // Structured tags from ACLED
-  timestamp       BigInt?                        // ACLED's last-update unix timestamp
-
-  // FK to aggregate conflict
-  conflictId      String?  @db.Uuid
-  conflict        AcledConflict? @relation(fields: [conflictId], references: [id], onDelete: SetNull)
-
-  // Sync metadata
-  syncedAt        DateTime @default(now())
-
-  @@index([eventDate])
-  @@index([year])
-  @@index([eventType])
-  @@index([country])
-  @@index([iso])
-  @@index([region])
-  @@index([conflictId, eventDate])
-  @@index([actor1])
-  @@index([latitude, longitude])
-  @@index([fatalities])
-  @@index([timePrecision])
+model Faction {
+  id         String            @id
+  name       String
+  type       FactionType
+  countryIso String?           @db.VarChar(3)
+  flagUrl    String?
+  conflicts  ConflictFaction[]
+  supportFrom SupportLink[]   @relation("SupportLink_fromIdToFaction")
+  supportTo   SupportLink[]   @relation("SupportLink_toIdToFaction")
 }
 
-model ConflictEvent {
-  id            String   @id @default(uuid()) @db.Uuid
-  conflictId    String   @db.Uuid
-  title         String
-  date          DateTime
-  description   String?  @db.Text
-  eventType     String?  // "battle", "ceasefire", "agreement", etc.
-  location      String?
-  coordinates   Json?    // { lat: number, lng: number }
+model SupportLink {
+  id          Int         @id @default(autoincrement())
+  conflictId  String
+  fromId      String
+  toId        String
+  type        SupportType
+  intensity   Int?
+  description String?
+  sourceUrl   String?
+  startedAt   DateTime?
+  conflict    Conflict    @relation(fields: [conflictId], references: [id], onDelete: Cascade)
+  from        Faction     @relation("SupportLink_fromIdToFaction", fields: [fromId], references: [id], onDelete: Cascade)
+  to          Faction     @relation("SupportLink_toIdToFaction", fields: [toId], references: [id], onDelete: Cascade)
 
-  conflict      Conflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
-
-  @@index([conflictId, date])
+  @@index([conflictId])
+  @@index([fromId])
+  @@index([toId])
 }
 
-model ConflictUpdate {
-  id            String   @id @default(uuid()) @db.Uuid
-  conflictId    String   @db.Uuid
-  date          DateTime
-  status        ConflictStatus?
-  description   String   @db.Text
-  source        String?
-
-  conflict      Conflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
-
-  @@index([conflictId, date])
-}
-
-model ConflictNews {
-  id            String   @id @default(uuid()) @db.Uuid
-  conflictId    String   @db.Uuid
-  title         String
-  source        String
-  url           String
-  publishedAt   DateTime
-  description   String?  @db.Text
-  imageUrl      String?
-
-  conflict      Conflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
-
-  @@index([conflictId, publishedAt])
-}
-
+// UCDP GED Events (fetched from UCDP API)
 model UcdpGedEvent {
   id                String   @id @default(uuid()) @db.Uuid
   ucdpEventId       Int      @unique
@@ -673,19 +527,13 @@ model UcdpGedEvent {
   whereDescription  String?
   adm1              String?
   adm2              String?
-  typeOfViolence    Int      // 1=state-based, 2=non-state, 3=one-sided
+  typeOfViolence    Int
   sourceArticle     String?  @db.Text
   sourceHeadline    String?  @db.Text
-  conflictNewId     Int?     // UCDP conflict_new_id
-  dyadNewId         Int?     // UCDP dyad_new_id
-
-  // Link to parent Conflict
-  conflictId        String?  @db.Uuid
-  conflict          Conflict? @relation(fields: [conflictId], references: [id], onDelete: SetNull)
-
+  conflictNewId     Int?
+  dyadNewId         Int?
   createdAt         DateTime @default(now())
 
-  @@index([conflictId])
   @@index([dateStart])
   @@index([country])
   @@index([typeOfViolence])

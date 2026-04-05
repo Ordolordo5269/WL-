@@ -309,9 +309,11 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
     const mapComp = (document as any).__wl_map_comp;
     if (enabled) {
       mapComp?.setSatelliteTrackingLayers?.(true);
-      // Start immersive globe rotation on first overlay activation
+      // Immersive entry: globe rotation + twinkling stars
       mapComp?.setRotateSpeed?.(1);
       mapComp?.setAutoRotate?.(true);
+      mapComp?.setSpacePreset?.('deep');
+      window.dispatchEvent(new CustomEvent('wl-star-twinkle', { detail: { enabled: true } }));
     } else {
       // Always remove ground track when toggling a category off
       mapComp?.removeSatelliteGroundTrack?.();
@@ -321,6 +323,7 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
     if (!anyStillOn) {
       mapComp?.setSatelliteTrackingLayers?.(false);
       mapComp?.setAutoRotate?.(false);
+      window.dispatchEvent(new CustomEvent('wl-star-twinkle', { detail: { enabled: false } }));
     }
   }, [satTracking]);
 
@@ -330,6 +333,7 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
     const mapComp = (document as any).__wl_map_comp;
     mapComp?.setSatelliteTrackingLayers?.(false);
     mapComp?.setAutoRotate?.(false);
+    window.dispatchEvent(new CustomEvent('wl-star-twinkle', { detail: { enabled: false } }));
   }, [satTracking]);
 
   // Deactivate immersive mode + all earth overlays + satellite tracking when leaving Satellite Intel

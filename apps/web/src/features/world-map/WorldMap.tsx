@@ -71,6 +71,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   const povPrevState = useRef<{ style: StyleKey; planet: PlanetPreset; star: number; zoom: number; pitch: number; bearing: number; center: [number, number] } | null>(null);
   
   const deferredTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const starTwinkleRafRef = useRef<number | null>(null);
   const rotationSpeedRef = useRef<number>(3);
   const spinRafRef = useRef<number | null>(null);
   const pendingAutoRotateRef = useRef<boolean>(false);
@@ -2474,6 +2475,42 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       if (mapRef.current) {
         try { mapRef.current.remove(); } catch {}
         mapRef.current = null;
+      }
+    };
+  }, []);
+
+  // Star twinkle animation — triggered by Space Monitor overlays
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const enabled = (e as CustomEvent).detail?.enabled;
+      if (enabled) {
+        if (starTwinkleRafRef.current !== null) return;
+        let phase = 0;
+        const twinkle = () => {
+          const map = mapRef.current;
+          if (!map) { starTwinkleRafRef.current = null; return; }
+          phase += 0.006;
+          const v = 0.65 + 0.35 * Math.sin(phase * 1.4) * Math.cos(phase * 0.9);
+          try {
+            const fog = (map as any).getFog?.() || {};
+            map.setFog({ ...fog, 'star-intensity': v } as any);
+          } catch {}
+          starTwinkleRafRef.current = requestAnimationFrame(twinkle);
+        };
+        starTwinkleRafRef.current = requestAnimationFrame(twinkle);
+      } else {
+        if (starTwinkleRafRef.current !== null) {
+          cancelAnimationFrame(starTwinkleRafRef.current);
+          starTwinkleRafRef.current = null;
+        }
+      }
+    };
+    window.addEventListener('wl-star-twinkle', handler);
+    return () => {
+      window.removeEventListener('wl-star-twinkle', handler);
+      if (starTwinkleRafRef.current !== null) {
+        cancelAnimationFrame(starTwinkleRafRef.current);
+        starTwinkleRafRef.current = null;
       }
     };
   }, []);
