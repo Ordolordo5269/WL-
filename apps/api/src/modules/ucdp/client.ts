@@ -103,11 +103,17 @@ export async function fetchGedEvents(
 
   while (true) {
     params.set('page', String(page));
-    const url = `${UCDP_BASE_URL}/gedevents/${version}?${params}`;
+    const url = `${UCDP_BASE_URL}/GEDEvents/${version}?${params}`;
     logger.info({ url, page }, 'Fetching UCDP GED events page');
 
     const response = await fetchWithRetry(url);
-    const data: UcdpApiResponse = await response.json();
+    let data: UcdpApiResponse;
+    try {
+      data = await response.json();
+    } catch {
+      logger.warn({ page, url }, 'UCDP returned malformed JSON — stopping pagination');
+      break;
+    }
 
     allEvents.push(...data.Result);
 
@@ -128,7 +134,7 @@ export async function discoverCandidateVersions(year: number): Promise<string[]>
   for (let month = 1; month <= 12; month++) {
     const version = `${year}.0.${month}`;
     try {
-      const url = `${UCDP_BASE_URL}/gedevents/${version}?pagesize=1`;
+      const url = `${UCDP_BASE_URL}/GEDEvents/${version}?pagesize=1`;
       const response = await fetch(url, {
         headers: { 'x-ucdp-access-token': env.UCDP_API_TOKEN || '' },
       });

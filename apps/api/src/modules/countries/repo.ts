@@ -24,15 +24,9 @@ export async function listCountryEntities() {
   });
 }
 
-export async function countConflictsByIso3(iso3: string) {
-  return prisma.acledConflict.count({
-    where: {
-      OR: [
-        { country: { contains: iso3, mode: 'insensitive' } },
-        { involvedISO: { has: iso3 } },
-      ],
-    },
-  });
+// Conflict count removed — will be rebuilt with new Conflict Tracker
+export async function countConflictsByIso3(_iso3: string) {
+  return 0;
 }
 
 export async function findLatestIndicators(entityId: string) {

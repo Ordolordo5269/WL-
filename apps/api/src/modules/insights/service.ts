@@ -40,49 +40,12 @@ export function setLLMAdapter(newAdapter: LLMAdapter) {
 // --- Service ---
 
 export async function generateInsight(request: InsightRequest): Promise<InsightResponse | null> {
-  const context = request.entityType === 'conflict'
-    ? await buildConflictContext(request.entityId, request.question)
-    : await buildCountryContext(request.entityId, request.question);
+  // Conflict insights removed — will be rebuilt with new Conflict Tracker
+  const context = await buildCountryContext(request.entityId, request.question);
 
   if (!context) return null;
 
   return adapter.generate(context);
-}
-
-async function buildConflictContext(id: string, question?: string): Promise<LLMContext | null> {
-  const conflict = await prisma.acledConflict.findUnique({
-    where: { id },
-    include: {
-      events: { orderBy: { eventDate: 'desc' }, take: 20 },
-    },
-  });
-
-  if (!conflict) return null;
-
-  return {
-    entityType: 'conflict',
-    entityName: conflict.name,
-    entityData: {
-      status: conflict.status,
-      region: conflict.region,
-      country: conflict.country,
-      startDate: conflict.startDate.toISOString(),
-      involvedISO: conflict.involvedISO,
-    },
-    recentEvents: conflict.events.map((e) => ({
-      title: `[${e.eventType}] ${e.actor1}${e.actor2 ? ' vs ' + e.actor2 : ''}`,
-      date: e.eventDate.toISOString(),
-      description: e.notes ?? undefined,
-    })),
-    indicators: conflict.events
-      .filter((e) => e.fatalities > 0)
-      .map((e) => ({
-        name: 'fatalities',
-        value: e.fatalities,
-        year: e.year,
-      })),
-    question,
-  };
 }
 
 async function buildCountryContext(id: string, question?: string): Promise<LLMContext | null> {

@@ -11,8 +11,6 @@ import { SatelliteVisualization } from './map/satellite-visualization';
 import { AVAILABLE_HISTORY_YEARS, snapToAvailableYear } from '../../utils/historical-years';
 import { setLiveActivityLayer } from '../live-activity/live-activity-layers';
 import type { LiveActivityLayerId } from '../live-activity/types';
-import { setConflictLayer as applyConflictLayer } from '../conflicts/conflict-layers';
-import type { ConflictsResponse, ConflictFeature } from '../conflicts/types';
 
 // Mapbox token from environment variable (see frontend/.env)
 const _mbToken = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
@@ -29,6 +27,8 @@ interface WorldMapProps {
   onCountrySelect: (countryName: string) => void;
   selectedCountry: string | null;
   isLeftSidebarOpen?: boolean;
+  /** Block country clicks (e.g. when Conflict Tracker panel is open) */
+  blockCountryClicks?: boolean;
   /** Called once when map tiles + style finish loading (map.on('load')) */
   onMapReady?: () => void;
   onResetView?: () => void;
@@ -45,12 +45,13 @@ interface MapEaseToOptions {
 }
 
 type MetricId = 'gdp' | 'inflation' | 'gdp-per-capita' | 'gini' | 'exports' | 'life-expectancy' | 'military-expenditure' | 'democracy-index' | 'trade-gdp' | 'fuel-exports' | 'mineral-rents' | 'energy-imports' | 'cereal-production';
-const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMap: () => mapboxgl.Map | null; setChoropleth?: (metric: MetricId, spec: ChoroplethSpec | GdpPerCapitaChoroplethSpec | null) => void; setActiveChoropleth?: (metric: MetricId | null) => void; setHistoryEnabled?: (enabled: boolean) => void; setHistoryYear?: (year: number) => void; highlightIso3List?: (iso: string[], colorHex?: string) => void; highlightIso3ToColorMap?: (isoToColor: Record<string,string>) => void; setTerrainEnabled?: (v: boolean) => void; setTerrainExaggeration?: (n: number) => void }, WorldMapProps>(({ onCountrySelect, selectedCountry, isLeftSidebarOpen = false, onMapReady }, ref) => {
+const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMap: () => mapboxgl.Map | null; setChoropleth?: (metric: MetricId, spec: ChoroplethSpec | GdpPerCapitaChoroplethSpec | null) => void; setActiveChoropleth?: (metric: MetricId | null) => void; setHistoryEnabled?: (enabled: boolean) => void; setHistoryYear?: (year: number) => void; highlightIso3List?: (iso: string[], colorHex?: string) => void; highlightIso3ToColorMap?: (isoToColor: Record<string,string>) => void; setTerrainEnabled?: (v: boolean) => void; setTerrainExaggeration?: (n: number) => void }, WorldMapProps>(({ onCountrySelect, selectedCountry, isLeftSidebarOpen = false, blockCountryClicks = false, onMapReady }, ref) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const geocoderContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const selectedCountryId = useRef<string | number | null>(null);
   const isLeftSidebarOpenRef = useRef(isLeftSidebarOpen);
+  const blockCountryClicksRef = useRef(blockCountryClicks);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const historyEnabledRef = useRef<boolean>(false);
   const historyDataLoadedRef = useRef<boolean>(false); // true once user picks a year
@@ -1691,11 +1692,6 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       if (!map) return;
       setLiveActivityLayer(map, id, enabled, data, extra);
     },
-    setConflictLayer: (enabled: boolean, data: ConflictsResponse | null, onEventClick?: (event: ConflictFeature) => void) => {
-      const map = mapRef.current;
-      if (!map) return;
-      applyConflictLayer(map, enabled, data, onEventClick);
-    },
     // Earth Data overlays (toggleable NASA GIBS layers)
     // Satellite live tracking layers
     setSatelliteTrackingLayers: (enabled: boolean) => {
@@ -2133,6 +2129,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       // Block country clicks when user has picked a year (territory-only view)
       if (historyEnabledRef.current && historyDataLoadedRef.current) return;
       if (isLeftSidebarOpenRef.current) return;
+      if (blockCountryClicksRef.current) return;
       if (!e.features || e.features.length === 0) return;
       const feature: any = e.features[0];
 
@@ -2401,7 +2398,6 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         applyTerrain(map, { enabled: true, exaggeration: Math.max(1.5, persisted.ex), useHillshade: false });
       }
 
-      // Conflict visualization is now handled by conflict-layers.ts via applyConflictLayer
 
     // Clear persisted natural layers — they should only be active within the Physical Layers section
     try { localStorage.removeItem('wl-natural-layers'); } catch {}
@@ -2499,9 +2495,6 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     return () => clearInterval(tid);
   }, []);
 
-  // Conflict visualization is now handled by conflict-layers.ts via applyConflictLayer
-  // (toggled from LeftSidebar → App.tsx → mapRef.setConflictLayer)
-
   // Función para resetear la vista del mapa
   const resetMapView = () => {
     const map = mapRef.current;
@@ -2553,9 +2546,10 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   // Efecto para actualizar el ref cuando cambia el estado de sidebar izquierda
   useEffect(() => {
     isLeftSidebarOpenRef.current = isLeftSidebarOpen;
+    blockCountryClicksRef.current = blockCountryClicks;
     if (mapRef.current && isMapLoaded) {
       const canvas = mapRef.current.getCanvas();
-      if (isLeftSidebarOpen) {
+      if (isLeftSidebarOpen || blockCountryClicks) {
         // Cursor personalizado minimalista y elegante
         canvas.style.cursor = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='8' fill='none' stroke='%2387CEEB' stroke-width='1.5' opacity='0.9'/%3E%3Ccircle cx='10' cy='10' r='2' fill='%2387CEEB' opacity='0.7'/%3E%3C/svg%3E\") 10 10, auto";
         // Agregar una clase CSS para efectos adicionales
@@ -2565,7 +2559,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         canvas.classList.remove('sidebar-open-cursor');
       }
     }
-  }, [isLeftSidebarOpen, isMapLoaded]);
+  }, [isLeftSidebarOpen, blockCountryClicks, isMapLoaded]);
 
   // Persistencia ligera: cargar ajustes iniciales
   useEffect(() => {

@@ -1,298 +1,581 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, Calendar, Skull, MapPin, X, Shield, Users2, ChevronDown, ChevronUp } from 'lucide-react';
-import { useConflicts } from './useConflicts';
-import { useConflictWebSocket } from './useConflictWebSocket';
-import { useQueryClient } from '@tanstack/react-query';
-import ConflictDetailCard from './ConflictDetailCard';
-import type { ConflictV2, ConflictFiltersParams } from './types';
-import { statusLabel, severityColor, statusToSeverity, violenceTypeLabel, violenceTypeColor } from './types';
+import { useMemo } from 'react';
+import type { Conflict, ConflictViewState, SupportLink, FactionProfile, Faction, ConflictFaction } from './types';
+import { SIDE_COLORS, fmt } from './conflict-map-visualization';
+import { ArrowLeft, Crosshair, X, Swords, Shield, DollarSign, MapPin, Users, ExternalLink } from 'lucide-react';
+import '../../styles/conflict-tracker.css';
 
-function SkeletonCard({ minor = false }: { minor?: boolean }) {
+// ── Constants ────────────────────────────────────────
+
+const SIDE_BG: Record<string, string> = {
+  A: 'rgba(59, 130, 246, 0.06)',
+  B: 'rgba(239, 68, 68, 0.06)',
+  C: 'rgba(245, 158, 11, 0.06)',
+  D: 'rgba(168, 85, 247, 0.06)',
+  E: 'rgba(20, 184, 166, 0.06)',
+};
+const SUPPORT_COLORS: Record<string, string> = { MILITARY: '#ef4444', DIPLOMATIC: '#3b82f6', ECONOMIC: '#22c55e' };
+const SUPPORT_LABELS: Record<string, string> = { MILITARY: 'Military', DIPLOMATIC: 'Diplomatic', ECONOMIC: 'Economic' };
+const SUPPORT_ICONS: Record<string, React.ReactNode> = {
+  MILITARY: <Swords className="h-3 w-3" />,
+  DIPLOMATIC: <Shield className="h-3 w-3" />,
+  ECONOMIC: <DollarSign className="h-3 w-3" />,
+};
+
+const FACTION_TYPE_LABELS: Record<string, string> = {
+  STATE: 'State Actor',
+  MILITIA: 'Private Military / Militia',
+  REBEL: 'Rebel Group',
+  TERRORIST: 'Designated Terrorist Org.',
+  OTHER: 'Other',
+};
+const FACTION_TYPE_SHORT: Record<string, string> = {
+  STATE: 'State', MILITIA: 'PMC', REBEL: 'Rebel', TERRORIST: 'Terror', OTHER: 'Other',
+};
+const FACTION_TYPE_COLORS: Record<string, string> = {
+  STATE: '#3b82f6', MILITIA: '#f59e0b', REBEL: '#22c55e', TERRORIST: '#ef4444', OTHER: '#6b7280',
+};
+
+const ISO3_NAMES: Record<string, string> = {
+  UKR: 'Ukraine', RUS: 'Russia', USA: 'United States', GBR: 'United Kingdom',
+  CHN: 'China', IRN: 'Iran', FRA: 'France', MLI: 'Mali', SDN: 'Sudan',
+  EGY: 'Egypt', ARE: 'UAE', NER: 'Niger', BFA: 'Burkina Faso', TCD: 'Chad',
+  LBY: 'Libya', CAF: 'Central African Republic', MOZ: 'Mozambique',
+  SYR: 'Syria', DEU: 'Germany', POL: 'Poland', ITA: 'Italy', ESP: 'Spain',
+};
+
+function fmtDate(d: string | null): string {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+}
+
+function isoName(iso: string | null): string {
+  if (!iso) return 'Unknown';
+  return ISO3_NAMES[iso] ?? iso;
+}
+
+/** Auto-generate a human-readable side name from the factions in it */
+function inferSideName(factions: ConflictFaction[]): string {
+  if (factions.length === 0) return 'Unknown';
+  const types = new Set(factions.map((f) => f.faction.type));
+
+  // If all are state actors, name by first faction's country
+  if (types.size === 1 && types.has('STATE')) {
+    if (factions.length === 1) return factions[0].faction.name;
+    return factions.map((f) => isoName(f.faction.countryIso)).join(' & ');
+  }
+  // Mixed: describe by dominant type
+  if (types.has('TERRORIST')) return 'Insurgent Alliance';
+  if (types.has('REBEL')) return 'Rebel Forces';
+  if (types.has('MILITIA') && types.has('STATE')) return 'Government Coalition';
+  if (types.has('MILITIA')) return factions[0].faction.name;
+  return factions[0].faction.name;
+}
+
+/** Group factions by side, preserving order */
+function groupBySide(factions: ConflictFaction[]): { side: string; members: ConflictFaction[] }[] {
+  const map = new Map<string, ConflictFaction[]>();
+  for (const cf of factions) {
+    if (!map.has(cf.side)) map.set(cf.side, []);
+    map.get(cf.side)!.push(cf);
+  }
+  return [...map.entries()].map(([side, members]) => ({ side, members }));
+}
+
+// ── Props ────────────────────────────────────────────
+
+interface ConflictTrackerProps {
+  onBack: () => void;
+  conflicts: Conflict[];
+  selectedConflict: Conflict | null;
+  selectedFactionId: string | null;
+  factionProfile: FactionProfile | null;
+  viewState: ConflictViewState;
+  loading: boolean;
+  onSelectConflict: (id: string) => void;
+  onSelectFaction: (factionId: string) => void;
+  onOpenFactionProfile: (factionId: string) => void;
+  onGoBack: () => void;
+}
+
+// ── Main Panel ──────────────────────────────────────
+
+export default function ConflictTracker({
+  onBack, conflicts, selectedConflict, selectedFactionId, factionProfile,
+  viewState, loading, onSelectConflict, onSelectFaction, onOpenFactionProfile, onGoBack,
+}: ConflictTrackerProps) {
   return (
-    <div className={`conflict-card conflict-skeleton${minor ? ' conflict-card-minor' : ''}`}>
-      <div className="skeleton-line skeleton-badge" />
-      <div className="skeleton-line skeleton-title" />
-      {!minor && <div className="skeleton-line skeleton-sides" />}
-      <div className="skeleton-line skeleton-meta" />
+    <div className="ct-panel">
+      <div className="ct-panel-header">
+        <Crosshair className="h-5 w-5 text-blue-400" />
+        <h2 className="ct-panel-title">Conflict Tracker</h2>
+        <button className="ct-close" onClick={onBack}><X className="h-5 w-5" /></button>
+      </div>
+
+      <div className="ct-panel-body">
+        {viewState === 'global' && (
+          <GlobalView
+            conflicts={conflicts}
+            loading={loading}
+            onSelectConflict={onSelectConflict}
+            onOpenFactionProfile={onOpenFactionProfile}
+          />
+        )}
+        {(viewState === 'conflict' || viewState === 'relationship') && selectedConflict && (
+          <DetailView
+            conflict={selectedConflict}
+            selectedFactionId={selectedFactionId}
+            onSelectFaction={onSelectFaction}
+            onOpenFactionProfile={onOpenFactionProfile}
+            onGoBack={onGoBack}
+          />
+        )}
+        {viewState === 'faction' && factionProfile && (
+          <FactionView
+            profile={factionProfile}
+            onSelectConflict={onSelectConflict}
+            onGoBack={onGoBack}
+          />
+        )}
+      </div>
     </div>
   );
 }
 
-interface ConflictTrackerProps {
-  onBack: () => void;
-  onCenterMap?: (coordinates: { lat: number; lng: number }) => void;
-  onConflictSelect?: (conflictId: string | null) => void;
-  onConflictsChange?: (conflicts: ConflictV2[]) => void;
-}
+// ── State 1: Conflict + Faction list ───────────────
 
-function cleanText(s: string): string {
-  return s.replace(/XXX\d*/g, 'Undisclosed').trim();
-}
-function cleanActorName(name: string): string {
-  if (/^XXX\d*$/.test(name.trim())) return 'Undisclosed actor';
-  return cleanText(name);
-}
-function getDeaths(c: ConflictV2): number {
-  return c.casualties?.reduce((s, cas) => s + cas.total, 0) ?? 0;
-}
+function GlobalView({ conflicts, loading, onSelectConflict, onOpenFactionProfile }: {
+  conflicts: Conflict[];
+  loading: boolean;
+  onSelectConflict: (id: string) => void;
+  onOpenFactionProfile: (factionId: string) => void;
+}) {
+  if (loading) return <div className="ct-loading">Loading conflicts...</div>;
+  if (conflicts.length === 0) return <div className="ct-empty">No active conflicts found.</div>;
 
-const REGIONS = ['Africa', 'Americas', 'Asia', 'Europe', 'Middle East'];
-const TYPES = [
-  { value: 1, label: 'State' },
-  { value: 2, label: 'Non-state' },
-  { value: 3, label: 'One-sided' },
-];
-
-export default function ConflictTracker({ onBack, onCenterMap, onConflictSelect, onConflictsChange }: ConflictTrackerProps) {
-  const [filters, setFilters] = useState<ConflictFiltersParams>({ dataSource: 'ucdp' });
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedConflict, setSelectedConflict] = useState<ConflictV2 | null>(null);
-  const [showMinor, setShowMinor] = useState(false);
-  const queryClient = useQueryClient();
-
-  const { data, isLoading, isFetching, error } = useConflicts(filters);
-  const conflicts = data?.conflicts ?? [];
-
-  useConflictWebSocket(useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['conflicts'] });
-  }, [queryClient]));
-
-  const { major, minor, totalDeaths, filteredCount } = useMemo(() => {
-    let filtered = conflicts;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      filtered = conflicts.filter(c =>
-        c.name.toLowerCase().includes(q) ||
-        c.country.toLowerCase().includes(q) ||
-        (c.sideA && c.sideA.toLowerCase().includes(q)) ||
-        (c.sideB && c.sideB.toLowerCase().includes(q))
-      );
+  // Collect unique factions across all conflicts
+  const factionMap = new Map<string, { faction: Faction; conflictCount: number }>();
+  for (const c of conflicts) {
+    for (const cf of c.factions ?? []) {
+      const existing = factionMap.get(cf.factionId);
+      if (existing) {
+        existing.conflictCount++;
+      } else {
+        factionMap.set(cf.factionId, { faction: cf.faction, conflictCount: 1 });
+      }
     }
-    const sorted = [...filtered].sort((a, b) => getDeaths(b) - getDeaths(a));
-    const majorList: ConflictV2[] = [];
-    const minorList: ConflictV2[] = [];
-    let deaths = 0;
-    for (const c of sorted) {
-      const d = getDeaths(c);
-      deaths += d;
-      if (d > 10) majorList.push(c); else minorList.push(c);
-    }
-    return { major: majorList, minor: minorList, totalDeaths: deaths, filteredCount: sorted.length };
-  }, [conflicts, searchQuery]);
-
-  // Sync filtered conflicts to map
-  useEffect(() => {
-    onConflictsChange?.(major.concat(minor));
-  }, [major, minor, onConflictsChange]);
-
-  const handleConflictClick = (conflict: ConflictV2) => {
-    setSelectedConflict(conflict);
-    onConflictSelect?.(conflict.id);
-    onCenterMap?.(conflict.coordinates);
-  };
-
-  const handleBack = () => {
-    setSelectedConflict(null);
-    onConflictSelect?.(null);
-  };
-
-  const toggleType = (t: number) => {
-    setFilters(prev => {
-      const next = { ...prev };
-      if (next.typeOfViolence === t) delete next.typeOfViolence;
-      else next.typeOfViolence = t;
-      return next;
-    });
-  };
-
-  const toggleRegion = (r: string) => {
-    setFilters(prev => {
-      const next = { ...prev };
-      if (next.region === r) delete next.region;
-      else next.region = r;
-      return next;
-    });
-  };
-
-  const maxDeaths = major.length > 0 ? getDeaths(major[0]) : 1;
-  const hasFilters = !!filters.region || !!filters.typeOfViolence || !!searchQuery;
-
-  const showSkeletons = isLoading && conflicts.length === 0;
+  }
+  const crossConflictFactions = [...factionMap.values()].filter((f) => f.conflictCount >= 2);
 
   return (
-    <motion.div
-      className="conflict-tracker"
-      initial={{ x: '-100%', opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: '-100%', opacity: 0 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-    >
-      {/* Refetch indicator */}
-      <AnimatePresence>
-        {isFetching && !showSkeletons && (
-          <motion.div
-            className="conflict-refetch-bar"
-            initial={{ scaleX: 0 }}
-            animate={{ scaleX: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 1.5, ease: 'easeInOut' }}
-          />
-        )}
-      </AnimatePresence>
+    <div className="ct-list">
+      <div className="ct-section-label">Conflicts</div>
+      {conflicts.map((c) => {
+        const sides = groupBySide(c.factions ?? []);
+        return (
+          <button key={c.id} className="ct-conflict-card" onClick={() => onSelectConflict(c.id)}>
+            <div className="ct-card-header">
+              <Crosshair className="h-4 w-4 text-blue-400" />
+              <span className="ct-card-name">{c.name}</span>
+              <span className={`ct-status ct-status--${c.status.toLowerCase()}`}>{c.status}</span>
+            </div>
+            <div className="ct-card-meta">
+              <span>{c.type.replace(/_/g, ' ')}</span>
+              <span className="ct-sep">|</span>
+              <span>Since {fmtDate(c.startDate)}</span>
+            </div>
+            {/* Factions grouped by side */}
+            {sides.length > 0 && (
+              <div className="ct-card-sides">
+                {sides.map(({ side, members }, si) => (
+                  <div key={side} className="ct-card-side-group">
+                    {si > 0 && <span className="ct-card-vs">vs</span>}
+                    <div className="ct-card-side-factions">
+                      {members.map((cf) => (
+                        <span
+                          key={cf.factionId}
+                          className="ct-faction-badge"
+                          style={{ borderLeftColor: SIDE_COLORS[side] ?? '#6b7280' }}
+                        >
+                          {cf.faction.flagUrl && <img src={cf.faction.flagUrl} alt="" className="ct-flag" />}
+                          <span className="ct-badge-name">{cf.faction.name}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </button>
+        );
+      })}
 
-      {/* Header with inline filters */}
-      <div className="conflict-tracker-header">
-        <h1 className="conflict-tracker-title">CONFLICT TRACKER</h1>
-        <button onClick={onBack} className="conflict-tracker-close-btn"><X className="h-5 w-5" /></button>
+      {/* Cross-conflict actors section */}
+      {crossConflictFactions.length > 0 && (
+        <>
+          <div className="ct-section-label" style={{ marginTop: 16 }}>Key Actors</div>
+          <div className="ct-actor-grid">
+            {crossConflictFactions.map(({ faction, conflictCount }) => (
+              <button
+                key={faction.id}
+                className="ct-actor-card"
+                onClick={() => onOpenFactionProfile(faction.id)}
+              >
+                <div className="ct-actor-flag-wrap">
+                  {faction.flagUrl
+                    ? <img src={faction.flagUrl} alt="" className="ct-actor-flag" />
+                    : <div className="ct-actor-flag ct-actor-flag--empty" />}
+                </div>
+                <div className="ct-actor-info">
+                  <span className="ct-actor-name">{faction.name}</span>
+                  <span className="ct-actor-meta">
+                    <span className="ct-actor-type-dot" style={{ background: FACTION_TYPE_COLORS[faction.type] }} />
+                    {FACTION_TYPE_LABELS[faction.type]}
+                  </span>
+                  <span className="ct-actor-conflicts">{conflictCount} conflicts</span>
+                </div>
+                <ExternalLink className="h-3 w-3 ct-actor-arrow" />
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── State 2+3: Detail + casualties + support info ───
+
+function DetailView({ conflict, selectedFactionId, onSelectFaction, onOpenFactionProfile, onGoBack }: {
+  conflict: Conflict;
+  selectedFactionId: string | null;
+  onSelectFaction: (id: string) => void;
+  onOpenFactionProfile: (factionId: string) => void;
+  onGoBack: () => void;
+}) {
+  const factions = conflict.factions ?? [];
+  const links = conflict.supportLinks ?? [];
+  const sides = useMemo(() => groupBySide(factions), [factions]);
+
+  // Selected faction support info
+  const selectedFaction = factions.find((f) => f.factionId === selectedFactionId)?.faction
+    ?? links.find((l) => l.fromId === selectedFactionId)?.from;
+  const supportTo = selectedFactionId ? links.filter((l) => l.toId === selectedFactionId) : [];
+  const supportFrom = selectedFactionId ? links.filter((l) => l.fromId === selectedFactionId) : [];
+
+  return (
+    <div className="ct-detail">
+      <button className="ct-back" onClick={onGoBack}>
+        <ArrowLeft className="h-4 w-4" /> All Conflicts
+      </button>
+
+      <h3 className="ct-detail-title">{conflict.name}</h3>
+      <div className="ct-detail-meta">
+        <span className={`ct-status ct-status--${conflict.status.toLowerCase()}`}>{conflict.status}</span>
+        <span>{conflict.type.replace(/_/g, ' ')}</span>
+        <span>Since {fmtDate(conflict.startDate)}</span>
       </div>
 
-      {!selectedConflict && (
-        <div className="ucdp-filters-bar">
-          {/* Type chips */}
-          <div className="ucdp-chips">
-            {TYPES.map(t => (
-              <button
-                key={t.value}
-                className={`ucdp-chip${filters.typeOfViolence === t.value ? ' active' : ''}`}
-                style={filters.typeOfViolence === t.value ? { borderColor: violenceTypeColor(t.value), color: violenceTypeColor(t.value) } : undefined}
-                onClick={() => toggleType(t.value)}
-              >
-                {t.label}
-              </button>
-            ))}
-            <span className="ucdp-chip-sep" />
-            {/* Region chips */}
-            {REGIONS.map(r => (
-              <button
-                key={r}
-                className={`ucdp-chip${filters.region === r ? ' active' : ''}`}
-                onClick={() => toggleRegion(r)}
-              >
-                {r}
-              </button>
-            ))}
+      {conflict.description && <p className="ct-description">{conflict.description}</p>}
+
+      {/* Total casualties */}
+      <div className="ct-stat-row">
+        <span className="ct-stat-label">Total Est. Casualties</span>
+        <span className="ct-stat-value ct-stat-value--red">{fmt(conflict.casualtiesEstimate)}</span>
+      </div>
+
+      {/* All sides */}
+      <div className="ct-sides-container">
+        {sides.map(({ side, members }, si) => {
+          const color = SIDE_COLORS[side] ?? '#6b7280';
+          const bg = SIDE_BG[side] ?? 'rgba(107, 114, 128, 0.06)';
+          const sideName = inferSideName(members);
+          const totalCas = members.reduce((sum, m) => sum + (m.casualties ?? 0), 0);
+
+          return (
+            <div key={side}>
+              {si > 0 && (
+                <div className="ct-vs-divider">
+                  <Swords className="h-3.5 w-3.5" />
+                </div>
+              )}
+              <div className="ct-side-block" style={{ background: bg, borderColor: `${color}20` }}>
+                <div className="ct-side-header">
+                  <span className="ct-side-color-bar" style={{ background: color }} />
+                  <div className="ct-side-header-text">
+                    <span className="ct-side-name" style={{ color }}>{sideName}</span>
+                    <span className="ct-side-meta">
+                      {members.length} faction{members.length !== 1 ? 's' : ''}
+                      {totalCas > 0 && <> &middot; {fmt(totalCas)} casualties</>}
+                    </span>
+                  </div>
+                </div>
+                {members.map((cf) => (
+                  <div key={cf.factionId} className="ct-faction-row-wrap">
+                    <button
+                      className={`ct-faction-row ${cf.factionId === selectedFactionId ? 'ct-faction-row--selected' : ''}`}
+                      style={{ borderLeftColor: color }}
+                      onClick={() => onSelectFaction(cf.factionId)}
+                    >
+                      <div className="ct-faction-row-flag-wrap">
+                        {cf.faction.flagUrl
+                          ? <img src={cf.faction.flagUrl} alt="" className="ct-flag-round" />
+                          : <div className="ct-flag-round ct-flag-round--empty" />}
+                      </div>
+                      <div className="ct-faction-row-info">
+                        <span className="ct-faction-row-name">{cf.faction.name}</span>
+                        <span className="ct-faction-row-type" style={{ color: FACTION_TYPE_COLORS[cf.faction.type] }}>
+                          {FACTION_TYPE_SHORT[cf.faction.type]}
+                        </span>
+                      </div>
+                      <span className="ct-faction-row-casualties">{fmt(cf.casualties)}</span>
+                    </button>
+                    <button
+                      className="ct-faction-profile-btn"
+                      onClick={(e) => { e.stopPropagation(); onOpenFactionProfile(cf.factionId); }}
+                      title="View actor profile"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Legend */}
+      <div className="ct-legend">
+        <span className="ct-legend-item"><span className="ct-legend-dot" style={{ background: '#ef4444' }} /> Military</span>
+        <span className="ct-legend-item"><span className="ct-legend-dot" style={{ background: '#3b82f6' }} /> Diplomatic</span>
+        <span className="ct-legend-item"><span className="ct-legend-dot" style={{ background: '#22c55e' }} /> Economic</span>
+      </div>
+
+      {/* Selected faction support details */}
+      {selectedFaction && (
+        <div className="ct-support-panel">
+          <div className="ct-support-panel-header">
+            {selectedFaction.flagUrl && <img src={selectedFaction.flagUrl} alt="" className="ct-flag-lg" />}
+            <span className="ct-support-panel-name">{selectedFaction.name}</span>
+            <button
+              className="ct-profile-link"
+              onClick={() => onOpenFactionProfile(selectedFaction.id)}
+              title="View full actor profile"
+            >
+              <Users className="h-3.5 w-3.5" /> Profile
+            </button>
           </div>
-          {/* Search */}
-          <input
-            type="text"
-            className="ucdp-inline-search"
-            placeholder="Search..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-          />
-          {/* Stats line */}
-          <div className="ucdp-stats-line">
-            <span>{filteredCount} conflicts</span>
-            <span>{totalDeaths.toLocaleString()} deaths</span>
-            {hasFilters && (
-              <button className="ucdp-clear-btn" onClick={() => { setFilters({ dataSource: 'ucdp' }); setSearchQuery(''); }}>Clear</button>
-            )}
-          </div>
+
+          {supportTo.length > 0 && (
+            <div className="ct-support-section">
+              <h4 className="ct-support-title">Receiving Support</h4>
+              {supportTo.map((link) => <SupportRow key={link.id} link={link} actor={link.from} />)}
+            </div>
+          )}
+          {supportFrom.length > 0 && (
+            <div className="ct-support-section">
+              <h4 className="ct-support-title">Providing Support</h4>
+              {supportFrom.map((link) => <SupportRow key={link.id} link={link} actor={link.to} />)}
+            </div>
+          )}
+          {supportTo.length === 0 && supportFrom.length === 0 && (
+            <div className="ct-empty-small">No external support links recorded.</div>
+          )}
         </div>
       )}
 
-      {/* Conflict feed */}
-      <div className="conflict-tracker-content">
-        {selectedConflict ? (
-          <ConflictDetailCard conflict={selectedConflict} onBack={handleBack} onCenterMap={onCenterMap} />
-        ) : error ? (
-          <div className="conflict-tracker-empty">
-            <AlertTriangle size={20} style={{ color: '#fca5a5' }} />
-            <p style={{ color: '#fca5a5' }}>Error loading data</p>
-          </div>
-        ) : showSkeletons ? (
-          <>
-            {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
-          </>
-        ) : filteredCount === 0 ? (
-          <div className="conflict-tracker-empty">
-            <AlertTriangle size={20} />
-            <p>No conflicts found</p>
-          </div>
-        ) : (
-          <>
-            {major.map((conflict, i) => {
-              const deaths = getDeaths(conflict);
-              const severity = statusToSeverity(conflict.status);
-              const color = severityColor(severity);
-              const heatPct = Math.max(3, (deaths / maxDeaths) * 100);
+      <p className="ct-hint">
+        {selectedFactionId
+          ? 'Support lines shown on globe. Click another faction to compare.'
+          : 'Click a faction above or on the globe to see its support network.'}
+      </p>
+    </div>
+  );
+}
 
-              return (
-                <motion.div
-                  key={conflict.id}
-                  className={`conflict-card${isFetching ? ' conflict-card-updating' : ''}`}
-                  onClick={() => handleConflictClick(conflict)}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.25, delay: i * 0.03, ease: 'easeOut' }}
-                >
-                  <div className="ucdp-heat-bar" style={{ width: `${heatPct}%`, background: color }} />
-                  <div className="conflict-card-header">
-                    <span className="conflict-card-status" style={{ background: `${color}22`, color, border: `1px solid ${color}44` }}>
-                      {statusLabel(conflict.status)}
-                    </span>
-                    {conflict.typeOfViolence && (
-                      <span className="ucdp-violence-badge" style={{ color: violenceTypeColor(conflict.typeOfViolence) }}>
-                        {violenceTypeLabel(conflict.typeOfViolence)}
-                      </span>
-                    )}
-                    <span className="ucdp-deaths-badge"><Skull size={11} /> {deaths.toLocaleString()}</span>
-                  </div>
-                  <div className="conflict-card-name">{cleanText(conflict.name)}</div>
-                  {conflict.sideA && conflict.sideB && (
-                    <div className="ucdp-sides">
-                      <span className="ucdp-side-a"><Shield size={11} /> {cleanActorName(conflict.sideA)}</span>
-                      <span className="ucdp-vs">vs</span>
-                      <span className="ucdp-side-b"><Users2 size={11} /> {cleanActorName(conflict.sideB)}</span>
-                    </div>
-                  )}
-                  <div className="conflict-card-meta">
-                    <span><MapPin size={13} /> {conflict.country}</span>
-                    <span><Calendar size={13} /> {new Date(conflict.startDate).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}</span>
-                  </div>
-                </motion.div>
-              );
-            })}
+// ── State 4: Faction Profile ────────────────────────
 
-            {minor.length > 0 && (
-              <div className="ucdp-minor-section">
-                <button className="ucdp-minor-toggle" onClick={() => setShowMinor(!showMinor)}>
-                  {showMinor ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                  <span>Minor conflicts ({minor.length})</span>
-                </button>
-                {showMinor && minor.map((conflict, i) => {
-                  const deaths = getDeaths(conflict);
-                  const color = severityColor(statusToSeverity(conflict.status));
-                  return (
-                    <motion.div
-                      key={conflict.id}
-                      className={`conflict-card conflict-card-minor${isFetching ? ' conflict-card-updating' : ''}`}
-                      onClick={() => handleConflictClick(conflict)}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.2, delay: i * 0.02, ease: 'easeOut' }}
-                    >
-                      <div className="conflict-card-header">
-                        <span className="conflict-card-status" style={{ background: `${color}22`, color, border: `1px solid ${color}44` }}>{statusLabel(conflict.status)}</span>
-                        <span className="ucdp-deaths-badge">{deaths}</span>
-                      </div>
-                      <div className="conflict-card-name">{cleanText(conflict.name)}</div>
-                      <div className="conflict-card-meta"><span><MapPin size={12} /> {conflict.country}</span></div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            )}
-          </>
+function FactionView({ profile, onSelectConflict, onGoBack }: {
+  profile: FactionProfile;
+  onSelectConflict: (id: string) => void;
+  onGoBack: () => void;
+}) {
+  const { faction, belligerentIn, supportsFrom, supportsTo } = profile;
+
+  // Collect all countries of operation
+  const countries = new Set<string>();
+  if (faction.countryIso) countries.add(faction.countryIso);
+  for (const b of belligerentIn) {
+    if (b.conflict.countryIso) countries.add(b.conflict.countryIso);
+  }
+  for (const s of supportsFrom) {
+    if (s.conflict.countryIso) countries.add(s.conflict.countryIso);
+  }
+
+  // Unique conflicts (combine belligerent + supporter roles)
+  const conflictRoles = new Map<string, { conflict: { id: string; name: string; status: string; countryIso: string; startDate: string | null }; roles: string[] }>();
+
+  for (const b of belligerentIn) {
+    const existing = conflictRoles.get(b.conflictId);
+    const role = `Belligerent (Side ${b.side})`;
+    if (existing) {
+      existing.roles.push(role);
+    } else {
+      conflictRoles.set(b.conflictId, { conflict: b.conflict, roles: [role] });
+    }
+  }
+  for (const s of supportsFrom) {
+    const existing = conflictRoles.get(s.conflictId);
+    const role = `Supports ${s.to?.name ?? 'unknown'} (${SUPPORT_LABELS[s.type]})`;
+    if (existing) {
+      if (!existing.roles.includes(role)) existing.roles.push(role);
+    } else {
+      conflictRoles.set(s.conflictId, { conflict: s.conflict, roles: [role] });
+    }
+  }
+  for (const s of supportsTo) {
+    const existing = conflictRoles.get(s.conflictId);
+    const role = `Supported by ${s.from?.name ?? 'unknown'} (${SUPPORT_LABELS[s.type]})`;
+    if (existing) {
+      if (!existing.roles.includes(role)) existing.roles.push(role);
+    } else {
+      conflictRoles.set(s.conflictId, { conflict: s.conflict, roles: [role] });
+    }
+  }
+
+  return (
+    <div className="ct-detail">
+      <button className="ct-back" onClick={onGoBack}>
+        <ArrowLeft className="h-4 w-4" /> Back
+      </button>
+
+      {/* Actor identity card */}
+      <div className="ct-faction-profile-card">
+        <div className="ct-faction-profile-flag-wrap">
+          {faction.flagUrl
+            ? <img src={faction.flagUrl} alt="" className="ct-faction-profile-flag" />
+            : <div className="ct-faction-profile-flag ct-faction-profile-flag--empty" />}
+        </div>
+        <div className="ct-faction-profile-identity">
+          <h3 className="ct-detail-title" style={{ marginBottom: 4 }}>{faction.name}</h3>
+          <span
+            className="ct-faction-type-badge"
+            style={{ color: FACTION_TYPE_COLORS[faction.type], borderColor: FACTION_TYPE_COLORS[faction.type] }}
+          >
+            {FACTION_TYPE_LABELS[faction.type]}
+          </span>
+        </div>
+      </div>
+
+      {/* HQ & operations */}
+      <div className="ct-profile-stats">
+        {faction.countryIso && (
+          <div className="ct-profile-stat">
+            <MapPin className="h-3.5 w-3.5" />
+            <span className="ct-profile-stat-label">Headquarters</span>
+            <span className="ct-profile-stat-value">{isoName(faction.countryIso)}</span>
+          </div>
+        )}
+        <div className="ct-profile-stat">
+          <Crosshair className="h-3.5 w-3.5" />
+          <span className="ct-profile-stat-label">Active in</span>
+          <span className="ct-profile-stat-value">{conflictRoles.size} conflict{conflictRoles.size !== 1 ? 's' : ''}</span>
+        </div>
+        {countries.size > 1 && (
+          <div className="ct-profile-stat">
+            <Users className="h-3.5 w-3.5" />
+            <span className="ct-profile-stat-label">Operating in</span>
+            <span className="ct-profile-stat-value">{[...countries].map(isoName).join(', ')}</span>
+          </div>
         )}
       </div>
 
-      <div className="conflict-tracker-footer">
-        <p className="footer-text">
-          Source: <a href="https://ucdp.uu.se/" target="_blank" rel="noreferrer" className="footer-sources">UCDP</a> — Uppsala Conflict Data Program
-        </p>
+      {/* Conflicts list */}
+      <div className="ct-section-label">Conflicts</div>
+      <div className="ct-list">
+        {[...conflictRoles.values()].map(({ conflict, roles }) => (
+          <button
+            key={conflict.id}
+            className="ct-conflict-card"
+            onClick={() => onSelectConflict(conflict.id)}
+          >
+            <div className="ct-card-header">
+              <Crosshair className="h-4 w-4 text-blue-400" />
+              <span className="ct-card-name">{conflict.name}</span>
+              <span className={`ct-status ct-status--${conflict.status.toLowerCase()}`}>{conflict.status}</span>
+            </div>
+            <div className="ct-card-meta">
+              <span>{isoName(conflict.countryIso)}</span>
+              {conflict.startDate && (
+                <>
+                  <span className="ct-sep">|</span>
+                  <span>Since {fmtDate(conflict.startDate)}</span>
+                </>
+              )}
+            </div>
+            <div className="ct-role-tags">
+              {roles.map((role, i) => (
+                <span key={i} className="ct-role-tag">{role}</span>
+              ))}
+            </div>
+          </button>
+        ))}
       </div>
-    </motion.div>
+
+      {/* Support relationships summary */}
+      {(supportsFrom.length > 0 || supportsTo.length > 0) && (
+        <>
+          <div className="ct-section-label" style={{ marginTop: 12 }}>Support Network</div>
+          {supportsFrom.length > 0 && (
+            <div className="ct-support-section">
+              <h4 className="ct-support-title">Providing Support To</h4>
+              {supportsFrom.map((link) => (
+                <div key={link.id} className="ct-support-row">
+                  {link.to?.flagUrl && <img src={link.to.flagUrl} alt="" className="ct-flag" />}
+                  <span className="ct-support-row-name">{link.to?.name ?? '?'}</span>
+                  <span className="ct-support-row-type" style={{ color: SUPPORT_COLORS[link.type] }}>
+                    {SUPPORT_ICONS[link.type]} {SUPPORT_LABELS[link.type]}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          {supportsTo.length > 0 && (
+            <div className="ct-support-section">
+              <h4 className="ct-support-title">Receiving Support From</h4>
+              {supportsTo.map((link) => (
+                <div key={link.id} className="ct-support-row">
+                  {link.from?.flagUrl && <img src={link.from.flagUrl} alt="" className="ct-flag" />}
+                  <span className="ct-support-row-name">{link.from?.name ?? '?'}</span>
+                  <span className="ct-support-row-type" style={{ color: SUPPORT_COLORS[link.type] }}>
+                    {SUPPORT_ICONS[link.type]} {SUPPORT_LABELS[link.type]}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function SupportRow({ link, actor }: { link: SupportLink; actor: { name: string; flagUrl: string | null } }) {
+  const color = SUPPORT_COLORS[link.type];
+  return (
+    <div className="ct-support-row">
+      {actor.flagUrl && <img src={actor.flagUrl} alt="" className="ct-flag" />}
+      <span className="ct-support-row-name">{actor.name}</span>
+      <span className="ct-support-row-type" style={{ color }}>
+        {SUPPORT_ICONS[link.type]} {SUPPORT_LABELS[link.type]}
+      </span>
+      {link.intensity && (
+        <span className="ct-support-row-intensity">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <span key={i} className={`ct-dot ${i < link.intensity! ? 'active' : ''}`} style={i < link.intensity! ? { background: color } : undefined} />
+          ))}
+        </span>
+      )}
+    </div>
   );
 }

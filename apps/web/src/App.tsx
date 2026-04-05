@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import WorldMap from './features/world-map/WorldMap';
 import LeftSidebar from './features/world-map/LeftSidebar';
 import CountrySidebar from './features/country-sidebar/CountrySidebar';
-import ConflictTracker from './features/conflicts/ConflictTracker';
 import DemographicsPanel from './features/demographics/DemographicsPanel';
 import CountryCard from './features/country/CountryCard';
 import MenuToggleButton from './features/world-map/MenuToggleButton';
@@ -12,9 +11,11 @@ import CompareCountriesView from './features/compare/CompareCountriesView';
 import { useChoropleth } from './features/world-map/useChoropleth';
 import { useMapControls } from './features/world-map/useMapControls';
 import { useLiveActivity } from './features/live-activity/useLiveActivity';
-import { useConflicts } from './features/conflicts/useConflicts';
 import LiveActivityLegend from './features/live-activity/LiveActivityLegend';
 import type { MapRefType } from './features/world-map/types';
+import { useConflictTracker } from './features/conflicts/useConflictTracker';
+import ConflictTracker from './features/conflicts/ConflictTracker';
+import { showConflictDots, removeConflictDots, showFactionNodes, clearFactionNodes, clearAllConflictVisuals, getInvolvedCountryIsos } from './features/conflicts/conflict-map-visualization';
 import { NASA_EARTH_OVERLAYS, getNasaPreviewUrl, getNasaObservationDate, INSTRUMENT_INFO, OVERLAY_INSTRUMENT_MAP, type NasaOverlayType, PHYSICAL_LAYER_CONFIG, PHYSICAL_LAYER_KEYS, type PhysicalLayerType, SAT_TRACKING_LEGEND, type SatTrackingCategory } from './features/world-map/map/mapAppearance';
 import { Satellite, Waves, Mountain, MountainSnow, Droplets, Flame, Zap, Sun } from 'lucide-react';
 import SpaceBackground from './components/SpaceBackground';
@@ -24,7 +25,6 @@ import type { SatCategory } from './features/world-map/useSatelliteTracking';
 import { MuseumLegend, MuseumExpandedCard, PURPLE_SCHEME, EARTHY_SCHEME } from './components/MuseumCard';
 import './index.css';
 import './styles/sidebar.css';
-import './styles/conflict-tracker.css';
 
 import "./styles/compare-countries.css";
 import "./styles/demographics.css";
@@ -88,25 +88,7 @@ function WorldMapView() {
   const choropleth = useChoropleth(mapRef);
   const mapControls = useMapControls(mapRef);
   const liveActivity = useLiveActivity();
-  const conflicts = useConflicts();
-
-  // Wire conflict data to map layers
-  useEffect(() => {
-    mapRef.current?.setConflictLayer?.(
-      conflicts.enabled,
-      conflicts.data ?? null,
-      (event) => {
-        conflicts.handleSelectCountry(event.properties.country);
-        conflicts.handleSelectEvent(event);
-      },
-    );
-  }, [conflicts.enabled, conflicts.data]);
-
-  // Fly to conflict location
-  const handleConflictFlyTo = useCallback((lat: number, lng: number) => {
-    mapRef.current?.easeTo({ center: [lng, lat], zoom: 5, duration: 1500 });
-  }, []);
-
+  const conflictTracker = useConflictTracker();
   // Wire live-activity data to map layers
   useEffect(() => {
     mapRef.current?.setLiveActivityLayer?.('earthquakes', liveActivity.earthquakesEnabled, liveActivity.earthquakesData);
@@ -141,6 +123,68 @@ function WorldMapView() {
       { enabledSublayers: liveActivity.weatherLayers },
     );
   }, [liveActivity.weatherEnabled, liveActivity.weatherLayers]);
+
+  // Wire conflict tracker — pulsing dots (State 1: global view)
+  useEffect(() => {
+    const map = mapRef.current?.getMap?.();
+    if (!map || !map.isStyleLoaded?.()) return;
+
+    if (!conflictTracker.enabled || conflictTracker.conflicts.length === 0) {
+      clearAllConflictVisuals(map);
+      return;
+    }
+
+    // If we're in global view, show pulsing dots
+    if (conflictTracker.viewState === 'global') {
+      clearFactionNodes(map);
+      showConflictDots(map, conflictTracker.conflicts);
+    }
+
+    // Listen for dot clicks (dispatched from the visualization module)
+    const handleDotClick = (e: Event) => {
+      const id = (e as CustomEvent).detail.id;
+      conflictTracker.selectConflict(id);
+    };
+    window.addEventListener('conflict-dot-click', handleDotClick);
+    return () => window.removeEventListener('conflict-dot-click', handleDotClick);
+  }, [conflictTracker.enabled, conflictTracker.conflicts, conflictTracker.viewState]);
+
+  // Wire conflict tracker — faction nodes on globe (State 2+3)
+  useEffect(() => {
+    const map = mapRef.current?.getMap?.();
+    if (!map || !map.isStyleLoaded?.()) return;
+
+    if (!conflictTracker.selectedConflict || conflictTracker.viewState === 'global' || conflictTracker.viewState === 'faction') {
+      clearFactionNodes(map);
+      mapRef.current?.highlightIso3ToColorMap?.({});
+      return;
+    }
+
+    // Remove pulsing dots, show faction markers + support lines
+    removeConflictDots(map);
+    showFactionNodes(map, conflictTracker.selectedConflict, conflictTracker.selectedFactionId, conflictTracker.selectFaction);
+
+    // Highlight involved countries on the map (async — expands orgs into member countries)
+    getInvolvedCountryIsos(conflictTracker.selectedConflict).then((isoColors) => {
+      mapRef.current?.highlightIso3ToColorMap?.(isoColors);
+    });
+  }, [conflictTracker.selectedConflict, conflictTracker.selectedFactionId, conflictTracker.viewState]);
+
+  // Fly to conflict location when selected
+  useEffect(() => {
+    if (!conflictTracker.selectedConflict) return;
+    const { lat, lng } = conflictTracker.selectedConflict;
+    mapRef.current?.easeTo({ center: [lng, lat], zoom: 4, duration: 1500 });
+  }, [conflictTracker.selectedConflict]);
+
+  // Cleanup when conflict tracker is disabled
+  useEffect(() => {
+    if (conflictTracker.enabled) return;
+    const map = mapRef.current?.getMap?.();
+    if (map) clearAllConflictVisuals(map);
+    // Clear country highlights
+    mapRef.current?.highlightIso3ToColorMap?.({});
+  }, [conflictTracker.enabled]);
 
   // Satellite Intel — expanded overlay state
   const [expandedOverlay, setExpandedOverlay] = useState<NasaOverlayType | null>(null);
@@ -439,8 +483,8 @@ function WorldMapView() {
   const [sidebars, setSidebars] = useState({
     country: false,
     menu: false,
-    conflict: false,
-    demographics: false
+    demographics: false,
+    conflicts: false,
   });
 
   // Compare Countries state
@@ -452,7 +496,7 @@ function WorldMapView() {
   });
 
   // Unified sidebars handler
-  const toggleSidebar = useCallback((type: 'country' | 'menu' | 'conflict' | 'demographics', open: boolean) => {
+  const toggleSidebar = useCallback((type: 'country' | 'menu' | 'demographics' | 'conflicts', open: boolean) => {
     setSidebars(prev => ({ ...prev, [type]: open }));
   }, []);
 
@@ -510,9 +554,11 @@ function WorldMapView() {
 
   // Country selection handler
   const handleCountrySelect = useCallback((countryName: string) => {
+    // Block country sidebar when conflict tracker is open
+    if (sidebars.conflicts) return;
     setSelectedCountry(countryName);
     toggleSidebar('country', true);
-  }, [toggleSidebar]);
+  }, [toggleSidebar, sidebars.conflicts]);
 
   const handleCloseSidebar = useCallback(() => {
     toggleSidebar('country', false);
@@ -527,23 +573,18 @@ function WorldMapView() {
 
   // Left sidebar handlers
   const handleToggleLeftSidebar = useCallback(() => {
+    // If CT is open, close it and open menu instead
+    if (sidebars.conflicts) {
+      toggleSidebar('conflicts', false);
+      conflictTracker.toggle(false);
+      toggleSidebar('menu', true);
+      return;
+    }
     toggleSidebar('menu', !sidebars.menu);
-  }, [sidebars.menu, toggleSidebar]);
+  }, [sidebars.menu, sidebars.conflicts, toggleSidebar, conflictTracker]);
 
   const handleCloseLeftSidebar = useCallback(() => {
     toggleSidebar('menu', false);
-  }, [toggleSidebar]);
-
-  const handleOpenConflictTracker = useCallback(() => {
-    toggleSidebar('conflict', true);
-    if (mapControls.historyEnabled) {
-      mapControls.handleToggleHistoryMode(false);
-    }
-  }, [toggleSidebar, mapControls.historyEnabled, mapControls.handleToggleHistoryMode]);
-
-  const handleCloseConflictTracker = useCallback(() => {
-    toggleSidebar('conflict', false);
-    setSelectedConflictId(null);
   }, [toggleSidebar]);
 
   const handleOpenDemographics = useCallback(() => {
@@ -555,7 +596,21 @@ function WorldMapView() {
     toggleSidebar('demographics', false);
   }, [toggleSidebar]);
 
-  const handleCenterMapOnConflict = (coordinates: { lat: number; lng: number }) => {
+  const handleOpenConflictTracker = useCallback(() => {
+    toggleSidebar('menu', false);
+    toggleSidebar('country', false);
+    toggleSidebar('conflicts', true);
+    conflictTracker.toggle(true);
+  }, [toggleSidebar, conflictTracker]);
+
+  const handleCloseConflictTracker = useCallback(() => {
+    toggleSidebar('conflicts', false);
+    conflictTracker.toggle(false);
+    // Return to left sidebar menu
+    toggleSidebar('menu', true);
+  }, [toggleSidebar, conflictTracker]);
+
+  const handleCenterMap = (coordinates: { lat: number; lng: number }) => {
     if (mapRef.current) {
       mapRef.current.easeTo({
         center: [coordinates.lng, coordinates.lat],
@@ -563,23 +618,6 @@ function WorldMapView() {
         duration: 1200
       });
     }
-  };
-
-  const handleConflictClick = (conflictId: string) => {
-    // Find conflict in current map data or fallback to static
-    const ucdpConflict = conflictsForMap.find((c: any) => c.id === conflictId);
-    const staticConflict = conflictsDatabase.find(c => c.id === conflictId);
-    const conflict = ucdpConflict || staticConflict;
-    if (conflict) {
-      setSelectedCountry(null);
-      setSelectedConflictId(conflictId);
-      handleCenterMapOnConflict(conflict.coordinates);
-      toggleSidebar('conflict', true);
-    }
-  };
-
-  const handleConflictSelect = (conflictId: string | null) => {
-    setSelectedConflictId(conflictId);
   };
 
   // Compare Countries handlers
@@ -615,12 +653,6 @@ function WorldMapView() {
     ), [countries, selectedCountry]
   );
 
-  // UCDP conflicts for map — driven by ConflictTracker's filtered results
-  const [conflictsForMap, setConflictsForMap] = useState<any[]>([]);
-  const handleConflictsChange = useCallback((c: any[]) => setConflictsForMap(c), []);
-  // Clear map when tracker closes
-  useEffect(() => { if (!sidebars.conflict) setConflictsForMap([]); }, [sidebars.conflict]);
-
   return (
     <div className="relative w-full h-full overflow-hidden">
       {/* Immersive space starfield — behind everything */}
@@ -636,7 +668,6 @@ function WorldMapView() {
       <LeftSidebar
         isOpen={sidebars.menu}
         onClose={handleCloseLeftSidebar}
-        onOpenConflictTracker={handleOpenConflictTracker}
         onOpenDemographics={handleOpenDemographics}
         // Natural layers props
         onToggleRiversLayer={mapControls.handleToggleRiversLayer}
@@ -701,18 +732,8 @@ function WorldMapView() {
         weatherEnabled={liveActivity.weatherEnabled}
         weatherLayers={liveActivity.weatherLayers}
         onToggleWeatherLayer={liveActivity.handleToggleWeatherLayer}
-        // Conflict Tracker
-        onToggleConflicts={conflicts.handleToggle}
-        conflictsEnabled={conflicts.enabled}
-        conflictsLoading={conflicts.isLoading}
-        conflictSummaries={conflicts.summaries}
-        conflictSelectedCountry={conflicts.selectedCountry}
-        onConflictSelectCountry={conflicts.handleSelectCountry}
-        conflictCountryEvents={conflicts.countryEvents}
-        conflictSelectedEvent={conflicts.selectedEvent}
-        onConflictSelectEvent={conflicts.handleSelectEvent}
-        onConflictFlyTo={handleConflictFlyTo}
         onTrackingCategoriesChange={setTrackingCategories}
+        onOpenConflictTracker={handleOpenConflictTracker}
       />
 
       {/* Left sidebar overlay */}
@@ -736,6 +757,7 @@ function WorldMapView() {
         selectedCountry={selectedCountry}
         onResetView={handleResetView}
         isLeftSidebarOpen={sidebars.menu}
+        blockCountryClicks={sidebars.conflicts}
         onMapReady={handleMapReady}
       />
 
@@ -1745,28 +1767,6 @@ function WorldMapView() {
         )}
       </AnimatePresence>
 
-      {/* Conflict Tracker */}
-      <AnimatePresence>
-        {sidebars.conflict && (
-          <motion.div
-            className="fixed inset-0 bg-black z-40 cursor-pointer"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.4 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2, ease: 'easeInOut' }}
-            onClick={handleCloseConflictTracker}
-          />
-        )}
-      </AnimatePresence>
-      {sidebars.conflict && (
-        <ConflictTracker
-          onBack={handleCloseConflictTracker}
-          onCenterMap={handleCenterMapOnConflict}
-          onConflictSelect={handleConflictSelect}
-          onConflictsChange={handleConflictsChange}
-        />
-      )}
-
       {/* Demographics Panel */}
       <AnimatePresence>
         {sidebars.demographics && (
@@ -1783,7 +1783,24 @@ function WorldMapView() {
       {sidebars.demographics && (
         <DemographicsPanel
           onBack={handleCloseDemographics}
-          onCenterMap={handleCenterMapOnConflict}
+          onCenterMap={handleCenterMap}
+        />
+      )}
+
+      {/* Conflict Tracker Panel */}
+      {sidebars.conflicts && (
+        <ConflictTracker
+          onBack={handleCloseConflictTracker}
+          conflicts={conflictTracker.conflicts}
+          selectedConflict={conflictTracker.selectedConflict}
+          selectedFactionId={conflictTracker.selectedFactionId}
+          factionProfile={conflictTracker.factionProfile}
+          viewState={conflictTracker.viewState}
+          loading={conflictTracker.loading}
+          onSelectConflict={conflictTracker.selectConflict}
+          onSelectFaction={conflictTracker.selectFaction}
+          onOpenFactionProfile={conflictTracker.openFactionProfile}
+          onGoBack={conflictTracker.goBack}
         />
       )}
 

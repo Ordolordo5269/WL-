@@ -4,8 +4,6 @@ import {
   fetchNewsForCountry,
   fetchNewsForConflict,
   fetchTopConflictHeadlines,
-  fetchAcledEvents,
-  COUNTRY_NAME_MAP,
 } from './service';
 
 // ── News endpoints ───────────────────────────────────────────────────────────
@@ -47,55 +45,3 @@ export const getConflictSpecificNews: RequestHandler = async (req: Request, res:
   res.json({ articles, total: articles.length });
 };
 
-// ── ACLED endpoints ──────────────────────────────────────────────────────────
-
-export const getAcledEvents: RequestHandler = async (req: Request, res: Response) => {
-  const { country, dateFrom, dateTo, eventType, limit, page } = req.query as Record<string, string>;
-
-  const resolvedCountry = country
-    ? (COUNTRY_NAME_MAP[country.toUpperCase()] ?? country)
-    : undefined;
-
-  const result = await fetchAcledEvents({
-    country: resolvedCountry,
-    eventType: eventType || undefined,
-    dateFrom: dateFrom || undefined,
-    dateTo: dateTo || undefined,
-    limit: limit ? Math.min(parseInt(limit, 10), 500) : 50,
-    page: page ? parseInt(page, 10) : 1,
-  });
-
-  res.setHeader('Cache-Control', 'public, max-age=1800, stale-while-revalidate=3600');
-  res.json(result);
-};
-
-export const getAcledEventsByConflict: RequestHandler = async (req: Request, res: Response) => {
-  const { countryIso } = req.params;
-  const { limit, page, eventType, dateFrom, dateTo } = req.query as Record<string, string>;
-
-  const resolvedCountry = COUNTRY_NAME_MAP[countryIso.toUpperCase()];
-  if (!resolvedCountry) {
-    res.status(400).json({
-      error: `No ACLED country mapping for ISO "${countryIso}". Use /api/acled/events?country=<name> directly.`,
-      supported: Object.keys(COUNTRY_NAME_MAP),
-    });
-    return;
-  }
-
-  const result = await fetchAcledEvents({
-    country: resolvedCountry,
-    dateFrom: dateFrom || undefined,
-    dateTo: dateTo || undefined,
-    eventType: eventType || undefined,
-    limit: limit ? Math.min(parseInt(limit, 10), 500) : 50,
-    page: page ? parseInt(page, 10) : 1,
-  });
-
-  res.setHeader('Cache-Control', 'public, max-age=1800, stale-while-revalidate=3600');
-  res.json(result);
-};
-
-export const getAcledCountries: RequestHandler = (_req: Request, res: Response) => {
-  res.setHeader('Cache-Control', 'public, max-age=86400');
-  res.json({ countries: COUNTRY_NAME_MAP });
-};
