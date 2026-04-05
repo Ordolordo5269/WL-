@@ -1,0 +1,95 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "amazon-river-delta",
+        "title": "Amazon River Delta",
+        "description": "The Amazon River meets the Atlantic Ocean in a vast delta spanning over 100 km. This false-color image reveals the sediment-rich freshwater plume extending far into the ocean.",
+        "category": "rivers",
+        "date": "2023-09-15",
+        "satellite": "Landsat 9",
+        "imageUrl": "https://eoimages.gsfc.nasa.gov/images/imagerecords/152000/152096/amazon_oli2_2023256_lrg.jpg",
+        "thumbnailUrl": "https://eoimages.gsfc.nasa.gov/images/imagerecords/152000/152096/amazon_oli2_2023256.jpg",
+        "source": "NASA Earth Observatory"
+      },
+      "geometry": { "type": "Point", "coordinates": [-50.0, -0.5] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "manhattan-new-york",
+        "title": "Manhattan, New York",
+        "description": "The island of Manhattan seen from orbit — one of the most densely developed urban landscapes on Earth, framed by the Hudson and East rivers.",
+        "category": "cities",
+        "date": "2021-06-20",
+        "satellite": "Landsat 8",
+        "imageUrl": "https://eoimages.gsfc.nasa.gov/images/imagerecords/148000/148641/newyork_oli_2021171_lrg.jpg",
+        "thumbnailUrl": "https://eoimages.gsfc.nasa.gov/images/imagerecords/148000/148641/newyork_oli_2021171.jpg",
+        "source": "NASA Earth Observatory"
+      },
+      "geometry": { "type": "Point", "coordinates": [-74.006, 40.7128] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "sahara-eye-of-africa",
+        "title": "Eye of the Sahara (Richat Structure)",
+        "description": "The Richat Structure in Mauritania — a 40 km-diameter geological dome eroded into concentric rings visible from orbit. Once thought to be an impact crater, it is now understood as a deeply eroded dome.",
+        "category": "deserts",
+        "date": "2022-01-10",
+        "satellite": "Landsat 9",
+        "imageUrl": "https://eoimages.gsfc.nasa.gov/images/imagerecords/79000/79079/richat_ali_2007013_lrg.jpg",
+        "thumbnailUrl": "https://eoimages.gsfc.nasa.gov/images/imagerecords/79000/79079/richat_ali_2007013.jpg",
+        "source": "NASA Earth Observatory"
+      },
+      "geometry": { "type": "Point", "coordinates": [-11.4, 21.12] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "great-barrier-reef",
+        "title": "Great Barrier Reef",
+        "description": "The world's largest coral reef system stretching over 2,300 km along Australia's northeast coast. Visible from space, it comprises over 2,900 individual reef systems.",
+        "category": "coasts",
+        "date": "2020-11-12",
+        "satellite": "Terra / MODIS",
+        "imageUrl": "https://eoimages.gsfc.nasa.gov/images/imagerecords/4000/4807/great_barrier_reef_amo_2004052_lrg.jpg",
+        "thumbnailUrl": "https://eoimages.gsfc.nasa.gov/images/imagerecords/4000/4807/great_barrier_reef_amo_2004052.jpg",
+        "source": "NASA Earth Observatory"
+      },
+      "geometry": { "type": "Point", "coordinates": [147.7, -18.28] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "himalayas-everest",
+        "title": "Himalayas — Mount Everest Region",
+        "description": "The roof of the world seen from orbit. The Himalayan range stretches across five nations, with peaks above 8,000 m casting long shadows across glacial valleys.",
+        "category": "mountains",
+        "date": "2023-01-05",
+        "satellite": "Landsat 9",
+        "imageUrl": "https://eoimages.gsfc.nasa.gov/images/imagerecords/151000/151904/himalayas_oli2_2023276_lrg.jpg",
+        "thumbnailUrl": "https://eoimages.gsfc.nasa.gov/images/imagerecords/151000/151904/himalayas_oli2_2023276.jpg",
+        "source": "NASA Earth Observatory"
+      },
+      "geometry": { "type": "Point", "coordinates": [86.925, 27.988] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "venice-lagoon",
+        "title": "Venice Lagoon, Italy",
+        "description": "The city of Venice sits within a shallow coastal lagoon in the northern Adriatic Sea. Tidal channels, barrier islands, and the historic city center are all visible from orbit.",
+        "category": "cities",
+        "date": "2020-04-13",
+        "satellite": "Sentinel-2",
+        "imageUrl": "https://eoimages.gsfc.nasa.gov/images/imagerecords/146000/146638/venice_oli_2020104_lrg.jpg",
+        "thumbnailUrl": "https://eoimages.gsfc.nasa.gov/images/imagerecords/146000/146638/venice_oli_2020104.jpg",
+        "source": "NASA Earth Observatory"
+      },
+      "geometry": { "type": "Point", "coordinates": [12.3375, 45.4408] }
+    }
+  ]
+}

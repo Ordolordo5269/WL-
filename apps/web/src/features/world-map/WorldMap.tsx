@@ -72,6 +72,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   const povPrevState = useRef<{ style: StyleKey; planet: PlanetPreset; star: number; zoom: number; pitch: number; bearing: number; center: [number, number] } | null>(null);
   
   const deferredTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const starTwinkleRafRef = useRef<number | null>(null);
   const rotationSpeedRef = useRef<number>(3);
   const spinRafRef = useRef<number | null>(null);
   const pendingAutoRotateRef = useRef<boolean>(false);
@@ -135,7 +136,12 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   const naturalEnabledRef = useRef<{ rivers: boolean; ranges: boolean; peaks: boolean; lakes: boolean; volcanoes: boolean; 'fault-lines': boolean; deserts: boolean }>({ rivers: false, ranges: false, peaks: false, lakes: false, volcanoes: false, 'fault-lines': false, deserts: false });
   const naturalLodRef = useRef<NaturalLod>('auto');
   const peaksIconLoadedRef = useRef<boolean>(false);
-  
+  // Earth Gallery
+  const earthGalleryEnabledRef = useRef<boolean>(false);
+  const earthGalleryIconLoadedRef = useRef<boolean>(false);
+  const earthGalleryPopupRef = useRef<mapboxgl.Popup | null>(null);
+  const earthGalleryInteractiveRef = useRef<boolean>(false);
+
   // ✅ NUEVO: Tipos específicos para event listeners
   type MapMouseEventHandler = (e: mapboxgl.MapMouseEvent) => void;
   type MapTouchEventHandler = (e: mapboxgl.MapTouchEvent) => void;
@@ -719,6 +725,117 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     }
   }, []);
 
+  // ── Earth Gallery (NASA Photos) ──
+  const ensureEarthGalleryIcon = useCallback(() => {
+    const map = mapRef.current;
+    if (!map || earthGalleryIconLoadedRef.current) return;
+    const image = new Image();
+    image.onload = () => {
+      try {
+        if (!map.hasImage('earth-gallery-icon')) {
+          map.addImage('earth-gallery-icon', image as any, { sdf: false } as any);
+        }
+        earthGalleryIconLoadedRef.current = true;
+      } catch {}
+    };
+    image.src = '/icons/camera-marker.svg';
+  }, []);
+
+  const ensureEarthGallerySource = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const sourceId = 'earth-gallery-source';
+    if (!map.getSource(sourceId)) {
+      try {
+        map.addSource(sourceId, { type: 'geojson', data: '/data/earth-gallery.geojson' } as any);
+      } catch {}
+    }
+  }, []);
+
+  const ensureEarthGalleryLayer = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    ensureEarthGalleryIcon();
+    const layerId = 'earth-gallery-symbol';
+    if (!map.getLayer(layerId)) {
+      try {
+        const beforeId = map.getLayer('country-highlight') ? 'country-highlight' : undefined;
+        map.addLayer({
+          id: layerId,
+          type: 'symbol',
+          source: 'earth-gallery-source',
+          minzoom: 1,
+          layout: {
+            'icon-image': 'earth-gallery-icon',
+            'icon-allow-overlap': true,
+            'icon-ignore-placement': false,
+            'icon-size': ['interpolate', ['linear'], ['zoom'], 1, 0.6, 4, 0.8, 8, 1],
+            'text-field': ['get', 'title'],
+            'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'],
+            'text-size': ['interpolate', ['linear'], ['zoom'], 1, 0, 3, 0, 4, 10, 8, 12],
+            'text-offset': [0, 1.8],
+            'text-anchor': 'top',
+            'text-optional': true,
+          },
+          paint: {
+            'text-color': '#e2e8f0',
+            'text-halo-color': 'rgba(15,23,42,0.9)',
+            'text-halo-width': 1.2,
+          }
+        } as any, beforeId);
+      } catch {}
+    }
+  }, [ensureEarthGalleryIcon]);
+
+  const ensureEarthGalleryInteractivity = useCallback(() => {
+    const map = mapRef.current;
+    if (!map || earthGalleryInteractiveRef.current) return;
+    const layerId = 'earth-gallery-symbol';
+    if (!map.getLayer(layerId)) return;
+    earthGalleryInteractiveRef.current = true;
+
+    map.on('mouseenter', layerId, () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', layerId, () => {
+      map.getCanvas().style.cursor = isLeftSidebarOpenRef.current ? "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='8' fill='none' stroke='%2387CEEB' stroke-width='1.5' opacity='0.9'/%3E%3Ccircle cx='10' cy='10' r='2' fill='%2387CEEB' opacity='0.7'/%3E%3C/svg%3E\") 10 10, auto" : 'grab';
+    });
+
+    map.on('click', layerId, (e: mapboxgl.MapMouseEvent) => {
+      const feats = map.queryRenderedFeatures(e.point, { layers: [layerId] });
+      if (!feats || feats.length === 0) return;
+      const props = feats[0].properties || {} as any;
+      const coords = (feats[0].geometry as any).coordinates?.slice() as [number, number];
+      if (!coords) return;
+
+      // Close previous popup
+      if (earthGalleryPopupRef.current) {
+        try { earthGalleryPopupRef.current.remove(); } catch {}
+      }
+
+      const html = `
+        <div class="earth-gallery-popup">
+          <div class="earth-gallery-popup-img-wrap">
+            <img src="${props.imageUrl || props.thumbnailUrl}" alt="${props.title}" class="earth-gallery-popup-img" loading="lazy" />
+          </div>
+          <div class="earth-gallery-popup-body">
+            <div class="earth-gallery-popup-title">${props.title || 'Unknown'}</div>
+            <div class="earth-gallery-popup-desc">${props.description || ''}</div>
+            <div class="earth-gallery-popup-meta">
+              ${props.satellite ? `<span>${props.satellite}</span>` : ''}
+              ${props.date ? `<span>${props.date}</span>` : ''}
+            </div>
+            <div class="earth-gallery-popup-source">${props.source || 'NASA Earth Observatory'}</div>
+          </div>
+        </div>
+      `;
+
+      const popup = new mapboxgl.Popup({ maxWidth: '360px', className: 'earth-gallery-mapbox-popup', closeButton: true })
+        .setLngLat(coords)
+        .setHTML(html)
+        .addTo(map);
+      earthGalleryPopupRef.current = popup;
+    });
+  }, []);
+
   const updateNaturalVisibility = useCallback(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -734,6 +851,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       ['fault-lines-line', cfg['fault-lines']],
       ['deserts-fill', cfg.deserts],
       ['deserts-line', cfg.deserts],
+      ['earth-gallery-symbol', earthGalleryEnabledRef.current],
     ];
     pairs.forEach(([id, on]) => {
       if (!map.getLayer(id)) return;
@@ -1251,6 +1369,16 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         if (type === 'fault-lines') ensureFaultLinesLayer();
         if (type === 'deserts') ensureDesertsLayer();
         ensureNaturalInteractivity();
+      }
+      updateNaturalVisibility();
+    },
+    setEarthGalleryEnabled: (enabled: boolean) => {
+      earthGalleryEnabledRef.current = enabled;
+      if (!mapRef.current) return;
+      if (enabled) {
+        ensureEarthGallerySource();
+        ensureEarthGalleryLayer();
+        ensureEarthGalleryInteractivity();
       }
       updateNaturalVisibility();
     },
@@ -2470,6 +2598,42 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       if (mapRef.current) {
         try { mapRef.current.remove(); } catch {}
         mapRef.current = null;
+      }
+    };
+  }, []);
+
+  // Star twinkle animation — triggered by Space Monitor overlays
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const enabled = (e as CustomEvent).detail?.enabled;
+      if (enabled) {
+        if (starTwinkleRafRef.current !== null) return;
+        let phase = 0;
+        const twinkle = () => {
+          const map = mapRef.current;
+          if (!map) { starTwinkleRafRef.current = null; return; }
+          phase += 0.006;
+          const v = 0.65 + 0.35 * Math.sin(phase * 1.4) * Math.cos(phase * 0.9);
+          try {
+            const fog = (map as any).getFog?.() || {};
+            map.setFog({ ...fog, 'star-intensity': v } as any);
+          } catch {}
+          starTwinkleRafRef.current = requestAnimationFrame(twinkle);
+        };
+        starTwinkleRafRef.current = requestAnimationFrame(twinkle);
+      } else {
+        if (starTwinkleRafRef.current !== null) {
+          cancelAnimationFrame(starTwinkleRafRef.current);
+          starTwinkleRafRef.current = null;
+        }
+      }
+    };
+    window.addEventListener('wl-star-twinkle', handler);
+    return () => {
+      window.removeEventListener('wl-star-twinkle', handler);
+      if (starTwinkleRafRef.current !== null) {
+        cancelAnimationFrame(starTwinkleRafRef.current);
+        starTwinkleRafRef.current = null;
       }
     };
   }, []);
