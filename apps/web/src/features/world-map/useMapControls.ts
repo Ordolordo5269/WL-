@@ -36,6 +36,7 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
   const [volcanoesEnabled, setVolcanoesEnabled] = useState(false);
   const [faultLinesEnabled, setFaultLinesEnabled] = useState(false);
   const [desertsEnabled, setDesertsEnabled] = useState(false);
+  const [earthGalleryEnabled, setEarthGalleryEnabled] = useState(false);
   const [naturalLod, setNaturalLod] = useState<'auto' | 'low' | 'med' | 'high'>('auto');
 
   // Earth Data (NASA) overlay states
@@ -155,6 +156,11 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
     setDesertsEnabled(enabled);
     saveNL('deserts', enabled);
     (document as any).__wl_map_comp?.setNaturalLayerEnabled?.('deserts', enabled);
+  }, []);
+
+  const handleToggleEarthGallery = useCallback((enabled: boolean) => {
+    setEarthGalleryEnabled(enabled);
+    (document as any).__wl_map_comp?.setEarthGalleryEnabled?.(enabled);
   }, []);
 
   const handleSetNaturalLod = useCallback((lod: 'auto' | 'low' | 'med' | 'high') => {
@@ -310,7 +316,7 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
   return {
     historyEnabled, historyYear,
     riversEnabled, mountainRangesEnabled, peaksEnabled,
-    lakesEnabled, volcanoesEnabled, faultLinesEnabled, desertsEnabled,
+    lakesEnabled, volcanoesEnabled, faultLinesEnabled, desertsEnabled, earthGalleryEnabled,
     naturalLod,
     handleSetBaseMapStyle, handleSetPlanetPreset,
     handleSetStarIntensity, handleSetSpacePreset, handleSetGlobeTheme,
@@ -320,7 +326,7 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
     handleToggleRiversLayer, handleToggleMountainRangesLayer,
     handleTogglePeaksLayer, handleSetNaturalLod,
     handleToggleLakesLayer, handleToggleVolcanoesLayer,
-    handleToggleFaultLinesLayer, handleToggleDesertsLayer,
+    handleToggleFaultLinesLayer, handleToggleDesertsLayer, handleToggleEarthGallery,
     handleSetOrganizationIsoFilter,
     handleToggleHistoryMode, handleSetHistoryYear, handleResetHistoryPresentation,
     handleSetLedHalo, handleSetLedHaloSpeed,
