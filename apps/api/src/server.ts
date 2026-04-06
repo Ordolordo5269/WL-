@@ -4,20 +4,30 @@ import app from './app.js';
 import { env } from './config/env.js';
 import { logger } from './config/logger.js';
 import { startAISStream } from './services/aisstream.js';
-import { createConflictSocketServer } from './websocket/conflict-socket.js';
-import { setBroadcaster } from './websocket/broadcast.js';
-import { syncUcdpData } from './modules/ucdp/sync.js';
+import { initCandidateService } from './modules/ucdp/candidate.service.js';
+
+// ── Global safety nets — prevent the process from dying on stray errors ──
+process.on('uncaughtException', (err) => {
+  logger.error({ err }, 'Uncaught exception — server stays alive');
+});
+process.on('unhandledRejection', (reason) => {
+  logger.error({ err: reason }, 'Unhandled rejection — server stays alive');
+});
 
 const server = http.createServer(app);
+
+server.on('error', (err) => {
+  logger.error({ err }, 'Server socket error');
+});
 
 server.listen(env.PORT, () => {
   logger.info({ port: env.PORT, env: env.NODE_ENV }, 'Server started');
   startAISStream();
 
-  // UCDP sync: every 6 hours (manual trigger via POST /api/ucdp/sync)
+  // UCDP Candidate Events v26.0.2 — load into memory, refresh every 24h
   if (env.UCDP_API_TOKEN) {
-    setInterval(() => {
-      syncUcdpData().catch(err => logger.error({ err }, 'Periodic UCDP sync failed'));
-    }, 6 * 60 * 60 * 1000);
+    initCandidateService().catch(err =>
+      logger.error({ err }, 'UCDP candidate service init failed')
+    );
   }
 });

@@ -11,8 +11,6 @@ import { SatelliteVisualization } from './map/satellite-visualization';
 import { AVAILABLE_HISTORY_YEARS, snapToAvailableYear } from '../../utils/historical-years';
 import { setLiveActivityLayer } from '../live-activity/live-activity-layers';
 import type { LiveActivityLayerId } from '../live-activity/types';
-import { setConflictLayer as applyConflictLayer } from '../conflicts/conflict-layers';
-import type { ConflictsResponse, ConflictFeature } from '../conflicts/types';
 
 // Mapbox token from environment variable (see frontend/.env)
 const _mbToken = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
@@ -29,6 +27,8 @@ interface WorldMapProps {
   onCountrySelect: (countryName: string) => void;
   selectedCountry: string | null;
   isLeftSidebarOpen?: boolean;
+  /** Block country clicks (e.g. when Conflict Tracker panel is open) */
+  blockCountryClicks?: boolean;
   /** Called once when map tiles + style finish loading (map.on('load')) */
   onMapReady?: () => void;
   onResetView?: () => void;
@@ -45,12 +45,13 @@ interface MapEaseToOptions {
 }
 
 type MetricId = 'gdp' | 'inflation' | 'gdp-per-capita' | 'gini' | 'exports' | 'life-expectancy' | 'military-expenditure' | 'democracy-index' | 'trade-gdp' | 'fuel-exports' | 'mineral-rents' | 'energy-imports' | 'cereal-production';
-const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMap: () => mapboxgl.Map | null; setChoropleth?: (metric: MetricId, spec: ChoroplethSpec | GdpPerCapitaChoroplethSpec | null) => void; setActiveChoropleth?: (metric: MetricId | null) => void; setHistoryEnabled?: (enabled: boolean) => void; setHistoryYear?: (year: number) => void; highlightIso3List?: (iso: string[], colorHex?: string) => void; highlightIso3ToColorMap?: (isoToColor: Record<string,string>) => void; setTerrainEnabled?: (v: boolean) => void; setTerrainExaggeration?: (n: number) => void }, WorldMapProps>(({ onCountrySelect, selectedCountry, isLeftSidebarOpen = false, onMapReady }, ref) => {
+const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMap: () => mapboxgl.Map | null; setChoropleth?: (metric: MetricId, spec: ChoroplethSpec | GdpPerCapitaChoroplethSpec | null) => void; setActiveChoropleth?: (metric: MetricId | null) => void; setHistoryEnabled?: (enabled: boolean) => void; setHistoryYear?: (year: number) => void; highlightIso3List?: (iso: string[], colorHex?: string) => void; highlightIso3ToColorMap?: (isoToColor: Record<string,string>) => void; setTerrainEnabled?: (v: boolean) => void; setTerrainExaggeration?: (n: number) => void }, WorldMapProps>(({ onCountrySelect, selectedCountry, isLeftSidebarOpen = false, blockCountryClicks = false, onMapReady }, ref) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const geocoderContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const selectedCountryId = useRef<string | number | null>(null);
   const isLeftSidebarOpenRef = useRef(isLeftSidebarOpen);
+  const blockCountryClicksRef = useRef(blockCountryClicks);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const historyEnabledRef = useRef<boolean>(false);
   const historyDataLoadedRef = useRef<boolean>(false); // true once user picks a year
@@ -135,7 +136,14 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   const naturalEnabledRef = useRef<{ rivers: boolean; ranges: boolean; peaks: boolean; lakes: boolean; volcanoes: boolean; 'fault-lines': boolean; deserts: boolean }>({ rivers: false, ranges: false, peaks: false, lakes: false, volcanoes: false, 'fault-lines': false, deserts: false });
   const naturalLodRef = useRef<NaturalLod>('auto');
   const peaksIconLoadedRef = useRef<boolean>(false);
-  
+  // Earth Gallery
+  const earthGalleryEnabledRef = useRef<boolean>(false);
+  const earthGalleryPopupRef = useRef<mapboxgl.Popup | null>(null);
+  const earthGallerySelectModeRef = useRef<boolean>(false);
+  const earthGalleryDragRef = useRef<{ startX: number; startY: number; active: boolean }>({ startX: 0, startY: 0, active: false });
+  const earthGalleryBoxRef = useRef<HTMLDivElement | null>(null);
+  const earthGalleryZoomRef = useRef<number>(2); // 0=city, 1=metro, 2=region, 3=country
+
   // ✅ NUEVO: Tipos específicos para event listeners
   type MapMouseEventHandler = (e: mapboxgl.MapMouseEvent) => void;
   type MapTouchEventHandler = (e: mapboxgl.MapTouchEvent) => void;
@@ -719,6 +727,377 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     }
   }, []);
 
+  // ── Earth Gallery: Make popup draggable & resizable ──
+  const makePopupDraggable = useCallback((popup: mapboxgl.Popup) => {
+    const el = popup.getElement();
+    if (!el) return;
+    const content = el.querySelector('.mapboxgl-popup-content') as HTMLElement;
+    if (!content) return;
+
+    // Detach from map anchor — position absolutely on screen
+    el.style.position = 'fixed';
+    el.style.zIndex = '9999';
+    el.style.transform = 'none';
+    // Remove the tip arrow
+    const tip = el.querySelector('.mapboxgl-popup-tip') as HTMLElement;
+    if (tip) tip.style.display = 'none';
+
+    // Initial position: center of viewport
+    const rect = content.getBoundingClientRect();
+    el.style.left = `${Math.max(20, (window.innerWidth - rect.width) / 2)}px`;
+    el.style.top = `${Math.max(60, (window.innerHeight - rect.height) / 3)}px`;
+
+    // Make resizable
+    content.style.resize = 'both';
+    content.style.overflow = 'auto';
+    content.style.minWidth = '360px';
+    content.style.minHeight = '300px';
+    content.style.maxWidth = '90vw';
+    content.style.maxHeight = '85vh';
+
+    // Create drag handle (the banner)
+    const banner = content.querySelector('.eg-osint-banner') as HTMLElement;
+    if (!banner) return;
+    banner.style.cursor = 'move';
+    banner.style.userSelect = 'none';
+
+    let dragging = false;
+    let offsetX = 0, offsetY = 0;
+
+    const onDown = (e: MouseEvent) => {
+      dragging = true;
+      offsetX = e.clientX - el.offsetLeft;
+      offsetY = e.clientY - el.offsetTop;
+      e.preventDefault();
+    };
+    const onMove = (e: MouseEvent) => {
+      if (!dragging) return;
+      el.style.left = `${e.clientX - offsetX}px`;
+      el.style.top = `${e.clientY - offsetY}px`;
+    };
+    const onUp = () => { dragging = false; };
+
+    banner.addEventListener('mousedown', onDown);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+
+    // Cleanup on popup close
+    popup.on('close', () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    });
+  }, []);
+
+  // ── Earth Gallery: OSINT popup builder ──
+  const toMGRS = (lat: number, lng: number): string => {
+    // Simplified UTM zone + grid for display purposes
+    const zone = Math.floor((lng + 180) / 6) + 1;
+    const letter = 'CDEFGHJKLMNPQRSTUVWX'[Math.floor((lat + 80) / 8)] ?? 'N';
+    const easting = Math.round(((lng - (zone * 6 - 183)) + 0.5) * 100000) % 100000;
+    const northing = Math.round((lat * 110574) % 100000);
+    return `${zone}${letter} ${String(easting).padStart(5, '0')} ${String(Math.abs(northing)).padStart(5, '0')}`;
+  };
+  const toDMS = (deg: number, isLat: boolean): string => {
+    const d = Math.abs(deg);
+    const degrees = Math.floor(d);
+    const minutes = Math.floor((d - degrees) * 60);
+    const seconds = ((d - degrees) * 60 - minutes) * 60;
+    const dir = isLat ? (deg >= 0 ? 'N' : 'S') : (deg >= 0 ? 'E' : 'W');
+    return `${degrees}°${String(minutes).padStart(2, '0')}'${seconds.toFixed(1)}"${dir}`;
+  };
+
+  const buildOsintPopupHtml = (nasaUrl: string, dateStr: string, sensor: string, lat: number, lng: number): string => {
+    const fallbackDates = [2, 3].map(d => { const dt = new Date(); dt.setDate(dt.getDate() - d); return dt.toISOString().split('T')[0]; });
+    const fallbackUrls = fallbackDates.map(fd => nasaUrl.replace(`TIME=${dateStr}`, `TIME=${fd}`));
+    const acqTime = `${dateStr}T00:00:00Z`;
+    const mgrs = toMGRS(lat, lng);
+    const dmsLat = toDMS(lat, true);
+    const dmsLng = toDMS(lng, false);
+    const zoomLabel = GALLERY_ZOOM_LABELS[earthGalleryZoomRef.current] ?? 'Region';
+
+    return `
+      <div class="eg-osint">
+        <div class="eg-osint-banner">UNCLASSIFIED // OPEN SOURCE</div>
+        <div class="eg-osint-img-wrap">
+          <div class="eg-osint-loading">
+            <div class="earth-gallery-spinner"></div>
+            <span>ACQUIRING IMAGE…</span>
+          </div>
+          <img src="${nasaUrl}" alt="Satellite observation" class="eg-osint-img"
+            data-fallback-1="${fallbackUrls[0]}" data-fallback-2="${fallbackUrls[1]}"
+            onload="this.style.opacity='1';this.parentElement.querySelector('.eg-osint-loading').style.display='none'"
+            onerror="
+              var fb1=this.getAttribute('data-fallback-1');
+              var fb2=this.getAttribute('data-fallback-2');
+              if(fb1){this.removeAttribute('data-fallback-1');this.src=fb1}
+              else if(fb2){this.removeAttribute('data-fallback-2');this.src=fb2}
+              else{this.parentElement.querySelector('.eg-osint-loading').innerHTML='<span class=\\'eg-osint-err\\'>NO IMAGERY AVAILABLE — CLOUD COVER OR GAP</span>'}
+            " />
+          <div class="eg-osint-hud-tl">SRC: ${sensor}</div>
+          <div class="eg-osint-hud-tr">GSD: 375m</div>
+          <div class="eg-osint-hud-bl">SCOPE: ${zoomLabel.toUpperCase()}</div>
+          <div class="eg-osint-hud-br">ACQ: ${acqTime}</div>
+          <div class="eg-osint-crosshair"></div>
+        </div>
+        <div class="eg-osint-body">
+          <div class="eg-osint-section-title">EARTH OBSERVATION REPORT</div>
+          <div class="eg-osint-grid">
+            <span class="eg-osint-label">DECIMAL</span>
+            <span class="eg-osint-value">${lat.toFixed(5)}°, ${lng.toFixed(5)}°</span>
+            <span class="eg-osint-label">DMS</span>
+            <span class="eg-osint-value">${dmsLat} ${dmsLng}</span>
+            <span class="eg-osint-label">MGRS</span>
+            <span class="eg-osint-value">${mgrs}</span>
+          </div>
+          <div class="eg-osint-divider"></div>
+          <div class="eg-osint-section-title">ANALYSIS</div>
+          <div id="eg-ai-result" class="eg-osint-analysis">
+            <span class="eg-osint-tag eg-osint-tag--info">AI: STANDBY</span>
+          </div>
+          <div class="eg-osint-actions">
+            <button class="eg-osint-btn" onclick="navigator.clipboard.writeText('${lat.toFixed(5)}, ${lng.toFixed(5)}');this.textContent='COPIED';setTimeout(()=>this.textContent='COPY COORDS',1500)">COPY COORDS</button>
+            <a href="${nasaUrl}" target="_blank" rel="noopener" class="eg-osint-btn">FULL RES</a>
+            <a href="https://earth.google.com/web/@${lat},${lng},0a,10000d,35y,0h,0t,0r" target="_blank" rel="noopener" class="eg-osint-btn">GOOGLE EARTH</a>
+          </div>
+          <button id="eg-ai-btn" class="eg-osint-ai-btn" onclick="
+            var btn=this;var res=document.getElementById('eg-ai-result');
+            btn.disabled=true;btn.textContent='ANALYZING...';
+            res.innerHTML='<div class=\\'eg-ai-loading\\'><div class=\\'earth-gallery-spinner\\'></div><span>QUERYING AI MODEL...</span></div>';
+            fetch('/api/earth-gallery/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({imageUrl:'${nasaUrl}',lat:${lat},lng:${lng}})})
+            .then(r=>r.json()).then(d=>{
+              if(d.error){res.innerHTML='<span class=\\'eg-osint-tag eg-osint-tag--alert\\'>AI: '+d.error+'</span>';btn.textContent='RETRY AI';btn.disabled=false;return}
+              var actColor=d.activity&&d.activity.includes('NOMINAL')?'nominal':d.activity&&d.activity.includes('ELEVATED')?'alert':'info';
+              var titleEl=document.querySelector('.eg-osint-section-title');
+              if(titleEl&&d.location)titleEl.textContent='ANALYSIS — '+d.location.toUpperCase();
+              res.innerHTML='<div class=\\'eg-ai-report\\'>'
+                +'<div class=\\'eg-ai-row\\'><span class=\\'eg-ai-key\\'>LOCATION</span><span class=\\'eg-ai-val\\'>'+(d.location||'—')+'</span></div>'
+                +'<div class=\\'eg-ai-row\\'><span class=\\'eg-ai-key\\'>TERRAIN</span><span class=\\'eg-ai-val\\'>'+(d.terrain||'—')+'</span></div>'
+                +'<div class=\\'eg-ai-row\\'><span class=\\'eg-ai-key\\'>FEATURES</span><span class=\\'eg-ai-val\\'>'+(d.features||'—')+'</span></div>'
+                +'<div class=\\'eg-ai-row\\'><span class=\\'eg-ai-key\\'>ACTIVITY</span><span class=\\'eg-osint-tag eg-osint-tag--'+actColor+'\\'>'+(d.activity||'—')+'</span></div>'
+                +'<div class=\\'eg-ai-row\\'><span class=\\'eg-ai-key\\'>WEATHER</span><span class=\\'eg-ai-val\\'>'+(d.weather||'—')+'</span></div>'
+                +'<div class=\\'eg-ai-assess\\'>'+(d.strategic||'')+'</div>'
+                +'</div>';
+              btn.textContent='AI COMPLETE';btn.classList.add('eg-osint-ai-btn--done');
+            }).catch(()=>{res.innerHTML='<span class=\\'eg-osint-tag eg-osint-tag--alert\\'>AI: CONNECTION FAILED</span>';btn.textContent='RETRY AI';btn.disabled=false})
+          ">AI ANALYZE</button>
+        </div>
+        <div class="eg-osint-banner">UNCLASSIFIED // OPEN SOURCE</div>
+      </div>
+    `;
+  };
+
+  // ── Earth Gallery (NASA Photos) — click anywhere mode ──
+  const earthGalleryClickHandlerRef = useRef<((e: mapboxgl.MapMouseEvent) => void) | null>(null);
+
+  const enableEarthGalleryClickMode = useCallback(() => {
+    const map = mapRef.current;
+    if (!map || earthGalleryClickHandlerRef.current) return;
+
+    const handler = (e: mapboxgl.MapMouseEvent) => {
+      if (!earthGalleryEnabledRef.current) return;
+      const { lng, lat } = e.lngLat;
+
+      // Build bbox centered on click point, sized by zoom preset
+      const bbox = `${lat.toFixed(4)},${lng.toFixed(4)},${lat.toFixed(4)},${lng.toFixed(4)}`;
+
+      // Close previous popup
+      if (earthGalleryPopupRef.current) {
+        try { earthGalleryPopupRef.current.remove(); } catch {}
+      }
+
+      const { url: nasaUrl, dateStr, sensor, clampedBbox } = buildNasaSnapshotUrl(bbox, true);
+      const html = buildOsintPopupHtml(nasaUrl, dateStr, sensor, lat, lng);
+
+      const popup = new mapboxgl.Popup({ maxWidth: 'none', className: 'eg-osint-popup', closeButton: true, anchor: 'top-left' })
+        .setLngLat([lng, lat])
+        .setHTML(html)
+        .addTo(map);
+      earthGalleryPopupRef.current = popup;
+      requestAnimationFrame(() => makePopupDraggable(popup));
+    };
+
+    earthGalleryClickHandlerRef.current = handler;
+    map.on('click', handler);
+  }, []);
+
+  const disableEarthGalleryClickMode = useCallback(() => {
+    const map = mapRef.current;
+    if (!map || !earthGalleryClickHandlerRef.current) return;
+    map.off('click', earthGalleryClickHandlerRef.current);
+    earthGalleryClickHandlerRef.current = null;
+    if (earthGalleryPopupRef.current) {
+      try { earthGalleryPopupRef.current.remove(); } catch {}
+      earthGalleryPopupRef.current = null;
+    }
+  }, []);
+
+  // ── Earth Gallery: Select Area (draw rectangle) ──
+  // Zoom presets: degrees of span for each level
+  const GALLERY_ZOOM_SPANS = [0.4, 1.2, 3.0, 8.0]; // city, metro, region, country
+  const GALLERY_ZOOM_LABELS = ['City', 'Metro', 'Region', 'Country'];
+
+  const buildNasaSnapshotUrl = useCallback((bbox: string, useZoomPreset = false): { url: string; dateStr: string; layer: string; sensor: string; clampedBbox: string } => {
+    let [minLat, minLng, maxLat, maxLng] = bbox.split(',').map(Number);
+    const centerLat = (minLat + maxLat) / 2;
+    const centerLng = (minLng + maxLng) / 2;
+
+    // If using zoom preset (click mode), override bbox with preset span
+    if (useZoomPreset) {
+      const span = GALLERY_ZOOM_SPANS[earthGalleryZoomRef.current] ?? 3.0;
+      minLat = centerLat - span / 2;
+      maxLat = centerLat + span / 2;
+      minLng = centerLng - (span * 1.3) / 2;
+      maxLng = centerLng + (span * 1.3) / 2;
+    }
+
+    let widthDeg = Math.abs(maxLng - minLng);
+    let heightDeg = Math.abs(maxLat - minLat);
+
+    // Always use VIIRS — fast, daily coverage, reliable
+    const layer = 'VIIRS_SNPP_CorrectedReflectance_TrueColor';
+    const sensor = 'VIIRS / Suomi NPP (375 m)';
+
+    // Minimum BBOX to avoid pixelation
+    const minSpan = 0.3;
+    if (heightDeg < minSpan) {
+      minLat = centerLat - minSpan / 2;
+      maxLat = centerLat + minSpan / 2;
+      heightDeg = minSpan;
+    }
+    if (widthDeg < minSpan * 1.3) {
+      const minW = minSpan * 1.3;
+      minLng = centerLng - minW / 2;
+      maxLng = centerLng + minW / 2;
+      widthDeg = minW;
+    }
+
+    const clampedBbox = `${minLat.toFixed(4)},${minLng.toFixed(4)},${maxLat.toFixed(4)},${maxLng.toFixed(4)}`;
+
+    // Cap resolution at 1024x768 — fast to load, sharp enough for popup
+    const pxPerDeg = 296;
+    const w = Math.min(Math.max(Math.round(widthDeg * pxPerDeg), 512), 1024);
+    const h = Math.min(Math.max(Math.round(heightDeg * pxPerDeg), 384), 768);
+
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    const dateStr = d.toISOString().split('T')[0];
+    const url = `https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&LAYERS=${layer}&CRS=EPSG:4326&TIME=${dateStr}&WRAP=day&BBOX=${clampedBbox}&FORMAT=image/jpeg&WIDTH=${w}&HEIGHT=${h}`;
+    return { url, dateStr, layer, sensor, clampedBbox };
+  }, []);
+
+  const showEarthGalleryForBbox = useCallback((bbox: string, centerLng: number, centerLat: number) => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (earthGalleryPopupRef.current) {
+      try { earthGalleryPopupRef.current.remove(); } catch {}
+    }
+    const { url: nasaUrl, dateStr, sensor } = buildNasaSnapshotUrl(bbox);
+    const html = buildOsintPopupHtml(nasaUrl, dateStr, sensor, centerLat, centerLng);
+    const popup = new mapboxgl.Popup({ maxWidth: 'none', className: 'eg-osint-popup', closeButton: true, anchor: 'top-left' })
+      .setLngLat([centerLng, centerLat])
+      .setHTML(html)
+      .addTo(map);
+    earthGalleryPopupRef.current = popup;
+    requestAnimationFrame(() => makePopupDraggable(popup));
+  }, []);
+
+  const enableEarthGallerySelectMode = useCallback(() => {
+    const map = mapRef.current;
+    const container = mapContainer.current;
+    if (!map || !container) return;
+    earthGallerySelectModeRef.current = true;
+    map.dragPan.disable();
+    map.dragRotate.disable();
+    container.style.cursor = 'crosshair';
+
+    // Create selection box div
+    let box = earthGalleryBoxRef.current;
+    if (!box) {
+      box = document.createElement('div');
+      box.className = 'earth-gallery-select-box';
+      container.appendChild(box);
+      earthGalleryBoxRef.current = box;
+    }
+    box.style.display = 'none';
+
+    const onMouseDown = (e: MouseEvent) => {
+      if (!earthGallerySelectModeRef.current) return;
+      const rect = container.getBoundingClientRect();
+      earthGalleryDragRef.current = { startX: e.clientX - rect.left, startY: e.clientY - rect.top, active: true };
+      box!.style.left = `${earthGalleryDragRef.current.startX}px`;
+      box!.style.top = `${earthGalleryDragRef.current.startY}px`;
+      box!.style.width = '0px';
+      box!.style.height = '0px';
+      box!.style.display = 'block';
+    };
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (!earthGalleryDragRef.current.active || !box) return;
+      const rect = container.getBoundingClientRect();
+      const curX = e.clientX - rect.left;
+      const curY = e.clientY - rect.top;
+      const { startX, startY } = earthGalleryDragRef.current;
+      box.style.left = `${Math.min(startX, curX)}px`;
+      box.style.top = `${Math.min(startY, curY)}px`;
+      box.style.width = `${Math.abs(curX - startX)}px`;
+      box.style.height = `${Math.abs(curY - startY)}px`;
+    };
+
+    const onMouseUp = (e: MouseEvent) => {
+      if (!earthGalleryDragRef.current.active || !box) return;
+      earthGalleryDragRef.current.active = false;
+      box.style.display = 'none';
+      const rect = container.getBoundingClientRect();
+      const endX = e.clientX - rect.left;
+      const endY = e.clientY - rect.top;
+      const { startX, startY } = earthGalleryDragRef.current;
+
+      // Minimum 20px drag to count as selection
+      if (Math.abs(endX - startX) < 20 || Math.abs(endY - startY) < 20) return;
+
+      // Convert screen coords to lng/lat
+      const sw = map.unproject([Math.min(startX, endX), Math.max(startY, endY)]);
+      const ne = map.unproject([Math.max(startX, endX), Math.min(startY, endY)]);
+      const bbox = `${sw.lat.toFixed(4)},${sw.lng.toFixed(4)},${ne.lat.toFixed(4)},${ne.lng.toFixed(4)}`;
+      const centerLng = (sw.lng + ne.lng) / 2;
+      const centerLat = (sw.lat + ne.lat) / 2;
+      showEarthGalleryForBbox(bbox, centerLng, centerLat);
+    };
+
+    container.addEventListener('mousedown', onMouseDown);
+    container.addEventListener('mousemove', onMouseMove);
+    container.addEventListener('mouseup', onMouseUp);
+
+    // Store refs for cleanup
+    (container as any).__egSelectDown = onMouseDown;
+    (container as any).__egSelectMove = onMouseMove;
+    (container as any).__egSelectUp = onMouseUp;
+  }, [showEarthGalleryForBbox]);
+
+  const disableEarthGallerySelectMode = useCallback(() => {
+    const map = mapRef.current;
+    const container = mapContainer.current;
+    earthGallerySelectModeRef.current = false;
+    if (map) {
+      map.dragPan.enable();
+      map.dragRotate.enable();
+    }
+    if (container) {
+      container.style.cursor = '';
+      if ((container as any).__egSelectDown) {
+        container.removeEventListener('mousedown', (container as any).__egSelectDown);
+        container.removeEventListener('mousemove', (container as any).__egSelectMove);
+        container.removeEventListener('mouseup', (container as any).__egSelectUp);
+        delete (container as any).__egSelectDown;
+        delete (container as any).__egSelectMove;
+        delete (container as any).__egSelectUp;
+      }
+    }
+    if (earthGalleryBoxRef.current) {
+      earthGalleryBoxRef.current.style.display = 'none';
+    }
+  }, []);
+
   const updateNaturalVisibility = useCallback(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -1254,6 +1633,28 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       }
       updateNaturalVisibility();
     },
+    setEarthGalleryEnabled: (enabled: boolean) => {
+      earthGalleryEnabledRef.current = enabled;
+      if (!mapRef.current) return;
+      if (enabled) {
+        enableEarthGalleryClickMode();
+      } else {
+        disableEarthGalleryClickMode();
+        disableEarthGallerySelectMode();
+      }
+    },
+    setEarthGallerySelectMode: (enabled: boolean) => {
+      if (enabled) {
+        disableEarthGalleryClickMode();
+        enableEarthGallerySelectMode();
+      } else {
+        disableEarthGallerySelectMode();
+        if (earthGalleryEnabledRef.current) enableEarthGalleryClickMode();
+      }
+    },
+    setEarthGalleryZoom: (level: number) => {
+      earthGalleryZoomRef.current = level;
+    },
     setNaturalLod: (lod: NaturalLod) => {
       naturalLodRef.current = lod;
       refreshNaturalByLod();
@@ -1692,11 +2093,6 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       if (!map) return;
       setLiveActivityLayer(map, id, enabled, data, extra);
     },
-    setConflictLayer: (enabled: boolean, data: ConflictsResponse | null, onEventClick?: (event: ConflictFeature) => void) => {
-      const map = mapRef.current;
-      if (!map) return;
-      applyConflictLayer(map, enabled, data, onEventClick);
-    },
     // Earth Data overlays (toggleable NASA GIBS layers)
     // Satellite live tracking layers
     setSatelliteTrackingLayers: (enabled: boolean) => {
@@ -2134,6 +2530,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       // Block country clicks when user has picked a year (territory-only view)
       if (historyEnabledRef.current && historyDataLoadedRef.current) return;
       if (isLeftSidebarOpenRef.current) return;
+      if (blockCountryClicksRef.current) return;
       if (!e.features || e.features.length === 0) return;
       const feature: any = e.features[0];
 
@@ -2402,7 +2799,6 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         applyTerrain(map, { enabled: true, exaggeration: Math.max(1.5, persisted.ex), useHillshade: false });
       }
 
-      // Conflict visualization is now handled by conflict-layers.ts via applyConflictLayer
 
     // Clear persisted natural layers — they should only be active within the Physical Layers section
     try { localStorage.removeItem('wl-natural-layers'); } catch {}
@@ -2536,9 +2932,6 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     return () => clearInterval(tid);
   }, []);
 
-  // Conflict visualization is now handled by conflict-layers.ts via applyConflictLayer
-  // (toggled from LeftSidebar → App.tsx → mapRef.setConflictLayer)
-
   // Función para resetear la vista del mapa
   const resetMapView = () => {
     const map = mapRef.current;
@@ -2590,9 +2983,10 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   // Efecto para actualizar el ref cuando cambia el estado de sidebar izquierda
   useEffect(() => {
     isLeftSidebarOpenRef.current = isLeftSidebarOpen;
+    blockCountryClicksRef.current = blockCountryClicks;
     if (mapRef.current && isMapLoaded) {
       const canvas = mapRef.current.getCanvas();
-      if (isLeftSidebarOpen) {
+      if (isLeftSidebarOpen || blockCountryClicks) {
         // Cursor personalizado minimalista y elegante
         canvas.style.cursor = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='8' fill='none' stroke='%2387CEEB' stroke-width='1.5' opacity='0.9'/%3E%3Ccircle cx='10' cy='10' r='2' fill='%2387CEEB' opacity='0.7'/%3E%3C/svg%3E\") 10 10, auto";
         // Agregar una clase CSS para efectos adicionales
@@ -2602,7 +2996,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         canvas.classList.remove('sidebar-open-cursor');
       }
     }
-  }, [isLeftSidebarOpen, isMapLoaded]);
+  }, [isLeftSidebarOpen, blockCountryClicks, isMapLoaded]);
 
   // Persistencia ligera: cargar ajustes iniciales
   useEffect(() => {

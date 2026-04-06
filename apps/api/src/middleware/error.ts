@@ -17,6 +17,7 @@ export function errorHandler(
         process.env.NODE_ENV === 'development' ? err.message : undefined,
     });
   } else {
-    next(err);
+    // Headers already sent — log and swallow, do NOT re-throw
+    logger.warn({ err, method: req.method, path: req.path }, 'Error after headers sent — swallowed');
   }
 }

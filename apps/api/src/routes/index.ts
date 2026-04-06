@@ -27,7 +27,6 @@ import organizationRoutes from './organization.routes';
 import commoditiesRoutes from './commodities.routes';
 import environmentRoutes from './environment.routes';
 import liveActivityRoutes from './live-activity.routes';
-import conflictsRoutes from './conflicts.routes';
 import healthRoutes from './health.routes';
 import infrastructureRoutes from './infrastructure.routes';
 import fireRoutes from '../modules/fire/routes';
@@ -36,6 +35,8 @@ import ucdpRoutes from '../modules/ucdp/routes';
 import joshuaProjectRoutes from '../modules/joshua-project/routes';
 import unhcrRoutes from '../modules/unhcr/routes';
 import demographicsRoutes from '../modules/demographics/routes';
+import conflictRoutes from '../modules/conflicts/routes';
+import earthGalleryRoutes from './earth-gallery.routes';
 
 const router = Router();
 
@@ -65,7 +66,6 @@ router.use('/organizations', organizationRoutes);
 router.use('/commodities', commoditiesRoutes);
 router.use('/environment', environmentRoutes);
 router.use('/live-activity', liveActivityRoutes);
-router.use('/conflicts', conflictsRoutes);
 router.use('/health', healthRoutes);
 router.use('/infrastructure', infrastructureRoutes);
 router.use('/fire', fireRoutes);
@@ -74,5 +74,7 @@ router.use('/ucdp', ucdpRoutes);
 router.use('/joshua-project', joshuaProjectRoutes);
 router.use('/unhcr', unhcrRoutes);
 router.use('/demographics', demographicsRoutes);
+router.use('/conflicts', conflictRoutes);
+router.use('/earth-gallery', earthGalleryRoutes);
 
 export default router;

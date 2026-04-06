@@ -440,9 +440,9 @@ enum SupportType {
 }
 
 model Conflict {
-  id                 String            @id @default(uuid())
+  id                 String         @id @default(uuid())
   name               String
-  countryIso         String            @db.VarChar(3)
+  countryIso         String         @db.VarChar(3)
   lng                Float
   lat                Float
   status             ConflictStatus
@@ -451,35 +451,38 @@ model Conflict {
   startDate          DateTime?
   endDate            DateTime?
   casualtiesEstimate Int?
-  factions           ConflictFaction[]
-  supportLinks       SupportLink[]
 
-  @@index([status])
+  factions     ConflictFaction[]
+  supportLinks SupportLink[]
+
   @@index([countryIso])
+  @@index([status])
+}
+
+model Faction {
+  id         String      @id @default(uuid())
+  name       String
+  type       FactionType
+  countryIso String?     @db.VarChar(3)
+  flagUrl    String?
+
+  conflicts    ConflictFaction[]
+  supportsFrom SupportLink[]    @relation("SupportFrom")
+  supportsTo   SupportLink[]    @relation("SupportTo")
 }
 
 model ConflictFaction {
   conflictId String
   factionId  String
-  side       String   @db.VarChar(1)
-  casualties Int?
-  conflict   Conflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
-  faction    Faction  @relation(fields: [factionId], references: [id], onDelete: Cascade)
+  side       String   @db.VarChar(1) // 'A' | 'B' | 'C'
+  casualties Int?     // estimated casualties for this faction
+
+  conflict Conflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
+  faction  Faction  @relation(fields: [factionId], references: [id], onDelete: Cascade)
 
   @@id([conflictId, factionId])
   @@index([conflictId])
   @@index([factionId])
-}
-
-model Faction {
-  id         String            @id
-  name       String
-  type       FactionType
-  countryIso String?           @db.VarChar(3)
-  flagUrl    String?
-  conflicts  ConflictFaction[]
-  supportFrom SupportLink[]   @relation("SupportLink_fromIdToFaction")
-  supportTo   SupportLink[]   @relation("SupportLink_toIdToFaction")
 }
 
 model SupportLink {
@@ -488,57 +491,19 @@ model SupportLink {
   fromId      String
   toId        String
   type        SupportType
-  intensity   Int?
+  intensity   Int?        // 1-3, controls line thickness
   description String?
   sourceUrl   String?
   startedAt   DateTime?
-  conflict    Conflict    @relation(fields: [conflictId], references: [id], onDelete: Cascade)
-  from        Faction     @relation("SupportLink_fromIdToFaction", fields: [fromId], references: [id], onDelete: Cascade)
-  to          Faction     @relation("SupportLink_toIdToFaction", fields: [toId], references: [id], onDelete: Cascade)
+  endedAt     DateTime?
+
+  conflict Conflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
+  from     Faction  @relation("SupportFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  to       Faction  @relation("SupportTo", fields: [toId], references: [id], onDelete: Cascade)
 
   @@index([conflictId])
   @@index([fromId])
   @@index([toId])
-}
-
-// UCDP GED Events (fetched from UCDP API)
-model UcdpGedEvent {
-  id                String   @id @default(uuid()) @db.Uuid
-  ucdpEventId       Int      @unique
-  year              Int
-  conflictName      String
-  dyadName          String
-  sideA             String
-  sideB             String
-  dateStart         DateTime
-  dateEnd           DateTime
-  deathsA           Int      @default(0)
-  deathsB           Int      @default(0)
-  deathsCivilians   Int      @default(0)
-  deathsUnknown     Int      @default(0)
-  bestEstimate      Int      @default(0)
-  highEstimate      Int      @default(0)
-  lowEstimate       Int      @default(0)
-  country           String
-  countryId         Int
-  region            String
-  latitude          Float
-  longitude         Float
-  whereDescription  String?
-  adm1              String?
-  adm2              String?
-  typeOfViolence    Int
-  sourceArticle     String?  @db.Text
-  sourceHeadline    String?  @db.Text
-  conflictNewId     Int?
-  dyadNewId         Int?
-  createdAt         DateTime @default(now())
-
-  @@index([dateStart])
-  @@index([country])
-  @@index([typeOfViolence])
-  @@index([year])
-  @@index([conflictName])
 }
 
 // ============================

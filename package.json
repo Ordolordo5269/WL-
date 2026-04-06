@@ -17,6 +17,8 @@
     "test": "npm run test --workspaces --if-present"
   },
   "dependencies": {
+    "@xyflow/react": "^12.10.2",
+    "react-is": "^19.2.4",
     "satellite.js": "^5.0.0"
   }
 }

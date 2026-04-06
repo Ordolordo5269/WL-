@@ -1,0 +1,83 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "amazon-river-delta",
+        "title": "Amazon River Delta",
+        "description": "The Amazon River meets the Atlantic Ocean in a vast delta spanning over 100 km. Sediment-rich freshwater plumes extend far into the ocean, visible as brown and green swirls from orbit.",
+        "category": "rivers",
+        "satellite": "VIIRS / Suomi NPP",
+        "bbox": "-3,-53,2,-47",
+        "source": "NASA Worldview"
+      },
+      "geometry": { "type": "Point", "coordinates": [-50.0, -0.5] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "manhattan-new-york",
+        "title": "Manhattan, New York",
+        "description": "The island of Manhattan — one of the most densely developed urban landscapes on Earth, framed by the Hudson and East rivers.",
+        "category": "cities",
+        "satellite": "VIIRS / Suomi NPP",
+        "bbox": "40.4,-74.3,41.0,-73.7",
+        "source": "NASA Worldview"
+      },
+      "geometry": { "type": "Point", "coordinates": [-74.006, 40.7128] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "sahara-eye-of-africa",
+        "title": "Eye of the Sahara (Richat Structure)",
+        "description": "The Richat Structure in Mauritania — a 40 km-diameter geological dome eroded into concentric rings visible from orbit.",
+        "category": "deserts",
+        "satellite": "VIIRS / Suomi NPP",
+        "bbox": "20.5,-12.0,21.8,-10.5",
+        "source": "NASA Worldview"
+      },
+      "geometry": { "type": "Point", "coordinates": [-11.4, 21.12] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "great-barrier-reef",
+        "title": "Great Barrier Reef",
+        "description": "The world's largest coral reef system stretching over 2,300 km along Australia's northeast coast. Turquoise shallow waters contrast with the deep blue of the Coral Sea.",
+        "category": "coasts",
+        "satellite": "VIIRS / Suomi NPP",
+        "bbox": "-20,146,-16.5,149.5",
+        "source": "NASA Worldview"
+      },
+      "geometry": { "type": "Point", "coordinates": [147.7, -18.28] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "himalayas-everest",
+        "title": "Himalayas — Mount Everest Region",
+        "description": "The roof of the world seen from orbit. Snow-covered peaks above 8,000 m cast long shadows across glacial valleys.",
+        "category": "mountains",
+        "satellite": "VIIRS / Suomi NPP",
+        "bbox": "27,85.5,29.5,88.5",
+        "source": "NASA Worldview"
+      },
+      "geometry": { "type": "Point", "coordinates": [86.925, 27.988] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "venice-lagoon",
+        "title": "Venice Lagoon, Italy",
+        "description": "The city of Venice sits within a shallow coastal lagoon in the northern Adriatic Sea. Tidal channels, barrier islands, and the historic city center are visible from orbit.",
+        "category": "cities",
+        "satellite": "VIIRS / Suomi NPP",
+        "bbox": "44.8,11.8,45.8,12.9",
+        "source": "NASA Worldview"
+      },
+      "geometry": { "type": "Point", "coordinates": [12.3375, 45.4408] }
+    }
+  ]
+}

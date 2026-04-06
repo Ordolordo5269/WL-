@@ -2,9 +2,7 @@ import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import InternationalOrganizationsPanel from './InternationalOrganizationsPanel';
 import StatisticsPanel from './StatisticsPanel';
 import { AVAILABLE_HISTORY_YEARS, snapToAvailableYear } from '../../utils/historical-years';
-import { Crosshair, Settings, Info, Globe, Users, Users2, BarChart3, Map, User, GitCompare, Radio, Satellite } from 'lucide-react';
-import ConflictPanel from '../conflicts/ConflictPanel';
-import type { ConflictSummary, ConflictFeature } from '../conflicts/types';
+import { Settings, Info, Globe, Users, Users2, BarChart3, Map, User, GitCompare, Radio, Satellite, Crosshair } from 'lucide-react';
 import { type NasaOverlayType, NASA_EARTH_OVERLAYS, NASA_EARTH_OVERLAY_KEYS, prefetchNightLightsTiles, getNasaObservationDate } from './map/mapAppearance';
 import { MILITARY_COUNTRY_COLORS, CLASSIFIED_ORBIT_COLORS, GNSS_CONSTELLATION_COLORS, WEATHER_PROGRAM_COLORS, STATION_PROGRAM_COLORS } from './map/satellite-visualization';
 import { COUNTRY_FLAGS, COUNTRY_NAMES } from './map/satellite-database';
@@ -63,7 +61,6 @@ interface LeftSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   onCenterMap?: (coordinates: { lat: number; lng: number }) => void;
-  onOpenConflictTracker?: () => void;
   onOpenDemographics?: () => void;
   onSetBaseMapStyle?: (next: 'night' | 'light' | 'outdoors' | 'dark' | 'satellite-streets' | 'navigation-day' | 'earth-at-night' | 'nasa-night-lights' | 'nasa-black-marble') => void;
   onSetPlanetPreset?: (preset: 'default' | 'nebula' | 'sunset' | 'dawn' | 'arctic' | 'volcanic' | 'emerald' | 'midnight' | 'aurora' | 'sahara' | 'storm' | 'crimson' | 'rose' | 'void' | 'coral' | 'violet') => void;
@@ -105,6 +102,12 @@ interface LeftSidebarProps {
   faultLinesEnabled?: boolean;
   onToggleDesertsLayer?: (enabled: boolean) => void;
   desertsEnabled?: boolean;
+  onToggleEarthGallery?: (enabled: boolean) => void;
+  earthGalleryEnabled?: boolean;
+  onToggleEarthGallerySelectMode?: (enabled: boolean) => void;
+  earthGallerySelectMode?: boolean;
+  onSetEarthGalleryZoom?: (level: number) => void;
+  earthGalleryZoom?: number;
   naturalLod?: 'auto' | 'low' | 'med' | 'high';
   onSetNaturalLod?: (lod: 'auto' | 'low' | 'med' | 'high') => void;
   // Earth Data (NASA) overlays
@@ -131,18 +134,9 @@ interface LeftSidebarProps {
   weatherEnabled?: boolean;
   weatherLayers?: string[];
   onToggleWeatherLayer?: (layer: string) => void;
-  // Conflict Tracker
-  onToggleConflicts?: (enabled: boolean) => void;
-  conflictsEnabled?: boolean;
-  conflictsLoading?: boolean;
-  conflictSummaries?: ConflictSummary[];
-  conflictSelectedCountry?: string | null;
-  onConflictSelectCountry?: (country: string | null) => void;
-  conflictCountryEvents?: ConflictFeature[];
-  conflictSelectedEvent?: ConflictFeature | null;
-  onConflictSelectEvent?: (event: ConflictFeature | null) => void;
-  onConflictFlyTo?: (lat: number, lng: number) => void;
   onTrackingCategoriesChange?: (cats: Record<SatCategory, boolean>) => void;
+  // Conflict Tracker
+  onOpenConflictTracker?: () => void;
 }
 
 interface MenuItem {
@@ -153,10 +147,9 @@ interface MenuItem {
   iconBg?: string;
 }
 
-export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConflictTracker, onOpenDemographics, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetGlobeTheme, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, onSetLedHalo, onSetLedHaloSpeed, choropleth, onToggleHistoryMode, onSetHistoryYear, onResetHistoryPresentation, historyEnabled: _historyEnabled = false, historyYear = null, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, naturalLod = 'auto', onSetNaturalLod, earthOverlays, onToggleEarthOverlay, onToggleSatelliteIntelMode, onHistoryToSatellite, onSatelliteToHistory, onToggleEarthquakes, earthquakesEnabled = false, onToggleFires, firesEnabled = false, onToggleRadar, radarEnabled = false, onToggleAirTraffic, airTrafficEnabled = false, onToggleMarineTraffic, marineTrafficEnabled = false, onToggleSatellites, satellitesEnabled = false, onToggleWeather, weatherEnabled = false, weatherLayers = [], onToggleWeatherLayer, onToggleConflicts, conflictsEnabled = false, conflictsLoading = false, conflictSummaries = [], conflictSelectedCountry = null, onConflictSelectCountry, conflictCountryEvents = [], conflictSelectedEvent = null, onConflictSelectEvent, onConflictFlyTo, onTrackingCategoriesChange }: LeftSidebarProps) {
+export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenDemographics, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetGlobeTheme, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, onSetLedHalo, onSetLedHaloSpeed, choropleth, onToggleHistoryMode, onSetHistoryYear, onResetHistoryPresentation, historyEnabled: _historyEnabled = false, historyYear = null, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, onToggleEarthGallery, earthGalleryEnabled = false, onToggleEarthGallerySelectMode, earthGallerySelectMode = false, onSetEarthGalleryZoom, earthGalleryZoom = 2, naturalLod = 'auto', onSetNaturalLod, earthOverlays, onToggleEarthOverlay, onToggleSatelliteIntelMode, onHistoryToSatellite, onSatelliteToHistory, onToggleEarthquakes, earthquakesEnabled = false, onToggleFires, firesEnabled = false, onToggleRadar, radarEnabled = false, onToggleAirTraffic, airTrafficEnabled = false, onToggleMarineTraffic, marineTrafficEnabled = false, onToggleSatellites, satellitesEnabled = false, onToggleWeather, weatherEnabled = false, weatherLayers = [], onToggleWeatherLayer, onTrackingCategoriesChange, onOpenConflictTracker }: LeftSidebarProps) {
   const [activeItem, setActiveItem] = useState<string>('home');
-  const [conflictView, setConflictView] = useState(false);
-  const [physicalSections, setPhysicalSections] = useState({ geo: true, climate: true, terrain: true });
+  const [physicalSections, setPhysicalSections] = useState({ geo: true, climate: true, terrain: true, gallery: true });
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
 
@@ -309,11 +302,9 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
     const mapComp = (document as any).__wl_map_comp;
     if (enabled) {
       mapComp?.setSatelliteTrackingLayers?.(true);
-      // Immersive entry: globe rotation + twinkling stars
+      // Start immersive globe rotation on first overlay activation
       mapComp?.setRotateSpeed?.(1);
       mapComp?.setAutoRotate?.(true);
-      mapComp?.setSpacePreset?.('deep');
-      window.dispatchEvent(new CustomEvent('wl-star-twinkle', { detail: { enabled: true } }));
     } else {
       // Always remove ground track when toggling a category off
       mapComp?.removeSatelliteGroundTrack?.();
@@ -323,7 +314,6 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
     if (!anyStillOn) {
       mapComp?.setSatelliteTrackingLayers?.(false);
       mapComp?.setAutoRotate?.(false);
-      window.dispatchEvent(new CustomEvent('wl-star-twinkle', { detail: { enabled: false } }));
     }
   }, [satTracking]);
 
@@ -333,7 +323,6 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
     const mapComp = (document as any).__wl_map_comp;
     mapComp?.setSatelliteTrackingLayers?.(false);
     mapComp?.setAutoRotate?.(false);
-    window.dispatchEvent(new CustomEvent('wl-star-twinkle', { detail: { enabled: false } }));
   }, [satTracking]);
 
   // Deactivate immersive mode + all earth overlays + satellite tracking when leaving Satellite Intel
@@ -351,7 +340,8 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
     if (volcanoesEnabled) onToggleVolcanoesLayer?.(false);
     if (faultLinesEnabled) onToggleFaultLinesLayer?.(false);
     if (desertsEnabled) onToggleDesertsLayer?.(false);
-  }, [riversEnabled, mountainRangesEnabled, peaksEnabled, lakesEnabled, volcanoesEnabled, faultLinesEnabled, desertsEnabled, onToggleRiversLayer, onToggleMountainRangesLayer, onTogglePeaksLayer, onToggleLakesLayer, onToggleVolcanoesLayer, onToggleFaultLinesLayer, onToggleDesertsLayer]);
+    if (earthGalleryEnabled) onToggleEarthGallery?.(false);
+  }, [riversEnabled, mountainRangesEnabled, peaksEnabled, lakesEnabled, volcanoesEnabled, faultLinesEnabled, desertsEnabled, earthGalleryEnabled, onToggleRiversLayer, onToggleMountainRangesLayer, onTogglePeaksLayer, onToggleLakesLayer, onToggleVolcanoesLayer, onToggleFaultLinesLayer, onToggleDesertsLayer, onToggleEarthGallery]);
 
   // Deactivate all active statistic choropleths when leaving Statistics
   const deactivateAllStats = useCallback(() => {
@@ -423,16 +413,16 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
       iconBg: 'rgba(6, 182, 212, 0.12)'
     },
     {
-      icon: <Crosshair className="h-5 w-5 text-red-400" />,
-      label: 'Conflict Tracker',
-      href: '#conflicts',
-      iconBg: 'rgba(239, 68, 68, 0.12)'
-    },
-    {
       icon: <Radio className="h-5 w-5 text-orange-400" />,
       label: 'Live Activity',
       href: '#live',
       iconBg: 'rgba(251, 146, 60, 0.12)'
+    },
+    {
+      icon: <Crosshair className="h-5 w-5 text-blue-400" />,
+      label: 'Conflict Tracker',
+      href: '#conflicts',
+      iconBg: 'rgba(59, 130, 246, 0.12)'
     },
     {
       icon: <Map className="h-5 w-5 text-green-400" />,
@@ -503,12 +493,6 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
       if (item.onClick) {
         item.onClick();
       }
-      return;
-    }
-
-    // Conflict Tracker opens its own dedicated view
-    if (item.label === 'Conflict Tracker') {
-      setConflictView(true);
       return;
     }
 
@@ -593,11 +577,6 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
       onToggleSatelliteIntelMode?.(true);
     }
 
-    if (item.label === 'Conflict Tracker' && onOpenConflictTracker) {
-      onOpenConflictTracker();
-      return;
-    }
-
     if (item.label === 'Demographics' && onOpenDemographics) {
       onOpenDemographics();
       return;
@@ -605,6 +584,12 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
 
     if (item.label === 'Compare Countries' && onOpenCompareCountries) {
       onOpenCompareCountries();
+      return;
+    }
+
+    // Conflict Tracker opens its own panel (like Demographics)
+    if (item.label === 'Conflict Tracker' && onOpenConflictTracker) {
+      onOpenConflictTracker();
       return;
     }
 
@@ -617,30 +602,13 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
     if (item.onClick) {
       item.onClick();
     }
-  }, [activeItem, onToggleSatelliteIntelMode, earthOverlays, onToggleEarthOverlay, deactivateAllOverlays, deactivateAllStats, deactivateAllNaturalLayers, deactivateOrganizations, onOpenConflictTracker, onOpenDemographics, onOpenCompareCountries, onToggleHistoryMode, onHistoryToSatellite, onSatelliteToHistory]);
+  }, [activeItem, onToggleSatelliteIntelMode, earthOverlays, onToggleEarthOverlay, deactivateAllOverlays, deactivateAllStats, deactivateAllNaturalLayers, deactivateOrganizations, onOpenDemographics, onOpenCompareCountries, onToggleHistoryMode, onHistoryToSatellite, onSatelliteToHistory]);
 
   return (
     <>
       {isOpen && (
             <div className="left-sidebar">
 
-              {/* ── Conflict Tracker full-view ── */}
-              {conflictView ? (
-                <ConflictPanel
-                  summaries={conflictSummaries}
-                  selectedCountry={conflictSelectedCountry}
-                  onSelectCountry={onConflictSelectCountry ?? (() => {})}
-                  countryEvents={conflictCountryEvents}
-                  selectedEvent={conflictSelectedEvent}
-                  onSelectEvent={onConflictSelectEvent ?? (() => {})}
-                  onFlyTo={onConflictFlyTo ?? (() => {})}
-                  isLoading={conflictsLoading}
-                  enabled={conflictsEnabled}
-                  onToggle={onToggleConflicts ?? (() => {})}
-                  onBack={() => setConflictView(false)}
-                />
-              ) : (
-              <>
               <div className="left-sidebar-header mb-4" style={{ minHeight: '64px' }}>
                 <h1 className="left-sidebar-title">WorldLore</h1>
               </div>
@@ -657,7 +625,7 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
                           handleItemClick(item);
                         }}
                         className={`left-sidebar-item ${
-                          activeItem === item.label.toLowerCase() || (item.label === 'Conflict Tracker' && conflictView) ? 'active' : ''
+                          activeItem === item.label.toLowerCase() ? 'active' : ''
                         }`}
                       >
                         <div className="left-sidebar-item-icon" style={{ background: item.iconBg }}>
@@ -666,9 +634,6 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
                         <span className="left-sidebar-item-label">
                           {item.label}
                         </span>
-                        {item.label === 'Conflict Tracker' && conflictsEnabled && (
-                          <span className="conflict-live-dot" />
-                        )}
                         {activeItem === item.label.toLowerCase() && (
                           <div className="left-sidebar-item-indicator" />
                         )}
@@ -760,6 +725,56 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
                                 <span className="layer-row-name">Deserts</span>
                                 <button className={`toggle-switch ${desertsEnabled ? 'on' : ''}`} onClick={() => onToggleDesertsLayer?.(!desertsEnabled)} aria-label="Toggle deserts" />
                               </div>
+                            </>)}
+                          </div>
+
+                          {/* ── EARTH GALLERY (NASA) ── */}
+                          <div className="layer-section">
+                            <div className="layer-section-header" onClick={() => setPhysicalSections(p => ({ ...p, gallery: !p.gallery }))}>
+                              <span className="layer-section-dot" style={{ background: '#38bdf8', color: '#38bdf8' }} />
+                              <span className="layer-section-label">Earth Gallery</span>
+                              <svg className={`layer-section-chevron ${physicalSections.gallery ? 'open' : ''}`} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" /></svg>
+                            </div>
+                            {physicalSections.gallery && (<>
+                              <div className="layer-row">
+                                <span className={`layer-row-dot ${earthGalleryEnabled ? 'on' : ''}`} />
+                                <span className="layer-row-name">NASA Photos</span>
+                                <button className={`toggle-switch ${earthGalleryEnabled ? 'on' : ''}`} onClick={() => onToggleEarthGallery?.(!earthGalleryEnabled)} aria-label="Toggle earth gallery" />
+                              </div>
+                              {earthGalleryEnabled && (
+                                <div className="eg-controls">
+                                  <div className="eg-hint">
+                                    {earthGallerySelectMode
+                                      ? 'Draw a rectangle on the map to capture that area.'
+                                      : 'Click anywhere on the map to see a satellite photo.'}
+                                  </div>
+
+                                  {/* Zoom presets */}
+                                  {!earthGallerySelectMode && (
+                                    <div className="eg-zoom">
+                                      <span className="eg-zoom-label">Zoom</span>
+                                      <div className="eg-zoom-presets">
+                                        {['City', 'Metro', 'Region', 'Country'].map((label, i) => (
+                                          <button
+                                            key={label}
+                                            className={`eg-zoom-btn ${earthGalleryZoom === i ? 'active' : ''}`}
+                                            onClick={() => onSetEarthGalleryZoom?.(i)}
+                                          >
+                                            {label}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Area select toggle */}
+                                  <div className="layer-row" style={{ marginTop: 4 }}>
+                                    <span className={`layer-row-dot ${earthGallerySelectMode ? 'on' : ''}`} />
+                                    <span className="layer-row-name">Area Select</span>
+                                    <button className={`toggle-switch ${earthGallerySelectMode ? 'on' : ''}`} onClick={() => onToggleEarthGallerySelectMode?.(!earthGallerySelectMode)} aria-label="Toggle area select" />
+                                  </div>
+                                </div>
+                              )}
                             </>)}
                           </div>
 
@@ -1544,8 +1559,6 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenConfli
               </div>
 
               <div className="left-sidebar-footer" />
-              </>
-              )}
             </div>
         )}
       </>
