@@ -36,6 +36,7 @@ import joshuaProjectRoutes from '../modules/joshua-project/routes';
 import unhcrRoutes from '../modules/unhcr/routes';
 import demographicsRoutes from '../modules/demographics/routes';
 import conflictRoutes from '../modules/conflicts/routes';
+import earthGalleryRoutes from './earth-gallery.routes';
 
 const router = Router();
 
@@ -74,5 +75,6 @@ router.use('/joshua-project', joshuaProjectRoutes);
 router.use('/unhcr', unhcrRoutes);
 router.use('/demographics', demographicsRoutes);
 router.use('/conflicts', conflictRoutes);
+router.use('/earth-gallery', earthGalleryRoutes);
 
 export default router;

@@ -37,6 +37,8 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
   const [faultLinesEnabled, setFaultLinesEnabled] = useState(false);
   const [desertsEnabled, setDesertsEnabled] = useState(false);
   const [earthGalleryEnabled, setEarthGalleryEnabled] = useState(false);
+  const [earthGallerySelectMode, setEarthGallerySelectMode] = useState(false);
+  const [earthGalleryZoom, setEarthGalleryZoom] = useState<number>(2); // 0=city, 1=metro, 2=region, 3=country
   const [naturalLod, setNaturalLod] = useState<'auto' | 'low' | 'med' | 'high'>('auto');
 
   // Earth Data (NASA) overlay states
@@ -160,7 +162,18 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
 
   const handleToggleEarthGallery = useCallback((enabled: boolean) => {
     setEarthGalleryEnabled(enabled);
+    if (!enabled) setEarthGallerySelectMode(false);
     (document as any).__wl_map_comp?.setEarthGalleryEnabled?.(enabled);
+  }, []);
+
+  const handleToggleEarthGallerySelectMode = useCallback((enabled: boolean) => {
+    setEarthGallerySelectMode(enabled);
+    (document as any).__wl_map_comp?.setEarthGallerySelectMode?.(enabled);
+  }, []);
+
+  const handleSetEarthGalleryZoom = useCallback((level: number) => {
+    setEarthGalleryZoom(level);
+    (document as any).__wl_map_comp?.setEarthGalleryZoom?.(level);
   }, []);
 
   const handleSetNaturalLod = useCallback((lod: 'auto' | 'low' | 'med' | 'high') => {
@@ -316,7 +329,7 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
   return {
     historyEnabled, historyYear,
     riversEnabled, mountainRangesEnabled, peaksEnabled,
-    lakesEnabled, volcanoesEnabled, faultLinesEnabled, desertsEnabled, earthGalleryEnabled,
+    lakesEnabled, volcanoesEnabled, faultLinesEnabled, desertsEnabled, earthGalleryEnabled, earthGallerySelectMode, earthGalleryZoom,
     naturalLod,
     handleSetBaseMapStyle, handleSetPlanetPreset,
     handleSetStarIntensity, handleSetSpacePreset, handleSetGlobeTheme,
@@ -326,7 +339,7 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
     handleToggleRiversLayer, handleToggleMountainRangesLayer,
     handleTogglePeaksLayer, handleSetNaturalLod,
     handleToggleLakesLayer, handleToggleVolcanoesLayer,
-    handleToggleFaultLinesLayer, handleToggleDesertsLayer, handleToggleEarthGallery,
+    handleToggleFaultLinesLayer, handleToggleDesertsLayer, handleToggleEarthGallery, handleToggleEarthGallerySelectMode, handleSetEarthGalleryZoom,
     handleSetOrganizationIsoFilter,
     handleToggleHistoryMode, handleSetHistoryYear, handleResetHistoryPresentation,
     handleSetLedHalo, handleSetLedHaloSpeed,

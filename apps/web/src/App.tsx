@@ -684,6 +684,12 @@ function WorldMapView() {
         faultLinesEnabled={mapControls.faultLinesEnabled}
         onToggleDesertsLayer={mapControls.handleToggleDesertsLayer}
         desertsEnabled={mapControls.desertsEnabled}
+        onToggleEarthGallery={mapControls.handleToggleEarthGallery}
+        earthGalleryEnabled={mapControls.earthGalleryEnabled}
+        onToggleEarthGallerySelectMode={mapControls.handleToggleEarthGallerySelectMode}
+        earthGallerySelectMode={mapControls.earthGallerySelectMode}
+        onSetEarthGalleryZoom={mapControls.handleSetEarthGalleryZoom}
+        earthGalleryZoom={mapControls.earthGalleryZoom}
         naturalLod={mapControls.naturalLod}
         onSetNaturalLod={mapControls.handleSetNaturalLod}
         // Earth Data (satellite) overlays
