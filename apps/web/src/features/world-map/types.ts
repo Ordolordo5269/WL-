@@ -56,4 +56,8 @@ export interface MapRefType {
   setNightLightsPrevStyleOverride?: (style: string, planet: string, star: number) => void;
   clearNightLightsPrevStyle?: () => void;
   getNightLightsPrevStyle?: () => { style: string; planet: string; star: number } | null;
+  setMissionMarkers?: (geojson: GeoJSON.FeatureCollection, arcs?: GeoJSON.FeatureCollection) => void;
+  removeMissionMarkers?: () => void;
+  onMissionClick?: (callback: (missionId: string, coords: [number, number]) => void) => void;
+  offMissionClick?: () => void;
 }

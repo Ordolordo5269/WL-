@@ -1,0 +1,240 @@
+/* ── Active Missions & Crew In Space ─────────────────────────────── */
+
+/* Shared: live indicator dot */
+.mission-live-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #00ff88; display: inline-block;
+  box-shadow: 0 0 8px #00ff88;
+  animation: pulse 2s ease-in-out infinite;
+}
+.mission-live-dot--lg { width: 7px; height: 7px; box-shadow: 0 0 6px #00ff88; }
+
+/* Shared: count badge */
+.mission-count-badge {
+  font-size: 9px; font-weight: 700; color: #00ff88;
+  background: rgba(0,255,136,0.1);
+  padding: 1px 6px; border-radius: 10px;
+  letter-spacing: 0.04em;
+}
+
+/* Shared: status badge */
+.mission-status-badge {
+  font-size: 8px; font-weight: 700; color: #00ff88;
+  background: rgba(0,255,136,0.12);
+  padding: 2px 6px; border-radius: 3px;
+  letter-spacing: 0.08em; flex-shrink: 0;
+}
+
+/* Shared: muted text */
+.mission-text-muted { font-size: 9px; color: rgba(160,150,200,0.55); }
+.mission-text-muted-sm { font-size: 8px; color: rgba(160,150,200,0.5); }
+.mission-text-muted-xs { font-size: 8px; color: rgba(160,150,200,0.4); }
+
+/* ── Crew Section ──────────────────────────────────────────────── */
+
+.crew-spacecraft-label {
+  font-size: 8px; font-weight: 700; letter-spacing: 0.1em;
+  color: rgba(160,150,200,0.5); text-transform: uppercase;
+  margin-bottom: 4px; padding-left: 2px;
+}
+
+.crew-card { margin-bottom: 0; padding: 6px 10px; }
+.crew-card-row { display: flex; align-items: center; gap: 8px; }
+.crew-card-info { flex: 1; min-width: 0; }
+.crew-card-name-row { display: flex; align-items: center; gap: 4px; margin-bottom: 1px; }
+
+.crew-avatar {
+  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+  background-size: cover; background-position: center;
+  border: 1.5px solid rgba(0,255,136,0.2);
+}
+.crew-avatar--placeholder {
+  background: rgba(160,150,200,0.1);
+  border-color: rgba(160,150,200,0.15);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; color: rgba(160,150,200,0.5);
+}
+
+.crew-name {
+  font-size: 10px; font-weight: 600; color: rgba(220,210,255,0.9);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.crew-flag { font-size: 10px; line-height: 1; }
+
+/* ── Mission Cards ─────────────────────────────────────────────── */
+
+.mission-card {
+  margin-bottom: 0; cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: border-color 0.3s ease;
+  overflow: hidden;
+}
+.mission-card--live { border-left-color: #00ff88; }
+
+.mission-card-row1 { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; min-width: 0; }
+.mission-card-row2 { display: flex; justify-content: space-between; align-items: center; }
+
+.mission-card-name {
+  font-size: 11px; font-weight: 600;
+  color: rgba(220,210,255,0.85);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  flex: 1; min-width: 0;
+}
+.mission-card-name--live { color: rgba(255,255,255,0.95); }
+
+.mission-card-flag { font-size: 12px; flex-shrink: 0; line-height: 1; }
+
+.mission-card-thumbnail {
+  width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+  background-size: cover; background-position: center;
+  border: 1.5px solid rgba(160,150,200,0.15);
+}
+
+.mission-card-countdown {
+  font-size: 9px; font-weight: 600; color: #ffaa22;
+  font-variant-numeric: tabular-nums; flex-shrink: 0;
+}
+
+.mission-card-orbit {
+  font-size: 7px; font-weight: 700;
+  padding: 1px 4px; border-radius: 2px;
+  letter-spacing: 0.06em; flex-shrink: 0;
+}
+
+.mission-card-agency {
+  font-size: 9px; color: rgba(160,150,200,0.55);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ── Progress bar ──────────────────────────────────────────────── */
+
+.mission-progress-track {
+  height: 2px; border-radius: 1px;
+  background: rgba(160,150,200,0.12);
+  overflow: hidden;
+}
+.mission-progress-bar {
+  height: 100%; border-radius: 1px;
+  background: linear-gradient(90deg, #44aaff, #00ff88);
+  transition: width 1s ease;
+}
+
+/* ── Next Launch Banner ────────────────────────────────────────── */
+
+.next-launch-banner {
+  margin-bottom: 0; cursor: pointer;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.next-launch-banner--upcoming {
+  border: 1px solid rgba(255,170,34,0.2);
+  box-shadow: 0 0 12px rgba(255,170,34,0.08);
+  background: rgba(255,170,34,0.03);
+}
+.next-launch-banner--imminent {
+  border: 1px solid rgba(255,68,68,0.3);
+  box-shadow: 0 0 12px rgba(255,68,68,0.1);
+  background: rgba(255,68,68,0.04);
+}
+
+.next-launch-label {
+  font-size: 8px; font-weight: 700; letter-spacing: 0.1em;
+  margin-bottom: 4px; text-transform: uppercase;
+}
+.next-launch-label--upcoming { color: #ffaa22; }
+.next-launch-label--imminent { color: #ff4444; }
+
+.next-launch-name {
+  font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.95);
+  margin-bottom: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.next-launch-countdown {
+  font-size: 12px; font-weight: 700; font-family: monospace;
+  font-variant-numeric: tabular-nums;
+}
+.next-launch-countdown--upcoming { color: #ffaa22; }
+.next-launch-countdown--imminent { color: #ff4444; }
+
+.next-launch-live {
+  margin-top: 4px; font-size: 8px; font-weight: 700; color: #ff4444;
+  display: flex; align-items: center; gap: 4px;
+}
+.next-launch-live-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: #ff4444; box-shadow: 0 0 6px #ff4444;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* ── Launch Alert (floating notification) ──────────────────────── */
+
+.launch-alert-container {
+  position: fixed; top: 16px; left: 50%;
+  transform: translateX(-50%); z-index: 75;
+  display: flex; flex-direction: column; gap: 8px;
+  pointer-events: none;
+  max-width: 420px; width: 90vw;
+}
+
+.launch-alert-card {
+  pointer-events: auto;
+  background: rgba(8,6,24,0.92);
+  backdrop-filter: blur(16px);
+  border-radius: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+}
+
+.launch-alert-header {
+  display: flex; align-items: center;
+  justify-content: space-between; margin-bottom: 6px;
+}
+.launch-alert-header-left { display: flex; align-items: center; gap: 6px; }
+
+.launch-alert-label {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.launch-alert-dismiss {
+  background: none; border: none; cursor: pointer;
+  color: rgba(160,150,200,0.4); padding: 2px;
+  display: flex; align-items: center;
+}
+
+.launch-alert-name {
+  font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.95);
+  margin-bottom: 4px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.launch-alert-details {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.launch-alert-details-text { font-size: 10px; color: rgba(160,150,200,0.6); }
+
+.launch-alert-watch {
+  font-size: 9px; font-weight: 700; color: #ff4444;
+  background: rgba(255,68,68,0.12);
+  padding: 2px 8px; border-radius: 4px;
+  letter-spacing: 0.06em; text-decoration: none;
+  display: flex; align-items: center; gap: 4px;
+}
+.launch-alert-watch-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: #ff4444; box-shadow: 0 0 4px #ff4444;
+}
+
+/* ── Summary bar ───────────────────────────────────────────────── */
+
+.mission-summary-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 10px; border-radius: 8px;
+  background: rgba(160,150,200,0.06);
+  border: 1px solid rgba(160,150,200,0.08);
+  margin-bottom: 4px;
+}
+.mission-summary-counts { display: flex; gap: 12px; font-size: 10px; }
+.mission-summary-inflight { color: #00ff88; font-weight: 600; }
+.mission-summary-upcoming { color: rgba(160,150,200,0.6); }

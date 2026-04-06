@@ -247,16 +247,17 @@ type HeroContent = HeroImage | HeroSvg;
 interface MuseumExpandedCardProps {
   variant: 'purple' | 'earthy';
   motionKey: string;
-  heroContent: HeroContent;
+  heroContent?: HeroContent;
   sourceLabel: string;
   date?: string;
   title: string;
   description: string;
   footerIcon: ReactNode;
   onClose: () => void;
+  children?: ReactNode;
 }
 
-export function MuseumExpandedCard({ variant, motionKey, heroContent, sourceLabel, date, title, description, footerIcon, onClose }: MuseumExpandedCardProps) {
+export function MuseumExpandedCard({ variant, motionKey, heroContent, sourceLabel, date, title, description, footerIcon, onClose, children }: MuseumExpandedCardProps) {
   const { ref, tilt, onMouseMove, onMouseLeave } = useDirectTilt();
   const e = EXPANDED_SCHEMES[variant];
 
@@ -264,9 +265,9 @@ export function MuseumExpandedCard({ variant, motionKey, heroContent, sourceLabe
     width: '100%', height: 180, position: 'relative', overflow: 'hidden',
     backgroundSize: 'cover', backgroundPosition: 'center', backgroundColor: e.heroBg,
   };
-  if (heroContent.type === 'image' && heroContent.url) {
+  if (heroContent?.type === 'image' && heroContent.url) {
     heroStyle.backgroundImage = `url("${heroContent.url}")`;
-  } else if (heroContent.type === 'svg') {
+  } else if (heroContent?.type === 'svg') {
     heroStyle.backgroundImage = `url("${heroContent.svgDataUri}")`;
   }
 
@@ -301,10 +302,10 @@ export function MuseumExpandedCard({ variant, motionKey, heroContent, sourceLabe
               pointerEvents: 'none', transition: 'background 0.15s ease-out', zIndex: 1,
             }} />
             {/* Main card */}
-            <div style={{ borderRadius: 23, background: e.bg, backdropFilter: 'blur(40px) saturate(1.3)', overflow: 'hidden', boxShadow: e.shadow }}>
+            <div style={{ borderRadius: 23, background: e.bg, backdropFilter: 'blur(40px) saturate(1.3)', overflow: 'hidden', boxShadow: e.shadow, maxHeight: 'calc(100vh - 100px)', overflowY: 'auto' }}>
               {/* Hero */}
-              <div style={heroStyle}>
-                {heroContent.type === 'image' && heroContent.shimmer && (
+              <div style={heroContent ? heroStyle : { ...heroStyle, height: 60 }}>
+                {heroContent?.type === 'image' && heroContent.shimmer && (
                   <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(110deg, rgba(20,16,40,0) 30%, rgba(80,60,140,0.08) 50%, rgba(20,16,40,0) 70%)', backgroundSize: '200% 100%', animation: 'satShimmer 1.5s ease-in-out infinite' }} />
                 )}
                 <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 70, background: `linear-gradient(to top, ${e.fadeBg}, transparent)` }} />
@@ -315,7 +316,8 @@ export function MuseumExpandedCard({ variant, motionKey, heroContent, sourceLabe
                 <div style={{ fontSize: 8, fontWeight: 400, letterSpacing: '0.22em', textTransform: 'uppercase', color: e.sourceText, marginBottom: date ? 4 : 12 }}>{sourceLabel}</div>
                 {date && <div style={{ fontSize: 9, fontWeight: 300, letterSpacing: '0.06em', color: e.dateText, marginBottom: 12 }}>Last observation — {date}</div>}
                 <div style={{ fontSize: 22, fontWeight: 200, color: e.titleText, letterSpacing: '0.02em', lineHeight: 1.2, marginBottom: 14 }}>{title}</div>
-                <div style={{ fontSize: 12, fontWeight: 300, color: e.descText, lineHeight: 1.75, letterSpacing: '0.01em', marginBottom: 18 }}>{description}</div>
+                <div style={{ fontSize: 12, fontWeight: 300, color: e.descText, lineHeight: 1.75, letterSpacing: '0.01em', marginBottom: children ? 14 : 18 }}>{description}</div>
+                {children && <div style={{ textAlign: 'left', marginBottom: 14 }}>{children}</div>}
                 <div style={{ width: 28, height: 1, background: e.separatorGrad, margin: '0 auto 12px' }} />
                 <div style={{ color: e.iconColor }}>{footerIcon}</div>
               </div>

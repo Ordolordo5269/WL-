@@ -22,6 +22,8 @@ import SpaceBackground from './components/SpaceBackground';
 import { getSatelliteProfileAsync, preloadSatelliteProfiles, COUNTRY_FLAGS, COUNTRY_NAMES, type SatelliteProfile } from './features/world-map/map/satellite-database';
 import { MILITARY_COUNTRY_COLORS, CLASSIFIED_ORBIT_COLORS } from './features/world-map/map/satellite-visualization';
 import type { SatCategory } from './features/world-map/useSatelliteTracking';
+import { getMissionTimeInfo, countryCodeToFlag, getOrbitColor, getOrbitShortName, type Mission, type LaunchEvent } from './features/world-map/useMissionTracking';
+import LaunchAlert from './components/LaunchAlert';
 import { MuseumLegend, MuseumExpandedCard, PURPLE_SCHEME, EARTHY_SCHEME } from './components/MuseumCard';
 import './index.css';
 import './styles/sidebar.css';
@@ -89,6 +91,52 @@ function WorldMapView() {
   const mapControls = useMapControls(mapRef);
   const liveActivity = useLiveActivity();
   const conflictTracker = useConflictTracker();
+
+  // Mission markers callbacks
+  const missionsRef = useRef<Mission[]>([]);
+  const missionClickRegistered = useRef(false);
+  const handleSetMissionMarkers = useCallback((geojson: GeoJSON.FeatureCollection, missions: Mission[], arcs?: GeoJSON.FeatureCollection) => {
+    missionsRef.current = missions;
+    mapRef.current?.setMissionMarkers?.(geojson, arcs);
+    // Register click handler only once — uses ref so always reads latest missions
+    if (!missionClickRegistered.current) {
+      missionClickRegistered.current = true;
+      mapRef.current?.onMissionClick?.((missionId, coords) => {
+        const found = missionsRef.current.find(m => m.id === missionId);
+        if (found) {
+          setExpandedMission(found);
+          mapRef.current?.easeTo({ center: coords, zoom: 5, duration: 1200 });
+        }
+      });
+    }
+  }, []);
+  const handleRemoveMissionMarkers = useCallback(() => {
+    mapRef.current?.offMissionClick?.();
+    mapRef.current?.removeMissionMarkers?.();
+    missionsRef.current = [];
+    missionClickRegistered.current = false;
+  }, []);
+  const handleFlyToMission = useCallback((lat: number, lng: number) => {
+    mapRef.current?.easeTo({ center: [lng, lat], zoom: 5, duration: 1200 });
+  }, []);
+
+  // Launch event alerts
+  const [alertEvents, setAlertEvents] = useState<LaunchEvent[]>([]);
+  const dismissEventRef = useRef<((id: string) => void) | null>(null);
+  const handleLaunchEvents = useCallback((events: LaunchEvent[], dismiss: (id: string) => void) => {
+    setAlertEvents(events);
+    dismissEventRef.current = dismiss;
+  }, []);
+  const handleDismissAlert = useCallback((id: string) => {
+    dismissEventRef.current?.(id);
+    setAlertEvents(prev => prev.filter(e => e.id !== id));
+  }, []);
+  const handleAlertClickMission = useCallback((mission: Mission) => {
+    setExpandedMission(mission);
+    if (mission.launchPad?.lat != null && mission.launchPad?.lng != null) {
+      mapRef.current?.easeTo({ center: [mission.launchPad.lng, mission.launchPad.lat], zoom: 5, duration: 1200 });
+    }
+  }, []);
   // Wire live-activity data to map layers
   useEffect(() => {
     mapRef.current?.setLiveActivityLayer?.('earthquakes', liveActivity.earthquakesEnabled, liveActivity.earthquakesData);
@@ -189,6 +237,10 @@ function WorldMapView() {
   // Satellite Intel — expanded overlay state
   const [expandedOverlay, setExpandedOverlay] = useState<NasaOverlayType | null>(null);
   const closeExpandedCard = useCallback(() => setExpandedOverlay(null), []);
+
+  // ── Mission Expanded Card ──
+  const [expandedMission, setExpandedMission] = useState<Mission | null>(null);
+  const closeExpandedMission = useCallback(() => setExpandedMission(null), []);
 
   // ── Satellite Orbital Card (Phase 2) ──
   const [expandedSatellite, setExpandedSatellite] = useState<{ data: SatelliteClickData; profile: SatelliteProfile } | null>(null);
@@ -740,6 +792,11 @@ function WorldMapView() {
         onToggleWeatherLayer={liveActivity.handleToggleWeatherLayer}
         onTrackingCategoriesChange={setTrackingCategories}
         onOpenConflictTracker={handleOpenConflictTracker}
+        onExpandMission={setExpandedMission}
+        onFlyToMission={handleFlyToMission}
+        onSetMissionMarkers={handleSetMissionMarkers}
+        onRemoveMissionMarkers={handleRemoveMissionMarkers}
+        onLaunchEvents={handleLaunchEvents}
       />
 
       {/* Left sidebar overlay */}
@@ -1637,6 +1694,256 @@ function WorldMapView() {
                 </div>
               </div>
             </motion.div>
+          );
+        })()}
+      </AnimatePresence>
+
+      {/* Launch Event Alerts */}
+      <LaunchAlert
+        events={alertEvents}
+        onDismiss={handleDismissAlert}
+        onClickMission={handleAlertClickMission}
+      />
+
+      {/* Mission Expanded Card */}
+      <AnimatePresence>
+        {expandedMission && (() => {
+          const mission = expandedMission;
+          const timeInfo = getMissionTimeInfo(mission);
+          const agencyColors: Record<string, string> = {
+            US: '#4488ff', CN: '#ff4444', RU: '#ff8844', EU: '#44aaff',
+            IN: '#ff8800', JP: '#ff4488', CA: '#ff0000', NZ: '#ffffff',
+          };
+          const accentColor = agencyColors[mission.agencyCountryCode] || '#8888ff';
+          return (
+            <MuseumExpandedCard
+              variant="purple"
+              motionKey="mission-expanded-card"
+              heroContent={mission.image || mission.missionPatch
+                ? { type: 'image' as const, url: (mission.image || mission.missionPatch)! }
+                : undefined}
+              sourceLabel="WorldLore Space Intel"
+              title={mission.name}
+              description={mission.description || 'No description available.'}
+              footerIcon={<Satellite style={{ width: 16, height: 16 }} />}
+              onClose={closeExpandedMission}
+            >
+              {/* Status badge + webcast */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+                <span style={{
+                  fontSize: 10, fontWeight: 700,
+                  color: timeInfo.isLive ? '#00ff88' : '#ffaa22',
+                  background: timeInfo.isLive ? 'rgba(0,255,136,0.1)' : 'rgba(255,170,34,0.1)',
+                  padding: '2px 8px', borderRadius: 4,
+                  letterSpacing: '0.05em',
+                }}>{timeInfo.isLive ? 'IN FLIGHT' : timeInfo.countdown || 'UPCOMING'}</span>
+                {mission.webcastLive && mission.vidUrls.length > 0 && (
+                  <a
+                    href={mission.vidUrls[0].url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      fontSize: 9, fontWeight: 700, color: '#ff4444',
+                      background: 'rgba(255,68,68,0.12)',
+                      padding: '2px 8px', borderRadius: 4,
+                      letterSpacing: '0.06em', textDecoration: 'none',
+                      display: 'flex', alignItems: 'center', gap: 4,
+                      animation: 'pulse 2s ease-in-out infinite',
+                    }}
+                  >
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#ff4444', boxShadow: '0 0 6px #ff4444' }} />
+                    LIVE WEBCAST
+                  </a>
+                )}
+                {!mission.webcastLive && mission.vidUrls.length > 0 && (
+                  <a
+                    href={mission.vidUrls[0].url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      fontSize: 9, fontWeight: 600, color: 'rgba(160,150,200,0.7)',
+                      background: 'rgba(160,150,200,0.08)',
+                      padding: '2px 8px', borderRadius: 4,
+                      letterSpacing: '0.04em', textDecoration: 'none',
+                    }}
+                  >
+                    WATCH
+                  </a>
+                )}
+                <span style={{ fontSize: 10, color: 'rgba(160,150,200,0.6)' }}>
+                  {mission.agencyCountryCode && `${countryCodeToFlag(mission.agencyCountryCode)} `}{mission.agency}{mission.vehicle ? ` · ${mission.vehicle}` : ''}
+                </span>
+              </div>
+
+              {/* Timeline bar */}
+              {timeInfo.isLive && timeInfo.totalDays && (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'rgba(160,150,200,0.6)', marginBottom: 4 }}>
+                    <span>Day {timeInfo.dayOfMission} of {timeInfo.totalDays}</span>
+                    <span>{timeInfo.elapsed}</span>
+                  </div>
+                  <div style={{ height: 4, borderRadius: 2, background: 'rgba(160,150,200,0.15)', overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%', borderRadius: 2,
+                      background: `linear-gradient(90deg, ${accentColor}, #00ff88)`,
+                      width: `${timeInfo.progress * 100}%`,
+                      transition: 'width 1s ease',
+                    }} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'rgba(160,150,200,0.4)', marginTop: 3 }}>
+                    <span>{mission.launchDate ? new Date(mission.launchDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</span>
+                    <span>{mission.landingDate ? new Date(mission.landingDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Upcoming launch date */}
+              {!timeInfo.isLive && mission.launchDate && (
+                <div style={{ fontSize: 10, color: 'rgba(160,150,200,0.6)', marginBottom: 12 }}>
+                  Launch: {new Date(mission.launchDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </div>
+              )}
+
+              {/* Crew */}
+              {mission.crew.length > 0 && (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(160,150,200,0.7)', marginBottom: 6, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                    Crew
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {mission.crew.map((c, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{
+                          width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                          background: c.photo ? `url(${c.photo}) center/cover` : 'rgba(160,150,200,0.15)',
+                          border: `1.5px solid ${accentColor}33`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 11, color: 'rgba(160,150,200,0.5)',
+                        }}>
+                          {!c.photo && c.name.charAt(0)}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 500, color: 'rgba(220,210,255,0.9)' }}>{c.name}</div>
+                          <div style={{ fontSize: 9, color: 'rgba(160,150,200,0.5)' }}>{c.role}{c.agency ? ` · ${c.agency}` : ''}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Mission details */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 12px', fontSize: 10, marginBottom: 12 }}>
+                {mission.missionType && (
+                  <>
+                    <span style={{ color: 'rgba(160,150,200,0.5)' }}>Type</span>
+                    <span style={{ color: 'rgba(220,210,255,0.8)' }}>{mission.missionType}</span>
+                  </>
+                )}
+                {mission.orbit && mission.orbit !== 'Unknown' && (
+                  <>
+                    <span style={{ color: 'rgba(160,150,200,0.5)' }}>Orbit</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{
+                        width: 6, height: 6, borderRadius: '50%',
+                        background: getOrbitColor(mission.orbit),
+                        boxShadow: `0 0 4px ${getOrbitColor(mission.orbit)}`,
+                        flexShrink: 0,
+                      }} />
+                      <span style={{ color: 'rgba(220,210,255,0.8)' }}>{mission.orbit}</span>
+                      <span style={{
+                        fontSize: 8, fontWeight: 700, color: getOrbitColor(mission.orbit),
+                        letterSpacing: '0.06em',
+                      }}>{getOrbitShortName(mission.orbit)}</span>
+                    </span>
+                  </>
+                )}
+                {mission.launchPad && (
+                  <>
+                    <span style={{ color: 'rgba(160,150,200,0.5)' }}>Launch Site</span>
+                    <span style={{ color: 'rgba(220,210,255,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {mission.launchPad.name}{mission.padLocationName ? `, ${mission.padLocationName}` : ''}
+                    </span>
+                  </>
+                )}
+                {mission.probability != null && (
+                  <>
+                    <span style={{ color: 'rgba(160,150,200,0.5)' }}>Probability</span>
+                    <span style={{
+                      color: mission.probability >= 80 ? '#00ff88' : mission.probability >= 40 ? '#ffaa22' : '#ff4444',
+                      fontWeight: 600,
+                    }}>{mission.probability}%</span>
+                  </>
+                )}
+                {mission.hashtag && (
+                  <>
+                    <span style={{ color: 'rgba(160,150,200,0.5)' }}>Hashtag</span>
+                    <span style={{ color: 'rgba(160,150,200,0.7)', fontFamily: 'monospace' }}>#{mission.hashtag}</span>
+                  </>
+                )}
+              </div>
+
+              {/* Agency Intel */}
+              {(mission.agencySuccessRate != null || mission.agencyConsecutiveSuccesses != null) && (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(160,150,200,0.7)', marginBottom: 6, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                    Agency Intel
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 12px', fontSize: 10 }}>
+                    {mission.agencySuccessRate != null && mission.agencyTotalLaunches != null && (
+                      <>
+                        <span style={{ color: 'rgba(160,150,200,0.5)' }}>Track Record</span>
+                        <div>
+                          <span style={{ color: '#00ff88', fontWeight: 600 }}>{mission.agencySuccessRate}%</span>
+                          <span style={{ color: 'rgba(160,150,200,0.4)', marginLeft: 4 }}>/ {mission.agencyTotalLaunches} launches</span>
+                        </div>
+                      </>
+                    )}
+                    {mission.agencyConsecutiveSuccesses != null && mission.agencyConsecutiveSuccesses > 0 && (
+                      <>
+                        <span style={{ color: 'rgba(160,150,200,0.5)' }}>Streak</span>
+                        <span style={{ color: '#00ff88', fontWeight: 600 }}>{mission.agencyConsecutiveSuccesses} consecutive</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* References */}
+              {(mission.infoUrls.length > 0 || mission.padWikiUrl) && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {mission.infoUrls.slice(0, 2).map((link, i) => (
+                    <a
+                      key={i}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        fontSize: 9, color: 'rgba(160,150,200,0.6)',
+                        background: 'rgba(160,150,200,0.06)',
+                        padding: '3px 8px', borderRadius: 4,
+                        textDecoration: 'none', letterSpacing: '0.03em',
+                        border: '1px solid rgba(160,150,200,0.08)',
+                      }}
+                    >{link.title}</a>
+                  ))}
+                  {mission.padWikiUrl && (
+                    <a
+                      href={mission.padWikiUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        fontSize: 9, color: 'rgba(160,150,200,0.6)',
+                        background: 'rgba(160,150,200,0.06)',
+                        padding: '3px 8px', borderRadius: 4,
+                        textDecoration: 'none', letterSpacing: '0.03em',
+                        border: '1px solid rgba(160,150,200,0.08)',
+                      }}
+                    >Launch Pad Wiki</a>
+                  )}
+                </div>
+              )}
+            </MuseumExpandedCard>
           );
         })()}
       </AnimatePresence>

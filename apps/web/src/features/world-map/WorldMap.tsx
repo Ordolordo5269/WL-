@@ -8,6 +8,7 @@ import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
 import '../../styles/geocoder.css';
 import { SatelliteVisualization } from './map/satellite-visualization';
+import { updateMissionMarkers, removeMissionMarkers, setupMissionClickHandler, cleanupMissionClickHandler } from './map/mission-visualization';
 import { AVAILABLE_HISTORY_YEARS, snapToAvailableYear } from '../../utils/historical-years';
 import { setLiveActivityLayer } from '../live-activity/live-activity-layers';
 import type { LiveActivityLayerId } from '../live-activity/types';
@@ -2259,6 +2260,28 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         cfg.sources.forEach(s => removeRasterOverlay(map, s.sourceId));
         activeEarthOverlaysRef.current.delete(type);
       }
+    },
+    // ── Mission markers ──
+    setMissionMarkers: (geojson: GeoJSON.FeatureCollection, arcs?: GeoJSON.FeatureCollection) => {
+      const map = mapRef.current;
+      if (!map) return;
+      updateMissionMarkers(map, geojson, arcs);
+    },
+    removeMissionMarkers: () => {
+      const map = mapRef.current;
+      if (!map) return;
+      cleanupMissionClickHandler(map);
+      removeMissionMarkers(map);
+    },
+    onMissionClick: (callback: (missionId: string, coords: [number, number]) => void) => {
+      const map = mapRef.current;
+      if (!map) return;
+      setupMissionClickHandler(map, callback);
+    },
+    offMissionClick: () => {
+      const map = mapRef.current;
+      if (!map) return;
+      cleanupMissionClickHandler(map);
     },
   }), [easeTo, applyPhysicalModeTweaks, styleKey, setBaseFeaturesVisibility, updateOrgHighlightFilter, terrainOn, terrainExaggeration]);
 

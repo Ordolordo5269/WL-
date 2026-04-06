@@ -9,6 +9,9 @@ import { COUNTRY_FLAGS, COUNTRY_NAMES } from './map/satellite-database';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSatelliteTracking, type SatCategory } from './useSatelliteTracking';
+import { useMissionTracking, getMissionTimeInfo, countryCodeToFlag, getOrbitColor, getOrbitShortName, type Mission } from './useMissionTracking';
+import { useCrewTracking } from './useCrewTracking';
+import '../../styles/missions.css';
 import type { ChoroplethState } from './useChoropleth';
 
 const SAT_CATEGORY_META: Record<SatCategory, { label: string; count: string; color: string }> = {
@@ -137,6 +140,12 @@ interface LeftSidebarProps {
   onTrackingCategoriesChange?: (cats: Record<SatCategory, boolean>) => void;
   // Conflict Tracker
   onOpenConflictTracker?: () => void;
+  // Mission tracking
+  onExpandMission?: (mission: Mission) => void;
+  onFlyToMission?: (lat: number, lng: number) => void;
+  onSetMissionMarkers?: (geojson: GeoJSON.FeatureCollection, missions: Mission[], arcs?: GeoJSON.FeatureCollection) => void;
+  onRemoveMissionMarkers?: () => void;
+  onLaunchEvents?: (events: import('./useMissionTracking').LaunchEvent[], dismiss: (id: string) => void) => void;
 }
 
 interface MenuItem {
@@ -147,11 +156,38 @@ interface MenuItem {
   iconBg?: string;
 }
 
-export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenDemographics, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetGlobeTheme, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, onSetLedHalo, onSetLedHaloSpeed, choropleth, onToggleHistoryMode, onSetHistoryYear, onResetHistoryPresentation, historyEnabled: _historyEnabled = false, historyYear = null, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, onToggleEarthGallery, earthGalleryEnabled = false, onToggleEarthGallerySelectMode, earthGallerySelectMode = false, onSetEarthGalleryZoom, earthGalleryZoom = 2, naturalLod = 'auto', onSetNaturalLod, earthOverlays, onToggleEarthOverlay, onToggleSatelliteIntelMode, onHistoryToSatellite, onSatelliteToHistory, onToggleEarthquakes, earthquakesEnabled = false, onToggleFires, firesEnabled = false, onToggleRadar, radarEnabled = false, onToggleAirTraffic, airTrafficEnabled = false, onToggleMarineTraffic, marineTrafficEnabled = false, onToggleSatellites, satellitesEnabled = false, onToggleWeather, weatherEnabled = false, weatherLayers = [], onToggleWeatherLayer, onTrackingCategoriesChange, onOpenConflictTracker }: LeftSidebarProps) {
+export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenDemographics, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetGlobeTheme, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, onSetLedHalo, onSetLedHaloSpeed, choropleth, onToggleHistoryMode, onSetHistoryYear, onResetHistoryPresentation, historyEnabled: _historyEnabled = false, historyYear = null, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, onToggleEarthGallery, earthGalleryEnabled = false, onToggleEarthGallerySelectMode, earthGallerySelectMode = false, onSetEarthGalleryZoom, earthGalleryZoom = 2, naturalLod = 'auto', onSetNaturalLod, earthOverlays, onToggleEarthOverlay, onToggleSatelliteIntelMode, onHistoryToSatellite, onSatelliteToHistory, onToggleEarthquakes, earthquakesEnabled = false, onToggleFires, firesEnabled = false, onToggleRadar, radarEnabled = false, onToggleAirTraffic, airTrafficEnabled = false, onToggleMarineTraffic, marineTrafficEnabled = false, onToggleSatellites, satellitesEnabled = false, onToggleWeather, weatherEnabled = false, weatherLayers = [], onToggleWeatherLayer, onTrackingCategoriesChange, onOpenConflictTracker, onExpandMission, onFlyToMission, onSetMissionMarkers, onRemoveMissionMarkers, onLaunchEvents }: LeftSidebarProps) {
   const [activeItem, setActiveItem] = useState<string>('home');
   const [physicalSections, setPhysicalSections] = useState({ geo: true, climate: true, terrain: true, gallery: true });
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+
+  // ── Mission Tracking ──
+  const missionTracking = useMissionTracking();
+  const crewTracking = useCrewTracking();
+  const [missionsActive, setMissionsActive] = useState(false);
+  const [missionsExpanded, setMissionsExpanded] = useState(false);
+
+  // Push mission markers to the globe when missions load (throttled updates for map labels)
+  const lastMapUpdateRef = useRef(0);
+  useEffect(() => {
+    if (missionsActive && missionTracking.missions.length > 0) {
+      const now = Date.now();
+      // Update map at most every 30 seconds (for countdown labels) or on first load
+      if (now - lastMapUpdateRef.current > 30_000 || lastMapUpdateRef.current === 0) {
+        lastMapUpdateRef.current = now;
+        const { points, arcs } = missionTracking.getMissionMarkers();
+        onSetMissionMarkers?.(points, missionTracking.missions, arcs);
+      }
+    }
+  }, [missionsActive, missionTracking.missions, missionTracking.tick]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Pipe launch events up to App
+  useEffect(() => {
+    if (missionTracking.launchEvents.length > 0) {
+      onLaunchEvents?.(missionTracking.launchEvents, missionTracking.dismissEvent);
+    }
+  }, [missionTracking.launchEvents]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Satellite Live Tracking ──
   const satTracking = useSatelliteTracking();
@@ -329,7 +365,10 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenDemogr
   const deactivateAllOverlays = useCallback(() => {
     onToggleSatelliteIntelMode?.(false);
     cleanupSatelliteTracking();
-  }, [onToggleSatelliteIntelMode, cleanupSatelliteTracking]);
+    onRemoveMissionMarkers?.();
+    missionTracking.stopTimer();
+    setMissionsActive(false);
+  }, [onToggleSatelliteIntelMode, cleanupSatelliteTracking, onRemoveMissionMarkers, missionTracking]);
 
   // Deactivate all active natural/physical layers when leaving Physical Layers
   const deactivateAllNaturalLayers = useCallback(() => {
@@ -878,6 +917,235 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenDemogr
                               );
                             })}
                           </div>
+
+                          {/* ── Crew In Space ── */}
+                          {missionsActive && crewTracking.crew.length > 0 && (
+                            <>
+                              <div className="section-header" style={{ marginTop: 18, marginBottom: 8 }}>
+                                <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  Crew In Space
+                                  <span className="mission-count-badge">{crewTracking.totalInSpace}</span>
+                                  <span className="mission-live-dot" />
+                                </h3>
+                              </div>
+                              <div className="settings-row" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 6, marginBottom: 12 }}>
+                                {Object.entries(crewTracking.crewBySpacecraft).map(([spacecraft, members]) => (
+                                  <div key={spacecraft}>
+                                    <div className="crew-spacecraft-label">{spacecraft}</div>
+                                    {members.map(member => (
+                                      <div key={member.id} className="section-card crew-card">
+                                        <div className="crew-card-row">
+                                          {member.photo ? (
+                                            <div className="crew-avatar" style={{ backgroundImage: `url(${member.photo})` }} />
+                                          ) : (
+                                            <div className="crew-avatar crew-avatar--placeholder">{member.name.charAt(0)}</div>
+                                          )}
+                                          <div className="crew-card-info">
+                                            <div className="crew-card-name-row">
+                                              {member.countryCode && <span className="crew-flag">{countryCodeToFlag(member.countryCode)}</span>}
+                                              <span className="crew-name">{member.name}</span>
+                                            </div>
+                                            <div className="mission-text-muted-sm">
+                                              {member.agencyAbbrev || member.agency} · {member.role} · Day {member.daysInSpace}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ))}
+                              </div>
+                            </>
+                          )}
+
+                          {/* ── Active Missions ── */}
+                          <div className="section-header" style={{ marginTop: 18, marginBottom: 8 }}>
+                            <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              Active Missions
+                              {missionsActive && missionTracking.missions.filter(m => m.status === 'in-flight').length > 0 && (
+                                <span className="mission-live-dot" />
+                              )}
+                            </h3>
+                          </div>
+                          <div className="settings-subtitle" style={{ marginBottom: 12 }}>
+                            Live launches & crewed missions worldwide.
+                          </div>
+
+                          {!missionsActive ? (
+                            <button
+                              className="chip"
+                              style={{ width: '100%', padding: '8px 14px', fontSize: 11, letterSpacing: '0.02em' }}
+                              onClick={() => {
+                                setMissionsActive(true);
+                                missionTracking.fetchMissions();
+                                crewTracking.fetchCrew();
+                                missionTracking.startTimer();
+                              }}
+                            >Load Active Missions</button>
+                          ) : (
+                          <div className="settings-row" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
+                            {missionTracking.loading ? (
+                              <div style={{ fontSize: 11, color: 'rgba(160,150,200,0.6)', textAlign: 'center', padding: 12 }}>
+                                Loading missions...
+                              </div>
+                            ) : missionTracking.error ? (
+                              <div style={{ fontSize: 11, color: '#ff6b6b', textAlign: 'center', padding: 12 }}>
+                                Failed to load missions
+                                <button className="chip" style={{ marginLeft: 8, fontSize: 10 }} onClick={() => missionTracking.fetchMissions()}>Retry</button>
+                              </div>
+                            ) : missionTracking.missions.length === 0 ? (
+                              <div style={{ fontSize: 11, color: 'rgba(160,150,200,0.5)', textAlign: 'center', padding: 12 }}>
+                                No active missions found
+                              </div>
+                            ) : (() => {
+                              const MISSIONS_LIMIT = 5;
+                              const visibleMissions = missionsExpanded
+                                ? missionTracking.missions
+                                : missionTracking.missions.slice(0, MISSIONS_LIMIT);
+                              const remaining = missionTracking.missions.length - MISSIONS_LIMIT;
+                              const inFlightCount = missionTracking.missions.filter(m => m.status === 'in-flight').length;
+                              const upcomingCount = missionTracking.missions.filter(m => m.status === 'upcoming').length;
+                              return (
+                                <>
+                                  {/* Summary bar */}
+                                  <div className="mission-summary-bar">
+                                    <div className="mission-summary-counts">
+                                      {inFlightCount > 0 && (
+                                        <span className="mission-summary-inflight">{inFlightCount} in flight</span>
+                                      )}
+                                      <span className="mission-summary-upcoming">{upcomingCount} upcoming</span>
+                                    </div>
+                                    <button
+                                      className="chip"
+                                      style={{ fontSize: 8, padding: '1px 6px' }}
+                                      onClick={() => {
+                                        setMissionsActive(false);
+                                        setMissionsExpanded(false);
+                                        onRemoveMissionMarkers?.();
+                                        missionTracking.stopTimer();
+                                      }}
+                                    >Close</button>
+                                  </div>
+
+                                  {/* NEXT LAUNCH banner — upcoming within 24h */}
+                                  {(() => {
+                                    const nextUpcoming = missionTracking.missions.find(m => m.status === 'upcoming');
+                                    if (!nextUpcoming) return null;
+                                    const nextTime = getMissionTimeInfo(nextUpcoming);
+                                    const launchMs = nextUpcoming.launchDate ? new Date(nextUpcoming.launchDate).getTime() - Date.now() : Infinity;
+                                    if (launchMs > 24 * 60 * 60 * 1000) return null;
+                                    const isImminent = launchMs < 60 * 60 * 1000;
+                                    return (
+                                      <div
+                                        className={`section-card next-launch-banner ${isImminent ? 'next-launch-banner--imminent' : 'next-launch-banner--upcoming'}`}
+                                        onClick={() => {
+                                          onExpandMission?.(nextUpcoming);
+                                          if (nextUpcoming.launchPad?.lat != null && nextUpcoming.launchPad?.lng != null) {
+                                            onFlyToMission?.(nextUpcoming.launchPad.lat, nextUpcoming.launchPad.lng);
+                                          }
+                                        }}
+                                      >
+                                        <div className={`next-launch-label ${isImminent ? 'next-launch-label--imminent' : 'next-launch-label--upcoming'}`}>
+                                          {isImminent ? 'IMMINENT LAUNCH' : 'NEXT LAUNCH'}
+                                        </div>
+                                        <div className="next-launch-name">{nextUpcoming.name}</div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                          <span className="mission-text-muted">{nextUpcoming.agency}</span>
+                                          <span className={`next-launch-countdown ${isImminent ? 'next-launch-countdown--imminent' : 'next-launch-countdown--upcoming'}`}>
+                                            {nextTime.countdown}
+                                          </span>
+                                        </div>
+                                        {nextUpcoming.webcastLive && (
+                                          <div className="next-launch-live">
+                                            <span className="next-launch-live-dot" />
+                                            LIVE NOW
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+
+                                  {visibleMissions.map(mission => {
+                                    const timeInfo = getMissionTimeInfo(mission);
+                                    const isLive = timeInfo.isLive;
+                                    return (
+                                      <div
+                                        className={`section-card mission-card ${isLive ? 'mission-card--live' : ''}`}
+                                        key={mission.id}
+                                        onClick={() => {
+                                          onExpandMission?.(mission);
+                                          if (mission.launchPad?.lat != null && mission.launchPad?.lng != null) {
+                                            onFlyToMission?.(mission.launchPad.lat, mission.launchPad.lng);
+                                          }
+                                        }}
+                                      >
+                                        {/* Row 1: Flag + Name + Status + Thumbnail */}
+                                        <div className="mission-card-row1">
+                                          {isLive && <span className="mission-live-dot mission-live-dot--lg" />}
+                                          {mission.agencyCountryCode && (
+                                            <span className="mission-card-flag">{countryCodeToFlag(mission.agencyCountryCode)}</span>
+                                          )}
+                                          <span className={`mission-card-name ${isLive ? 'mission-card-name--live' : ''}`}>
+                                            {mission.name}
+                                          </span>
+                                          {isLive && <span className="mission-status-badge">LIVE</span>}
+                                          {mission.image && (
+                                            <div className="mission-card-thumbnail" style={{ backgroundImage: `url(${mission.image})` }} />
+                                          )}
+                                        </div>
+
+                                        {/* Row 2: Agency + Orbit + Countdown */}
+                                        <div className="mission-card-row2" style={{ marginBottom: isLive && timeInfo.totalDays ? 4 : 0 }}>
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, flex: 1 }}>
+                                            <span className="mission-card-agency">
+                                              {mission.agency}{mission.vehicle ? ` · ${mission.vehicle}` : ''}
+                                            </span>
+                                            {mission.orbit && mission.orbit !== 'Unknown' && (
+                                              <span
+                                                className="mission-card-orbit"
+                                                style={{ color: getOrbitColor(mission.orbit), background: `${getOrbitColor(mission.orbit)}15` }}
+                                              >{getOrbitShortName(mission.orbit)}</span>
+                                            )}
+                                          </div>
+                                          {!isLive && timeInfo.countdown && (
+                                            <span className="mission-card-countdown">{timeInfo.countdown}</span>
+                                          )}
+                                        </div>
+
+                                        {/* Row 3: Progress bar for in-flight */}
+                                        {isLive && timeInfo.totalDays && (
+                                          <div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }} className="mission-text-muted-sm">
+                                              <span>Day {timeInfo.dayOfMission} of {timeInfo.totalDays}</span>
+                                              <span>{Math.round(timeInfo.progress * 100)}%</span>
+                                            </div>
+                                            <div className="mission-progress-track">
+                                              <div className="mission-progress-bar" style={{ width: `${timeInfo.progress * 100}%` }} />
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        {/* Row 3 alt: Launch date for upcoming */}
+                                        {!isLive && mission.launchDate && (
+                                          <div className="mission-text-muted-xs" style={{ marginTop: 1 }}>
+                                            {new Date(mission.launchDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                  {remaining > 0 && (
+                                    <button
+                                      className="chip"
+                                      style={{ width: '100%', padding: '5px 12px', fontSize: 10 }}
+                                      onClick={() => setMissionsExpanded(!missionsExpanded)}
+                                    >{missionsExpanded ? 'Show less' : `+${remaining} more missions`}</button>
+                                  )}
+                                </>
+                              );
+                            })()}
+                          </div>
+                          )}
 
                           {/* ── Live Tracking ── */}
                           <div className="section-header" style={{ marginTop: 18, marginBottom: 8 }}>
