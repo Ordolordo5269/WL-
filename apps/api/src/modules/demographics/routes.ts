@@ -224,7 +224,7 @@ router.get('/diaspora/totals', async (req: Request, res: Response) => {
         hostCommunity: true,
       },
     });
-    const globalStats = null; // fetched separately via /diaspora/global-stats
+    // globalStats fetched separately via /diaspora/global-stats
 
     res.setHeader('Cache-Control', CACHE_HEADER);
     res.json({
@@ -237,13 +237,7 @@ router.get('/diaspora/totals', async (req: Request, res: Response) => {
       totalStateless: dbTotals._sum.stateless ?? 0,
       totalOtherOfConcern: dbTotals._sum.otherOfConcern ?? 0,
       totalHostCommunity: dbTotals._sum.hostCommunity ?? 0,
-      // From UNHCR live endpoints (solutions, decisions, applications)
-      resettlement: globalStats?.resettlement ?? null,
-      naturalisation: globalStats?.naturalisation ?? null,
-      decRecognized: globalStats?.decRecognized ?? null,
-      decRejected: globalStats?.decRejected ?? null,
-      decTotal: globalStats?.decTotal ?? null,
-      applied: globalStats?.applied ?? null,
+      // UNHCR solutions/decisions fetched separately via /diaspora/global-stats
     });
   } catch (err) {
     res.status(500).json({ error: 'Internal server error' });
@@ -257,7 +251,8 @@ router.get('/diaspora/global-stats', async (req: Request, res: Response) => {
     const year = parseYear(req.query.year, new Date().getFullYear() - 1);
     const data = await fetchGlobalStats(year);
     res.setHeader('Cache-Control', CACHE_HEADER);
-    res.json({ year, ...data });
+    const { year: _yr, ...stats } = data as unknown as Record<string, unknown>;
+    res.json({ year, ...stats });
   } catch (err) {
     res.status(500).json({ error: 'Internal server error' });
   }

@@ -115,7 +115,7 @@ const FAMILY_BY_ISO: Record<string, string> = {
 
   // Nilo-Saharan
   luo: 'Nilo-Saharan', din: 'Nilo-Saharan', nus: 'Nilo-Saharan',
-  mas: 'Nilo-Saharan', kan: 'Nilo-Saharan',
+  mas: 'Nilo-Saharan',
 
   // More Niger-Congo: Bantu
   kik: 'Niger-Congo', mer: 'Niger-Congo', kam: 'Niger-Congo', guz: 'Niger-Congo',
@@ -135,7 +135,7 @@ const FAMILY_BY_ISO: Record<string, string> = {
   sid: 'Afroasiatic', wal: 'Afroasiatic', bej: 'Afroasiatic', afar: 'Afroasiatic',
   aar: 'Afroasiatic', kdm: 'Afroasiatic', had: 'Afroasiatic', kmb: 'Afroasiatic',
   // More Afroasiatic: Semitic
-  tig: 'Afroasiatic', tir: 'Afroasiatic', // tir already above, ok
+  tig: 'Afroasiatic',
   // More Afroasiatic: Chadic
   bua: 'Afroasiatic', mzk: 'Afroasiatic',
 
@@ -213,7 +213,7 @@ const FAMILY_BY_ISO: Record<string, string> = {
 
   // More Dravidian
   gon: 'Dravidian', kru: 'Dravidian', kui: 'Dravidian', knd: 'Dravidian',
-  tcy: 'Dravidian', gon_: 'Dravidian', nai: 'Dravidian', klr: 'Dravidian',
+  gon_: 'Dravidian', nai: 'Dravidian', klr: 'Dravidian',
 
   // Nilo-Saharan (more)
   kln_: 'Nilo-Saharan', tur_: 'Nilo-Saharan', lwo: 'Nilo-Saharan', bor: 'Nilo-Saharan',
