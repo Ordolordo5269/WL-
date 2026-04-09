@@ -1,3 +1,88 @@
+/* ── Mission Control Header ─────────────────────────────────────── */
+
+.mission-control-panel {
+  border: 1px solid rgba(140,130,220,0.12);
+  border-radius: 10px;
+  padding: 14px;
+  background: rgba(140,130,220,0.03);
+  margin-bottom: 12px;
+}
+
+.mission-control-header {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 10px;
+}
+.mission-control-icon {
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 6px;
+  background: rgba(140,130,220,0.1);
+  color: rgba(180,170,255,0.8);
+}
+.mission-control-title {
+  font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.95);
+  letter-spacing: 0.04em; text-transform: uppercase;
+}
+
+.mission-control-stats {
+  display: flex; flex-direction: column; gap: 4px;
+  margin-bottom: 12px;
+}
+.mission-control-stat {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 10px; color: rgba(160,150,200,0.6);
+}
+.mission-control-stat-dot {
+  width: 4px; height: 4px; border-radius: 50%;
+}
+.mission-control-stat-dot--green { background: #00ff88; box-shadow: 0 0 4px #00ff88; }
+.mission-control-stat-dot--blue { background: #4488ff; box-shadow: 0 0 4px #4488ff; }
+.mission-control-stat-dot--amber { background: #ffaa22; box-shadow: 0 0 4px #ffaa22; }
+.mission-control-stat-value { color: rgba(220,210,255,0.9); font-weight: 600; }
+
+.mission-control-btn {
+  width: 100%; padding: 9px 14px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(140,130,220,0.06);
+  border: 1px solid rgba(140,130,220,0.2);
+  border-radius: 6px;
+  color: rgba(180,170,255,0.85);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.mission-control-btn:hover {
+  background: rgba(140,130,220,0.12);
+  border-color: rgba(140,130,220,0.35);
+  box-shadow: 0 0 12px rgba(140,130,220,0.1);
+}
+.mission-control-btn-arrow {
+  font-size: 14px; line-height: 1;
+  transition: transform 0.2s ease;
+}
+.mission-control-btn:hover .mission-control-btn-arrow {
+  transform: translateX(2px);
+}
+
+.mission-control-exit {
+  background: rgba(160,150,200,0.08);
+  border: 1px solid rgba(160,150,200,0.12);
+  border-radius: 5px;
+  color: rgba(160,150,200,0.5);
+  cursor: pointer;
+  font-size: 11px;
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s ease;
+  padding: 0; line-height: 1;
+}
+.mission-control-exit:hover {
+  background: rgba(255,68,68,0.1);
+  border-color: rgba(255,68,68,0.25);
+  color: #ff6b6b;
+}
+
 /* ── Active Missions & Crew In Space ─────────────────────────────── */
 
 /* Shared: live indicator dot */

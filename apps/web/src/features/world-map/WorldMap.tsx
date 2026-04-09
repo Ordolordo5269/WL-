@@ -8,6 +8,12 @@ import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
 import '../../styles/geocoder.css';
 import { SatelliteVisualization } from './map/satellite-visualization';
+import { AirTrafficVisualization } from './map/air-traffic-visualization';
+import { EarthquakeVisualization } from './map/earthquake-visualization';
+import { LightningVisualization } from './map/lightning-visualization';
+import { VolcanoVisualization } from './map/volcano-visualization';
+import { TsunamiVisualization } from './map/tsunami-visualization';
+import { StormVisualization } from './map/storm-visualization';
 import { updateMissionMarkers, removeMissionMarkers, setupMissionClickHandler, cleanupMissionClickHandler } from './map/mission-visualization';
 import { AVAILABLE_HISTORY_YEARS, snapToAvailableYear } from '../../utils/historical-years';
 import { setLiveActivityLayer } from '../live-activity/live-activity-layers';
@@ -64,8 +70,21 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   const historySelectedCanonicalRef = useRef<string | null>(null);
   const historyPopupRef = useRef<mapboxgl.Popup | null>(null);
   const naturalPopupRef = useRef<mapboxgl.Popup | null>(null);
+  const naturalHoverPopupRef = useRef<mapboxgl.Popup | null>(null);
   const satelliteClickRegistered = useRef(false);
   const satelliteTrackingActiveRef = useRef(false);
+  const airTrafficClickRegistered = useRef(false);
+  const airTrafficTrackingActiveRef = useRef(false);
+  const earthquakeClickRegistered = useRef(false);
+  const earthquakeActiveRef = useRef(false);
+  const lightningActiveRef = useRef(false);
+  const lightningClickRegistered = useRef(false);
+  const volcanoClickRegistered = useRef(false);
+  const volcanoActiveRef = useRef(false);
+  const tsunamiClickRegistered = useRef(false);
+  const tsunamiActiveRef = useRef(false);
+  const stormClickRegistered = useRef(false);
+  const stormActiveRef = useRef(false);
   // Satellite POV mode
   const povRafRef = useRef<number | null>(null);
   const povNoradIdRef = useRef<number | null>(null);
@@ -527,7 +546,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
           source: 'ranges-source',
           paint: {
             'fill-color': '#b08968',
-            'fill-opacity': 0.22
+            'fill-opacity': 0.30
           }
         } as any, beforeId);
       } catch {}
@@ -544,9 +563,9 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
             'line-color': '#8b6b4a',
             'line-width': [
               'interpolate', ['linear'], ['zoom'],
-              0, 0.2,
-              3, 0.5,
-              6, 0.8
+              0, 0.4,
+              3, 0.8,
+              6, 1.2
             ],
             'line-opacity': 0.8,
             'line-dasharray': [2, 2]
@@ -665,7 +684,8 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
             'circle-radius': ['interpolate', ['linear'], ['zoom'], 0, 3, 2, 4, 5, 6, 8, 8],
             'circle-opacity': 0.9,
             'circle-stroke-color': '#ff8c00',
-            'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 0, 0.5, 4, 1, 8, 1.5]
+            'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 0, 0.5, 4, 1, 8, 1.5],
+            'circle-blur': 0.15
           }
         } as any, beforeId);
       } catch {}
@@ -706,7 +726,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
           id: fillId,
           type: 'fill',
           source: 'deserts-source',
-          paint: { 'fill-color': '#d4a853', 'fill-opacity': 0.28 }
+          paint: { 'fill-color': '#d4a853', 'fill-opacity': 0.35 }
         } as any, beforeId);
       } catch {}
     }
@@ -1170,13 +1190,27 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     ];
     layers.forEach(({ id, type }) => {
       if (!map.getLayer(id)) return;
-      // Hover pointer
+      // Hover pointer + lightweight name popup
       const onMove = (e: mapboxgl.MapMouseEvent) => {
         if (!e.features || e.features.length === 0) return;
         map.getCanvas().style.cursor = 'pointer';
+        const props = e.features[0].properties || {};
+        const name = props.name || props.NAME || props.Volcano_Name || '';
+        if (name) {
+          if (!naturalHoverPopupRef.current) {
+            naturalHoverPopupRef.current = new mapboxgl.Popup({ closeButton: false, closeOnClick: false, offset: 10, className: 'natural-hover-popup' });
+          }
+          const elev = type === 'peaks' ? (props.elevation ? ` · ${Number(props.elevation).toLocaleString()} m` : '') :
+                       type === 'volcanoes' ? (props.Elevation ? ` · ${Number(props.Elevation).toLocaleString()} m` : '') : '';
+          naturalHoverPopupRef.current
+            .setLngLat(e.lngLat)
+            .setHTML(`<strong>${name}</strong>${elev}`)
+            .addTo(map);
+        }
       };
       const onLeave = () => {
         map.getCanvas().style.cursor = isLeftSidebarOpenRef.current ? "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='8' fill='none' stroke='%2387CEEB' stroke-width='1.5' opacity='0.9'/%3E%3Ccircle cx='10' cy='10' r='2' fill='%2387CEEB' opacity='0.7'/%3E%3C/svg%3E\") 10 10, auto" : 'grab';
+        naturalHoverPopupRef.current?.remove();
       };
       const onClick = (e: mapboxgl.MapMouseEvent) => {
         const feats = map.queryRenderedFeatures(e.point, { layers: [id] });
@@ -1187,17 +1221,26 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         let title = props.name || props.NAME || props.Volcano_Name || defaultTitle[type];
         const lines: string[] = [];
         if (type === 'peaks') {
-          if (props.elevation_m) lines.push(`Elevation: ${props.elevation_m} m`);
+          const elev = props.elevation || props.elevation_m;
+          if (elev) lines.push(`Elevation: ${Number(elev).toLocaleString()} m`);
           if (props.prominence_m) lines.push(`Prominence: ${props.prominence_m} m`);
+          if (props.region) lines.push(`Region: ${props.region}`);
+          if (props.comment) lines.push(`${props.comment}`);
         } else if (type === 'rivers') {
           if (props.class) lines.push(`Class: ${props.class}`);
           if (props.length_km) lines.push(`Length: ${props.length_km} km`);
         } else if (type === 'volcanoes') {
           if (props.Primary_Volcano_Type) lines.push(`Type: ${props.Primary_Volcano_Type}`);
-          if (props.Last_Known_Eruption) lines.push(`Last eruption: ${props.Last_Known_Eruption}`);
+          if (props.Elevation) lines.push(`Elevation: ${Number(props.Elevation).toLocaleString()} m`);
           if (props.Country) lines.push(`Country: ${props.Country}`);
+          if (props.Last_Eruption_Year) lines.push(`Last eruption: ${props.Last_Eruption_Year}`);
+          if (props.Region) lines.push(`Region: ${props.Region}`);
         } else if (type === 'deserts') {
           if (props.name_en || props.NAME_EN) lines.push(`Region: ${props.name_en || props.NAME_EN}`);
+        } else if (type === 'lakes') {
+          if (props.region) lines.push(`Region: ${props.region}`);
+        } else if (type === 'fault-lines') {
+          if (props.region) lines.push(`Region: ${props.region}`);
         }
         if (props.source_ref) lines.push(`Source: ${props.source_ref}`);
         const html = `
@@ -2094,6 +2137,102 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       if (!map) return;
       setLiveActivityLayer(map, id, enabled, data, extra);
     },
+    // Earthquake visualization layers
+    setEarthquakeTrackingLayers: (enabled: boolean) => {
+      earthquakeActiveRef.current = enabled;
+      const map = mapRef.current;
+      if (!map) return;
+      if (enabled) {
+        ensureEarthquakeLayers(map);
+      } else {
+        EarthquakeVisualization.cleanup(map);
+        earthquakeClickRegistered.current = false;
+      }
+    },
+    updateEarthquakeData: (features: any[]) => {
+      const map = mapRef.current;
+      if (!map) return;
+      EarthquakeVisualization.updateData(map, features);
+    },
+    // Lightning
+    setLightningTrackingLayers: (enabled: boolean) => {
+      lightningActiveRef.current = enabled;
+      const map = mapRef.current;
+      if (!map) return;
+      if (enabled) {
+        LightningVisualization.addLayers(map);
+        if (!lightningClickRegistered.current) {
+          lightningClickRegistered.current = true;
+          LightningVisualization.registerInteractions(map);
+        }
+      } else {
+        LightningVisualization.cleanup(map);
+        lightningClickRegistered.current = false;
+      }
+    },
+    updateLightningData: (features: any[]) => {
+      const map = mapRef.current;
+      if (!map) return;
+      LightningVisualization.updateData(map, features);
+    },
+    // Volcanoes
+    setVolcanoTrackingLayers: (enabled: boolean) => {
+      volcanoActiveRef.current = enabled;
+      const map = mapRef.current;
+      if (!map) return;
+      if (enabled) { ensureVolcanoLayers(map); } else { VolcanoVisualization.cleanup(map); volcanoClickRegistered.current = false; }
+    },
+    updateVolcanoData: (features: any[]) => {
+      const map = mapRef.current;
+      if (!map) return;
+      VolcanoVisualization.updateData(map, features);
+    },
+    // Tsunamis
+    setTsunamiTrackingLayers: (enabled: boolean) => {
+      tsunamiActiveRef.current = enabled;
+      const map = mapRef.current;
+      if (!map) return;
+      if (enabled) { ensureTsunamiLayers(map); } else { TsunamiVisualization.cleanup(map); tsunamiClickRegistered.current = false; }
+    },
+    updateTsunamiData: (features: any[]) => {
+      const map = mapRef.current;
+      if (!map) return;
+      TsunamiVisualization.updateData(map, features);
+    },
+    // Storms
+    setStormTrackingLayers: (enabled: boolean) => {
+      stormActiveRef.current = enabled;
+      const map = mapRef.current;
+      if (!map) return;
+      if (enabled) { ensureStormLayers(map); } else { StormVisualization.cleanup(map); stormClickRegistered.current = false; }
+    },
+    updateStormData: (features: any[]) => {
+      const map = mapRef.current;
+      if (!map) return;
+      StormVisualization.updateData(map, features);
+    },
+    // Air Traffic live tracking layers
+    setAirTrafficTrackingLayers: (enabled: boolean) => {
+      airTrafficTrackingActiveRef.current = enabled;
+      const map = mapRef.current;
+      if (!map) return;
+      if (enabled) {
+        ensureAirTrafficLayers(map);
+      } else {
+        AirTrafficVisualization.cleanup(map);
+        airTrafficClickRegistered.current = false;
+      }
+    },
+    updateAirTrafficPositions: (features: any[]) => {
+      const map = mapRef.current;
+      if (!map) return;
+      AirTrafficVisualization.updatePositions(map, features);
+    },
+    updateAirTrafficTrails: (trails: any[]) => {
+      const map = mapRef.current;
+      if (!map) return;
+      AirTrafficVisualization.updateTrails(map, trails);
+    },
     // Earth Data overlays (toggleable NASA GIBS layers)
     // Satellite live tracking layers
     setSatelliteTrackingLayers: (enabled: boolean) => {
@@ -2345,6 +2484,48 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
           hoverPopup.remove();
         });
       }
+    }
+  }, []);
+
+  // Helper: (re-)add air traffic layers + hover handler if tracking is active
+  const ensureAirTrafficLayers = useCallback((map: mapboxgl.Map) => {
+    AirTrafficVisualization.addLayers(map);
+    if (!airTrafficClickRegistered.current) {
+      airTrafficClickRegistered.current = true;
+      AirTrafficVisualization.registerInteractions(map);
+    }
+  }, []);
+
+  // Helper: (re-)add earthquake layers + hover handler if active
+  const ensureEarthquakeLayers = useCallback((map: mapboxgl.Map) => {
+    EarthquakeVisualization.addLayers(map);
+    if (!earthquakeClickRegistered.current) {
+      earthquakeClickRegistered.current = true;
+      EarthquakeVisualization.registerInteractions(map);
+    }
+  }, []);
+
+  const ensureVolcanoLayers = useCallback((map: mapboxgl.Map) => {
+    VolcanoVisualization.addLayers(map);
+    if (!volcanoClickRegistered.current) {
+      volcanoClickRegistered.current = true;
+      VolcanoVisualization.registerInteractions(map);
+    }
+  }, []);
+
+  const ensureTsunamiLayers = useCallback((map: mapboxgl.Map) => {
+    TsunamiVisualization.addLayers(map);
+    if (!tsunamiClickRegistered.current) {
+      tsunamiClickRegistered.current = true;
+      TsunamiVisualization.registerInteractions(map);
+    }
+  }, []);
+
+  const ensureStormLayers = useCallback((map: mapboxgl.Map) => {
+    StormVisualization.addLayers(map);
+    if (!stormClickRegistered.current) {
+      stormClickRegistered.current = true;
+      StormVisualization.registerInteractions(map);
     }
   }, []);
 
@@ -2664,7 +2845,39 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       SatelliteVisualization.resetIcons(); // Icons lost on style change
       ensureSatelliteLayers(map);
     }
-  }, [handleCountrySelection, applyPhysicalModeTweaks, styleKey, minimalModeOn, setBaseFeaturesVisibility, ensureSatelliteLayers]);
+
+    // Re-add air traffic tracking layers if they were active before the style change
+    if (airTrafficTrackingActiveRef.current) {
+      airTrafficClickRegistered.current = false;
+      AirTrafficVisualization.resetIcons();
+      ensureAirTrafficLayers(map);
+    }
+
+    // Re-add earthquake layers if they were active before the style change
+    if (earthquakeActiveRef.current) {
+      earthquakeClickRegistered.current = false;
+      ensureEarthquakeLayers(map);
+    }
+    if (lightningActiveRef.current) {
+      lightningClickRegistered.current = false;
+      LightningVisualization.addLayers(map);
+      lightningClickRegistered.current = true;
+      LightningVisualization.registerInteractions(map);
+    }
+    if (volcanoActiveRef.current) {
+      volcanoClickRegistered.current = false;
+      VolcanoVisualization.resetIcons();
+      ensureVolcanoLayers(map);
+    }
+    if (tsunamiActiveRef.current) {
+      tsunamiClickRegistered.current = false;
+      ensureTsunamiLayers(map);
+    }
+    if (stormActiveRef.current) {
+      stormClickRegistered.current = false;
+      ensureStormLayers(map);
+    }
+  }, [handleCountrySelection, applyPhysicalModeTweaks, styleKey, minimalModeOn, setBaseFeaturesVisibility, ensureSatelliteLayers, ensureAirTrafficLayers, ensureEarthquakeLayers, ensureVolcanoLayers, ensureTsunamiLayers, ensureStormLayers]);
 
   // El toggle inline fue movido a la sidebar (Settings)
 

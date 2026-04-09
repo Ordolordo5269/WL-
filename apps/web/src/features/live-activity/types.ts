@@ -1,8 +1,10 @@
 export type LiveActivityLayerId =
   | 'earthquakes'
   | 'fires'
-  | 'radar'
   | 'air-traffic'
   | 'marine-traffic'
-  | 'satellites'
+  | 'active-volcanoes'
+  | 'tsunamis'
+  | 'storms'
+  | 'lightning'
   | 'weather';

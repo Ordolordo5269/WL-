@@ -22,6 +22,7 @@ import SpaceBackground from './components/SpaceBackground';
 import { getSatelliteProfileAsync, preloadSatelliteProfiles, COUNTRY_FLAGS, COUNTRY_NAMES, type SatelliteProfile } from './features/world-map/map/satellite-database';
 import { MILITARY_COUNTRY_COLORS, CLASSIFIED_ORBIT_COLORS } from './features/world-map/map/satellite-visualization';
 import type { SatCategory } from './features/world-map/useSatelliteTracking';
+import { useAirTrafficTracking } from './features/world-map/useAirTrafficTracking';
 import { getMissionTimeInfo, countryCodeToFlag, getOrbitColor, getOrbitShortName, type Mission, type LaunchEvent } from './features/world-map/useMissionTracking';
 import LaunchAlert from './components/LaunchAlert';
 import { MuseumLegend, MuseumExpandedCard, PURPLE_SCHEME, EARTHY_SCHEME } from './components/MuseumCard';
@@ -90,6 +91,7 @@ function WorldMapView() {
   const choropleth = useChoropleth(mapRef);
   const mapControls = useMapControls(mapRef);
   const liveActivity = useLiveActivity();
+  const airTrafficTracking = useAirTrafficTracking();
   const conflictTracker = useConflictTracker();
 
   // Mission markers callbacks
@@ -138,32 +140,104 @@ function WorldMapView() {
     }
   }, []);
   // Wire live-activity data to map layers
+  // Earthquakes: enhanced visualization with pulse animation
   useEffect(() => {
-    mapRef.current?.setLiveActivityLayer?.('earthquakes', liveActivity.earthquakesEnabled, liveActivity.earthquakesData);
+    if (liveActivity.earthquakesEnabled) {
+      mapRef.current?.setLiveActivityLayer?.('earthquakes', false); // clean old
+      mapRef.current?.setEarthquakeTrackingLayers?.(true);
+    } else {
+      mapRef.current?.setEarthquakeTrackingLayers?.(false);
+    }
+  }, [liveActivity.earthquakesEnabled]);
+
+  useEffect(() => {
+    if (liveActivity.earthquakesEnabled && liveActivity.earthquakesData) {
+      mapRef.current?.updateEarthquakeData?.(liveActivity.earthquakesData.features);
+    }
   }, [liveActivity.earthquakesEnabled, liveActivity.earthquakesData]);
 
   useEffect(() => {
     mapRef.current?.setLiveActivityLayer?.('fires', liveActivity.firesEnabled, liveActivity.firesData);
   }, [liveActivity.firesEnabled, liveActivity.firesData]);
 
+  // Air Traffic: worker-based live tracking (replaces static circle layer)
   useEffect(() => {
-    mapRef.current?.setLiveActivityLayer?.(
-      'radar', liveActivity.radarEnabled, null,
-      liveActivity.radarData ? { tileUrl: liveActivity.radarData.tileUrl } : undefined,
-    );
-  }, [liveActivity.radarEnabled, liveActivity.radarData]);
+    if (liveActivity.airTrafficEnabled) {
+      // Clean up old static layer if it exists
+      mapRef.current?.setLiveActivityLayer?.('air-traffic', false);
+      mapRef.current?.setAirTrafficTrackingLayers?.(true);
+      airTrafficTracking.start();
+    } else {
+      airTrafficTracking.stop();
+      mapRef.current?.setAirTrafficTrackingLayers?.(false);
+    }
+  }, [liveActivity.airTrafficEnabled]);
 
+  // Feed OpenSky snapshots to the worker
   useEffect(() => {
-    mapRef.current?.setLiveActivityLayer?.('air-traffic', liveActivity.airTrafficEnabled, liveActivity.airTrafficData);
-  }, [liveActivity.airTrafficEnabled, liveActivity.airTrafficData]);
+    if (liveActivity.airTrafficEnabled && liveActivity.airTrafficData) {
+      airTrafficTracking.feedSnapshot(liveActivity.airTrafficData);
+    }
+  }, [liveActivity.airTrafficData]);
+
+  // Wire worker position callbacks to the map
+  useEffect(() => {
+    airTrafficTracking.setOnPositions((features) => {
+      mapRef.current?.updateAirTrafficPositions?.(features);
+    });
+    airTrafficTracking.setOnTrails((trails) => {
+      mapRef.current?.updateAirTrafficTrails?.(trails);
+    });
+  }, []);
 
   useEffect(() => {
     mapRef.current?.setLiveActivityLayer?.('marine-traffic', liveActivity.marineTrafficEnabled, liveActivity.marineTrafficData);
   }, [liveActivity.marineTrafficEnabled, liveActivity.marineTrafficData]);
 
+  // Tsunamis: concentric wave animation
   useEffect(() => {
-    mapRef.current?.setLiveActivityLayer?.('satellites', liveActivity.satellitesEnabled, liveActivity.satellitesData);
-  }, [liveActivity.satellitesEnabled, liveActivity.satellitesData]);
+    if (liveActivity.tsunamisEnabled) {
+      mapRef.current?.setLiveActivityLayer?.('tsunamis', false);
+      mapRef.current?.setTsunamiTrackingLayers?.(true);
+    } else {
+      mapRef.current?.setTsunamiTrackingLayers?.(false);
+    }
+  }, [liveActivity.tsunamisEnabled]);
+  useEffect(() => {
+    if (liveActivity.tsunamisEnabled && liveActivity.tsunamisData) {
+      mapRef.current?.updateTsunamiData?.(liveActivity.tsunamisData.features);
+    }
+  }, [liveActivity.tsunamisEnabled, liveActivity.tsunamisData]);
+
+  // Storms: severity-based pulse + popup
+  useEffect(() => {
+    if (liveActivity.stormsEnabled) {
+      mapRef.current?.setLiveActivityLayer?.('storms', false);
+      mapRef.current?.setStormTrackingLayers?.(true);
+    } else {
+      mapRef.current?.setStormTrackingLayers?.(false);
+    }
+  }, [liveActivity.stormsEnabled]);
+  useEffect(() => {
+    if (liveActivity.stormsEnabled && liveActivity.stormsData) {
+      mapRef.current?.updateStormData?.(liveActivity.stormsData.features);
+    }
+  }, [liveActivity.stormsEnabled, liveActivity.stormsData]);
+
+  // Lightning: flash animation
+  useEffect(() => {
+    if (liveActivity.lightningEnabled) {
+      mapRef.current?.setLiveActivityLayer?.('lightning', false);
+      mapRef.current?.setLightningTrackingLayers?.(true);
+    } else {
+      mapRef.current?.setLightningTrackingLayers?.(false);
+    }
+  }, [liveActivity.lightningEnabled]);
+  useEffect(() => {
+    if (liveActivity.lightningEnabled && liveActivity.lightningData) {
+      mapRef.current?.updateLightningData?.(liveActivity.lightningData.features);
+    }
+  }, [liveActivity.lightningEnabled, liveActivity.lightningData]);
 
   useEffect(() => {
     mapRef.current?.setLiveActivityLayer?.(
@@ -778,14 +852,16 @@ function WorldMapView() {
         earthquakesEnabled={liveActivity.earthquakesEnabled}
         onToggleFires={liveActivity.handleToggleFires}
         firesEnabled={liveActivity.firesEnabled}
-        onToggleRadar={liveActivity.handleToggleRadar}
-        radarEnabled={liveActivity.radarEnabled}
         onToggleAirTraffic={liveActivity.handleToggleAirTraffic}
         airTrafficEnabled={liveActivity.airTrafficEnabled}
         onToggleMarineTraffic={liveActivity.handleToggleMarineTraffic}
         marineTrafficEnabled={liveActivity.marineTrafficEnabled}
-        onToggleSatellites={liveActivity.handleToggleSatellites}
-        satellitesEnabled={liveActivity.satellitesEnabled}
+        onToggleTsunamis={liveActivity.handleToggleTsunamis}
+        tsunamisEnabled={liveActivity.tsunamisEnabled}
+        onToggleStorms={liveActivity.handleToggleStorms}
+        stormsEnabled={liveActivity.stormsEnabled}
+        onToggleLightning={liveActivity.handleToggleLightning}
+        lightningEnabled={liveActivity.lightningEnabled}
         onToggleWeather={liveActivity.handleToggleWeather}
         weatherEnabled={liveActivity.weatherEnabled}
         weatherLayers={liveActivity.weatherLayers}
@@ -827,10 +903,11 @@ function WorldMapView() {
       <LiveActivityLegend
         earthquakesEnabled={liveActivity.earthquakesEnabled}
         firesEnabled={liveActivity.firesEnabled}
-        radarEnabled={liveActivity.radarEnabled}
         airTrafficEnabled={liveActivity.airTrafficEnabled}
         marineTrafficEnabled={liveActivity.marineTrafficEnabled}
-        satellitesEnabled={liveActivity.satellitesEnabled}
+        tsunamisEnabled={liveActivity.tsunamisEnabled}
+        stormsEnabled={liveActivity.stormsEnabled}
+        lightningEnabled={liveActivity.lightningEnabled}
         weatherEnabled={liveActivity.weatherEnabled}
         weatherLayers={liveActivity.weatherLayers}
       />

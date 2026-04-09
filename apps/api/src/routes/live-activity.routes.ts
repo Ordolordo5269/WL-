@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import { getEarthquakes } from '../services/live-activity/earthquakes.js';
 import { getFires } from '../services/live-activity/fires.js';
-import { getRadar } from '../services/live-activity/radar.js';
 import { getAirTraffic } from '../services/live-activity/air-traffic.js';
 import { getMarineTraffic } from '../services/live-activity/marine-traffic.js';
-import { getSatellites, getSatelliteOrbit } from '../services/live-activity/satellites.js';
+import { getTsunamis } from '../services/live-activity/tsunamis.js';
+import { getLightning } from '../services/live-activity/lightning.js';
+import { getGdacsAlerts, getGdacsAlertsByType } from '../services/live-activity/gdacs.js';
 
 const router = Router();
 
@@ -28,16 +29,6 @@ router.get('/fires', async (_req, res, next) => {
   }
 });
 
-router.get('/radar', async (_req, res, next) => {
-  try {
-    const data = await getRadar();
-    res.setHeader('Cache-Control', 'public, max-age=120');
-    res.json(data);
-  } catch (err) {
-    next(err);
-  }
-});
-
 router.get('/air-traffic', async (_req, res, next) => {
   try {
     const data = await getAirTraffic();
@@ -54,22 +45,50 @@ router.get('/marine-traffic', (_req, res) => {
   res.json(data);
 });
 
-router.get('/satellites', async (_req, res, next) => {
+// Active volcanoes — GDACS real-time (type VO)
+router.get('/active-volcanoes', async (_req, res, next) => {
   try {
-    const data = await getSatellites();
-    res.setHeader('Cache-Control', 'public, max-age=20');
+    const data = await getGdacsAlertsByType(['VO']);
+    res.setHeader('Cache-Control', 'public, max-age=300');
     res.json(data);
   } catch (err) {
     next(err);
   }
 });
 
-router.get('/satellites/:noradId/orbit', async (req, res, next) => {
+// Recent tsunamis — NOAA historical data
+router.get('/tsunamis', async (_req, res, next) => {
   try {
-    const noradId = parseInt(req.params.noradId, 10);
-    if (isNaN(noradId)) { res.status(400).json({ error: 'Invalid NORAD ID' }); return; }
-    const data = await getSatelliteOrbit(noradId);
-    res.setHeader('Cache-Control', 'public, max-age=60');
+    const data = await getTsunamis();
+    res.setHeader('Cache-Control', 'public, max-age=120');
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Severe weather — GDACS real-time (tropical cyclones only)
+router.get('/storms', async (_req, res, next) => {
+  try {
+    const data = await getGdacsAlertsByType(['TC']);
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/lightning', (_req, res) => {
+  const data = getLightning();
+  res.setHeader('Cache-Control', 'public, max-age=5');
+  res.json(data);
+});
+
+// All GDACS alerts (all disaster types)
+router.get('/gdacs', async (_req, res, next) => {
+  try {
+    const data = await getGdacsAlerts();
+    res.setHeader('Cache-Control', 'public, max-age=300');
     res.json(data);
   } catch (err) {
     next(err);

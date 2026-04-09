@@ -2,10 +2,12 @@ import { useState, useCallback } from 'react';
 import {
   useEarthquakesData,
   useFiresData,
-  useRadarData,
   useAirTrafficData,
   useMarineTrafficData,
-  useSatellitesData,
+  useActiveVolcanoesData,
+  useTsunamisData,
+  useStormsData,
+  useLightningData,
 } from './useLiveActivityData';
 
 export interface WeatherLayer {
@@ -17,21 +19,25 @@ export interface WeatherLayer {
 export function useLiveActivity() {
   const [earthquakesEnabled, setEarthquakesEnabled] = useState(false);
   const [firesEnabled, setFiresEnabled] = useState(false);
-  const [radarEnabled, setRadarEnabled] = useState(false);
   const [airTrafficEnabled, setAirTrafficEnabled] = useState(false);
   const [marineTrafficEnabled, setMarineTrafficEnabled] = useState(false);
-  const [satellitesEnabled, setSatellitesEnabled] = useState(false);
   const [weatherEnabled, setWeatherEnabled] = useState(false);
+  const [activeVolcanoesEnabled, setActiveVolcanoesEnabled] = useState(false);
+  const [tsunamisEnabled, setTsunamisEnabled] = useState(false);
+  const [stormsEnabled, setStormsEnabled] = useState(false);
+  const [lightningEnabled, setLightningEnabled] = useState(false);
   // Active weather sublayer IDs (e.g. 'temp_new', 'clouds_new')
   const [weatherLayers, setWeatherLayers] = useState<string[]>([]);
 
   // Data fetching hooks — only fetch when enabled
   const earthquakesQuery = useEarthquakesData(earthquakesEnabled);
   const firesQuery = useFiresData(firesEnabled);
-  const radarQuery = useRadarData(radarEnabled);
   const airTrafficQuery = useAirTrafficData(airTrafficEnabled);
   const marineTrafficQuery = useMarineTrafficData(marineTrafficEnabled);
-  const satellitesQuery = useSatellitesData(satellitesEnabled);
+  const activeVolcanoesQuery = useActiveVolcanoesData(activeVolcanoesEnabled);
+  const tsunamisQuery = useTsunamisData(tsunamisEnabled);
+  const stormsQuery = useStormsData(stormsEnabled);
+  const lightningQuery = useLightningData(lightningEnabled);
 
   const handleToggleEarthquakes = useCallback((enabled: boolean) => {
     setEarthquakesEnabled(enabled);
@@ -39,10 +45,6 @@ export function useLiveActivity() {
 
   const handleToggleFires = useCallback((enabled: boolean) => {
     setFiresEnabled(enabled);
-  }, []);
-
-  const handleToggleRadar = useCallback((enabled: boolean) => {
-    setRadarEnabled(enabled);
   }, []);
 
   const handleToggleAirTraffic = useCallback((enabled: boolean) => {
@@ -53,8 +55,20 @@ export function useLiveActivity() {
     setMarineTrafficEnabled(enabled);
   }, []);
 
-  const handleToggleSatellites = useCallback((enabled: boolean) => {
-    setSatellitesEnabled(enabled);
+  const handleToggleActiveVolcanoes = useCallback((enabled: boolean) => {
+    setActiveVolcanoesEnabled(enabled);
+  }, []);
+
+  const handleToggleTsunamis = useCallback((enabled: boolean) => {
+    setTsunamisEnabled(enabled);
+  }, []);
+
+  const handleToggleStorms = useCallback((enabled: boolean) => {
+    setStormsEnabled(enabled);
+  }, []);
+
+  const handleToggleLightning = useCallback((enabled: boolean) => {
+    setLightningEnabled(enabled);
   }, []);
 
   const handleToggleWeather = useCallback((enabled: boolean) => {
@@ -75,18 +89,24 @@ export function useLiveActivity() {
     firesEnabled,
     handleToggleFires,
     firesData: firesQuery.data,
-    radarEnabled,
-    handleToggleRadar,
-    radarData: radarQuery.data,
     airTrafficEnabled,
     handleToggleAirTraffic,
     airTrafficData: airTrafficQuery.data,
     marineTrafficEnabled,
     handleToggleMarineTraffic,
     marineTrafficData: marineTrafficQuery.data,
-    satellitesEnabled,
-    handleToggleSatellites,
-    satellitesData: satellitesQuery.data,
+    activeVolcanoesEnabled,
+    handleToggleActiveVolcanoes,
+    activeVolcanoesData: activeVolcanoesQuery.data,
+    tsunamisEnabled,
+    handleToggleTsunamis,
+    tsunamisData: tsunamisQuery.data,
+    stormsEnabled,
+    handleToggleStorms,
+    stormsData: stormsQuery.data,
+    lightningEnabled,
+    handleToggleLightning,
+    lightningData: lightningQuery.data,
     weatherEnabled,
     handleToggleWeather,
     weatherLayers,

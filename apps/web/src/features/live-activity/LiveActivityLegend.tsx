@@ -18,11 +18,10 @@ const LAYER_LEGENDS: LegendItem[] = [
     gradientColors: ['#ffcc00', '#ff6600', '#cc0000'],
     gradientLabels: ['Shallow', 'Mid', 'Deep'],
   },
-  { id: 'fires', label: 'Active Fires', color: '#ff4500', shape: 'circle' },
   { id: 'air-traffic', label: 'Air Traffic', color: '#00bfff', shape: 'circle' },
   { id: 'marine-traffic', label: 'Marine Traffic', color: '#00cc66', shape: 'circle' },
-  { id: 'satellites', label: 'Satellites', color: '#ffd700', shape: 'circle' },
-  { id: 'radar', label: 'Weather Radar', color: '#8080ff', shape: 'circle' },
+  { id: 'tsunamis', label: 'Tsunami History', color: '#00ccff', shape: 'circle' },
+  { id: 'storms', label: 'Tropical Cyclones', color: '#ff4400', shape: 'circle' },
 ];
 
 const WEATHER_SUBLAYER_LABELS: Record<string, string> = {
@@ -36,10 +35,11 @@ const WEATHER_SUBLAYER_LABELS: Record<string, string> = {
 interface Props {
   earthquakesEnabled: boolean;
   firesEnabled: boolean;
-  radarEnabled: boolean;
   airTrafficEnabled: boolean;
   marineTrafficEnabled: boolean;
-  satellitesEnabled: boolean;
+  tsunamisEnabled: boolean;
+  stormsEnabled: boolean;
+  lightningEnabled: boolean;
   weatherEnabled: boolean;
   weatherLayers: string[];
 }
@@ -48,10 +48,11 @@ export default function LiveActivityLegend(props: Props) {
   const enabledMap: Record<string, boolean> = {
     earthquakes: props.earthquakesEnabled,
     fires: props.firesEnabled,
-    radar: props.radarEnabled,
     'air-traffic': props.airTrafficEnabled,
     'marine-traffic': props.marineTrafficEnabled,
-    satellites: props.satellitesEnabled,
+    'tsunamis': props.tsunamisEnabled,
+    'storms': props.stormsEnabled,
+    'lightning': props.lightningEnabled,
   };
 
   const activeLayers = LAYER_LEGENDS.filter(l => enabledMap[l.id]);

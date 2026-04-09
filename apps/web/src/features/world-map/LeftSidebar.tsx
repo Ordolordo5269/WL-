@@ -125,14 +125,19 @@ interface LeftSidebarProps {
   earthquakesEnabled?: boolean;
   onToggleFires?: (enabled: boolean) => void;
   firesEnabled?: boolean;
-  onToggleRadar?: (enabled: boolean) => void;
-  radarEnabled?: boolean;
   onToggleAirTraffic?: (enabled: boolean) => void;
   airTrafficEnabled?: boolean;
   onToggleMarineTraffic?: (enabled: boolean) => void;
   marineTrafficEnabled?: boolean;
-  onToggleSatellites?: (enabled: boolean) => void;
-  satellitesEnabled?: boolean;
+  onToggleActiveVolcanoes?: (enabled: boolean) => void;
+  activeVolcanoesEnabled?: boolean;
+  activeVolcanoesCount?: number;
+  onToggleTsunamis?: (enabled: boolean) => void;
+  tsunamisEnabled?: boolean;
+  onToggleStorms?: (enabled: boolean) => void;
+  stormsEnabled?: boolean;
+  onToggleLightning?: (enabled: boolean) => void;
+  lightningEnabled?: boolean;
   onToggleWeather?: (enabled: boolean) => void;
   weatherEnabled?: boolean;
   weatherLayers?: string[];
@@ -156,9 +161,9 @@ interface MenuItem {
   iconBg?: string;
 }
 
-export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenDemographics, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetGlobeTheme, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, onSetLedHalo, onSetLedHaloSpeed, choropleth, onToggleHistoryMode, onSetHistoryYear, onResetHistoryPresentation, historyEnabled: _historyEnabled = false, historyYear = null, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, onToggleEarthGallery, earthGalleryEnabled = false, onToggleEarthGallerySelectMode, earthGallerySelectMode = false, onSetEarthGalleryZoom, earthGalleryZoom = 2, naturalLod = 'auto', onSetNaturalLod, earthOverlays, onToggleEarthOverlay, onToggleSatelliteIntelMode, onHistoryToSatellite, onSatelliteToHistory, onToggleEarthquakes, earthquakesEnabled = false, onToggleFires, firesEnabled = false, onToggleRadar, radarEnabled = false, onToggleAirTraffic, airTrafficEnabled = false, onToggleMarineTraffic, marineTrafficEnabled = false, onToggleSatellites, satellitesEnabled = false, onToggleWeather, weatherEnabled = false, weatherLayers = [], onToggleWeatherLayer, onTrackingCategoriesChange, onOpenConflictTracker, onExpandMission, onFlyToMission, onSetMissionMarkers, onRemoveMissionMarkers, onLaunchEvents }: LeftSidebarProps) {
+export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenDemographics, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetGlobeTheme, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, onSetLedHalo, onSetLedHaloSpeed, choropleth, onToggleHistoryMode, onSetHistoryYear, onResetHistoryPresentation, historyEnabled: _historyEnabled = false, historyYear = null, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, onToggleEarthGallery, earthGalleryEnabled = false, onToggleEarthGallerySelectMode, earthGallerySelectMode = false, onSetEarthGalleryZoom, earthGalleryZoom = 2, naturalLod = 'auto', onSetNaturalLod, earthOverlays, onToggleEarthOverlay, onToggleSatelliteIntelMode, onHistoryToSatellite, onSatelliteToHistory, onToggleEarthquakes, earthquakesEnabled = false, onToggleFires, firesEnabled = false, onToggleAirTraffic, airTrafficEnabled = false, onToggleMarineTraffic, marineTrafficEnabled = false, onToggleActiveVolcanoes, activeVolcanoesEnabled = false, activeVolcanoesCount, onToggleTsunamis, tsunamisEnabled = false, onToggleStorms, stormsEnabled = false, onToggleLightning, lightningEnabled = false, onToggleWeather, weatherEnabled = false, weatherLayers = [], onToggleWeatherLayer, onTrackingCategoriesChange, onOpenConflictTracker, onExpandMission, onFlyToMission, onSetMissionMarkers, onRemoveMissionMarkers, onLaunchEvents }: LeftSidebarProps) {
   const [activeItem, setActiveItem] = useState<string>('home');
-  const [physicalSections, setPhysicalSections] = useState({ geo: true, climate: true, terrain: true, gallery: true });
+  const [physicalSections, setPhysicalSections] = useState({ geo: true, geoFeatures: true, climate: true, terrain: true, gallery: true });
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
 
@@ -681,12 +686,7 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenDemogr
                       {item.label === 'Live Activity' && activeItem === 'live activity' && (
                         <div className="mt-3 ml-12 mr-3 settings-panel" aria-label="Live Activity">
                           <div className="settings-subtitle" style={{ marginBottom: 8 }}>
-                            Real-time tracking of moving objects.
-                          </div>
-                          <div className="layer-row">
-                            <span className={`layer-row-dot ${radarEnabled ? 'on' : ''}`} />
-                            <span className="layer-row-name">Weather Radar</span>
-                            <button className={`toggle-switch ${radarEnabled ? 'on' : ''}`} onClick={() => onToggleRadar?.(!radarEnabled)} aria-label="Toggle radar" />
+                            Real-time air and marine traffic tracking.
                           </div>
                           <div className="layer-row">
                             <span className={`layer-row-dot ${airTrafficEnabled ? 'on' : ''}`} />
@@ -698,11 +698,6 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenDemogr
                             <span className="layer-row-name">Marine Traffic</span>
                             <button className={`toggle-switch ${marineTrafficEnabled ? 'on' : ''}`} onClick={() => onToggleMarineTraffic?.(!marineTrafficEnabled)} aria-label="Toggle marine traffic" />
                           </div>
-                          <div className="layer-row">
-                            <span className={`layer-row-dot ${satellitesEnabled ? 'on' : ''}`} />
-                            <span className="layer-row-name">Satellites</span>
-                            <button className={`toggle-switch ${satellitesEnabled ? 'on' : ''}`} onClick={() => onToggleSatellites?.(!satellitesEnabled)} aria-label="Toggle satellites" />
-                          </div>
                         </div>
                       )}
 
@@ -712,7 +707,7 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenDemogr
                           <div className="layer-section">
                             <div className="layer-section-header" onClick={() => setPhysicalSections(p => ({ ...p, geo: !p.geo }))}>
                               <span className="layer-section-dot" style={{ background: '#ef4444', color: '#ef4444' }} />
-                              <span className="layer-section-label">Geophysical</span>
+                              <span className="layer-section-label">Hazards & Seismology</span>
                               <svg className={`layer-section-chevron ${physicalSections.geo ? 'open' : ''}`} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" /></svg>
                             </div>
                             {physicalSections.geo && (<>
@@ -730,6 +725,16 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenDemogr
                                 <span className={`layer-row-dot ${faultLinesEnabled ? 'on' : ''}`} />
                                 <span className="layer-row-name">Fault Lines</span>
                                 <button className={`toggle-switch ${faultLinesEnabled ? 'on' : ''}`} onClick={() => onToggleFaultLinesLayer?.(!faultLinesEnabled)} aria-label="Toggle fault lines" />
+                              </div>
+                              <div className="layer-row">
+                                <span className={`layer-row-dot ${stormsEnabled ? 'on' : ''}`} />
+                                <span className="layer-row-name">Tropical Cyclones</span>
+                                <button className={`toggle-switch ${stormsEnabled ? 'on' : ''}`} onClick={() => onToggleStorms?.(!stormsEnabled)} aria-label="Toggle storms" />
+                              </div>
+                              <div className="layer-row">
+                                <span className={`layer-row-dot ${tsunamisEnabled ? 'on' : ''}`} />
+                                <span className="layer-row-name">Tsunami History</span>
+                                <button className={`toggle-switch ${tsunamisEnabled ? 'on' : ''}`} onClick={() => onToggleTsunamis?.(!tsunamisEnabled)} aria-label="Toggle tsunamis" />
                               </div>
                             </>)}
                           </div>
@@ -754,11 +759,6 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenDemogr
                                   ))}
                                 </div>
                               )}
-                              <div className="layer-row">
-                                <span className={`layer-row-dot ${firesEnabled ? 'on' : ''}`} />
-                                <span className="layer-row-name">Active Fires</span>
-                                <button className={`toggle-switch ${firesEnabled ? 'on' : ''}`} onClick={() => onToggleFires?.(!firesEnabled)} aria-label="Toggle fires" />
-                              </div>
                               <div className="layer-row">
                                 <span className={`layer-row-dot ${desertsEnabled ? 'on' : ''}`} />
                                 <span className="layer-row-name">Deserts</span>
@@ -959,30 +959,61 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenDemogr
                           )}
 
                           {/* ── Active Missions ── */}
+                          {!missionsActive ? (
+                            <div className="mission-control-panel" style={{ marginTop: 14 }}>
+                              <div className="mission-control-header">
+                                <div className="mission-control-icon">
+                                  <Satellite style={{ width: 15, height: 15 }} />
+                                </div>
+                                <span className="mission-control-title">Active Missions</span>
+                              </div>
+                              <div className="mission-control-stats">
+                                <div className="mission-control-stat">
+                                  <span className="mission-control-stat-dot mission-control-stat-dot--green" />
+                                  <span>Crew in orbit</span>
+                                </div>
+                                <div className="mission-control-stat">
+                                  <span className="mission-control-stat-dot mission-control-stat-dot--blue" />
+                                  <span>In-flight & upcoming launches</span>
+                                </div>
+                                <div className="mission-control-stat">
+                                  <span className="mission-control-stat-dot mission-control-stat-dot--amber" />
+                                  <span>Launch alerts & countdowns</span>
+                                </div>
+                              </div>
+                              <button
+                                className="mission-control-btn"
+                                onClick={() => {
+                                  setMissionsActive(true);
+                                  missionTracking.fetchMissions();
+                                  crewTracking.fetchCrew();
+                                  missionTracking.startTimer();
+                                }}
+                              >
+                                Initialize Tracking
+                                <span className="mission-control-btn-arrow">›</span>
+                              </button>
+                            </div>
+                          ) : (
+                          <>
                           <div className="section-header" style={{ marginTop: 18, marginBottom: 8 }}>
-                            <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
                               Active Missions
-                              {missionsActive && missionTracking.missions.filter(m => m.status === 'in-flight').length > 0 && (
+                              {missionTracking.missions.filter(m => m.status === 'in-flight').length > 0 && (
                                 <span className="mission-live-dot" />
                               )}
                             </h3>
-                          </div>
-                          <div className="settings-subtitle" style={{ marginBottom: 12 }}>
-                            Live launches & crewed missions worldwide.
-                          </div>
-
-                          {!missionsActive ? (
                             <button
-                              className="chip"
-                              style={{ width: '100%', padding: '8px 14px', fontSize: 11, letterSpacing: '0.02em' }}
+                              className="mission-control-exit"
                               onClick={() => {
-                                setMissionsActive(true);
-                                missionTracking.fetchMissions();
-                                crewTracking.fetchCrew();
-                                missionTracking.startTimer();
+                                setMissionsActive(false);
+                                setMissionsExpanded(false);
+                                onRemoveMissionMarkers?.();
+                                missionTracking.stopTimer();
                               }}
-                            >Load Active Missions</button>
-                          ) : (
+                              title="Stop tracking"
+                            >✕</button>
+                          </div>
                           <div className="settings-row" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
                             {missionTracking.loading ? (
                               <div style={{ fontSize: 11, color: 'rgba(160,150,200,0.6)', textAlign: 'center', padding: 12 }}>
@@ -1015,16 +1046,6 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenDemogr
                                       )}
                                       <span className="mission-summary-upcoming">{upcomingCount} upcoming</span>
                                     </div>
-                                    <button
-                                      className="chip"
-                                      style={{ fontSize: 8, padding: '1px 6px' }}
-                                      onClick={() => {
-                                        setMissionsActive(false);
-                                        setMissionsExpanded(false);
-                                        onRemoveMissionMarkers?.();
-                                        missionTracking.stopTimer();
-                                      }}
-                                    >Close</button>
                                   </div>
 
                                   {/* NEXT LAUNCH banner — upcoming within 24h */}
@@ -1145,6 +1166,7 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenDemogr
                               );
                             })()}
                           </div>
+                          </>
                           )}
 
                           {/* ── Live Tracking ── */}
