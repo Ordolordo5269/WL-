@@ -111,6 +111,8 @@ interface LeftSidebarProps {
   earthGallerySelectMode?: boolean;
   onSetEarthGalleryZoom?: (level: number) => void;
   earthGalleryZoom?: number;
+  earthGalleryMode?: 'nasa-photos' | 'night-vision' | 'recon' | null;
+  onSetEarthGalleryMode?: (mode: 'nasa-photos' | 'night-vision' | 'recon' | null) => void;
   naturalLod?: 'auto' | 'low' | 'med' | 'high';
   onSetNaturalLod?: (lod: 'auto' | 'low' | 'med' | 'high') => void;
   // Earth Data (NASA) overlays
@@ -123,21 +125,19 @@ interface LeftSidebarProps {
   // Live Activity layers
   onToggleEarthquakes?: (enabled: boolean) => void;
   earthquakesEnabled?: boolean;
-  onToggleFires?: (enabled: boolean) => void;
-  firesEnabled?: boolean;
+  earthquakesCount?: number;
   onToggleAirTraffic?: (enabled: boolean) => void;
   airTrafficEnabled?: boolean;
   onToggleMarineTraffic?: (enabled: boolean) => void;
   marineTrafficEnabled?: boolean;
-  onToggleActiveVolcanoes?: (enabled: boolean) => void;
-  activeVolcanoesEnabled?: boolean;
-  activeVolcanoesCount?: number;
   onToggleTsunamis?: (enabled: boolean) => void;
   tsunamisEnabled?: boolean;
+  tsunamisCount?: number;
   onToggleStorms?: (enabled: boolean) => void;
   stormsEnabled?: boolean;
-  onToggleLightning?: (enabled: boolean) => void;
-  lightningEnabled?: boolean;
+  stormsCount?: number;
+  onToggleTectonicPlates?: (enabled: boolean) => void;
+  tectonicPlatesEnabled?: boolean;
   onToggleWeather?: (enabled: boolean) => void;
   weatherEnabled?: boolean;
   weatherLayers?: string[];
@@ -161,7 +161,7 @@ interface MenuItem {
   iconBg?: string;
 }
 
-export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenDemographics, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetGlobeTheme, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, onSetLedHalo, onSetLedHaloSpeed, choropleth, onToggleHistoryMode, onSetHistoryYear, onResetHistoryPresentation, historyEnabled: _historyEnabled = false, historyYear = null, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, onToggleEarthGallery, earthGalleryEnabled = false, onToggleEarthGallerySelectMode, earthGallerySelectMode = false, onSetEarthGalleryZoom, earthGalleryZoom = 2, naturalLod = 'auto', onSetNaturalLod, earthOverlays, onToggleEarthOverlay, onToggleSatelliteIntelMode, onHistoryToSatellite, onSatelliteToHistory, onToggleEarthquakes, earthquakesEnabled = false, onToggleFires, firesEnabled = false, onToggleAirTraffic, airTrafficEnabled = false, onToggleMarineTraffic, marineTrafficEnabled = false, onToggleActiveVolcanoes, activeVolcanoesEnabled = false, activeVolcanoesCount, onToggleTsunamis, tsunamisEnabled = false, onToggleStorms, stormsEnabled = false, onToggleLightning, lightningEnabled = false, onToggleWeather, weatherEnabled = false, weatherLayers = [], onToggleWeatherLayer, onTrackingCategoriesChange, onOpenConflictTracker, onExpandMission, onFlyToMission, onSetMissionMarkers, onRemoveMissionMarkers, onLaunchEvents }: LeftSidebarProps) {
+export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenDemographics, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetGlobeTheme, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, onSetLedHalo, onSetLedHaloSpeed, choropleth, onToggleHistoryMode, onSetHistoryYear, onResetHistoryPresentation, historyEnabled: _historyEnabled = false, historyYear = null, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, onToggleEarthGallery, earthGalleryEnabled = false, onToggleEarthGallerySelectMode, earthGallerySelectMode = false, onSetEarthGalleryZoom, earthGalleryZoom = 2, earthGalleryMode, onSetEarthGalleryMode, naturalLod = 'auto', onSetNaturalLod, earthOverlays, onToggleEarthOverlay, onToggleSatelliteIntelMode, onHistoryToSatellite, onSatelliteToHistory, onToggleEarthquakes, earthquakesEnabled = false, earthquakesCount, onToggleAirTraffic, airTrafficEnabled = false, onToggleMarineTraffic, marineTrafficEnabled = false, onToggleTectonicPlates, tectonicPlatesEnabled = false, onToggleTsunamis, tsunamisEnabled = false, tsunamisCount, onToggleStorms, stormsEnabled = false, stormsCount, onToggleWeather, weatherEnabled = false, weatherLayers = [], onToggleWeatherLayer, onTrackingCategoriesChange, onOpenConflictTracker, onExpandMission, onFlyToMission, onSetMissionMarkers, onRemoveMissionMarkers, onLaunchEvents }: LeftSidebarProps) {
   const [activeItem, setActiveItem] = useState<string>('home');
   const [physicalSections, setPhysicalSections] = useState({ geo: true, geoFeatures: true, climate: true, terrain: true, gallery: true });
   const navigate = useNavigate();
@@ -713,7 +713,7 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenDemogr
                             {physicalSections.geo && (<>
                               <div className="layer-row">
                                 <span className={`layer-row-dot ${earthquakesEnabled ? 'on' : ''}`} />
-                                <span className="layer-row-name">Earthquakes</span>
+                                <span className="layer-row-name">Earthquakes{earthquakesEnabled && earthquakesCount != null ? <span style={{ opacity: 0.4, fontSize: 10, marginLeft: 4 }}>({earthquakesCount})</span> : null}</span>
                                 <button className={`toggle-switch ${earthquakesEnabled ? 'on' : ''}`} onClick={() => onToggleEarthquakes?.(!earthquakesEnabled)} aria-label="Toggle earthquakes" />
                               </div>
                               <div className="layer-row">
@@ -728,12 +728,12 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenDemogr
                               </div>
                               <div className="layer-row">
                                 <span className={`layer-row-dot ${stormsEnabled ? 'on' : ''}`} />
-                                <span className="layer-row-name">Tropical Cyclones</span>
+                                <span className="layer-row-name">Tropical Cyclones{stormsEnabled && stormsCount != null ? <span style={{ opacity: 0.4, fontSize: 10, marginLeft: 4 }}>({stormsCount})</span> : null}</span>
                                 <button className={`toggle-switch ${stormsEnabled ? 'on' : ''}`} onClick={() => onToggleStorms?.(!stormsEnabled)} aria-label="Toggle storms" />
                               </div>
                               <div className="layer-row">
                                 <span className={`layer-row-dot ${tsunamisEnabled ? 'on' : ''}`} />
-                                <span className="layer-row-name">Tsunami History</span>
+                                <span className="layer-row-name">Tsunami History{tsunamisEnabled && tsunamisCount != null ? <span style={{ opacity: 0.4, fontSize: 10, marginLeft: 4 }}>({tsunamisCount})</span> : null}</span>
                                 <button className={`toggle-switch ${tsunamisEnabled ? 'on' : ''}`} onClick={() => onToggleTsunamis?.(!tsunamisEnabled)} aria-label="Toggle tsunamis" />
                               </div>
                             </>)}
@@ -776,16 +776,26 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenDemogr
                             </div>
                             {physicalSections.gallery && (<>
                               <div className="layer-row">
-                                <span className={`layer-row-dot ${earthGalleryEnabled ? 'on' : ''}`} />
+                                <span className={`layer-row-dot ${earthGalleryMode === 'nasa-photos' ? 'on' : ''}`} />
                                 <span className="layer-row-name">NASA Photos</span>
-                                <button className={`toggle-switch ${earthGalleryEnabled ? 'on' : ''}`} onClick={() => onToggleEarthGallery?.(!earthGalleryEnabled)} aria-label="Toggle earth gallery" />
+                                <button className={`toggle-switch ${earthGalleryMode === 'nasa-photos' ? 'on' : ''}`} onClick={() => onSetEarthGalleryMode?.(earthGalleryMode === 'nasa-photos' ? null : 'nasa-photos')} aria-label="Toggle NASA Photos" />
+                              </div>
+                              <div className="layer-row">
+                                <span className={`layer-row-dot ${earthGalleryMode === 'night-vision' ? 'on' : ''}`} style={earthGalleryMode === 'night-vision' ? { background: '#f59e0b' } : {}} />
+                                <span className="layer-row-name">Night Vision</span>
+                                <button className={`toggle-switch ${earthGalleryMode === 'night-vision' ? 'on' : ''}`} onClick={() => onSetEarthGalleryMode?.(earthGalleryMode === 'night-vision' ? null : 'night-vision')} aria-label="Toggle Night Vision" />
+                              </div>
+                              <div className="layer-row">
+                                <span className={`layer-row-dot ${earthGalleryMode === 'recon' ? 'on' : ''}`} style={earthGalleryMode === 'recon' ? { background: '#22c55e' } : {}} />
+                                <span className="layer-row-name">Satellite Recon</span>
+                                <button className={`toggle-switch ${earthGalleryMode === 'recon' ? 'on' : ''}`} onClick={() => onSetEarthGalleryMode?.(earthGalleryMode === 'recon' ? null : 'recon')} aria-label="Toggle Satellite Recon" />
                               </div>
                               {earthGalleryEnabled && (
                                 <div className="eg-controls">
                                   <div className="eg-hint">
                                     {earthGallerySelectMode
-                                      ? 'Draw a rectangle on the map to capture that area.'
-                                      : 'Click anywhere on the map to see a satellite photo.'}
+                                      ? (earthGalleryMode === 'night-vision' ? 'Draw a rectangle to capture night radiance.' : earthGalleryMode === 'recon' ? 'Draw a rectangle for detailed area recon.' : 'Draw a rectangle on the map to capture that area.')
+                                      : (earthGalleryMode === 'night-vision' ? 'Click anywhere to see night-time light emissions.' : earthGalleryMode === 'recon' ? 'Click anywhere for high-resolution reconnaissance.' : 'Click anywhere on the map to see a satellite photo.')}
                                   </div>
 
                                   {/* Zoom presets */}

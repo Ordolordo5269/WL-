@@ -39,7 +39,6 @@ interface Props {
   marineTrafficEnabled: boolean;
   tsunamisEnabled: boolean;
   stormsEnabled: boolean;
-  lightningEnabled: boolean;
   weatherEnabled: boolean;
   weatherLayers: string[];
 }
@@ -52,7 +51,6 @@ export default function LiveActivityLegend(props: Props) {
     'marine-traffic': props.marineTrafficEnabled,
     'tsunamis': props.tsunamisEnabled,
     'storms': props.stormsEnabled,
-    'lightning': props.lightningEnabled,
   };
 
   const activeLayers = LAYER_LEGENDS.filter(l => enabledMap[l.id]);

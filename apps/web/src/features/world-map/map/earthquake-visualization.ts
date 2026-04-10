@@ -40,6 +40,11 @@ const magRadiusExpr = [
 let _lastFeatures: any[] = [];
 let _pulseRafId = 0;
 let _hoverPopup: mapboxgl.Popup | null = null;
+let _clickPopup: mapboxgl.Popup | null = null;
+
+function buildViewAreaBtn(mode: string, lng: number, lat: number): string {
+  return `<div style="margin-top:6px;border-top:1px solid rgba(255,255,255,0.1);padding-top:6px"><button class="eg-view-area-btn" onclick="event.stopPropagation();document.__wl_map_comp?.triggerEarthGallery?.('${mode}',${lat},${lng})">VIEW AREA</button></div>`;
+}
 
 // 2 hours in ms — quakes newer than this get the pulse effect
 const RECENT_MS = 2 * 60 * 60 * 1000;
@@ -191,13 +196,24 @@ export const EarthquakeVisualization = {
       map.getCanvas().style.cursor = '';
       _hoverPopup?.remove();
     });
+
+    // Click → popup with VIEW AREA button
+    _clickPopup = new mapboxgl.Popup({ closeButton: true, closeOnClick: true, offset: 12, className: 'earthquake-click-popup' });
+    map.on('click', LAYER_ID, (e: mapboxgl.MapMouseEvent) => {
+      if (e.features?.length) {
+        _hoverPopup?.remove();
+        const props = e.features[0].properties || {};
+        const coords = (e.features[0].geometry as any).coordinates.slice() as [number, number];
+        _clickPopup!.setLngLat(coords).setHTML(buildPopupHtml(props) + buildViewAreaBtn('recon', coords[0], coords[1])).addTo(map);
+      }
+    });
   },
 
   /** Remove all earthquake layers */
   cleanup(map: mapboxgl.Map) {
     if (_pulseRafId) { cancelAnimationFrame(_pulseRafId); _pulseRafId = 0; }
-    _hoverPopup?.remove();
-    _hoverPopup = null;
+    _hoverPopup?.remove(); _hoverPopup = null;
+    _clickPopup?.remove(); _clickPopup = null;
     if (map.getLayer(LAYER_ID)) map.removeLayer(LAYER_ID);
     if (map.getLayer(GLOW_LAYER_ID)) map.removeLayer(GLOW_LAYER_ID);
     if (map.getLayer(PULSE_LAYER_ID)) map.removeLayer(PULSE_LAYER_ID);

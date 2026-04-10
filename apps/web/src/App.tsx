@@ -93,6 +93,11 @@ function WorldMapView() {
   const liveActivity = useLiveActivity();
   const airTrafficTracking = useAirTrafficTracking();
   const conflictTracker = useConflictTracker();
+  const [tectonicPlatesEnabled, setTectonicPlatesEnabled] = useState(false);
+  const handleToggleTectonicPlates = useCallback((enabled: boolean) => {
+    setTectonicPlatesEnabled(enabled);
+    mapRef.current?.setTectonicPlatesEnabled?.(enabled);
+  }, []);
 
   // Mission markers callbacks
   const missionsRef = useRef<Mission[]>([]);
@@ -816,6 +821,8 @@ function WorldMapView() {
         earthGallerySelectMode={mapControls.earthGallerySelectMode}
         onSetEarthGalleryZoom={mapControls.handleSetEarthGalleryZoom}
         earthGalleryZoom={mapControls.earthGalleryZoom}
+        earthGalleryMode={mapControls.earthGalleryMode}
+        onSetEarthGalleryMode={mapControls.handleSetEarthGalleryMode}
         naturalLod={mapControls.naturalLod}
         onSetNaturalLod={mapControls.handleSetNaturalLod}
         // Earth Data (satellite) overlays
@@ -850,18 +857,19 @@ function WorldMapView() {
         // Live Activity
         onToggleEarthquakes={liveActivity.handleToggleEarthquakes}
         earthquakesEnabled={liveActivity.earthquakesEnabled}
-        onToggleFires={liveActivity.handleToggleFires}
-        firesEnabled={liveActivity.firesEnabled}
+        earthquakesCount={liveActivity.earthquakesData?.features?.length}
         onToggleAirTraffic={liveActivity.handleToggleAirTraffic}
         airTrafficEnabled={liveActivity.airTrafficEnabled}
         onToggleMarineTraffic={liveActivity.handleToggleMarineTraffic}
         marineTrafficEnabled={liveActivity.marineTrafficEnabled}
+        onToggleTectonicPlates={handleToggleTectonicPlates}
+        tectonicPlatesEnabled={tectonicPlatesEnabled}
         onToggleTsunamis={liveActivity.handleToggleTsunamis}
         tsunamisEnabled={liveActivity.tsunamisEnabled}
+        tsunamisCount={liveActivity.tsunamisData?.features?.length}
         onToggleStorms={liveActivity.handleToggleStorms}
         stormsEnabled={liveActivity.stormsEnabled}
-        onToggleLightning={liveActivity.handleToggleLightning}
-        lightningEnabled={liveActivity.lightningEnabled}
+        stormsCount={liveActivity.stormsData?.features?.length}
         onToggleWeather={liveActivity.handleToggleWeather}
         weatherEnabled={liveActivity.weatherEnabled}
         weatherLayers={liveActivity.weatherLayers}
@@ -907,7 +915,6 @@ function WorldMapView() {
         marineTrafficEnabled={liveActivity.marineTrafficEnabled}
         tsunamisEnabled={liveActivity.tsunamisEnabled}
         stormsEnabled={liveActivity.stormsEnabled}
-        lightningEnabled={liveActivity.lightningEnabled}
         weatherEnabled={liveActivity.weatherEnabled}
         weatherLayers={liveActivity.weatherLayers}
       />

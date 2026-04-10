@@ -85,6 +85,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   const tsunamiActiveRef = useRef(false);
   const stormClickRegistered = useRef(false);
   const stormActiveRef = useRef(false);
+  const tectonicPlatesActiveRef = useRef(false);
   // Satellite POV mode
   const povRafRef = useRef<number | null>(null);
   const povNoradIdRef = useRef<number | null>(null);
@@ -163,6 +164,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   const earthGalleryDragRef = useRef<{ startX: number; startY: number; active: boolean }>({ startX: 0, startY: 0, active: false });
   const earthGalleryBoxRef = useRef<HTMLDivElement | null>(null);
   const earthGalleryZoomRef = useRef<number>(2); // 0=city, 1=metro, 2=region, 3=country
+  const earthGalleryModeRef = useRef<'nasa-photos' | 'night-vision' | 'recon'>('nasa-photos');
 
   // ✅ NUEVO: Tipos específicos para event listeners
   type MapMouseEventHandler = (e: mapboxgl.MapMouseEvent) => void;
@@ -507,10 +509,26 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   const ensureRiversLayer = useCallback(() => {
     const map = mapRef.current;
     if (!map) return;
+    // Invisible wider hitbox layer for easier hover/click
+    const hitId = 'rivers-hit';
+    if (!map.getLayer(hitId)) {
+      try {
+        const beforeId = map.getLayer('country-highlight') ? 'country-highlight' : undefined;
+        map.addLayer({
+          id: hitId,
+          type: 'line',
+          source: 'rivers-source',
+          paint: {
+            'line-color': 'transparent',
+            'line-width': 10,
+            'line-opacity': 0
+          }
+        } as any, beforeId);
+      } catch {}
+    }
     const layerId = 'rivers-line';
     if (!map.getLayer(layerId)) {
       try {
-        const beforeId = map.getLayer('country-highlight') ? 'country-highlight' : undefined;
         map.addLayer({
           id: layerId,
           type: 'line',
@@ -526,7 +544,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
             ],
             'line-opacity': 0.8
           }
-        } as any, beforeId);
+        } as any);
       } catch {}
     }
   }, []);
@@ -714,6 +732,67 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     }
   }, []);
 
+  const ensureTectonicPlatesLayer = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const sourceId = 'tectonic-plates-source';
+    const lineId = 'tectonic-plates-line';
+    const glowId = 'tectonic-plates-glow';
+    if (!map.getSource(sourceId)) {
+      try {
+        map.addSource(sourceId, {
+          type: 'geojson',
+          data: '/natural/tectonic_plates/boundaries.geojson',
+        });
+      } catch { return; }
+    }
+    if (!map.getLayer(glowId)) {
+      try {
+        const beforeId = map.getLayer('country-highlight') ? 'country-highlight' : undefined;
+        map.addLayer({
+          id: glowId,
+          type: 'line',
+          source: sourceId,
+          paint: {
+            'line-color': '#ff44aa',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 0, 3, 4, 5, 8, 7],
+            'line-opacity': 0.12,
+            'line-blur': 3,
+          },
+        } as any, beforeId);
+      } catch {}
+    }
+    if (!map.getLayer(lineId)) {
+      try {
+        const beforeId = map.getLayer('country-highlight') ? 'country-highlight' : undefined;
+        map.addLayer({
+          id: lineId,
+          type: 'line',
+          source: sourceId,
+          paint: {
+            'line-color': [
+              'match', ['get', 'Type'],
+              'convergent', '#ff4444',
+              'divergent', '#44aaff',
+              'transform', '#ffaa22',
+              '#ff44aa',
+            ],
+            'line-width': ['interpolate', ['linear'], ['zoom'], 0, 0.8, 3, 1.2, 6, 1.8, 10, 2.5],
+            'line-opacity': 0.75,
+          },
+        } as any, beforeId);
+      } catch {}
+    }
+  }, []);
+
+  const removeTectonicPlatesLayer = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (map.getLayer('tectonic-plates-line')) map.removeLayer('tectonic-plates-line');
+    if (map.getLayer('tectonic-plates-glow')) map.removeLayer('tectonic-plates-glow');
+    if (map.getSource('tectonic-plates-source')) map.removeSource('tectonic-plates-source');
+  }, []);
+
   const ensureDesertsLayer = useCallback(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -755,7 +834,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     const content = el.querySelector('.mapboxgl-popup-content') as HTMLElement;
     if (!content) return;
 
-    // Detach from map anchor — position absolutely on screen
+    // Detach from map anchor — position fixed on screen (doesn't move with globe)
     el.style.position = 'fixed';
     el.style.zIndex = '9999';
     el.style.transform = 'none';
@@ -763,10 +842,12 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     const tip = el.querySelector('.mapboxgl-popup-tip') as HTMLElement;
     if (tip) tip.style.display = 'none';
 
-    // Initial position: center of viewport
-    const rect = content.getBoundingClientRect();
-    el.style.left = `${Math.max(20, (window.innerWidth - rect.width) / 2)}px`;
-    el.style.top = `${Math.max(60, (window.innerHeight - rect.height) / 3)}px`;
+    // Position: top-right corner with some padding
+    el.style.right = '16px';
+    el.style.top = '16px';
+    el.style.left = 'auto';
+    // Show — popup starts hidden to prevent flash at map coordinates
+    el.style.opacity = '1';
 
     // Make resizable
     content.style.resize = 'both';
@@ -787,8 +868,12 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
 
     const onDown = (e: MouseEvent) => {
       dragging = true;
-      offsetX = e.clientX - el.offsetLeft;
-      offsetY = e.clientY - el.offsetTop;
+      // Switch from right-based to left-based positioning for drag
+      const rect = el.getBoundingClientRect();
+      el.style.left = `${rect.left}px`;
+      el.style.right = 'auto';
+      offsetX = e.clientX - rect.left;
+      offsetY = e.clientY - rect.top;
       e.preventDefault();
     };
     const onMove = (e: MouseEvent) => {
@@ -827,41 +912,81 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     return `${degrees}°${String(minutes).padStart(2, '0')}'${seconds.toFixed(1)}"${dir}`;
   };
 
-  const buildOsintPopupHtml = (nasaUrl: string, dateStr: string, sensor: string, lat: number, lng: number): string => {
-    const fallbackDates = [2, 3].map(d => { const dt = new Date(); dt.setDate(dt.getDate() - d); return dt.toISOString().split('T')[0]; });
-    const fallbackUrls = fallbackDates.map(fd => nasaUrl.replace(`TIME=${dateStr}`, `TIME=${fd}`));
-    const acqTime = `${dateStr}T00:00:00Z`;
+  const buildOsintPopupHtml = (nasaUrl: string, dateStr: string, sensor: string, lat: number, lng: number, mode: 'nasa-photos' | 'night-vision' | 'recon' = 'nasa-photos', gsd = '375m'): string => {
     const mgrs = toMGRS(lat, lng);
     const dmsLat = toDMS(lat, true);
     const dmsLng = toDMS(lng, false);
     const zoomLabel = GALLERY_ZOOM_LABELS[earthGalleryZoomRef.current] ?? 'Region';
+    const isNight = mode === 'night-vision';
+    const isRecon = mode === 'recon';
+
+    // Mode-specific config
+    const rootClass = isRecon ? 'eg-osint eg-osint--recon' : isNight ? 'eg-osint eg-osint--night' : 'eg-osint';
+    const bannerText = isRecon ? 'UNCLASSIFIED // SATELLITE RECON' : isNight ? 'UNCLASSIFIED // NIGHT RADIANCE' : 'UNCLASSIFIED // OPEN SOURCE';
+    const reportTitle = isRecon ? 'SATELLITE RECONNAISSANCE REPORT' : isNight ? 'NIGHT RADIANCE REPORT' : 'EARTH OBSERVATION REPORT';
+    const loadingText = isRecon ? 'ACQUIRING HIGH-RES IMAGERY…' : isNight ? 'ACQUIRING RADIANCE DATA…' : 'ACQUIRING IMAGE…';
+    const imgAlt = isRecon ? 'High-resolution reconnaissance' : isNight ? 'Night radiance observation' : 'Satellite observation';
+    const acqText = isRecon ? 'LATEST COMPOSITE' : `${dateStr}T00:00:00Z`;
+    const bandRow = isNight ? `<span class="eg-osint-label">BAND</span><span class="eg-osint-value">Day/Night Band (DNB)</span>` : '';
+    const modeParam = isRecon ? `mode:'recon',` : isNight ? `mode:'night-vision',` : '';
+    const errorMsg = isRecon ? 'IMAGE UNAVAILABLE' : isNight ? 'NO RADIANCE DATA AVAILABLE' : 'NO IMAGERY AVAILABLE — CLOUD COVER OR GAP';
+
+    // Fallback URLs (only for NASA modes — Mapbox always returns)
+    const fallbackDates = isRecon ? [] : [2, 3].map(d => { const dt = new Date(); dt.setDate(dt.getDate() - d); return dt.toISOString().split('T')[0]; });
+    const fallbackUrls = fallbackDates.map(fd => nasaUrl.replace(`TIME=${dateStr}`, `TIME=${fd}`));
+
+    // AI result builders per mode
+    const aiResultBuilder = isRecon
+      ? `res.innerHTML='<div class=\\'eg-ai-report\\'>'
+                +'<div class=\\'eg-ai-row\\'><span class=\\'eg-ai-key\\'>LOCATION</span><span class=\\'eg-ai-val\\'>'+(d.location||'—')+'</span></div>'
+                +'<div class=\\'eg-ai-row\\'><span class=\\'eg-ai-key\\'>LAND USE</span><span class=\\'eg-ai-val\\'>'+(d.landUse||'—')+'</span></div>'
+                +'<div class=\\'eg-ai-row\\'><span class=\\'eg-ai-key\\'>INFRASTRUCTURE</span><span class=\\'eg-ai-val\\'>'+(d.infrastructure||'—')+'</span></div>'
+                +'<div class=\\'eg-ai-row\\'><span class=\\'eg-ai-key\\'>ACCESS POINTS</span><span class=\\'eg-ai-val\\'>'+(d.accessPoints||'—')+'</span></div>'
+                +'<div class=\\'eg-ai-assess\\'>'+(d.strategic||'')+'</div>'
+                +'</div>'`
+      : isNight
+      ? `res.innerHTML='<div class=\\'eg-ai-report\\'>'
+                +'<div class=\\'eg-ai-row\\'><span class=\\'eg-ai-key\\'>LOCATION</span><span class=\\'eg-ai-val\\'>'+(d.location||'—')+'</span></div>'
+                +'<div class=\\'eg-ai-row\\'><span class=\\'eg-ai-key\\'>URBANIZATION</span><span class=\\'eg-ai-val\\'>'+(d.urbanization||'—')+'</span></div>'
+                +'<div class=\\'eg-ai-row\\'><span class=\\'eg-ai-key\\'>INFRASTRUCTURE</span><span class=\\'eg-ai-val\\'>'+(d.infrastructure||'—')+'</span></div>'
+                +'<div class=\\'eg-ai-row\\'><span class=\\'eg-ai-key\\'>ANOMALIES</span><span class=\\'eg-osint-tag eg-osint-tag--'+(d.anomalies&&d.anomalies.includes('NONE')?'nominal':d.anomalies&&d.anomalies.includes('SIGNIFICANT')?'alert':'info')+'\\'>'+(d.anomalies||'—')+'</span></div>'
+                +'<div class=\\'eg-ai-row\\'><span class=\\'eg-ai-key\\'>LIGHT POLLUTION</span><span class=\\'eg-ai-val\\'>'+(d.lightPollution||'—')+'</span></div>'
+                +'<div class=\\'eg-ai-assess\\'>'+(d.strategic||'')+'</div>'
+                +'</div>'`
+      : `res.innerHTML='<div class=\\'eg-ai-report\\'>'
+                +'<div class=\\'eg-ai-row\\'><span class=\\'eg-ai-key\\'>LOCATION</span><span class=\\'eg-ai-val\\'>'+(d.location||'—')+'</span></div>'
+                +'<div class=\\'eg-ai-row\\'><span class=\\'eg-ai-key\\'>TERRAIN</span><span class=\\'eg-ai-val\\'>'+(d.terrain||'—')+'</span></div>'
+                +'<div class=\\'eg-ai-row\\'><span class=\\'eg-ai-key\\'>FEATURES</span><span class=\\'eg-ai-val\\'>'+(d.features||'—')+'</span></div>'
+                +'<div class=\\'eg-ai-row\\'><span class=\\'eg-ai-key\\'>ACTIVITY</span><span class=\\'eg-osint-tag eg-osint-tag--'+(d.activity&&d.activity.includes('NOMINAL')?'nominal':d.activity&&d.activity.includes('ELEVATED')?'alert':'info')+'\\'>'+(d.activity||'—')+'</span></div>'
+                +'<div class=\\'eg-ai-row\\'><span class=\\'eg-ai-key\\'>WEATHER</span><span class=\\'eg-ai-val\\'>'+(d.weather||'—')+'</span></div>'
+                +'<div class=\\'eg-ai-assess\\'>'+(d.strategic||'')+'</div>'
+                +'</div>'`;
+
+    // Image error handler — recon has no fallbacks
+    const imgOnError = isRecon
+      ? `this.parentElement.querySelector('.eg-osint-loading').innerHTML='<span class=\\'eg-osint-err\\'>${errorMsg}</span>'`
+      : `var fb1=this.getAttribute('data-fallback-1');var fb2=this.getAttribute('data-fallback-2');if(fb1){this.removeAttribute('data-fallback-1');this.src=fb1}else if(fb2){this.removeAttribute('data-fallback-2');this.src=fb2}else{this.parentElement.querySelector('.eg-osint-loading').innerHTML='<span class=\\'eg-osint-err\\'>${errorMsg}</span>'}`;
 
     return `
-      <div class="eg-osint">
-        <div class="eg-osint-banner">UNCLASSIFIED // OPEN SOURCE</div>
+      <div class="${rootClass}">
+        <div class="eg-osint-banner">${bannerText}</div>
         <div class="eg-osint-img-wrap">
           <div class="eg-osint-loading">
             <div class="earth-gallery-spinner"></div>
-            <span>ACQUIRING IMAGE…</span>
+            <span>${loadingText}</span>
           </div>
-          <img src="${nasaUrl}" alt="Satellite observation" class="eg-osint-img"
-            data-fallback-1="${fallbackUrls[0]}" data-fallback-2="${fallbackUrls[1]}"
+          <img src="${nasaUrl}" alt="${imgAlt}" class="eg-osint-img"
+            ${!isRecon ? `data-fallback-1="${fallbackUrls[0]}" data-fallback-2="${fallbackUrls[1]}"` : ''}
             onload="this.style.opacity='1';this.parentElement.querySelector('.eg-osint-loading').style.display='none'"
-            onerror="
-              var fb1=this.getAttribute('data-fallback-1');
-              var fb2=this.getAttribute('data-fallback-2');
-              if(fb1){this.removeAttribute('data-fallback-1');this.src=fb1}
-              else if(fb2){this.removeAttribute('data-fallback-2');this.src=fb2}
-              else{this.parentElement.querySelector('.eg-osint-loading').innerHTML='<span class=\\'eg-osint-err\\'>NO IMAGERY AVAILABLE — CLOUD COVER OR GAP</span>'}
-            " />
+            onerror="${imgOnError}" />
           <div class="eg-osint-hud-tl">SRC: ${sensor}</div>
-          <div class="eg-osint-hud-tr">GSD: 375m</div>
+          <div class="eg-osint-hud-tr">GSD: ${gsd}</div>
           <div class="eg-osint-hud-bl">SCOPE: ${zoomLabel.toUpperCase()}</div>
-          <div class="eg-osint-hud-br">ACQ: ${acqTime}</div>
+          <div class="eg-osint-hud-br">ACQ: ${acqText}</div>
           <div class="eg-osint-crosshair"></div>
         </div>
         <div class="eg-osint-body">
-          <div class="eg-osint-section-title">EARTH OBSERVATION REPORT</div>
+          <div class="eg-osint-section-title">${reportTitle}</div>
           <div class="eg-osint-grid">
             <span class="eg-osint-label">DECIMAL</span>
             <span class="eg-osint-value">${lat.toFixed(5)}°, ${lng.toFixed(5)}°</span>
@@ -869,6 +994,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
             <span class="eg-osint-value">${dmsLat} ${dmsLng}</span>
             <span class="eg-osint-label">MGRS</span>
             <span class="eg-osint-value">${mgrs}</span>
+            ${bandRow}
           </div>
           <div class="eg-osint-divider"></div>
           <div class="eg-osint-section-title">ANALYSIS</div>
@@ -884,25 +1010,17 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
             var btn=this;var res=document.getElementById('eg-ai-result');
             btn.disabled=true;btn.textContent='ANALYZING...';
             res.innerHTML='<div class=\\'eg-ai-loading\\'><div class=\\'earth-gallery-spinner\\'></div><span>QUERYING AI MODEL...</span></div>';
-            fetch('/api/earth-gallery/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({imageUrl:'${nasaUrl}',lat:${lat},lng:${lng}})})
+            fetch('/api/earth-gallery/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({${modeParam}imageUrl:'${nasaUrl}',lat:${lat},lng:${lng}})})
             .then(r=>r.json()).then(d=>{
               if(d.error){res.innerHTML='<span class=\\'eg-osint-tag eg-osint-tag--alert\\'>AI: '+d.error+'</span>';btn.textContent='RETRY AI';btn.disabled=false;return}
-              var actColor=d.activity&&d.activity.includes('NOMINAL')?'nominal':d.activity&&d.activity.includes('ELEVATED')?'alert':'info';
               var titleEl=document.querySelector('.eg-osint-section-title');
               if(titleEl&&d.location)titleEl.textContent='ANALYSIS — '+d.location.toUpperCase();
-              res.innerHTML='<div class=\\'eg-ai-report\\'>'
-                +'<div class=\\'eg-ai-row\\'><span class=\\'eg-ai-key\\'>LOCATION</span><span class=\\'eg-ai-val\\'>'+(d.location||'—')+'</span></div>'
-                +'<div class=\\'eg-ai-row\\'><span class=\\'eg-ai-key\\'>TERRAIN</span><span class=\\'eg-ai-val\\'>'+(d.terrain||'—')+'</span></div>'
-                +'<div class=\\'eg-ai-row\\'><span class=\\'eg-ai-key\\'>FEATURES</span><span class=\\'eg-ai-val\\'>'+(d.features||'—')+'</span></div>'
-                +'<div class=\\'eg-ai-row\\'><span class=\\'eg-ai-key\\'>ACTIVITY</span><span class=\\'eg-osint-tag eg-osint-tag--'+actColor+'\\'>'+(d.activity||'—')+'</span></div>'
-                +'<div class=\\'eg-ai-row\\'><span class=\\'eg-ai-key\\'>WEATHER</span><span class=\\'eg-ai-val\\'>'+(d.weather||'—')+'</span></div>'
-                +'<div class=\\'eg-ai-assess\\'>'+(d.strategic||'')+'</div>'
-                +'</div>';
+              ${aiResultBuilder};
               btn.textContent='AI COMPLETE';btn.classList.add('eg-osint-ai-btn--done');
             }).catch(()=>{res.innerHTML='<span class=\\'eg-osint-tag eg-osint-tag--alert\\'>AI: CONNECTION FAILED</span>';btn.textContent='RETRY AI';btn.disabled=false})
           ">AI ANALYZE</button>
         </div>
-        <div class="eg-osint-banner">UNCLASSIFIED // OPEN SOURCE</div>
+        <div class="eg-osint-banner">${bannerText}</div>
       </div>
     `;
   };
@@ -914,8 +1032,12 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     const map = mapRef.current;
     if (!map || earthGalleryClickHandlerRef.current) return;
 
+    let lastClickTs = 0;
     const handler = (e: mapboxgl.MapMouseEvent) => {
       if (!earthGalleryEnabledRef.current) return;
+      const now = Date.now();
+      if (now - lastClickTs < 500) return; // debounce rapid clicks
+      lastClickTs = now;
       const { lng, lat } = e.lngLat;
 
       // Build bbox centered on click point, sized by zoom preset
@@ -926,8 +1048,8 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         try { earthGalleryPopupRef.current.remove(); } catch {}
       }
 
-      const { url: nasaUrl, dateStr, sensor, clampedBbox } = buildNasaSnapshotUrl(bbox, true);
-      const html = buildOsintPopupHtml(nasaUrl, dateStr, sensor, lat, lng);
+      const { url: nasaUrl, dateStr, sensor, clampedBbox, mode, gsd } = buildNasaSnapshotUrl(bbox, true);
+      const html = buildOsintPopupHtml(nasaUrl, dateStr, sensor, lat, lng, mode, gsd);
 
       const popup = new mapboxgl.Popup({ maxWidth: 'none', className: 'eg-osint-popup', closeButton: true, anchor: 'top-left' })
         .setLngLat([lng, lat])
@@ -957,12 +1079,30 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   const GALLERY_ZOOM_SPANS = [0.4, 1.2, 3.0, 8.0]; // city, metro, region, country
   const GALLERY_ZOOM_LABELS = ['City', 'Metro', 'Region', 'Country'];
 
-  const buildNasaSnapshotUrl = useCallback((bbox: string, useZoomPreset = false): { url: string; dateStr: string; layer: string; sensor: string; clampedBbox: string } => {
+  const RECON_ZOOM_LEVELS = [15, 12, 9, 5]; // City, Metro, Region, Country
+
+  const buildNasaSnapshotUrl = useCallback((bbox: string, useZoomPreset = false): { url: string; dateStr: string; layer: string; sensor: string; clampedBbox: string; mode: 'nasa-photos' | 'night-vision' | 'recon'; gsd: string } => {
     let [minLat, minLng, maxLat, maxLng] = bbox.split(',').map(Number);
     const centerLat = (minLat + maxLat) / 2;
     const centerLng = (minLng + maxLng) / 2;
+    const mode = earthGalleryModeRef.current;
 
-    // If using zoom preset (click mode), override bbox with preset span
+    // ── Satellite Recon (Mapbox Static Images) ──
+    if (mode === 'recon') {
+      const token = _mbToken || '';
+      let url: string;
+      if (useZoomPreset) {
+        const zoom = RECON_ZOOM_LEVELS[earthGalleryZoomRef.current] ?? 9;
+        url = `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/${centerLng.toFixed(5)},${centerLat.toFixed(5)},${zoom}/1024x768@2x?access_token=${token}`;
+      } else {
+        // Area select: use bbox format [west,south,east,north]
+        url = `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/[${minLng.toFixed(5)},${minLat.toFixed(5)},${maxLng.toFixed(5)},${maxLat.toFixed(5)}]/1024x768@2x?access_token=${token}`;
+      }
+      const clampedBbox = `${minLat.toFixed(4)},${minLng.toFixed(4)},${maxLat.toFixed(4)},${maxLng.toFixed(4)}`;
+      return { url, dateStr: 'LATEST', layer: 'satellite-streets-v12', sensor: 'Maxar / DigitalGlobe (<1 m)', clampedBbox, mode, gsd: '<1m' };
+    }
+
+    // ── NASA modes (Photos / Night Vision) ──
     if (useZoomPreset) {
       const span = GALLERY_ZOOM_SPANS[earthGalleryZoomRef.current] ?? 3.0;
       minLat = centerLat - span / 2;
@@ -974,9 +1114,11 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     let widthDeg = Math.abs(maxLng - minLng);
     let heightDeg = Math.abs(maxLat - minLat);
 
-    // Always use VIIRS — fast, daily coverage, reliable
-    const layer = 'VIIRS_SNPP_CorrectedReflectance_TrueColor';
-    const sensor = 'VIIRS / Suomi NPP (375 m)';
+    const isNightVision = mode === 'night-vision';
+    const layer = isNightVision ? 'VIIRS_SNPP_DayNightBand_At_Sensor_Radiance' : 'VIIRS_SNPP_CorrectedReflectance_TrueColor';
+    const sensor = isNightVision ? 'VIIRS DNB / Suomi NPP (750 m)' : 'VIIRS / Suomi NPP (375 m)';
+    const gsd = isNightVision ? '750m' : '375m';
+    const format = isNightVision ? 'image/png' : 'image/jpeg';
 
     // Minimum BBOX to avoid pixelation
     const minSpan = 0.3;
@@ -1002,8 +1144,8 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     const d = new Date();
     d.setDate(d.getDate() - 1);
     const dateStr = d.toISOString().split('T')[0];
-    const url = `https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&LAYERS=${layer}&CRS=EPSG:4326&TIME=${dateStr}&WRAP=day&BBOX=${clampedBbox}&FORMAT=image/jpeg&WIDTH=${w}&HEIGHT=${h}`;
-    return { url, dateStr, layer, sensor, clampedBbox };
+    const url = `https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&LAYERS=${layer}&CRS=EPSG:4326&TIME=${dateStr}&WRAP=day&BBOX=${clampedBbox}&FORMAT=${format}&WIDTH=${w}&HEIGHT=${h}`;
+    return { url, dateStr, layer, sensor, clampedBbox, mode, gsd };
   }, []);
 
   const showEarthGalleryForBbox = useCallback((bbox: string, centerLng: number, centerLat: number) => {
@@ -1012,8 +1154,8 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     if (earthGalleryPopupRef.current) {
       try { earthGalleryPopupRef.current.remove(); } catch {}
     }
-    const { url: nasaUrl, dateStr, sensor } = buildNasaSnapshotUrl(bbox);
-    const html = buildOsintPopupHtml(nasaUrl, dateStr, sensor, centerLat, centerLng);
+    const { url: nasaUrl, dateStr, sensor, mode, gsd } = buildNasaSnapshotUrl(bbox);
+    const html = buildOsintPopupHtml(nasaUrl, dateStr, sensor, centerLat, centerLng, mode, gsd);
     const popup = new mapboxgl.Popup({ maxWidth: 'none', className: 'eg-osint-popup', closeButton: true, anchor: 'top-left' })
       .setLngLat([centerLng, centerLat])
       .setHTML(html)
@@ -1125,6 +1267,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     const cfg = naturalEnabledRef.current;
     const pairs: Array<[string, boolean]> = [
       ['rivers-line', cfg.rivers],
+      ['rivers-hit', cfg.rivers],
       ['ranges-fill', cfg.ranges],
       ['ranges-line', cfg.ranges],
       ['peaks-symbol', cfg.peaks],
@@ -1176,11 +1319,14 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     updateNaturalVisibility();
   }, [ensureNaturalSource, ensureRiversLayer, ensureRangesLayer, ensurePeaksLayer, ensureLakesLayer, ensureVolcanoesLayer, ensureFaultLinesLayer, ensureDesertsLayer, updateNaturalVisibility]);
 
+  const naturalInteractiveLayersRef = useRef<Set<string>>(new Set());
+
   const ensureNaturalInteractivity = useCallback(() => {
     const map = mapRef.current;
     if (!map) return;
     const layers: Array<{ id: string; type: NaturalLayerType }> = [
-      { id: 'rivers-line', type: 'rivers' },
+      { id: 'rivers-hit', type: 'rivers' },
+      { id: 'ranges-fill', type: 'ranges' },
       { id: 'ranges-line', type: 'ranges' },
       { id: 'peaks-symbol', type: 'peaks' },
       { id: 'lakes-fill', type: 'lakes' },
@@ -1190,6 +1336,8 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
     ];
     layers.forEach(({ id, type }) => {
       if (!map.getLayer(id)) return;
+      if (naturalInteractiveLayersRef.current.has(id)) return;
+      naturalInteractiveLayersRef.current.add(id);
       // Hover pointer + lightweight name popup
       const onMove = (e: mapboxgl.MapMouseEvent) => {
         if (!e.features || e.features.length === 0) return;
@@ -1200,17 +1348,45 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
           if (!naturalHoverPopupRef.current) {
             naturalHoverPopupRef.current = new mapboxgl.Popup({ closeButton: false, closeOnClick: false, offset: 10, className: 'natural-hover-popup' });
           }
-          const elev = type === 'peaks' ? (props.elevation ? ` · ${Number(props.elevation).toLocaleString()} m` : '') :
-                       type === 'volcanoes' ? (props.Elevation ? ` · ${Number(props.Elevation).toLocaleString()} m` : '') : '';
+          let extra = '';
+          if (type === 'peaks') {
+            extra = props.elevation ? ` · ${Number(props.elevation).toLocaleString()} m` : '';
+          } else if (type === 'volcanoes') {
+            extra = props.Elevation ? ` · ${Number(props.Elevation).toLocaleString()} m` : '';
+          } else if (type === 'rivers') {
+            const fclass = props.featurecla || '';
+            if (fclass) extra = ` · ${fclass}`;
+          }
           naturalHoverPopupRef.current
             .setLngLat(e.lngLat)
-            .setHTML(`<strong>${name}</strong>${elev}`)
+            .setHTML(`<strong>${name}</strong>${extra}`)
             .addTo(map);
+        }
+        // Highlight hovered river
+        if (type === 'rivers' && map.getLayer('rivers-line') && e.features[0]) {
+          const hoveredName = props.name || props.NAME || '';
+          if (hoveredName) {
+            map.setPaintProperty('rivers-line', 'line-width', [
+              'case', ['==', ['get', 'name'], hoveredName],
+              3.5,
+              ['interpolate', ['linear'], ['zoom'], 0, 0.2, 3, 0.4, 5, 0.8, 7, 1.2]
+            ]);
+            map.setPaintProperty('rivers-line', 'line-color', [
+              'case', ['==', ['get', 'name'], hoveredName],
+              '#7dd3fc',
+              '#4aa3df'
+            ]);
+          }
         }
       };
       const onLeave = () => {
         map.getCanvas().style.cursor = isLeftSidebarOpenRef.current ? "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='8' fill='none' stroke='%2387CEEB' stroke-width='1.5' opacity='0.9'/%3E%3Ccircle cx='10' cy='10' r='2' fill='%2387CEEB' opacity='0.7'/%3E%3C/svg%3E\") 10 10, auto" : 'grab';
         naturalHoverPopupRef.current?.remove();
+        // Reset river highlight
+        if (type === 'rivers' && map.getLayer('rivers-line')) {
+          map.setPaintProperty('rivers-line', 'line-width', ['interpolate', ['linear'], ['zoom'], 0, 0.2, 3, 0.4, 5, 0.8, 7, 1.2]);
+          map.setPaintProperty('rivers-line', 'line-color', '#4aa3df');
+        }
       };
       const onClick = (e: mapboxgl.MapMouseEvent) => {
         const feats = map.queryRenderedFeatures(e.point, { layers: [id] });
@@ -1676,6 +1852,73 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
         ensureNaturalInteractivity();
       }
       updateNaturalVisibility();
+      // Close any natural layer popup when disabling
+      if (!enabled && naturalPopupRef.current) {
+        try { naturalPopupRef.current.remove(); } catch {}
+        naturalPopupRef.current = null;
+      }
+    },
+    setEarthGalleryMode: (mode: 'nasa-photos' | 'night-vision' | 'recon') => {
+      earthGalleryModeRef.current = mode;
+    },
+    triggerEarthGallery: (mode: 'nasa-photos' | 'night-vision' | 'recon', lat: number, lng: number) => {
+      const map = mapRef.current;
+      const container = mapContainer.current;
+      if (!map || !container) return;
+      earthGalleryModeRef.current = mode;
+
+      // Remove any existing OSINT overlay/popup
+      if (earthGalleryPopupRef.current) {
+        try { earthGalleryPopupRef.current.remove(); } catch {}
+        earthGalleryPopupRef.current = null;
+      }
+      container.querySelector('.eg-osint-fixed-overlay')?.remove();
+
+      // Build image URL and HTML
+      const bbox = `${lat},${lng},${lat},${lng}`;
+      const { url, dateStr, sensor, mode: m, gsd } = buildNasaSnapshotUrl(bbox, true);
+      const html = buildOsintPopupHtml(url, dateStr, sensor, lat, lng, m, gsd);
+
+      // Create as a fixed DOM overlay — avoids all mapboxgl.Popup race conditions
+      const overlay = document.createElement('div');
+      overlay.className = 'eg-osint-fixed-overlay eg-osint-popup--fadein';
+      overlay.innerHTML = html;
+
+      // Close button
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'eg-osint-fixed-close';
+      closeBtn.textContent = '\u00D7';
+      closeBtn.onclick = () => overlay.remove();
+      overlay.prepend(closeBtn);
+
+      container.appendChild(overlay);
+
+      // Draggable via banner
+      const banner = overlay.querySelector('.eg-osint-banner') as HTMLElement;
+      if (banner) {
+        banner.style.cursor = 'move';
+        banner.style.userSelect = 'none';
+        let dragging = false, ox = 0, oy = 0;
+        banner.addEventListener('mousedown', (e) => {
+          dragging = true;
+          const rect = overlay.getBoundingClientRect();
+          ox = e.clientX - rect.left; oy = e.clientY - rect.top;
+          overlay.style.right = 'auto';
+          e.preventDefault();
+        });
+        window.addEventListener('mousemove', (e) => { if (dragging) { overlay.style.left = `${e.clientX - ox}px`; overlay.style.top = `${e.clientY - oy}px`; } });
+        window.addEventListener('mouseup', () => { dragging = false; });
+      }
+
+      // Make resizable
+      const osintEl = overlay.querySelector('.eg-osint') as HTMLElement;
+      if (osintEl) { osintEl.style.resize = 'both'; osintEl.style.overflow = 'auto'; osintEl.style.maxWidth = '90vw'; osintEl.style.maxHeight = '85vh'; }
+
+      // Store for cleanup
+      (earthGalleryPopupRef as any).current = { remove: () => overlay.remove() };
+
+      // Fly to location
+      map.flyTo({ center: [lng, lat], duration: 1000, essential: true });
     },
     setEarthGalleryEnabled: (enabled: boolean) => {
       earthGalleryEnabledRef.current = enabled;
@@ -2136,6 +2379,12 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       const map = mapRef.current;
       if (!map) return;
       setLiveActivityLayer(map, id, enabled, data, extra);
+      if (!enabled) mapContainer.current?.querySelector('.eg-osint-fixed-overlay')?.remove();
+    },
+    // Tectonic plates
+    setTectonicPlatesEnabled: (enabled: boolean) => {
+      tectonicPlatesActiveRef.current = enabled;
+      if (enabled) { ensureTectonicPlatesLayer(); } else { removeTectonicPlatesLayer(); }
     },
     // Earthquake visualization layers
     setEarthquakeTrackingLayers: (enabled: boolean) => {
@@ -2147,6 +2396,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       } else {
         EarthquakeVisualization.cleanup(map);
         earthquakeClickRegistered.current = false;
+        mapContainer.current?.querySelector('.eg-osint-fixed-overlay')?.remove();
       }
     },
     updateEarthquakeData: (features: any[]) => {
@@ -2180,7 +2430,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       volcanoActiveRef.current = enabled;
       const map = mapRef.current;
       if (!map) return;
-      if (enabled) { ensureVolcanoLayers(map); } else { VolcanoVisualization.cleanup(map); volcanoClickRegistered.current = false; }
+      if (enabled) { ensureVolcanoLayers(map); } else { VolcanoVisualization.cleanup(map); volcanoClickRegistered.current = false; mapContainer.current?.querySelector('.eg-osint-fixed-overlay')?.remove(); }
     },
     updateVolcanoData: (features: any[]) => {
       const map = mapRef.current;
@@ -2192,7 +2442,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       tsunamiActiveRef.current = enabled;
       const map = mapRef.current;
       if (!map) return;
-      if (enabled) { ensureTsunamiLayers(map); } else { TsunamiVisualization.cleanup(map); tsunamiClickRegistered.current = false; }
+      if (enabled) { ensureTsunamiLayers(map); } else { TsunamiVisualization.cleanup(map); tsunamiClickRegistered.current = false; mapContainer.current?.querySelector('.eg-osint-fixed-overlay')?.remove(); }
     },
     updateTsunamiData: (features: any[]) => {
       const map = mapRef.current;
@@ -2204,7 +2454,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       stormActiveRef.current = enabled;
       const map = mapRef.current;
       if (!map) return;
-      if (enabled) { ensureStormLayers(map); } else { StormVisualization.cleanup(map); stormClickRegistered.current = false; }
+      if (enabled) { ensureStormLayers(map); } else { StormVisualization.cleanup(map); stormClickRegistered.current = false; mapContainer.current?.querySelector('.eg-osint-fixed-overlay')?.remove(); }
     },
     updateStormData: (features: any[]) => {
       const map = mapRef.current;

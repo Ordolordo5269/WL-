@@ -12,6 +12,11 @@ const WAVE_LAYER_2 = 'tsunami-wave-2';
 let _lastFeatures: any[] = [];
 let _waveRafId = 0;
 let _hoverPopup: mapboxgl.Popup | null = null;
+let _clickPopup: mapboxgl.Popup | null = null;
+
+function buildViewAreaBtn(mode: string, lng: number, lat: number): string {
+  return `<div style="margin-top:6px;border-top:1px solid rgba(255,255,255,0.1);padding-top:6px"><button class="eg-view-area-btn" onclick="event.stopPropagation();document.__wl_map_comp?.triggerEarthGallery?.('${mode}',${lat},${lng})">VIEW AREA</button></div>`;
+}
 
 const waveColor = '#00ccff';
 
@@ -132,11 +137,22 @@ export const TsunamiVisualization = {
       }
     });
     map.on('mouseleave', LAYER_ID, () => { map.getCanvas().style.cursor = ''; _hoverPopup?.remove(); });
+
+    _clickPopup = new mapboxgl.Popup({ closeButton: true, closeOnClick: true, offset: 12, className: 'tsunami-click-popup' });
+    map.on('click', LAYER_ID, (e: mapboxgl.MapMouseEvent) => {
+      if (e.features?.length) {
+        _hoverPopup?.remove();
+        const props = e.features[0].properties || {};
+        const coords = (e.features[0].geometry as any).coordinates.slice() as [number, number];
+        _clickPopup!.setLngLat(coords).setHTML(buildPopup(props) + buildViewAreaBtn('recon', coords[0], coords[1])).addTo(map);
+      }
+    });
   },
 
   cleanup(map: mapboxgl.Map) {
     if (_waveRafId) { cancelAnimationFrame(_waveRafId); _waveRafId = 0; }
     _hoverPopup?.remove(); _hoverPopup = null;
+    _clickPopup?.remove(); _clickPopup = null;
     if (map.getLayer(LAYER_ID)) map.removeLayer(LAYER_ID);
     if (map.getLayer(WAVE_LAYER_1)) map.removeLayer(WAVE_LAYER_1);
     if (map.getLayer(WAVE_LAYER_2)) map.removeLayer(WAVE_LAYER_2);
