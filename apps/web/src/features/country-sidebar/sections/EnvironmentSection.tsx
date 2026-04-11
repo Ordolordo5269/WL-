@@ -59,35 +59,35 @@ export default function EnvironmentSection({ data, isLoading, error }: Environme
           <div className="metric-item">
             <div className="metric-icon small"><Flame className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">CO2 per capita {data.co2EmissionsPerCapita.year ? <span className="ml-2 text-[10px] text-slate-400">{data.co2EmissionsPerCapita.year}</span> : null}</div>
+              <div className="metric-label">CO₂ per Person {data.co2EmissionsPerCapita.year ? <span className="ml-2 text-[10px] text-slate-400">{data.co2EmissionsPerCapita.year}</span> : null}</div>
               <div className="metric-value">{s.formatMetricTons(data.co2EmissionsPerCapita.value)}</div>
             </div>
           </div>
           <div className="metric-item">
             <div className="metric-icon small"><Flame className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">CO2 total (Mt) {data.co2EmissionsTotalKt.year ? <span className="ml-2 text-[10px] text-slate-400">{data.co2EmissionsTotalKt.year}</span> : null}</div>
+              <div className="metric-label">Total CO₂ Emissions {data.co2EmissionsTotalKt.year ? <span className="ml-2 text-[10px] text-slate-400">{data.co2EmissionsTotalKt.year}</span> : null}</div>
               <div className="metric-value">{s.formatMtCo2e(data.co2EmissionsTotalKt.value)}</div>
             </div>
           </div>
           <div className="metric-item">
             <div className="metric-icon small"><Wind className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">PM2.5 pollution {data.pm25AirPollution.year ? <span className="ml-2 text-[10px] text-slate-400">{data.pm25AirPollution.year}</span> : null}</div>
+              <div className="metric-label">Air Pollution (Fine Particles) {data.pm25AirPollution.year ? <span className="ml-2 text-[10px] text-slate-400">{data.pm25AirPollution.year}</span> : null}</div>
               <div className="metric-value">{s.formatUgM3(data.pm25AirPollution.value)}</div>
             </div>
           </div>
           <div className="metric-item">
             <div className="metric-icon small"><Zap className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">CO2 from power (Mt) {data.co2FromElectricityPct.year ? <span className="ml-2 text-[10px] text-slate-400">{data.co2FromElectricityPct.year}</span> : null}</div>
+              <div className="metric-label">CO₂ from Electricity {data.co2FromElectricityPct.year ? <span className="ml-2 text-[10px] text-slate-400">{data.co2FromElectricityPct.year}</span> : null}</div>
               <div className="metric-value">{s.formatMtCo2e(data.co2FromElectricityPct.value)}</div>
             </div>
           </div>
           <div className="metric-item">
             <div className="metric-icon small"><Cloud className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">Methane (Mt CO2e) {data.methaneEmissionsKtCo2eq.year ? <span className="ml-2 text-[10px] text-slate-400">{data.methaneEmissionsKtCo2eq.year}</span> : null}</div>
+              <div className="metric-label">Methane Emissions {data.methaneEmissionsKtCo2eq.year ? <span className="ml-2 text-[10px] text-slate-400">{data.methaneEmissionsKtCo2eq.year}</span> : null}</div>
               <div className="metric-value">{s.formatMtCo2e(data.methaneEmissionsKtCo2eq.value)}</div>
             </div>
           </div>
@@ -95,7 +95,7 @@ export default function EnvironmentSection({ data, isLoading, error }: Environme
             <div className="metric-item">
               <div className="metric-icon small"><Cloud className="w-4 h-4" /></div>
               <div className="metric-content">
-                <div className="metric-label">Total GHG (kt CO2e) {data.ghgEmissionsTotalKt.year ? <span className="ml-2 text-[10px] text-slate-400">{data.ghgEmissionsTotalKt.year}</span> : null}</div>
+                <div className="metric-label">Total Greenhouse Gases {data.ghgEmissionsTotalKt.year ? <span className="ml-2 text-[10px] text-slate-400">{data.ghgEmissionsTotalKt.year}</span> : null}</div>
                 <div className="metric-value">{s.formatKt(data.ghgEmissionsTotalKt.value)}</div>
               </div>
             </div>
@@ -113,28 +113,28 @@ export default function EnvironmentSection({ data, isLoading, error }: Environme
           <div className="metric-item">
             <div className="metric-icon small"><TreePine className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">Forest area (% land) {data.forestAreaPct.year ? <span className="ml-2 text-[10px] text-slate-400">{data.forestAreaPct.year}</span> : null}</div>
+              <div className="metric-label">Forest Coverage {data.forestAreaPct.year ? <span className="ml-2 text-[10px] text-slate-400">{data.forestAreaPct.year}</span> : null}</div>
               <div className="metric-value">{s.formatPercent(data.forestAreaPct.value)}</div>
             </div>
           </div>
           <div className="metric-item">
             <div className="metric-icon small"><Shield className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">Protected areas (% land) {data.terrestrialProtectedAreasPct.year ? <span className="ml-2 text-[10px] text-slate-400">{data.terrestrialProtectedAreasPct.year}</span> : null}</div>
+              <div className="metric-label">Protected Land {data.terrestrialProtectedAreasPct.year ? <span className="ml-2 text-[10px] text-slate-400">{data.terrestrialProtectedAreasPct.year}</span> : null}</div>
               <div className="metric-value">{s.formatPercent(data.terrestrialProtectedAreasPct.value)}</div>
             </div>
           </div>
           <div className="metric-item">
             <div className="metric-icon small"><Droplets className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">Clean water access (%) {data.accessCleanWaterPct.year ? <span className="ml-2 text-[10px] text-slate-400">{data.accessCleanWaterPct.year}</span> : null}</div>
+              <div className="metric-label">Clean Water Access {data.accessCleanWaterPct.year ? <span className="ml-2 text-[10px] text-slate-400">{data.accessCleanWaterPct.year}</span> : null}</div>
               <div className="metric-value">{s.formatPercent(data.accessCleanWaterPct.value)}</div>
             </div>
           </div>
           <div className="metric-item">
             <div className="metric-icon small"><TreePine className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">Forest rents (% GDP) {data.forestRentsPctGdp.year ? <span className="ml-2 text-[10px] text-slate-400">{data.forestRentsPctGdp.year}</span> : null}</div>
+              <div className="metric-label">Forest Economic Value (% GDP) {data.forestRentsPctGdp.year ? <span className="ml-2 text-[10px] text-slate-400">{data.forestRentsPctGdp.year}</span> : null}</div>
               <div className="metric-value">{s.formatPercent(data.forestRentsPctGdp.value)}</div>
             </div>
           </div>
@@ -151,14 +151,14 @@ export default function EnvironmentSection({ data, isLoading, error }: Environme
           <div className="metric-item">
             <div className="metric-icon small"><Zap className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">Renewable energy (% total) {data.renewableEnergyConsumptionPct.year ? <span className="ml-2 text-[10px] text-slate-400">{data.renewableEnergyConsumptionPct.year}</span> : null}</div>
+              <div className="metric-label">Renewable Energy {data.renewableEnergyConsumptionPct.year ? <span className="ml-2 text-[10px] text-slate-400">{data.renewableEnergyConsumptionPct.year}</span> : null}</div>
               <div className="metric-value">{s.formatPercent(data.renewableEnergyConsumptionPct.value)}</div>
             </div>
           </div>
           <div className="metric-item">
             <div className="metric-icon small"><Zap className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">Renewable electricity (%) {data.renewableElectricityOutputPct.year ? <span className="ml-2 text-[10px] text-slate-400">{data.renewableElectricityOutputPct.year}</span> : null}</div>
+              <div className="metric-label">Renewable Electricity {data.renewableElectricityOutputPct.year ? <span className="ml-2 text-[10px] text-slate-400">{data.renewableElectricityOutputPct.year}</span> : null}</div>
               <div className="metric-value">{s.formatPercent(data.renewableElectricityOutputPct.value)}</div>
             </div>
           </div>
@@ -166,7 +166,7 @@ export default function EnvironmentSection({ data, isLoading, error }: Environme
             <div className="metric-item">
               <div className="metric-icon small"><Fuel className="w-4 h-4" /></div>
               <div className="metric-content">
-                <div className="metric-label">Fossil fuel consumption (%) {data.fossilFuelConsumptionPct.year ? <span className="ml-2 text-[10px] text-slate-400">{data.fossilFuelConsumptionPct.year}</span> : null}</div>
+                <div className="metric-label">Fossil Fuel Dependency {data.fossilFuelConsumptionPct.year ? <span className="ml-2 text-[10px] text-slate-400">{data.fossilFuelConsumptionPct.year}</span> : null}</div>
                 <div className="metric-value">{s.formatPercent(data.fossilFuelConsumptionPct.value)}</div>
               </div>
             </div>

@@ -183,7 +183,7 @@ export default function EconomySection({ economyData, isLoading, error }: Econom
                 <Globe className="h-4 w-4" />
               </div>
               <div className="metric-content">
-                <div className="metric-label">GDP (PPP)</div>
+                <div className="metric-label">GDP (Purchasing Power)</div>
                 <div className="metric-value">{economyService.formatCurrency(economyData.gdp_ppp_usd)}</div>
               </div>
             </div>
@@ -195,7 +195,7 @@ export default function EconomySection({ economyData, isLoading, error }: Econom
                 <Users className="h-4 w-4" />
               </div>
               <div className="metric-content">
-                <div className="metric-label">GDP per Capita (PPP)</div>
+                <div className="metric-label">GDP per Capita (Adjusted)</div>
                 <div className="metric-value">{economyService.formatCurrency(economyData.gdp_per_capita_ppp_usd)}</div>
               </div>
             </div>
@@ -207,7 +207,7 @@ export default function EconomySection({ economyData, isLoading, error }: Econom
                 <Wallet className="h-4 w-4" />
               </div>
               <div className="metric-content">
-                <div className="metric-label">GNI per Capita (PPP)</div>
+                <div className="metric-label">National Income per Capita</div>
                 <div className="metric-value">{economyService.formatCurrency(economyData.gni_per_capita_ppp)}</div>
               </div>
             </div>
@@ -247,7 +247,7 @@ export default function EconomySection({ economyData, isLoading, error }: Econom
                 <Target className="h-4 w-4" />
               </div>
               <div className="metric-content">
-                <div className="metric-label">GINI Index</div>
+                <div className="metric-label">Income Inequality</div>
                 <div className={`metric-value ${economyData.gini_index > 40 ? 'value-negative' : economyData.gini_index < 25 ? 'value-positive' : 'value-neutral'}`}>
                   {economyData.gini_index.toFixed(1)}
                 </div>
@@ -301,7 +301,7 @@ export default function EconomySection({ economyData, isLoading, error }: Econom
             <Globe className="h-4 w-4" />
           </div>
           <div className="metric-content">
-            <div className="metric-label">External Debt (% GNI)</div>
+            <div className="metric-label">External Debt (% National Income)</div>
             <div className={`metric-value ${economyData.external_debt_pct_gni > 80 ? 'value-negative' : 'value-neutral'}`}>
               {economyService.formatPercentage(economyData.external_debt_pct_gni)}
             </div>
@@ -322,7 +322,7 @@ export default function EconomySection({ economyData, isLoading, error }: Econom
               <div className="metric-item">
                 <div className="metric-icon small"><Landmark className="h-4 w-4" /></div>
                 <div className="metric-content">
-                  <div className="metric-label">Govt Debt (% GDP)</div>
+                  <div className="metric-label">Government Debt (% GDP)</div>
                   <div className={`metric-value ${economyData.govt_debt_pct_gdp > 60 ? 'value-negative' : 'value-neutral'}`}>
                     {economyService.formatPercentage(economyData.govt_debt_pct_gdp)}
                   </div>
@@ -351,7 +351,7 @@ export default function EconomySection({ economyData, isLoading, error }: Econom
               <div className="metric-item">
                 <div className="metric-icon small"><Globe className="h-4 w-4" /></div>
                 <div className="metric-content">
-                  <div className="metric-label">Total Reserves (incl. gold)</div>
+                  <div className="metric-label">Foreign Reserves (incl. gold)</div>
                   <div className="metric-value">{economyService.formatCurrency(economyData.total_reserves_usd)}</div>
                 </div>
               </div>
@@ -378,7 +378,7 @@ export default function EconomySection({ economyData, isLoading, error }: Econom
               <div className="metric-item">
                 <div className="metric-icon small"><ArrowRightLeft className="h-4 w-4" /></div>
                 <div className="metric-content">
-                  <div className="metric-label">FDI Inflows (% GDP)</div>
+                  <div className="metric-label">Foreign Investment (% GDP)</div>
                   <div className="metric-value">{economyService.formatPercentage(economyData.fdi_net_inflows_pct_gdp)}</div>
                 </div>
               </div>
@@ -396,7 +396,7 @@ export default function EconomySection({ economyData, isLoading, error }: Econom
               <div className="metric-item">
                 <div className="metric-icon small"><Receipt className="h-4 w-4" /></div>
                 <div className="metric-content">
-                  <div className="metric-label">Govt Revenue (% GDP)</div>
+                  <div className="metric-label">Government Revenue (% GDP)</div>
                   <div className="metric-value">{economyService.formatPercentage(economyData.govt_revenue_pct_gdp)}</div>
                 </div>
               </div>
@@ -405,7 +405,7 @@ export default function EconomySection({ economyData, isLoading, error }: Econom
               <div className="metric-item">
                 <div className="metric-icon small"><CreditCard className="h-4 w-4" /></div>
                 <div className="metric-content">
-                  <div className="metric-label">Govt Expenditure (% GDP)</div>
+                  <div className="metric-label">Government Spending (% GDP)</div>
                   <div className="metric-value">{economyService.formatPercentage(economyData.govt_expenditure_pct_gdp)}</div>
                 </div>
               </div>
@@ -414,7 +414,7 @@ export default function EconomySection({ economyData, isLoading, error }: Econom
               <div className="metric-item">
                 <div className="metric-icon small"><Banknote className="h-4 w-4" /></div>
                 <div className="metric-content">
-                  <div className="metric-label">Exchange Rate (LCU/USD)</div>
+                  <div className="metric-label">Exchange Rate (per USD)</div>
                   <div className="metric-value">{economyData.exchange_rate_lcu_per_usd.toFixed(2)}</div>
                 </div>
               </div>

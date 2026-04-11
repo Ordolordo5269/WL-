@@ -42,35 +42,35 @@ export default function TechnologySection({ data, isLoading, error }: Technology
           <div className="metric-item">
             <div className="metric-icon small"><FlaskConical className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">R&D expenditure (% GDP) {data.rndExpenditurePctGdp.year ? <span className="ml-2 text-[10px] text-slate-400">{data.rndExpenditurePctGdp.year}</span> : null}</div>
+              <div className="metric-label">Research & Development (% GDP) {data.rndExpenditurePctGdp.year ? <span className="ml-2 text-[10px] text-slate-400">{data.rndExpenditurePctGdp.year}</span> : null}</div>
               <div className="metric-value">{s.formatPercent(data.rndExpenditurePctGdp.value)}</div>
             </div>
           </div>
           <div className="metric-item">
             <div className="metric-icon small"><DollarSign className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">High-tech exports (US$) {data.highTechExportsUsd.year ? <span className="ml-2 text-[10px] text-slate-400">{data.highTechExportsUsd.year}</span> : null}</div>
+              <div className="metric-label">High-Tech Exports {data.highTechExportsUsd.year ? <span className="ml-2 text-[10px] text-slate-400">{data.highTechExportsUsd.year}</span> : null}</div>
               <div className="metric-value">{s.formatCurrency(data.highTechExportsUsd.value)}</div>
             </div>
           </div>
           <div className="metric-item">
             <div className="metric-icon small"><Users className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">Researchers (per million) {data.researchersPerMillion.year ? <span className="ml-2 text-[10px] text-slate-400">{data.researchersPerMillion.year}</span> : null}</div>
+              <div className="metric-label">Researchers per Million People {data.researchersPerMillion.year ? <span className="ml-2 text-[10px] text-slate-400">{data.researchersPerMillion.year}</span> : null}</div>
               <div className="metric-value">{s.formatNumber(data.researchersPerMillion.value)}</div>
             </div>
           </div>
           <div className="metric-item">
             <div className="metric-icon small"><FileCode2 className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">Patent applications (residents) {data.patentApplicationsResidents.year ? <span className="ml-2 text-[10px] text-slate-400">{data.patentApplicationsResidents.year}</span> : null}</div>
+              <div className="metric-label">Domestic Patent Applications {data.patentApplicationsResidents.year ? <span className="ml-2 text-[10px] text-slate-400">{data.patentApplicationsResidents.year}</span> : null}</div>
               <div className="metric-value">{s.formatNumber(data.patentApplicationsResidents.value)}</div>
             </div>
           </div>
           <div className="metric-item">
             <div className="metric-icon small"><BookOpenCheck className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">Sci. & technical journal articles {data.scientificJournalArticles.year ? <span className="ml-2 text-[10px] text-slate-400">{data.scientificJournalArticles.year}</span> : null}</div>
+              <div className="metric-label">Scientific Publications {data.scientificJournalArticles.year ? <span className="ml-2 text-[10px] text-slate-400">{data.scientificJournalArticles.year}</span> : null}</div>
               <div className="metric-value">{s.formatNumber(data.scientificJournalArticles.value)}</div>
             </div>
           </div>
@@ -78,7 +78,7 @@ export default function TechnologySection({ data, isLoading, error }: Technology
             <div className="metric-item">
               <div className="metric-icon small"><Wifi className="w-4 h-4" /></div>
               <div className="metric-content">
-                <div className="metric-label">Broadband (per 100 people) {data.fixedBroadbandPer100.year ? <span className="ml-2 text-[10px] text-slate-400">{data.fixedBroadbandPer100.year}</span> : null}</div>
+                <div className="metric-label">Broadband Subscriptions (per 100) {data.fixedBroadbandPer100.year ? <span className="ml-2 text-[10px] text-slate-400">{data.fixedBroadbandPer100.year}</span> : null}</div>
                 <div className="metric-value">{s.formatNumber(data.fixedBroadbandPer100.value)}</div>
               </div>
             </div>
@@ -87,7 +87,7 @@ export default function TechnologySection({ data, isLoading, error }: Technology
             <div className="metric-item">
               <div className="metric-icon small"><Percent className="w-4 h-4" /></div>
               <div className="metric-content">
-                <div className="metric-label">High-tech exports (% manuf.) {data.highTechExportsPctManuf.year ? <span className="ml-2 text-[10px] text-slate-400">{data.highTechExportsPctManuf.year}</span> : null}</div>
+                <div className="metric-label">High-Tech (% of Manufacturing) {data.highTechExportsPctManuf.year ? <span className="ml-2 text-[10px] text-slate-400">{data.highTechExportsPctManuf.year}</span> : null}</div>
                 <div className="metric-value">{s.formatPercent(data.highTechExportsPctManuf.value)}</div>
               </div>
             </div>
@@ -96,7 +96,7 @@ export default function TechnologySection({ data, isLoading, error }: Technology
             <div className="metric-item">
               <div className="metric-icon small"><FileText className="w-4 h-4" /></div>
               <div className="metric-content">
-                <div className="metric-label">Patents (non-residents) {data.patentApplicationsNonresidents.year ? <span className="ml-2 text-[10px] text-slate-400">{data.patentApplicationsNonresidents.year}</span> : null}</div>
+                <div className="metric-label">Foreign Patent Applications {data.patentApplicationsNonresidents.year ? <span className="ml-2 text-[10px] text-slate-400">{data.patentApplicationsNonresidents.year}</span> : null}</div>
                 <div className="metric-value">{s.formatNumber(data.patentApplicationsNonresidents.value)}</div>
               </div>
             </div>
@@ -105,7 +105,7 @@ export default function TechnologySection({ data, isLoading, error }: Technology
             <div className="metric-item">
               <div className="metric-icon small"><Stamp className="w-4 h-4" /></div>
               <div className="metric-content">
-                <div className="metric-label">Trademark applications {data.trademarkApplicationsResidents.year ? <span className="ml-2 text-[10px] text-slate-400">{data.trademarkApplicationsResidents.year}</span> : null}</div>
+                <div className="metric-label">Trademark Applications {data.trademarkApplicationsResidents.year ? <span className="ml-2 text-[10px] text-slate-400">{data.trademarkApplicationsResidents.year}</span> : null}</div>
                 <div className="metric-value">{s.formatNumber(data.trademarkApplicationsResidents.value)}</div>
               </div>
             </div>

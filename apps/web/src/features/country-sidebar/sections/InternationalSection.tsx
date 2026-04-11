@@ -45,7 +45,7 @@ export default function InternationalSection({ data, isLoading, error }: Interna
           <div className="metric-item">
             <div className="metric-icon small"><Landmark className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">Net ODA received {data.odaReceivedUsd.year ? <span className="ml-2 text-[10px] text-slate-400">{data.odaReceivedUsd.year}</span> : null}</div>
+              <div className="metric-label">Foreign Aid Received {data.odaReceivedUsd.year ? <span className="ml-2 text-[10px] text-slate-400">{data.odaReceivedUsd.year}</span> : null}</div>
               <div className="metric-value">{odaDisplay}</div>
             </div>
           </div>
@@ -59,28 +59,28 @@ export default function InternationalSection({ data, isLoading, error }: Interna
           <div className="metric-item">
             <div className="metric-icon small"><DollarSign className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">Current account {data.currentAccountUsd.year ? <span className="ml-2 text-[10px] text-slate-400">{data.currentAccountUsd.year}</span> : null}</div>
+              <div className="metric-label">Trade Balance (Current Account) {data.currentAccountUsd.year ? <span className="ml-2 text-[10px] text-slate-400">{data.currentAccountUsd.year}</span> : null}</div>
               <div className="metric-value">{s.formatCurrency(data.currentAccountUsd.value)}</div>
             </div>
           </div>
           <div className="metric-item">
             <div className="metric-icon small"><ArrowDownUp className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">FDI net inflows {data.fdiNetInflowsUsd.year ? <span className="ml-2 text-[10px] text-slate-400">{data.fdiNetInflowsUsd.year}</span> : null}</div>
+              <div className="metric-label">Foreign Investment Inflows {data.fdiNetInflowsUsd.year ? <span className="ml-2 text-[10px] text-slate-400">{data.fdiNetInflowsUsd.year}</span> : null}</div>
               <div className="metric-value">{s.formatCurrency(data.fdiNetInflowsUsd.value)}</div>
             </div>
           </div>
           <div className="metric-item">
             <div className="metric-icon small"><ArrowDownUp className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">FDI net outflows {data.fdiNetOutflowsUsd.year ? <span className="ml-2 text-[10px] text-slate-400">{data.fdiNetOutflowsUsd.year}</span> : null}</div>
+              <div className="metric-label">Foreign Investment Outflows {data.fdiNetOutflowsUsd.year ? <span className="ml-2 text-[10px] text-slate-400">{data.fdiNetOutflowsUsd.year}</span> : null}</div>
               <div className="metric-value">{s.formatCurrency(data.fdiNetOutflowsUsd.value)}</div>
             </div>
           </div>
           <div className="metric-item">
             <div className="metric-icon small"><Globe2 className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">Remittances received {data.remittancesUsd.year ? <span className="ml-2 text-[10px] text-slate-400">{data.remittancesUsd.year}</span> : null}</div>
+              <div className="metric-label">Money Sent Home (Remittances) {data.remittancesUsd.year ? <span className="ml-2 text-[10px] text-slate-400">{data.remittancesUsd.year}</span> : null}</div>
               <div className="metric-value">{s.formatCurrency(data.remittancesUsd.value)}</div>
             </div>
           </div>
@@ -88,7 +88,7 @@ export default function InternationalSection({ data, isLoading, error }: Interna
             <div className="metric-item">
               <div className="metric-icon small"><HandCoins className="w-4 h-4" /></div>
               <div className="metric-content">
-                <div className="metric-label">ODA given (% GNI) {data.odaGivenPctGni.year ? <span className="ml-2 text-[10px] text-slate-400">{data.odaGivenPctGni.year}</span> : null}</div>
+                <div className="metric-label">Foreign Aid Given (% National Income) {data.odaGivenPctGni.year ? <span className="ml-2 text-[10px] text-slate-400">{data.odaGivenPctGni.year}</span> : null}</div>
                 <div className="metric-value">{s.formatPercent(data.odaGivenPctGni.value)}</div>
               </div>
             </div>
@@ -97,7 +97,7 @@ export default function InternationalSection({ data, isLoading, error }: Interna
             <div className="metric-item">
               <div className="metric-icon small"><Truck className="w-4 h-4" /></div>
               <div className="metric-content">
-                <div className="metric-label">Logistics Index (LPI) {data.logisticsPerformanceIndex.year ? <span className="ml-2 text-[10px] text-slate-400">{data.logisticsPerformanceIndex.year}</span> : null}</div>
+                <div className="metric-label">Logistics Performance {data.logisticsPerformanceIndex.year ? <span className="ml-2 text-[10px] text-slate-400">{data.logisticsPerformanceIndex.year}</span> : null}</div>
                 <div className="metric-value">{data.logisticsPerformanceIndex.value.toFixed(2)}</div>
               </div>
             </div>
@@ -106,7 +106,7 @@ export default function InternationalSection({ data, isLoading, error }: Interna
             <div className="metric-item">
               <div className="metric-icon small"><Users className="w-4 h-4" /></div>
               <div className="metric-content">
-                <div className="metric-label">Refugees (from country) {data.refugeePopByOrigin.year ? <span className="ml-2 text-[10px] text-slate-400">{data.refugeePopByOrigin.year}</span> : null}</div>
+                <div className="metric-label">Refugees Who Have Fled {data.refugeePopByOrigin.year ? <span className="ml-2 text-[10px] text-slate-400">{data.refugeePopByOrigin.year}</span> : null}</div>
                 <div className="metric-value">{s.formatNumber(data.refugeePopByOrigin.value)}</div>
               </div>
             </div>
@@ -115,7 +115,7 @@ export default function InternationalSection({ data, isLoading, error }: Interna
             <div className="metric-item">
               <div className="metric-icon small"><Users className="w-4 h-4" /></div>
               <div className="metric-content">
-                <div className="metric-label">Refugees (in country) {data.refugeePopByAsylum.year ? <span className="ml-2 text-[10px] text-slate-400">{data.refugeePopByAsylum.year}</span> : null}</div>
+                <div className="metric-label">Refugees Hosted {data.refugeePopByAsylum.year ? <span className="ml-2 text-[10px] text-slate-400">{data.refugeePopByAsylum.year}</span> : null}</div>
                 <div className="metric-value">{s.formatNumber(data.refugeePopByAsylum.value)}</div>
               </div>
             </div>
@@ -124,7 +124,7 @@ export default function InternationalSection({ data, isLoading, error }: Interna
             <div className="metric-item">
               <div className="metric-icon small"><Package className="w-4 h-4" /></div>
               <div className="metric-content">
-                <div className="metric-label">Merchandise exports {data.merchandiseExportsUsd.year ? <span className="ml-2 text-[10px] text-slate-400">{data.merchandiseExportsUsd.year}</span> : null}</div>
+                <div className="metric-label">Goods Exported {data.merchandiseExportsUsd.year ? <span className="ml-2 text-[10px] text-slate-400">{data.merchandiseExportsUsd.year}</span> : null}</div>
                 <div className="metric-value">{s.formatCurrency(data.merchandiseExportsUsd.value)}</div>
               </div>
             </div>
@@ -133,7 +133,7 @@ export default function InternationalSection({ data, isLoading, error }: Interna
             <div className="metric-item">
               <div className="metric-icon small"><Package className="w-4 h-4" /></div>
               <div className="metric-content">
-                <div className="metric-label">Merchandise imports {data.merchandiseImportsUsd.year ? <span className="ml-2 text-[10px] text-slate-400">{data.merchandiseImportsUsd.year}</span> : null}</div>
+                <div className="metric-label">Goods Imported {data.merchandiseImportsUsd.year ? <span className="ml-2 text-[10px] text-slate-400">{data.merchandiseImportsUsd.year}</span> : null}</div>
                 <div className="metric-value">{s.formatCurrency(data.merchandiseImportsUsd.value)}</div>
               </div>
             </div>
@@ -142,7 +142,7 @@ export default function InternationalSection({ data, isLoading, error }: Interna
             <div className="metric-item">
               <div className="metric-icon small"><Gem className="w-4 h-4" /></div>
               <div className="metric-content">
-                <div className="metric-label">Resource rents (% GDP) {data.totalNaturalResourceRentsPctGdp.year ? <span className="ml-2 text-[10px] text-slate-400">{data.totalNaturalResourceRentsPctGdp.year}</span> : null}</div>
+                <div className="metric-label">Natural Resource Income (% GDP) {data.totalNaturalResourceRentsPctGdp.year ? <span className="ml-2 text-[10px] text-slate-400">{data.totalNaturalResourceRentsPctGdp.year}</span> : null}</div>
                 <div className="metric-value">{s.formatPercent(data.totalNaturalResourceRentsPctGdp.value)}</div>
               </div>
             </div>
@@ -151,7 +151,7 @@ export default function InternationalSection({ data, isLoading, error }: Interna
             <div className="metric-item">
               <div className="metric-icon small"><Wheat className="w-4 h-4" /></div>
               <div className="metric-content">
-                <div className="metric-label">Food production index {data.foodProductionIndex.year ? <span className="ml-2 text-[10px] text-slate-400">{data.foodProductionIndex.year}</span> : null}</div>
+                <div className="metric-label">Food Production {data.foodProductionIndex.year ? <span className="ml-2 text-[10px] text-slate-400">{data.foodProductionIndex.year}</span> : null}</div>
                 <div className="metric-value">{data.foodProductionIndex.value.toFixed(1)}</div>
               </div>
             </div>
