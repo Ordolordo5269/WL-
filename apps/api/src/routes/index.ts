@@ -37,6 +37,8 @@ import unhcrRoutes from '../modules/unhcr/routes';
 import demographicsRoutes from '../modules/demographics/routes';
 import conflictRoutes from '../modules/conflicts/routes';
 import earthGalleryRoutes from './earth-gallery.routes';
+import sanctionsRoutes from './sanctions.routes';
+import electionsRoutes from './elections.routes';
 
 const router = Router();
 
@@ -76,5 +78,7 @@ router.use('/unhcr', unhcrRoutes);
 router.use('/demographics', demographicsRoutes);
 router.use('/conflicts', conflictRoutes);
 router.use('/earth-gallery', earthGalleryRoutes);
+router.use('/sanctions', sanctionsRoutes);
+router.use('/elections', electionsRoutes);
 
 export default router;

@@ -20,7 +20,9 @@ export interface ConflictSummary {
 export function useRecentConflicts() {
   return useQuery({
     queryKey: ['conflicts', 'recent'],
-    queryFn: () =>
-      http.get<{ data: ConflictSummary[]; count: number }>('/api/conflicts').then(r => r.data),
+    queryFn: async () => {
+      const res = await http.get<ConflictSummary[] | { data: ConflictSummary[]; count: number }>('/api/conflicts');
+      return Array.isArray(res) ? res : res.data;
+    },
   });
 }

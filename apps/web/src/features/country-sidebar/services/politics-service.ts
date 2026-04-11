@@ -11,21 +11,87 @@ export interface WikipediaEntry {
   person?: string;
 }
 
+export interface FreedomHouseData {
+  politicalRights: IndicatorPoint;
+  civilLiberties: IndicatorPoint;
+  status: { value: string | null; numeric: number | null; year: number | null };
+}
+
+export interface CorruptionIndexData {
+  score: IndicatorPoint;
+  rank: IndicatorPoint;
+}
+
+export interface FragileStatesData {
+  score: IndicatorPoint;
+  rank: IndicatorPoint;
+}
+
+export interface VDemData {
+  electoralDemocracy: IndicatorPoint;
+  liberalDemocracy: IndicatorPoint;
+  freedomOfExpression: IndicatorPoint;
+  cleanElections: IndicatorPoint;
+  ruleOfLaw: IndicatorPoint;
+}
+
+export interface Polity5Data {
+  score: IndicatorPoint;
+}
+
+export interface PeaceIndexData {
+  score: IndicatorPoint;
+  rank: IndicatorPoint;
+}
+
+export interface SanctionEntityData {
+  entityName: string;
+  entityType: string;
+  sanctionProgram: string;
+  sanctionAuthority: string;
+  reason: string | null;
+  listedAt: string | null;
+}
+
+export interface SanctionsData {
+  count: number;
+  entities: SanctionEntityData[];
+}
+
+export interface ElectionEntryData {
+  electionType: string;
+  year: number;
+  electionDate: string | null;
+  status: string;
+  turnoutPercent: number | null;
+  description: string | null;
+}
+
+export interface ElectionsData {
+  upcoming: ElectionEntryData[];
+  recent: ElectionEntryData[];
+}
+
 export interface PoliticsData {
-  countryCode3: string; // ISO3 (cca3)
+  countryCode3: string;
   countryName: string;
-  wgiPoliticalStability: IndicatorPoint; // WGI PV.EST
-  democracyIndex: IndicatorPoint; // Proxy: WGI VA.EST normalized to 0-10
-  wgiGovernmentEffectiveness: IndicatorPoint; // GE.EST
-  wgiRegulatoryQuality: IndicatorPoint; // RQ.EST
-  wgiRuleOfLaw: IndicatorPoint; // RL.EST
-  wgiControlOfCorruption: IndicatorPoint; // CC.EST
-  headsOfGovernment: WikipediaEntry[]; // e.g., Prime Minister, President
+  wgiPoliticalStability: IndicatorPoint;
+  democracyIndex: IndicatorPoint;
+  wgiGovernmentEffectiveness: IndicatorPoint;
+  wgiRegulatoryQuality: IndicatorPoint;
+  wgiRuleOfLaw: IndicatorPoint;
+  wgiControlOfCorruption: IndicatorPoint;
+  freedomHouse?: FreedomHouseData;
+  corruptionIndex?: CorruptionIndexData;
+  fragileStatesIndex?: FragileStatesData;
+  vdem?: VDemData;
+  polity5?: Polity5Data;
+  globalPeaceIndex?: PeaceIndexData;
+  sanctions?: SanctionsData;
+  elections?: ElectionsData;
+  headsOfGovernment: WikipediaEntry[];
   formOfGovernment?: string | null;
-  sources: {
-    worldBankWgi: string;
-    wikidata: string;
-  };
+  sources: Record<string, string>;
 }
 
 class PoliticsService {
@@ -57,12 +123,12 @@ class PoliticsService {
         wgiRegulatoryQuality: { value: null, year: null },
         wgiRuleOfLaw: { value: null, year: null },
         wgiControlOfCorruption: { value: null, year: null },
+        freedomHouse: undefined,
+        corruptionIndex: undefined,
+        fragileStatesIndex: undefined,
         headsOfGovernment: [],
         formOfGovernment: null,
-        sources: {
-          worldBankWgi: 'https://api.worldbank.org/v2/',
-          wikidata: 'https://query.wikidata.org/sparql'
-        }
+        sources: {},
       };
     }
   }

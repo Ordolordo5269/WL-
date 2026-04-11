@@ -78,7 +78,7 @@ export const SLUG_TO_CODE: Record<string, string> = {
   'government-effectiveness': 'WGI_GOVERNMENT_EFFECTIVENESS',
   'regulatory-quality': 'WGI_REGULATORY_QUALITY',
   'rule-of-law': 'WGI_RULE_OF_LAW',
-  'control-corruption': 'WGI_CONTROL_OF_CORRUPTION',
+  'control-corruption': 'WGI_CONTROL_CORRUPTION',
 };
 
 export function getIndicatorCategory(slug: string): 'Economy' | 'Society' | 'Politics' | null {

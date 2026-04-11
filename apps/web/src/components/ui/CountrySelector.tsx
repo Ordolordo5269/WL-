@@ -205,41 +205,33 @@ export default function CountrySelector({
 
   // ── Default variant: original item renderer ──────────────────────────────
   const renderDefaultItem = (country: Country, index: number, keyPrefix: string) => (
-    <motion.button
+    <button
       key={`${keyPrefix}-${country.iso3}-${index}`}
       data-index={index}
       onClick={() => handleSelectCountry(country.iso3)}
       onMouseEnter={() => setFocusedIndex(index)}
-      className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left ${
-        focusedIndex === index
-          ? 'bg-slate-700/50 border-blue-500/50'
-          : 'bg-slate-800/30 border-slate-700/50 hover:bg-slate-700/40 hover:border-slate-600/50'
-      }`}
-      whileHover={{ scale: 1.01 }}
-      whileTap={{ scale: 0.99 }}
+      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md transition-all text-left"
+      style={{
+        background: focusedIndex === index ? 'rgba(30, 44, 72, 0.7)' : 'transparent',
+        border: '1px solid transparent',
+        boxShadow: focusedIndex === index ? 'inset 2px 0 0 rgba(99, 155, 255, 0.45)' : 'none',
+        color: focusedIndex === index ? '#e8eef8' : '#c8d3e8',
+        fontSize: '12px',
+      }}
     >
-      <div className="rounded border border-slate-600/50" style={{ flexShrink: 0, width: '36px', height: '26px', overflow: 'hidden', minWidth: '36px' }}>
+      <div className="rounded overflow-hidden flex-shrink-0" style={{ width: '28px', height: '20px', minWidth: '28px', background: 'rgba(30, 41, 59, 0.6)' }}>
         {country.flagUrl ? (
-          <img
-            src={country.flagUrl}
-            alt={country.name}
-            style={{ width: '36px', height: '26px', objectFit: 'cover', display: 'block' }}
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-          />
+          <img src={country.flagUrl} alt={country.name} style={{ width: '28px', height: '20px', objectFit: 'cover', display: 'block' }} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
         ) : (
-          <div style={{ width: '36px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(51,65,85,1)' }}>
-            <Globe className="w-4 h-4 text-slate-500" />
+          <div style={{ width: '28px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Globe className="w-3 h-3 text-slate-500" />
           </div>
         )}
       </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-0.5">
-          <div className="text-white font-medium text-sm truncate">{country.name}</div>
-          {country.isFavorite && <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400 flex-shrink-0" />}
-        </div>
-        <div className="text-xs text-slate-400 font-mono">{country.iso3}</div>
-      </div>
-    </motion.button>
+      <span className="flex-1 min-w-0 font-medium truncate">{country.name}</span>
+      {country.isFavorite && <Star className="w-3 h-3 text-yellow-400 fill-yellow-400 flex-shrink-0" />}
+      <span style={{ fontSize: '10px', color: '#475569', fontFamily: 'monospace', letterSpacing: '0.3px', fontWeight: 600, minWidth: '28px' }}>{country.iso3}</span>
+    </button>
   );
 
   const renderItem = isPopup ? renderPopupItem : renderDefaultItem;
@@ -265,8 +257,13 @@ export default function CountrySelector({
           onKeyDown={handleKeyDown}
           className={isPopup
             ? 'ccs-popup-input'
-            : 'w-full pl-12 pr-12 py-3.5 bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all text-base'
+            : 'w-full pl-12 pr-12 py-3 rounded-lg text-white focus:outline-none transition-all text-[13px]'
           }
+          style={!isPopup ? {
+            background: 'rgba(10, 14, 28, 0.95)',
+            border: '1px solid rgba(71, 85, 105, 0.3)',
+            color: '#e2e8f0',
+          } : undefined}
         />
         {searchTerm && (
           <button
@@ -297,8 +294,13 @@ export default function CountrySelector({
             transition={{ duration: 0.12 }}
             className={isPopup
               ? 'ccs-popup-dropdown'
-              : 'absolute z-30 w-full mt-2 bg-slate-800/95 backdrop-blur-md border border-slate-700/50 rounded-lg shadow-lg max-h-[500px] overflow-hidden'
+              : 'absolute z-30 w-full mt-2 rounded-xl max-h-[420px] overflow-hidden'
             }
+            style={!isPopup ? {
+              background: 'rgb(13, 17, 35)',
+              border: '1px solid rgba(71, 85, 105, 0.22)',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.2), 0 14px 36px rgba(0,0,0,0.55)',
+            } : undefined}
           >
             {loading || loadingFavorites ? (
               <div className={isPopup ? 'ccs-popup-loading' : 'p-8 text-center'}>
@@ -306,7 +308,7 @@ export default function CountrySelector({
                 {!isPopup && <p className="text-slate-400">Loading...</p>}
               </div>
             ) : hasSearchResults ? (
-              <div className={isPopup ? 'ccs-popup-list' : 'overflow-y-auto max-h-[500px] custom-scrollbar'} ref={resultsRef}>
+              <div className={isPopup ? 'ccs-popup-list' : 'overflow-y-auto max-h-[400px] custom-scrollbar'} ref={resultsRef}>
                 {filteredCountries.length > 0 ? (
                   <div className={isPopup ? 'ccs-popup-items' : 'p-2'}>
                     {filteredCountries.map((country, index) => renderItem(country, index, 'search'))}
@@ -319,14 +321,13 @@ export default function CountrySelector({
                 )}
               </div>
             ) : showFavorites ? (
-              <div className={isPopup ? 'ccs-popup-list' : 'overflow-y-auto max-h-[500px] custom-scrollbar'} ref={resultsRef}>
+              <div className={isPopup ? 'ccs-popup-list' : 'overflow-y-auto max-h-[400px] custom-scrollbar'} ref={resultsRef}>
                 {!isPopup && (
-                  <div className="p-4 border-b border-slate-700/50">
-                    <h3 className="text-base font-semibold text-white flex items-center gap-2 mb-1">
-                      <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                      Your Favorites
-                    </h3>
-                    <p className="text-sm text-slate-400">Quick access to your saved countries</p>
+                  <div className="px-3 py-2.5" style={{ borderBottom: '1px solid rgba(71, 85, 105, 0.2)' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.6px', color: '#64748b' }} className="flex items-center gap-1.5">
+                      <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                      Favorites
+                    </span>
                   </div>
                 )}
                 <div className={isPopup ? 'ccs-popup-items' : 'p-2'}>
@@ -334,14 +335,13 @@ export default function CountrySelector({
                 </div>
               </div>
             ) : showPopular ? (
-              <div className={isPopup ? 'ccs-popup-list' : 'overflow-y-auto max-h-[500px] custom-scrollbar'} ref={resultsRef}>
+              <div className={isPopup ? 'ccs-popup-list' : 'overflow-y-auto max-h-[400px] custom-scrollbar'} ref={resultsRef}>
                 {!isPopup && (
-                  <div className="p-4 border-b border-slate-700/50">
-                    <h3 className="text-base font-semibold text-white flex items-center gap-2 mb-1">
-                      <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                  <div className="px-3 py-2.5" style={{ borderBottom: '1px solid rgba(71, 85, 105, 0.2)' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.6px', color: '#64748b' }} className="flex items-center gap-1.5">
+                      <Globe className="w-3 h-3 text-blue-400" />
                       Popular Countries
-                    </h3>
-                    <p className="text-sm text-slate-400">Start typing to search or select from popular countries</p>
+                    </span>
                   </div>
                 )}
                 <div className={isPopup ? 'ccs-popup-items' : 'p-2'}>
