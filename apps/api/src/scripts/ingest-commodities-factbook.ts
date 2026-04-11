@@ -7,6 +7,7 @@
  */
 import axios from 'axios';
 import { PrismaClient, Prisma } from '@prisma/client';
+import { getSourceMetadata } from './lib/source-metadata';
 
 const prisma = new PrismaClient();
 
@@ -162,6 +163,8 @@ function parseFactbookJson(json: any): ParsedFactbook {
 async function main() {
   console.log('\n=== WorldLore: CIA Factbook Fallback Ingestion ===\n');
 
+  const { sourceVersion, sourceReleaseDate } = getSourceMetadata('CIA World Factbook');
+
   // 1. Find countries with zero commodity data
   const allEntities = await prisma.entity.findMany({
     where: { type: 'COUNTRY', iso3: { not: null } },
@@ -257,14 +260,14 @@ async function main() {
     for (const ind of indicators) {
       await prisma.indicatorValue.upsert({
         where: { entityId_indicatorCode_year: { entityId: entity.id, indicatorCode: ind.code, year } },
-        update: { value: new Prisma.Decimal(ind.value), source: 'CIA World Factbook' },
-        create: { entityId: entity.id, indicatorCode: ind.code, year, value: new Prisma.Decimal(ind.value), source: 'CIA World Factbook' }
+        update: { value: new Prisma.Decimal(ind.value), source: 'CIA World Factbook', sourceVersion, sourceReleaseDate, ingestedAt: new Date() },
+        create: { entityId: entity.id, indicatorCode: ind.code, year, value: new Prisma.Decimal(ind.value), source: 'CIA World Factbook', sourceVersion, sourceReleaseDate, ingestedAt: new Date() }
       });
       // Also upsert at year 2025 for consistent lookups (same pattern as WB ingestion)
       await prisma.indicatorValue.upsert({
         where: { entityId_indicatorCode_year: { entityId: entity.id, indicatorCode: ind.code, year: 2025 } },
-        update: { value: new Prisma.Decimal(ind.value), source: 'CIA World Factbook', meta: { targetYear: 2025, latestAvailableYear: year, fallback: true } as any },
-        create: { entityId: entity.id, indicatorCode: ind.code, year: 2025, value: new Prisma.Decimal(ind.value), source: 'CIA World Factbook', meta: { targetYear: 2025, latestAvailableYear: year, fallback: true } as any }
+        update: { value: new Prisma.Decimal(ind.value), source: 'CIA World Factbook', meta: { targetYear: 2025, latestAvailableYear: year, fallback: true } as any, sourceVersion, sourceReleaseDate, ingestedAt: new Date() },
+        create: { entityId: entity.id, indicatorCode: ind.code, year: 2025, value: new Prisma.Decimal(ind.value), source: 'CIA World Factbook', meta: { targetYear: 2025, latestAvailableYear: year, fallback: true } as any, sourceVersion, sourceReleaseDate, ingestedAt: new Date() }
       });
     }
 

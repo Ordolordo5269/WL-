@@ -199,6 +199,9 @@ model IndicatorValue {
   meta          Json?
   source        String?
   revisedAt     DateTime?
+  sourceVersion     String?       // Native version from source: "v14", "CPI 2024", "WDI 2025Q1"
+  sourceReleaseDate DateTime?     // When the source published this version
+  ingestedAt        DateTime @default(now())  // When we put it in our DB
 
   entity    Entity    @relation(fields: [entityId], references: [id])
   indicator Indicator @relation(fields: [indicatorCode], references: [code])
@@ -735,5 +738,50 @@ model MigrationCorridor {
   @@index([originIso3])
   @@index([destinationIso3])
   @@index([year])
+}
+
+// ── Sanctions (OpenSanctions) ──────────────────────────────────────────────
+model Sanction {
+  id              String    @id @default(uuid())
+  entityName      String                          // Person, company, vessel, etc.
+  entityType      String    @db.VarChar(50)       // person, company, vessel, aircraft, organization
+  countryIso3     String?   @db.VarChar(3)        // Country associated (nationality or registration)
+  sanctionProgram String                          // e.g. "OFAC SDN", "EU Consolidated", "UN Security Council"
+  sanctionAuthority String  @db.VarChar(50)       // OFAC, EU, UN, OFSI, CH, CA, AU
+  reason          String?                         // Reason for listing
+  listedAt        DateTime?                       // Date added to sanctions list
+  delistedAt      DateTime?                       // Date removed (null = still active)
+  isActive        Boolean   @default(true)
+  sourceUrl       String?
+  sourceId        String?   @unique               // OpenSanctions entity ID for dedup
+  props           Json?                           // Extra properties (aliases, addresses, etc.)
+  syncedAt        DateTime  @default(now())
+
+  @@index([countryIso3])
+  @@index([sanctionAuthority])
+  @@index([isActive])
+  @@index([entityType])
+}
+
+// ── Electoral Calendar ─────────────────────────────────────────────────────
+model ElectionCalendar {
+  id              String    @id @default(uuid())
+  countryIso3     String    @db.VarChar(3)
+  countryName     String
+  electionType    String    @db.VarChar(50)       // presidential, parliamentary, legislative, referendum, local
+  electionDate    DateTime?                       // Scheduled date (null if TBD)
+  year            Int                             // Year of election
+  status          String    @db.VarChar(30)       // scheduled, completed, postponed, cancelled
+  description     String?                         // e.g. "General election", "Senate runoff"
+  turnoutPercent  Float?                          // Voter turnout if completed (IDEA data)
+  sourceUrl       String?
+  props           Json?                           // Extra metadata
+  syncedAt        DateTime  @default(now())
+
+  @@unique([countryIso3, electionType, year])
+  @@index([countryIso3])
+  @@index([year])
+  @@index([status])
+  @@index([electionDate])
 }
 

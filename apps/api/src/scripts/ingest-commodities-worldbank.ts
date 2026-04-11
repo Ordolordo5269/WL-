@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { PrismaClient, Prisma } from '@prisma/client';
+import { getSourceMetadata } from './lib/source-metadata';
 
 const prisma = new PrismaClient();
 
@@ -91,6 +92,8 @@ async function main() {
   }
   console.log(`Loaded ${entities.length} country entities\n`);
 
+  const { sourceVersion, sourceReleaseDate } = getSourceMetadata('World Bank');
+
   let totalUpserted = 0;
   let totalErrors = 0;
 
@@ -122,8 +125,8 @@ async function main() {
         // Upsert latest value at the actual year
         await prisma.indicatorValue.upsert({
           where: { entityId_indicatorCode_year: { entityId, indicatorCode: it.code, year: latest.year } },
-          update: { value: new Prisma.Decimal(latest.value), source: 'World Bank' },
-          create: { entityId, indicatorCode: it.code, year: latest.year, value: new Prisma.Decimal(latest.value), source: 'World Bank' }
+          update: { value: new Prisma.Decimal(latest.value), source: 'World Bank', sourceVersion, sourceReleaseDate, ingestedAt: new Date() },
+          create: { entityId, indicatorCode: it.code, year: latest.year, value: new Prisma.Decimal(latest.value), source: 'World Bank', sourceVersion, sourceReleaseDate, ingestedAt: new Date() }
         });
 
         // Also upsert at TARGET_LATEST_YEAR for consistent lookups
@@ -136,7 +139,8 @@ async function main() {
           update: {
             value: new Prisma.Decimal(fallbackValue),
             source: 'World Bank',
-            meta: { targetYear: TARGET_LATEST_YEAR, latestAvailableYear: fallbackYear, fallback: !targetYearPoint } as any
+            meta: { targetYear: TARGET_LATEST_YEAR, latestAvailableYear: fallbackYear, fallback: !targetYearPoint } as any,
+            sourceVersion, sourceReleaseDate, ingestedAt: new Date()
           },
           create: {
             entityId,
@@ -144,7 +148,8 @@ async function main() {
             year: TARGET_LATEST_YEAR,
             value: new Prisma.Decimal(fallbackValue),
             source: 'World Bank',
-            meta: { targetYear: TARGET_LATEST_YEAR, latestAvailableYear: fallbackYear, fallback: !targetYearPoint } as any
+            meta: { targetYear: TARGET_LATEST_YEAR, latestAvailableYear: fallbackYear, fallback: !targetYearPoint } as any,
+            sourceVersion, sourceReleaseDate, ingestedAt: new Date()
           }
         });
 
