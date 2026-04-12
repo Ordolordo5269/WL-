@@ -32,7 +32,8 @@ export interface EnvironmentData {
   };
   worldRiskIndex?: {
     score: IndicatorPoint;
-    rank: IndicatorPoint;
+    exposure: IndicatorPoint;
+    vulnerability: IndicatorPoint;
   };
   // P6 Phase A: CO2 by fuel source
   co2BySource?: {

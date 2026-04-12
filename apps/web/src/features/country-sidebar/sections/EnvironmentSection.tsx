@@ -87,7 +87,8 @@ export default function EnvironmentSection({ data, isLoading, error }: Environme
   const ndGainVuln = data.ndGain?.vulnerability.value ?? null;
   const ndGainRead = data.ndGain?.readiness.value ?? null;
   const wriScore = data.worldRiskIndex?.score.value ?? null;
-  const wriRank = data.worldRiskIndex?.rank.value ?? null;
+  const wriExposure = data.worldRiskIndex?.exposure.value ?? null;
+  const wriVulnerability = data.worldRiskIndex?.vulnerability.value ?? null;
   const hasClimateRisk = ndGainIdx !== null || wriScore !== null;
   const climateRiskInfo = hasClimateRisk ? interpretClimateRisk(ndGainIdx, wriScore) : null;
 
@@ -129,8 +130,11 @@ export default function EnvironmentSection({ data, isLoading, error }: Environme
           {wriScore !== null && (
             <Detail label="Disaster Risk Score" value={`${wriScore.toFixed(2)}%`} />
           )}
-          {wriRank !== null && (
-            <Detail label="Global Disaster Risk Rank" value={`#${s.formatNumber(wriRank)} of ~193`} />
+          {wriExposure !== null && (
+            <Detail label="Hazard Exposure" value={`${wriExposure.toFixed(2)}%`} />
+          )}
+          {wriVulnerability !== null && (
+            <Detail label="Structural Vulnerability" value={`${wriVulnerability.toFixed(2)}%`} />
           )}
         </div>
       )}

@@ -103,8 +103,8 @@ const SOURCE_VERSIONS: Record<string, SourceMetadata> = {
   // Bündnis Entwicklung Hilft / IFHV — World Risk Index
   // Annual report. Check: https://weltrisikobericht.de/en/
   'Bündnis Entwicklung Hilft': {
-    sourceVersion: 'WRI 2022',
-    sourceReleaseDate: new Date('2022-09-07'),
+    sourceVersion: 'WRI 2025',
+    sourceReleaseDate: new Date('2025-09-11'),
   },
 
   // Global Carbon Project — fuel-specific CO2 emissions

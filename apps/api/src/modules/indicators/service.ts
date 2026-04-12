@@ -615,7 +615,7 @@ export async function getEnvironmentData(iso3: string) {
     ghgTotal, fossilFuel, landArea,
     // Climate Risk & Vulnerability (ND-GAIN, WRI)
     ndGainIndex, ndGainVulnerability, ndGainReadiness,
-    wriScore, wriRank,
+    wriScore, wriExposure, wriVulnerability,
     // GCP fuel-specific CO2
     co2Coal, co2Oil, co2Gas, co2Cement, co2Flaring, co2Consumption,
   ] = await Promise.all([
@@ -639,7 +639,8 @@ export async function getEnvironmentData(iso3: string) {
     getLatestIndicatorValueForIso3(countryIso3, 'ND_GAIN_VULNERABILITY'),
     getLatestIndicatorValueForIso3(countryIso3, 'ND_GAIN_READINESS'),
     getLatestIndicatorValueForIso3(countryIso3, 'WRI_SCORE'),
-    getLatestIndicatorValueForIso3(countryIso3, 'WRI_RANK'),
+    getLatestIndicatorValueForIso3(countryIso3, 'WRI_EXPOSURE'),
+    getLatestIndicatorValueForIso3(countryIso3, 'WRI_VULNERABILITY'),
     // Global Carbon Project (P6 Phase A)
     getLatestIndicatorValueForIso3(countryIso3, 'CO2_COAL_MT'),
     getLatestIndicatorValueForIso3(countryIso3, 'CO2_OIL_MT'),
@@ -678,7 +679,8 @@ export async function getEnvironmentData(iso3: string) {
     },
     worldRiskIndex: {
       score: { value: toNumberOrNull(wriScore.value), year: wriScore.year },
-      rank: { value: toNumberOrNull(wriRank.value), year: wriRank.year },
+      exposure: { value: toNumberOrNull(wriExposure.value), year: wriExposure.year },
+      vulnerability: { value: toNumberOrNull(wriVulnerability.value), year: wriVulnerability.year },
     },
     // P6 Phase A: CO2 by fuel source (GCP)
     co2BySource: {
