@@ -612,7 +612,12 @@ export async function getEnvironmentData(iso3: string) {
   const [
     co2PerCapita, co2TotalKt, forestAreaPct, pm25, renewableEnergy,
     cleanWater, renewableElectricity, co2Electricity, protectedAreas, methane, forestRents,
-    ghgTotal, fossilFuel, landArea
+    ghgTotal, fossilFuel, landArea,
+    // Climate Risk & Vulnerability (ND-GAIN, WRI)
+    ndGainIndex, ndGainVulnerability, ndGainReadiness,
+    wriScore, wriRank,
+    // GCP fuel-specific CO2
+    co2Coal, co2Oil, co2Gas, co2Cement, co2Flaring, co2Consumption,
   ] = await Promise.all([
     getLatestIndicatorValueForIso3(countryIso3, 'CO2_EMISSIONS_PER_CAPITA'),
     getLatestIndicatorValueForIso3(countryIso3, 'CO2_EMISSIONS_TOTAL_KT'),
@@ -629,6 +634,19 @@ export async function getEnvironmentData(iso3: string) {
     getLatestIndicatorValueForIso3(countryIso3, 'GHG_EMISSIONS_TOTAL_KT'),
     getLatestIndicatorValueForIso3(countryIso3, 'FOSSIL_FUEL_CONSUMPTION_PCT'),
     getLatestIndicatorValueForIso3(countryIso3, 'LAND_AREA_SQ_KM'),
+    // ND-GAIN + WRI (P6 Phase A)
+    getLatestIndicatorValueForIso3(countryIso3, 'ND_GAIN_INDEX'),
+    getLatestIndicatorValueForIso3(countryIso3, 'ND_GAIN_VULNERABILITY'),
+    getLatestIndicatorValueForIso3(countryIso3, 'ND_GAIN_READINESS'),
+    getLatestIndicatorValueForIso3(countryIso3, 'WRI_SCORE'),
+    getLatestIndicatorValueForIso3(countryIso3, 'WRI_RANK'),
+    // Global Carbon Project (P6 Phase A)
+    getLatestIndicatorValueForIso3(countryIso3, 'CO2_COAL_MT'),
+    getLatestIndicatorValueForIso3(countryIso3, 'CO2_OIL_MT'),
+    getLatestIndicatorValueForIso3(countryIso3, 'CO2_GAS_MT'),
+    getLatestIndicatorValueForIso3(countryIso3, 'CO2_CEMENT_MT'),
+    getLatestIndicatorValueForIso3(countryIso3, 'CO2_FLARING_MT'),
+    getLatestIndicatorValueForIso3(countryIso3, 'CO2_CONSUMPTION_MT'),
   ]);
 
   return {
@@ -652,6 +670,25 @@ export async function getEnvironmentData(iso3: string) {
     ghgEmissionsTotalKt: { value: toNumberOrNull(ghgTotal.value), year: ghgTotal.year },
     fossilFuelConsumptionPct: { value: toNumberOrNull(fossilFuel.value), year: fossilFuel.year },
     landAreaSqKm: { value: toNumberOrNull(landArea.value), year: landArea.year },
+    // P6 Phase A: Climate Risk & Vulnerability
+    ndGain: {
+      index: { value: toNumberOrNull(ndGainIndex.value), year: ndGainIndex.year },
+      vulnerability: { value: toNumberOrNull(ndGainVulnerability.value), year: ndGainVulnerability.year },
+      readiness: { value: toNumberOrNull(ndGainReadiness.value), year: ndGainReadiness.year },
+    },
+    worldRiskIndex: {
+      score: { value: toNumberOrNull(wriScore.value), year: wriScore.year },
+      rank: { value: toNumberOrNull(wriRank.value), year: wriRank.year },
+    },
+    // P6 Phase A: CO2 by fuel source (GCP)
+    co2BySource: {
+      coal: { value: toNumberOrNull(co2Coal.value), year: co2Coal.year },
+      oil: { value: toNumberOrNull(co2Oil.value), year: co2Oil.year },
+      gas: { value: toNumberOrNull(co2Gas.value), year: co2Gas.year },
+      cement: { value: toNumberOrNull(co2Cement.value), year: co2Cement.year },
+      flaring: { value: toNumberOrNull(co2Flaring.value), year: co2Flaring.year },
+      consumption: { value: toNumberOrNull(co2Consumption.value), year: co2Consumption.year },
+    },
     sources: { worldBank: 'https://api.worldbank.org/v2/' },
   };
 }

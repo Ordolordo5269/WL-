@@ -92,6 +92,27 @@ const SOURCE_VERSIONS: Record<string, SourceMetadata> = {
     sourceVersion: '2024',
     sourceReleaseDate: new Date('2024-09-01'),
   },
+
+  // ND-GAIN — Notre Dame Global Adaptation Initiative
+  // Annual release. Check: https://gain.nd.edu/our-work/country-index/
+  'ND-GAIN': {
+    sourceVersion: 'ND-GAIN 2026',
+    sourceReleaseDate: new Date('2026-01-23'),
+  },
+
+  // Bündnis Entwicklung Hilft / IFHV — World Risk Index
+  // Annual report. Check: https://weltrisikobericht.de/en/
+  'Bündnis Entwicklung Hilft': {
+    sourceVersion: 'WRI 2022',
+    sourceReleaseDate: new Date('2022-09-07'),
+  },
+
+  // Global Carbon Project — fuel-specific CO2 emissions
+  // Annual release in November. Mirror: github.com/owid/co2-data
+  'Global Carbon Project': {
+    sourceVersion: 'GCB 2024',
+    sourceReleaseDate: new Date('2024-11-13'),
+  },
 };
 
 export function getSourceMetadata(source: string): SourceMetadata {
