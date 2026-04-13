@@ -238,39 +238,55 @@ export default function CommoditiesSection({ data, isLoading, error }: Commoditi
           <div className="metric-item">
             <div className="metric-icon small"><Wheat className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">Cereal production {data.cerealProductionMt.year ? <span className="ml-2 text-[10px] text-slate-400">{data.cerealProductionMt.year}</span> : null}</div>
-              <div className="metric-value">{s.formatTonnes(data.cerealProductionMt.value)}</div>
-            </div>
-          </div>
-          <div className="metric-item">
-            <div className="metric-icon small"><Wheat className="w-4 h-4" /></div>
-            <div className="metric-content">
-              <div className="metric-label">Cereal yield (kg/ha) {data.cerealYieldKgHa.year ? <span className="ml-2 text-[10px] text-slate-400">{data.cerealYieldKgHa.year}</span> : null}</div>
+              <div className="metric-label">Cereal yield (kg/ha)</div>
               <div className="metric-value">{s.formatNumber(data.cerealYieldKgHa.value)}</div>
             </div>
           </div>
           <div className="metric-item">
+            <div className="metric-icon small"><Mountain className="w-4 h-4" /></div>
+            <div className="metric-content">
+              <div className="metric-label">Arable land (% area)</div>
+              <div className="metric-value">{s.formatPercent(data.arableLandPct.value)}</div>
+            </div>
+          </div>
+          <div className="metric-item">
             <div className="metric-icon small"><Wheat className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">Food exports (% merch.) {data.foodExportsPct.year ? <span className="ml-2 text-[10px] text-slate-400">{data.foodExportsPct.year}</span> : null}</div>
+              <div className="metric-label">Food exports (% merch.)</div>
               <div className="metric-value">{s.formatPercent(data.foodExportsPct.value)}</div>
             </div>
           </div>
           <div className="metric-item">
             <div className="metric-icon small"><Wheat className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">Food imports (% merch.) {data.foodImportsPct.year ? <span className="ml-2 text-[10px] text-slate-400">{data.foodImportsPct.year}</span> : null}</div>
+              <div className="metric-label">Food imports (% merch.)</div>
               <div className="metric-value">{s.formatPercent(data.foodImportsPct.value)}</div>
             </div>
           </div>
-          <div className="metric-item">
-            <div className="metric-icon small"><Mountain className="w-4 h-4" /></div>
-            <div className="metric-content">
-              <div className="metric-label">Arable land (% area) {data.arableLandPct.year ? <span className="ml-2 text-[10px] text-slate-400">{data.arableLandPct.year}</span> : null}</div>
-              <div className="metric-value">{s.formatPercent(data.arableLandPct.value)}</div>
-            </div>
-          </div>
         </div>
+
+        {/* P3 A4: Crop-specific production (FAOSTAT via OWID) */}
+        {(() => {
+          const crops = data.crops;
+          if (!crops) return null;
+          const list: Array<{ name: string; value: number }> = [];
+          if (crops.wheat.value != null && crops.wheat.value >= 1000) list.push({ name: 'Wheat', value: crops.wheat.value });
+          if (crops.maize.value != null && crops.maize.value >= 1000) list.push({ name: 'Maize', value: crops.maize.value });
+          if (crops.rice.value != null && crops.rice.value >= 1000) list.push({ name: 'Rice', value: crops.rice.value });
+          if (crops.soybean.value != null && crops.soybean.value >= 1000) list.push({ name: 'Soybean', value: crops.soybean.value });
+          if (crops.barley.value != null && crops.barley.value >= 1000) list.push({ name: 'Barley', value: crops.barley.value });
+          if (list.length === 0) return null;
+          // Sort by volume descending so the country's strongest crop is first
+          list.sort((a, b) => b.value - a.value);
+          return (
+            <div className="mt-4 pt-3 border-t border-slate-700/40">
+              <div className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-2">Crop Production</div>
+              {list.map((c) => (
+                <Detail key={c.name} label={c.name} value={s.formatTonnes(c.value)} />
+              ))}
+            </div>
+          );
+        })()}
       </div>
     </motion.div>
   );

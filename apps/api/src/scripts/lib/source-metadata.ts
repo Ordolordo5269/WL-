@@ -137,6 +137,14 @@ const SOURCE_VERSIONS: Record<string, SourceMetadata> = {
     sourceVersion: 'Energy Institute 2024 + EIA via OWID 2025-01',
     sourceReleaseDate: new Date('2025-01-01'),
   },
+
+  // FAO via OWID — crop-specific production (wheat, maize, rice, soybean, barley)
+  // Upstream: FAOSTAT
+  // Mirror: ourworldindata.org/grapher/{crop}-production (no auth)
+  'FAO via OWID': {
+    sourceVersion: 'FAOSTAT 2024 via OWID',
+    sourceReleaseDate: new Date('2025-02-01'),
+  },
 };
 
 export function getSourceMetadata(source: string): SourceMetadata {

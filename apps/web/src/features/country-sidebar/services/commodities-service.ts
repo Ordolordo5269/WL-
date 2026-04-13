@@ -40,6 +40,14 @@ export interface CommoditiesData {
     renewablesSharePct: IndicatorPoint;
     fossilSharePct: IndicatorPoint;
   };
+  // P3 A4: Crop-specific production (tonnes)
+  crops?: {
+    wheat: IndicatorPoint;
+    maize: IndicatorPoint;
+    rice: IndicatorPoint;
+    soybean: IndicatorPoint;
+    barley: IndicatorPoint;
+  };
   sources: { worldBank: string };
 }
 

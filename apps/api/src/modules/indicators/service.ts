@@ -566,6 +566,8 @@ export async function getCommoditiesData(iso3: string) {
     elecGenTotalTwh, nuclearGenTwh, solarGenTwh, windGenTwh, hydroGenTwh,
     coalGenTwh, gasGenTwh, oilGenTwh,
     renewablesSharePct, fossilSharePct,
+    // P3 A4: FAO crop-specific production
+    wheatProd, maizeProd, riceProd, soybeanProd, barleyProd,
   ] = await Promise.all([
     // Energy
     getLatestIndicatorValueForIso3(countryIso3, 'ENERGY_IMPORTS_PCT'),
@@ -598,6 +600,12 @@ export async function getCommoditiesData(iso3: string) {
     // P3 A1: OWID Energy — mix shares
     getLatestIndicatorValueForIso3(countryIso3, 'RENEWABLES_SHARE_PCT'),
     getLatestIndicatorValueForIso3(countryIso3, 'FOSSIL_SHARE_PCT'),
+    // P3 A4: FAO crop-specific production
+    getLatestIndicatorValueForIso3(countryIso3, 'WHEAT_PROD_T'),
+    getLatestIndicatorValueForIso3(countryIso3, 'MAIZE_PROD_T'),
+    getLatestIndicatorValueForIso3(countryIso3, 'RICE_PROD_T'),
+    getLatestIndicatorValueForIso3(countryIso3, 'SOYBEAN_PROD_T'),
+    getLatestIndicatorValueForIso3(countryIso3, 'BARLEY_PROD_T'),
   ]);
 
   return {
@@ -636,6 +644,14 @@ export async function getCommoditiesData(iso3: string) {
       oilElec: { value: toNumberOrNull(oilGenTwh.value), year: oilGenTwh.year },
       renewablesSharePct: { value: toNumberOrNull(renewablesSharePct.value), year: renewablesSharePct.year },
       fossilSharePct: { value: toNumberOrNull(fossilSharePct.value), year: fossilSharePct.year },
+    },
+    // P3 A4: Crop-specific production (tonnes) — replaces generic cereal proxy
+    crops: {
+      wheat:   { value: toNumberOrNull(wheatProd.value),   year: wheatProd.year },
+      maize:   { value: toNumberOrNull(maizeProd.value),   year: maizeProd.year },
+      rice:    { value: toNumberOrNull(riceProd.value),    year: riceProd.year },
+      soybean: { value: toNumberOrNull(soybeanProd.value), year: soybeanProd.year },
+      barley:  { value: toNumberOrNull(barleyProd.value),  year: barleyProd.year },
     },
     sources: { worldBank: 'https://api.worldbank.org/v2/' },
   };
