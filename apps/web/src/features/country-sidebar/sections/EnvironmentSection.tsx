@@ -1,7 +1,48 @@
 import { motion } from 'framer-motion';
-import { AlertCircle, Cloud, TreePine, Zap, Droplets, Shield, Flame, Wind, Globe, Fuel } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Cloud, TreePine, Zap, Droplets, Shield, Flame, Wind, Globe, Fuel } from 'lucide-react';
 import { environmentService } from '../services/environment-service';
 import type { TEnvironmentData } from '../services/environment-service';
+
+/* ── Badge helpers (consistent with Politics section) ── */
+
+function Badge({ text, level }: { text: string; level: 'good' | 'warning' | 'danger' }) {
+  const c = {
+    good:    { bg: 'rgba(16, 185, 129, 0.12)', color: '#34d399', border: 'rgba(16, 185, 129, 0.25)' },
+    warning: { bg: 'rgba(245, 158, 11, 0.12)', color: '#fbbf24', border: 'rgba(245, 158, 11, 0.25)' },
+    danger:  { bg: 'rgba(239, 68, 68, 0.12)', color: '#f87171', border: 'rgba(239, 68, 68, 0.25)' },
+  }[level];
+  return (
+    <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-semibold" style={{ background: c.bg, color: c.color, border: `1px solid ${c.border}` }}>
+      {text}
+    </span>
+  );
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-[10px] text-slate-500">{label}</span>
+      <span className="text-[11px] text-slate-400">{value}</span>
+    </div>
+  );
+}
+
+function interpretClimateRisk(ndGainIndex: number | null, wriScore: number | null): { badge: string; level: 'good' | 'warning' | 'danger'; desc: string } {
+  // Prefer ND-GAIN if available. ND-GAIN 0-100: higher = more prepared
+  if (ndGainIndex !== null) {
+    if (ndGainIndex >= 60) return { badge: 'Well prepared', level: 'good', desc: 'Strong climate adaptation capacity and low vulnerability to climate impacts' };
+    if (ndGainIndex >= 45) return { badge: 'Moderate preparedness', level: 'warning', desc: 'Partially prepared for climate change; gaps in adaptation remain' };
+    if (ndGainIndex >= 35) return { badge: 'Vulnerable', level: 'warning', desc: 'Limited capacity to adapt to climate impacts' };
+    return { badge: 'Highly vulnerable', level: 'danger', desc: 'Severe exposure to climate risks with weak institutional response capacity' };
+  }
+  // Fallback to WRI. Score as percentage: higher = more risk
+  if (wriScore !== null) {
+    if (wriScore < 5) return { badge: 'Low disaster risk', level: 'good', desc: 'Low exposure to natural hazards and strong coping capacity' };
+    if (wriScore < 15) return { badge: 'Moderate disaster risk', level: 'warning', desc: 'Some exposure to natural hazards' };
+    return { badge: 'High disaster risk', level: 'danger', desc: 'Significant exposure to natural hazards combined with structural vulnerability' };
+  }
+  return { badge: 'No data', level: 'warning', desc: '' };
+}
 
 interface EnvironmentSectionProps {
   data: TEnvironmentData | null;
@@ -42,6 +83,23 @@ export default function EnvironmentSection({ data, isLoading, error }: Environme
 
   const s = environmentService;
 
+  const ndGainIdx = data.ndGain?.index.value ?? null;
+  const ndGainVuln = data.ndGain?.vulnerability.value ?? null;
+  const ndGainRead = data.ndGain?.readiness.value ?? null;
+  const wriScore = data.worldRiskIndex?.score.value ?? null;
+  const wriExposure = data.worldRiskIndex?.exposure.value ?? null;
+  const wriVulnerability = data.worldRiskIndex?.vulnerability.value ?? null;
+  const hasClimateRisk = ndGainIdx !== null || wriScore !== null;
+  const climateRiskInfo = hasClimateRisk ? interpretClimateRisk(ndGainIdx, wriScore) : null;
+
+  const co2Coal = data.co2BySource?.coal.value ?? null;
+  const co2Oil = data.co2BySource?.oil.value ?? null;
+  const co2Gas = data.co2BySource?.gas.value ?? null;
+  const co2Cement = data.co2BySource?.cement.value ?? null;
+  const co2Flaring = data.co2BySource?.flaring.value ?? null;
+  const co2Consumption = data.co2BySource?.consumption.value ?? null;
+  const hasCo2BySource = [co2Coal, co2Oil, co2Gas, co2Cement, co2Flaring].some(v => v !== null);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -49,6 +107,38 @@ export default function EnvironmentSection({ data, isLoading, error }: Environme
       transition={{ duration: 0.3 }}
       className="p-4 space-y-4"
     >
+      {/* Climate Risk & Vulnerability (P6 Phase A: ND-GAIN + WRI) */}
+      {hasClimateRisk && climateRiskInfo && (
+        <div className="section-card">
+          <div className="section-header">
+            <AlertTriangle className="h-4 w-4" />
+            <h3>Climate Risk & Vulnerability</h3>
+          </div>
+          <div className="mb-2">
+            <Badge text={climateRiskInfo.badge} level={climateRiskInfo.level} />
+          </div>
+          <p className="text-[11px] text-slate-400 leading-relaxed mb-3">{climateRiskInfo.desc}</p>
+          {ndGainIdx !== null && (
+            <Detail label="ND-GAIN Climate Index" value={`${s.formatNumber(Number(ndGainIdx.toFixed(1)))} / 100`} />
+          )}
+          {ndGainVuln !== null && (
+            <Detail label="Vulnerability" value={ndGainVuln.toFixed(3)} />
+          )}
+          {ndGainRead !== null && (
+            <Detail label="Readiness" value={ndGainRead.toFixed(3)} />
+          )}
+          {wriScore !== null && (
+            <Detail label="Disaster Risk Score" value={`${wriScore.toFixed(2)}%`} />
+          )}
+          {wriExposure !== null && (
+            <Detail label="Hazard Exposure" value={`${wriExposure.toFixed(2)}%`} />
+          )}
+          {wriVulnerability !== null && (
+            <Detail label="Structural Vulnerability" value={`${wriVulnerability.toFixed(2)}%`} />
+          )}
+        </div>
+      )}
+
       {/* Climate & Emissions */}
       <div className="section-card">
         <div className="section-header">
@@ -73,7 +163,16 @@ export default function EnvironmentSection({ data, isLoading, error }: Environme
           <div className="metric-item">
             <div className="metric-icon small"><Wind className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">Air Pollution (Fine Particles) {data.pm25AirPollution.year ? <span className="ml-2 text-[10px] text-slate-400">{data.pm25AirPollution.year}</span> : null}</div>
+              <div className="metric-label">
+                Air Pollution (Fine Particles)
+                {data.pm25AirPollution.year ? <span className="ml-2 text-[10px] text-slate-400">{data.pm25AirPollution.year}</span> : null}
+                {data.airQualityStationsCount?.value != null && (() => {
+                  const n = data.airQualityStationsCount.value!;
+                  const color = n >= 10 ? '#34d399' : n >= 3 ? '#fbbf24' : '#f87171';
+                  const label = n >= 10 ? `${n} stations` : n >= 3 ? `${n} stations · limited` : n > 0 ? `${n} stations · sparse` : 'modeled only';
+                  return <span className="ml-2 text-[9px] font-medium" style={{ color }}>· {label}</span>;
+                })()}
+              </div>
               <div className="metric-value">{s.formatUgM3(data.pm25AirPollution.value)}</div>
             </div>
           </div>
@@ -101,6 +200,21 @@ export default function EnvironmentSection({ data, isLoading, error }: Environme
             </div>
           )}
         </div>
+
+        {/* CO₂ by fuel source (Global Carbon Project) */}
+        {hasCo2BySource && (
+          <div className="mt-4 pt-3 border-t border-slate-700/40">
+            <div className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-2">CO₂ by Fuel Source</div>
+            <div className="grid grid-cols-2 gap-1.5">
+              {co2Coal !== null && <Detail label="Coal" value={s.formatMtCo2e(co2Coal)} />}
+              {co2Oil !== null && <Detail label="Oil" value={s.formatMtCo2e(co2Oil)} />}
+              {co2Gas !== null && <Detail label="Gas" value={s.formatMtCo2e(co2Gas)} />}
+              {co2Cement !== null && <Detail label="Cement" value={s.formatMtCo2e(co2Cement)} />}
+              {co2Flaring !== null && <Detail label="Flaring" value={s.formatMtCo2e(co2Flaring)} />}
+              {co2Consumption !== null && <Detail label="Consumption-based" value={s.formatMtCo2e(co2Consumption)} />}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Natural Resources */}
@@ -138,6 +252,15 @@ export default function EnvironmentSection({ data, isLoading, error }: Environme
               <div className="metric-value">{s.formatPercent(data.forestRentsPctGdp.value)}</div>
             </div>
           </div>
+          {data.forestLossHa?.value != null && (
+            <div className="metric-item">
+              <div className="metric-icon small"><TreePine className="w-4 h-4" /></div>
+              <div className="metric-content">
+                <div className="metric-label">Annual Forest Loss {data.forestLossHa.year ? <span className="ml-2 text-[10px] text-slate-400">{data.forestLossHa.year}</span> : null}</div>
+                <div className="metric-value">{s.formatNumber(Math.round(data.forestLossHa.value))} ha</div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

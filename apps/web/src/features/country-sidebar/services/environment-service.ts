@@ -24,6 +24,29 @@ export interface EnvironmentData {
   ghgEmissionsTotalKt: IndicatorPoint;
   fossilFuelConsumptionPct: IndicatorPoint;
   landAreaSqKm: IndicatorPoint;
+  // P6 Phase A: Climate Risk & Vulnerability
+  ndGain?: {
+    index: IndicatorPoint;
+    vulnerability: IndicatorPoint;
+    readiness: IndicatorPoint;
+  };
+  worldRiskIndex?: {
+    score: IndicatorPoint;
+    exposure: IndicatorPoint;
+    vulnerability: IndicatorPoint;
+  };
+  // P6 Phase A: CO2 by fuel source
+  co2BySource?: {
+    coal: IndicatorPoint;
+    oil: IndicatorPoint;
+    gas: IndicatorPoint;
+    cement: IndicatorPoint;
+    flaring: IndicatorPoint;
+    consumption: IndicatorPoint;
+  };
+  // P6 Phase B: Deforestation (GFW) + air quality coverage (OpenAQ)
+  forestLossHa?: IndicatorPoint;
+  airQualityStationsCount?: IndicatorPoint;
   sources: { worldBank: string };
 }
 

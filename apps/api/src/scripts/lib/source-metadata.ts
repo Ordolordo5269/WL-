@@ -92,6 +92,43 @@ const SOURCE_VERSIONS: Record<string, SourceMetadata> = {
     sourceVersion: '2024',
     sourceReleaseDate: new Date('2024-09-01'),
   },
+
+  // ND-GAIN — Notre Dame Global Adaptation Initiative
+  // Annual release. Check: https://gain.nd.edu/our-work/country-index/
+  'ND-GAIN': {
+    sourceVersion: 'ND-GAIN 2026',
+    sourceReleaseDate: new Date('2026-01-23'),
+  },
+
+  // Bündnis Entwicklung Hilft / IFHV — World Risk Index
+  // Annual report. Check: https://weltrisikobericht.de/en/
+  'Bündnis Entwicklung Hilft': {
+    sourceVersion: 'WRI 2025',
+    sourceReleaseDate: new Date('2025-09-11'),
+  },
+
+  // Global Carbon Project — fuel-specific CO2 emissions
+  // Annual release in November. Mirror: github.com/owid/co2-data
+  'Global Carbon Project': {
+    sourceVersion: 'GCB 2024',
+    sourceReleaseDate: new Date('2024-11-13'),
+  },
+
+  // Global Forest Watch / Hansen/UMD — tree cover loss
+  // Upstream: Hansen et al. v1.12 (University of Maryland)
+  // Delivered via: OWID mirror at ourworldindata.org/grapher/tree-cover-loss
+  // If OWID stops updating, fallback is GFW's data-api.globalforestwatch.org (requires key)
+  'Global Forest Watch / UMD': {
+    sourceVersion: 'Hansen v1.12 via OWID 2025-03',
+    sourceReleaseDate: new Date('2025-04-02'),
+  },
+
+  // OpenAQ — air quality monitoring station coverage
+  // Real-time network, we snapshot station count at ingestion time
+  'OpenAQ': {
+    sourceVersion: null, // continuous; ingestedAt is the effective version
+    sourceReleaseDate: null,
+  },
 };
 
 export function getSourceMetadata(source: string): SourceMetadata {
