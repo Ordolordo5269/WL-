@@ -8,6 +8,7 @@ import ProfileSection from '../features/dashboard/ProfileSection';
 import FavoritesSection from '../features/dashboard/FavoritesSection';
 import PredictiveAnalysisSection from '../features/dashboard/PredictiveAnalysisSection';
 import DashboardStats from '../features/dashboard/DashboardStats';
+import GlobalFoodPriceIndex from '../features/dashboard/GlobalFoodPriceIndex';
 import RecentConflicts from '../features/dashboard/RecentConflicts';
 import WorldActivityFeed from '../features/dashboard/WorldActivityFeed';
 
@@ -77,6 +78,7 @@ function Dashboard() {
             </div>
             <QuickActions onSectionChange={setActiveSection} />
             <DashboardStats />
+            <GlobalFoodPriceIndex />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <RecentConflicts />
               <WorldActivityFeed />

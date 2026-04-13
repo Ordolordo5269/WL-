@@ -117,6 +117,41 @@ date), that's a schema addition on top of the current foundation.
 
 ---
 
+## 2026-04-14 — Indicadores globales vía entity WLD (type=REGION)
+
+**Contexto:** FAO Food Price Index (P3 A5) es un indicador global mensual,
+no por país. Nuestro schema `IndicatorValue(entityId, indicatorCode, year, value)`
+está diseñado para datos country-year.
+
+**Decisión:** Crear entidad especial **`WLD`** de tipo **`REGION`** (name='World',
+slug='world') que sirve como "ancla" para todos los indicadores globales futuros.
+No introducir una tabla separada `GlobalIndicators` — esto duplicaría infra.
+
+**Regla (para indicadores globales futuros):**
+- Si el indicador no tiene dimensión de país (precios globales, índices
+  compuestos IPCC, métricas a nivel mundo del World Bank, etc.) → guardarlo
+  con `entityId = WLD`.
+- Si el indicador tiene dimensión temporal sub-anual (mensual, diario), agregarlo
+  a nivel anual en `value` y guardar el detalle en `meta` JSON como
+  `{latestMonth, latestValue, monthsCount}`.
+- `type=REGION` (no COUNTRY) asegura que queries de ranking/promedios que
+  filtran `WHERE e.type = 'COUNTRY'` ignoren WLD automáticamente — no hay
+  que hardcodear iso3='WLD' en cada query defensiva.
+
+**Trade-off aceptado:** perdemos la granularidad mensual en la tabla principal,
+pero el `meta` lo preserva para las UIs que lo necesiten. Si algún día
+pintamos charts mensuales de FPI, se renderiza desde meta o se crea una
+tabla `MonthlyIndicatorValue` dedicada a series sub-anuales.
+
+**Endpoint:** `GET /api/dashboard/global-indicators` devuelve el FPI agregado
+con trend vs año anterior. **Nota de diseño:** el nombre es genérico a
+propósito. Cuando aparezca el segundo indicador global, decidir entre
+(a) expandir el mismo endpoint con más campos o (b) pasar a rutas por
+categoría (`/global-indicators/food-prices`, `/global-indicators/commodities`,
+etc). Decidir cuando haya evidencia del patrón de uso — no ahora.
+
+---
+
 ## 2026-04-13 — Rate limiting de sidebar endpoints (pendiente)
 
 **Estado actual:** Solo `/api/countries` y `/api/geo` tienen `dataLimiter` aplicado

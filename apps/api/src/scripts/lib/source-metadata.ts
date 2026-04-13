@@ -145,6 +145,14 @@ const SOURCE_VERSIONS: Record<string, SourceMetadata> = {
     sourceVersion: 'FAOSTAT 2024 via OWID',
     sourceReleaseDate: new Date('2025-02-01'),
   },
+
+  // FAO — Food Price Index (monthly global, stored as annual average on WLD entity)
+  // Direct CSV: fao.org/media/docs/worldfoodsituationlibraries/default-document-library/food_price_indices_data.csv
+  // Base period: 2014-2016 = 100
+  'FAO': {
+    sourceVersion: 'FFPI 2026-04',
+    sourceReleaseDate: new Date('2026-04-01'),
+  },
 };
 
 export function getSourceMetadata(source: string): SourceMetadata {
