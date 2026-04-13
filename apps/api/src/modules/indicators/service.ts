@@ -1,6 +1,9 @@
 import * as repo from './repo';
+import { PrismaClient } from '@prisma/client';
 import { SLUG_TO_CODE, toNumberOrNull } from './types';
 import type { GdpEntry, IndicatorPoint } from './types';
+
+const prisma = new PrismaClient();
 
 // ── Simple in-module cache ──
 type CacheEntry<T> = { value: T; expiresAt: number };
@@ -236,7 +239,15 @@ export async function getPoliticsData(iso3: string) {
 
   const countryIso3 = entity.iso3 as string;
 
-  const [politicalStability, voiceAccountability, govEffectiveness, regulatoryQuality, ruleOfLaw, controlCorruption] =
+  const [
+    politicalStability, voiceAccountability, govEffectiveness, regulatoryQuality, ruleOfLaw, controlCorruption,
+    fhPoliticalRights, fhCivilLiberties, fhFreedomStatus,
+    cpiScore, cpiRank,
+    fsiTotal, fsiRank,
+    vdemPolyarchy, vdemLibdem, vdemFreexp, vdemCleanElections, vdemRuleOfLaw,
+    polity5Score,
+    gpiScore, gpiRank,
+  ] =
     await Promise.all([
       getLatestIndicatorValueForIso3(countryIso3, 'WGI_POLITICAL_STABILITY'),
       getLatestIndicatorValueForIso3(countryIso3, 'WGI_VOICE_ACCOUNTABILITY'),
@@ -244,6 +255,24 @@ export async function getPoliticsData(iso3: string) {
       getLatestIndicatorValueForIso3(countryIso3, 'WGI_REGULATORY_QUALITY'),
       getLatestIndicatorValueForIso3(countryIso3, 'WGI_RULE_OF_LAW'),
       getLatestIndicatorValueForIso3(countryIso3, 'WGI_CONTROL_CORRUPTION'),
+      getLatestIndicatorValueForIso3(countryIso3, 'FH_POLITICAL_RIGHTS'),
+      getLatestIndicatorValueForIso3(countryIso3, 'FH_CIVIL_LIBERTIES'),
+      getLatestIndicatorValueForIso3(countryIso3, 'FH_FREEDOM_STATUS'),
+      getLatestIndicatorValueForIso3(countryIso3, 'TI_CPI_SCORE'),
+      getLatestIndicatorValueForIso3(countryIso3, 'TI_CPI_RANK'),
+      getLatestIndicatorValueForIso3(countryIso3, 'FSI_TOTAL'),
+      getLatestIndicatorValueForIso3(countryIso3, 'FSI_RANK'),
+      // V-Dem
+      getLatestIndicatorValueForIso3(countryIso3, 'VDEM_POLYARCHY'),
+      getLatestIndicatorValueForIso3(countryIso3, 'VDEM_LIBDEM'),
+      getLatestIndicatorValueForIso3(countryIso3, 'VDEM_FREEXP'),
+      getLatestIndicatorValueForIso3(countryIso3, 'VDEM_CLEAN_ELECTIONS'),
+      getLatestIndicatorValueForIso3(countryIso3, 'VDEM_RULE_OF_LAW'),
+      // Polity5
+      getLatestIndicatorValueForIso3(countryIso3, 'POLITY5_SCORE'),
+      // GPI
+      getLatestIndicatorValueForIso3(countryIso3, 'GPI_SCORE'),
+      getLatestIndicatorValueForIso3(countryIso3, 'GPI_RANK'),
     ]);
 
   // Calculate Democracy Index from Voice & Accountability (VA.EST ranges -2.5 to 2.5 → 0-10)
@@ -278,6 +307,10 @@ export async function getPoliticsData(iso3: string) {
     console.warn(`Could not fetch offices for ${countryIso3}:`, err);
   }
 
+  // Freedom status label
+  const freedomStatusValue = toNumberOrNull(fhFreedomStatus.value);
+  const freedomStatusLabel = freedomStatusValue === 3 ? 'Free' : freedomStatusValue === 2 ? 'Partly Free' : freedomStatusValue === 1 ? 'Not Free' : null;
+
   return {
     countryCode3: countryIso3,
     countryName: entity.name,
@@ -287,10 +320,67 @@ export async function getPoliticsData(iso3: string) {
     wgiRegulatoryQuality: { value: toNumberOrNull(regulatoryQuality.value), year: regulatoryQuality.year },
     wgiRuleOfLaw: { value: toNumberOrNull(ruleOfLaw.value), year: ruleOfLaw.year },
     wgiControlOfCorruption: { value: toNumberOrNull(controlCorruption.value), year: controlCorruption.year },
+    // Freedom House
+    freedomHouse: {
+      politicalRights: { value: toNumberOrNull(fhPoliticalRights.value), year: fhPoliticalRights.year },
+      civilLiberties: { value: toNumberOrNull(fhCivilLiberties.value), year: fhCivilLiberties.year },
+      status: { value: freedomStatusLabel, numeric: freedomStatusValue, year: fhFreedomStatus.year },
+    },
+    // Transparency International CPI
+    corruptionIndex: {
+      score: { value: toNumberOrNull(cpiScore.value), year: cpiScore.year },
+      rank: { value: toNumberOrNull(cpiRank.value), year: cpiRank.year },
+    },
+    // Fragile States Index
+    fragileStatesIndex: {
+      score: { value: toNumberOrNull(fsiTotal.value), year: fsiTotal.year },
+      rank: { value: toNumberOrNull(fsiRank.value), year: fsiRank.year },
+    },
+    // V-Dem Democracy Indices
+    vdem: {
+      electoralDemocracy: { value: toNumberOrNull(vdemPolyarchy.value), year: vdemPolyarchy.year },
+      liberalDemocracy: { value: toNumberOrNull(vdemLibdem.value), year: vdemLibdem.year },
+      freedomOfExpression: { value: toNumberOrNull(vdemFreexp.value), year: vdemFreexp.year },
+      cleanElections: { value: toNumberOrNull(vdemCleanElections.value), year: vdemCleanElections.year },
+      ruleOfLaw: { value: toNumberOrNull(vdemRuleOfLaw.value), year: vdemRuleOfLaw.year },
+    },
+    // Polity5
+    polity5: {
+      score: { value: toNumberOrNull(polity5Score.value), year: polity5Score.year },
+    },
+    // Global Peace Index
+    globalPeaceIndex: {
+      score: { value: toNumberOrNull(gpiScore.value), year: gpiScore.year },
+      rank: { value: toNumberOrNull(gpiRank.value), year: gpiRank.year },
+    },
+    // Sanctions
+    sanctions: await (async () => {
+      const list = await prisma.sanction.findMany({
+        where: { countryIso3: countryIso3, isActive: true },
+        orderBy: { listedAt: 'desc' },
+        select: { entityName: true, entityType: true, sanctionProgram: true, sanctionAuthority: true, reason: true, listedAt: true },
+      });
+      return { count: list.length, entities: list };
+    })(),
+    // Elections
+    elections: await (async () => {
+      const all = await prisma.electionCalendar.findMany({
+        where: { countryIso3: countryIso3 },
+        orderBy: { year: 'desc' },
+        select: { electionType: true, year: true, electionDate: true, status: true, turnoutPercent: true, description: true },
+      });
+      return {
+        upcoming: all.filter(e => e.status === 'scheduled').slice(0, 5),
+        recent: all.filter(e => e.status === 'completed').slice(0, 5),
+      };
+    })(),
     headsOfGovernment,
     formOfGovernment,
     sources: {
       worldBankWgi: 'https://api.worldbank.org/v2/',
+      freedomHouse: 'https://freedomhouse.org',
+      transparencyInternational: 'https://www.transparency.org/cpi',
+      fundForPeace: 'https://fragilestatesindex.org',
       wikidata: 'https://query.wikidata.org/sparql',
     },
   };

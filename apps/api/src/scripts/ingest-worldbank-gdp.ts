@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { PrismaClient, Prisma } from '@prisma/client';
+import { getSourceMetadata } from './lib/source-metadata';
 
 const prisma = new PrismaClient();
 
@@ -99,6 +100,7 @@ function findLatestWithFallback(points: WorldBankSeriesPoint[]): { year: number 
 }
 
 async function upsertGdpForCountry(entityId: string, iso3: string) {
+  const { sourceVersion, sourceReleaseDate } = getSourceMetadata('World Bank');
   const series = await fetchGdpSeriesIso3(iso3);
   // Upsert full series
   for (const p of series) {
@@ -106,8 +108,8 @@ async function upsertGdpForCountry(entityId: string, iso3: string) {
     if (isNaN(year)) continue;
     await prisma.indicatorValue.upsert({
       where: { entityId_indicatorCode_year: { entityId, indicatorCode: 'GDP_USD', year } },
-      update: { value: p.value != null ? new Prisma.Decimal(p.value) : null, source: 'World Bank' },
-      create: { entityId, indicatorCode: 'GDP_USD', year, value: p.value != null ? new Prisma.Decimal(p.value) : null, source: 'World Bank' },
+      update: { value: p.value != null ? new Prisma.Decimal(p.value) : null, source: 'World Bank', sourceVersion, sourceReleaseDate, ingestedAt: new Date() },
+      create: { entityId, indicatorCode: 'GDP_USD', year, value: p.value != null ? new Prisma.Decimal(p.value) : null, source: 'World Bank', sourceVersion, sourceReleaseDate, ingestedAt: new Date() },
     });
   }
 
@@ -118,14 +120,14 @@ async function upsertGdpForCountry(entityId: string, iso3: string) {
   if (target && target.value != null) {
     await prisma.indicatorValue.upsert({
       where: { entityId_indicatorCode_year: { entityId, indicatorCode: 'GDP_USD', year: TARGET_LATEST_YEAR } },
-      update: { value: new Prisma.Decimal(target.value), source: 'World Bank', meta: { targetYear: TARGET_LATEST_YEAR, latestAvailableYear: TARGET_LATEST_YEAR, fallback: false } as any },
-      create: { entityId, indicatorCode: 'GDP_USD', year: TARGET_LATEST_YEAR, value: new Prisma.Decimal(target.value), source: 'World Bank', meta: { targetYear: TARGET_LATEST_YEAR, latestAvailableYear: TARGET_LATEST_YEAR, fallback: false } as any },
+      update: { value: new Prisma.Decimal(target.value), source: 'World Bank', meta: { targetYear: TARGET_LATEST_YEAR, latestAvailableYear: TARGET_LATEST_YEAR, fallback: false } as any, sourceVersion, sourceReleaseDate, ingestedAt: new Date() },
+      create: { entityId, indicatorCode: 'GDP_USD', year: TARGET_LATEST_YEAR, value: new Prisma.Decimal(target.value), source: 'World Bank', meta: { targetYear: TARGET_LATEST_YEAR, latestAvailableYear: TARGET_LATEST_YEAR, fallback: false } as any, sourceVersion, sourceReleaseDate, ingestedAt: new Date() },
     });
   } else if (latest.year != null) {
     await prisma.indicatorValue.upsert({
       where: { entityId_indicatorCode_year: { entityId, indicatorCode: 'GDP_USD', year: TARGET_LATEST_YEAR } },
-      update: { value: latest.value != null ? new Prisma.Decimal(latest.value) : null, source: 'World Bank', meta: { targetYear: TARGET_LATEST_YEAR, latestAvailableYear: latest.year, fallback: true } as any },
-      create: { entityId, indicatorCode: 'GDP_USD', year: TARGET_LATEST_YEAR, value: latest.value != null ? new Prisma.Decimal(latest.value) : null, source: 'World Bank', meta: { targetYear: TARGET_LATEST_YEAR, latestAvailableYear: latest.year, fallback: true } as any },
+      update: { value: latest.value != null ? new Prisma.Decimal(latest.value) : null, source: 'World Bank', meta: { targetYear: TARGET_LATEST_YEAR, latestAvailableYear: latest.year, fallback: true } as any, sourceVersion, sourceReleaseDate, ingestedAt: new Date() },
+      create: { entityId, indicatorCode: 'GDP_USD', year: TARGET_LATEST_YEAR, value: latest.value != null ? new Prisma.Decimal(latest.value) : null, source: 'World Bank', meta: { targetYear: TARGET_LATEST_YEAR, latestAvailableYear: latest.year, fallback: true } as any, sourceVersion, sourceReleaseDate, ingestedAt: new Date() },
     });
   }
 }

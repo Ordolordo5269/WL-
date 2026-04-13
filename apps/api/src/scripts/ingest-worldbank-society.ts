@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { PrismaClient, Prisma } from '@prisma/client';
+import { getSourceMetadata } from './lib/source-metadata';
 
 const prisma = new PrismaClient();
 
@@ -75,13 +76,14 @@ function findLatestWithFallback(points: SeriesPoint[]): { year: number | null; v
 }
 
 async function upsertSeries(entityId: string, indicatorCode: string, points: SeriesPoint[]) {
+  const { sourceVersion, sourceReleaseDate } = getSourceMetadata('World Bank');
   for (const p of points) {
     const year = parseInt(p.date, 10);
     if (isNaN(year)) continue;
     await prisma.indicatorValue.upsert({
       where: { entityId_indicatorCode_year: { entityId, indicatorCode, year } },
-      update: { value: p.value != null ? new Prisma.Decimal(p.value) : null, source: 'World Bank' },
-      create: { entityId, indicatorCode, year, value: p.value != null ? new Prisma.Decimal(p.value) : null, source: 'World Bank' }
+      update: { value: p.value != null ? new Prisma.Decimal(p.value) : null, source: 'World Bank', sourceVersion, sourceReleaseDate, ingestedAt: new Date() },
+      create: { entityId, indicatorCode, year, value: p.value != null ? new Prisma.Decimal(p.value) : null, source: 'World Bank', sourceVersion, sourceReleaseDate, ingestedAt: new Date() }
     });
   }
 
@@ -91,14 +93,14 @@ async function upsertSeries(entityId: string, indicatorCode: string, points: Ser
   if (target && target.value != null) {
     await prisma.indicatorValue.upsert({
       where: { entityId_indicatorCode_year: { entityId, indicatorCode, year: TARGET_LATEST_YEAR } },
-      update: { value: new Prisma.Decimal(target.value), source: 'World Bank', meta: { targetYear: TARGET_LATEST_YEAR, latestAvailableYear: TARGET_LATEST_YEAR, fallback: false } as any },
-      create: { entityId, indicatorCode, year: TARGET_LATEST_YEAR, value: new Prisma.Decimal(target.value), source: 'World Bank', meta: { targetYear: TARGET_LATEST_YEAR, latestAvailableYear: TARGET_LATEST_YEAR, fallback: false } as any }
+      update: { value: new Prisma.Decimal(target.value), source: 'World Bank', meta: { targetYear: TARGET_LATEST_YEAR, latestAvailableYear: TARGET_LATEST_YEAR, fallback: false } as any, sourceVersion, sourceReleaseDate, ingestedAt: new Date() },
+      create: { entityId, indicatorCode, year: TARGET_LATEST_YEAR, value: new Prisma.Decimal(target.value), source: 'World Bank', meta: { targetYear: TARGET_LATEST_YEAR, latestAvailableYear: TARGET_LATEST_YEAR, fallback: false } as any, sourceVersion, sourceReleaseDate, ingestedAt: new Date() }
     });
   } else if (latest.year != null) {
     await prisma.indicatorValue.upsert({
       where: { entityId_indicatorCode_year: { entityId, indicatorCode, year: TARGET_LATEST_YEAR } },
-      update: { value: latest.value != null ? new Prisma.Decimal(latest.value) : null, source: 'World Bank', meta: { targetYear: TARGET_LATEST_YEAR, latestAvailableYear: latest.year, fallback: true } as any },
-      create: { entityId, indicatorCode, year: TARGET_LATEST_YEAR, value: latest.value != null ? new Prisma.Decimal(latest.value) : null, source: 'World Bank', meta: { targetYear: TARGET_LATEST_YEAR, latestAvailableYear: latest.year, fallback: true } as any }
+      update: { value: latest.value != null ? new Prisma.Decimal(latest.value) : null, source: 'World Bank', meta: { targetYear: TARGET_LATEST_YEAR, latestAvailableYear: latest.year, fallback: true } as any, sourceVersion, sourceReleaseDate, ingestedAt: new Date() },
+      create: { entityId, indicatorCode, year: TARGET_LATEST_YEAR, value: latest.value != null ? new Prisma.Decimal(latest.value) : null, source: 'World Bank', meta: { targetYear: TARGET_LATEST_YEAR, latestAvailableYear: latest.year, fallback: true } as any, sourceVersion, sourceReleaseDate, ingestedAt: new Date() }
     });
   }
 }

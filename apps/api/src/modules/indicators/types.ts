@@ -34,6 +34,32 @@ export const SLUG_TO_CODE: Record<string, string> = {
   'regulatory-quality': 'WGI_REGULATORY_QUALITY',
   'rule-of-law': 'WGI_RULE_OF_LAW',
   'control-of-corruption': 'WGI_CONTROL_CORRUPTION',
+  // Governance — Freedom House
+  'freedom-political-rights': 'FH_POLITICAL_RIGHTS',
+  'freedom-civil-liberties': 'FH_CIVIL_LIBERTIES',
+  'freedom-status': 'FH_FREEDOM_STATUS',
+  // Governance — Transparency International CPI
+  'corruption-cpi': 'TI_CPI_SCORE',
+  'corruption-cpi-rank': 'TI_CPI_RANK',
+  // Governance — Fragile States Index
+  'fragile-state-index': 'FSI_TOTAL',
+  'fragile-state-rank': 'FSI_RANK',
+  // Governance — V-Dem Democracy Indices
+  'vdem-polyarchy': 'VDEM_POLYARCHY',
+  'vdem-liberal-democracy': 'VDEM_LIBDEM',
+  'vdem-participatory': 'VDEM_PARTIPDEM',
+  'vdem-deliberative': 'VDEM_DELIBDEM',
+  'vdem-egalitarian': 'VDEM_EGALDEM',
+  'vdem-freedom-expression': 'VDEM_FREEXP',
+  'vdem-clean-elections': 'VDEM_CLEAN_ELECTIONS',
+  'vdem-rule-of-law': 'VDEM_RULE_OF_LAW',
+  // Governance — Polity5
+  'polity5-score': 'POLITY5_SCORE',
+  'polity5-democracy': 'POLITY5_DEMOC',
+  'polity5-autocracy': 'POLITY5_AUTOC',
+  // Governance — Global Peace Index
+  'peace-index': 'GPI_SCORE',
+  'peace-index-rank': 'GPI_RANK',
   // Defense
   'military-expenditure-pct-gdp': 'MILITARY_EXPENDITURE_PCT_GDP',
   'military-expenditure-usd': 'MILITARY_EXPENDITURE_USD',

@@ -39,6 +39,7 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
   const [earthGalleryEnabled, setEarthGalleryEnabled] = useState(false);
   const [earthGallerySelectMode, setEarthGallerySelectMode] = useState(false);
   const [earthGalleryZoom, setEarthGalleryZoom] = useState<number>(2); // 0=city, 1=metro, 2=region, 3=country
+  const [earthGalleryMode, setEarthGalleryMode] = useState<'nasa-photos' | 'night-vision' | 'recon' | null>(null);
   const [naturalLod, setNaturalLod] = useState<'auto' | 'low' | 'med' | 'high'>('auto');
 
   // Earth Data (NASA) overlay states
@@ -162,8 +163,24 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
 
   const handleToggleEarthGallery = useCallback((enabled: boolean) => {
     setEarthGalleryEnabled(enabled);
-    if (!enabled) setEarthGallerySelectMode(false);
+    if (!enabled) {
+      setEarthGallerySelectMode(false);
+      setEarthGalleryMode(null);
+    }
     (document as any).__wl_map_comp?.setEarthGalleryEnabled?.(enabled);
+  }, []);
+
+  const handleSetEarthGalleryMode = useCallback((mode: 'nasa-photos' | 'night-vision' | 'recon' | null) => {
+    setEarthGalleryMode(mode);
+    if (mode) {
+      setEarthGalleryEnabled(true);
+      (document as any).__wl_map_comp?.setEarthGalleryMode?.(mode);
+      (document as any).__wl_map_comp?.setEarthGalleryEnabled?.(true);
+    } else {
+      setEarthGalleryEnabled(false);
+      setEarthGallerySelectMode(false);
+      (document as any).__wl_map_comp?.setEarthGalleryEnabled?.(false);
+    }
   }, []);
 
   const handleToggleEarthGallerySelectMode = useCallback((enabled: boolean) => {
@@ -339,7 +356,7 @@ export function useMapControls(mapRef: React.RefObject<MapRefType | null>) {
     handleToggleRiversLayer, handleToggleMountainRangesLayer,
     handleTogglePeaksLayer, handleSetNaturalLod,
     handleToggleLakesLayer, handleToggleVolcanoesLayer,
-    handleToggleFaultLinesLayer, handleToggleDesertsLayer, handleToggleEarthGallery, handleToggleEarthGallerySelectMode, handleSetEarthGalleryZoom,
+    handleToggleFaultLinesLayer, handleToggleDesertsLayer, handleToggleEarthGallery, handleToggleEarthGallerySelectMode, handleSetEarthGalleryZoom, earthGalleryMode, handleSetEarthGalleryMode,
     handleSetOrganizationIsoFilter,
     handleToggleHistoryMode, handleSetHistoryYear, handleResetHistoryPresentation,
     handleSetLedHalo, handleSetLedHaloSpeed,

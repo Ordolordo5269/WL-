@@ -35,7 +35,6 @@ interface Props {
   firesEnabled: boolean;
   tsunamisEnabled: boolean;
   stormsEnabled: boolean;
-  lightningEnabled: boolean;
   weatherEnabled: boolean;
   weatherLayers: string[];
 }
@@ -46,7 +45,6 @@ export default function LiveActivityLegend(props: Props) {
     fires: props.firesEnabled,
     'tsunamis': props.tsunamisEnabled,
     'storms': props.stormsEnabled,
-    'lightning': props.lightningEnabled,
   };
 
   const activeLayers = LAYER_LEGENDS.filter(l => enabledMap[l.id]);

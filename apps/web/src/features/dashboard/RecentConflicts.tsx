@@ -38,7 +38,11 @@ export default function RecentConflicts() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3 }}
-      className="rounded-xl border border-slate-700/50 bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-sm"
+      className="rounded-xl"
+      style={{
+        background: 'rgba(15, 23, 42, 0.8)',
+        border: '1px solid rgba(71, 85, 105, 0.3)',
+      }}
     >
       <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700/50">
         <h3 className="text-base font-semibold text-white flex items-center gap-2">

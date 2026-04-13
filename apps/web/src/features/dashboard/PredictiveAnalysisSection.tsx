@@ -5,7 +5,7 @@ import {
   DollarSign, Users, TrendingUp as TrendUp, Gauge, ArrowUpDown, FileText, 
   Building2, Briefcase, Heart, BookOpen, AlertTriangle, Activity, Baby, 
   UserMinus, MapPin, Users2, HeartPulse, GraduationCap, Scale, Shield,
-  X, ChevronRight, BarChart3, Zap, Target, Award
+  X, ChevronRight, BarChart3, Target
 } from 'lucide-react';
 import { predictionService } from './prediction.service';
 import type { PredictionResult, DeepSeekInsight } from './prediction.service';
@@ -295,77 +295,53 @@ export default function PredictiveAnalysisSection({ iso3: propIso3, countryName:
   if (!selectedIso3) {
     return (
       <div className="predictive-analysis-section p-6 md:p-8">
-        <div className="max-w-5xl mx-auto">
-          {/* Modern Header */}
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-12"
-          >
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: "spring" }}
-              className="inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-500/20 via-purple-500/20 to-pink-500/20 border-2 border-blue-500/30 mb-6 shadow-lg"
-            >
-              <BarChart3 className="w-12 h-12 text-blue-400" />
-            </motion.div>
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              Predictive Analysis
-            </h2>
-            <p className="text-slate-300 text-lg md:text-xl max-w-2xl mx-auto">
-              Select a country to view AI-powered forecasts and insights
-            </p>
-            <p className="text-slate-500 text-sm mt-2">
-              Get detailed predictions for economic, social, and political indicators
-            </p>
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+            <h2 className="text-2xl font-bold text-white mb-2">Predictive Analysis</h2>
+            <p className="text-sm text-slate-400">Select a country to view AI-powered forecasts for economic, social, and political indicators</p>
           </motion.div>
 
-          {/* Enhanced Country Selector */}
+          {/* Country Selector */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="mb-8"
+            transition={{ delay: 0.1 }}
+            className="rounded-xl p-5"
+            style={{ background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(71, 85, 105, 0.3)' }}
           >
-            <div className="bg-slate-800/60 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 shadow-xl">
-              <div className="flex items-center gap-3 mb-4">
-                <Globe className="w-6 h-6 text-blue-400" />
-                <h3 className="text-lg font-semibold text-white">Search Country</h3>
-              </div>
-              <CountrySelector
-                countries={selectorCountries}
-                onSelectCountry={handleCountrySelect}
-                loading={loadingCountries}
-                placeholder="Search countries by name or ISO3 code (e.g., Spain, USA, CHN)..."
-                scrollTargetId="predictive-charts-section"
-              />
+            <div className="flex items-center gap-2 mb-3">
+              <Globe className="w-4 h-4 text-blue-400" />
+              <span className="text-sm font-medium text-slate-300">Search Country</span>
             </div>
+            <CountrySelector
+              countries={selectorCountries}
+              onSelectCountry={handleCountrySelect}
+              loading={loadingCountries}
+              placeholder="Search by name or ISO3 code (e.g., Spain, USA, CHN)..."
+              scrollTargetId="predictive-charts-section"
+            />
           </motion.div>
 
-          {/* Empty state when no countries loaded */}
+          {/* Error state */}
           {!loadingCountries && countries.length === 0 && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-center py-16 bg-slate-800/40 rounded-2xl border border-slate-700/50"
+              className="text-center py-12 mt-6 rounded-xl"
+              style={{ background: 'rgba(239, 68, 68, 0.06)', border: '1px solid rgba(239, 68, 68, 0.15)' }}
             >
-              <AlertCircle className="w-20 h-20 text-slate-600 mx-auto mb-4" />
-              <p className="text-slate-300 text-lg mb-2 font-medium">Unable to load countries</p>
-              <p className="text-sm text-slate-500">Please try refreshing the page</p>
+              <AlertCircle className="w-8 h-8 text-slate-500 mx-auto mb-3" />
+              <p className="text-slate-300 text-sm font-medium mb-1">Unable to load countries</p>
+              <p className="text-xs text-slate-500">Please try refreshing the page</p>
             </motion.div>
           )}
 
-          {/* Loading state */}
           {loadingCountries && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center py-16"
-            >
-              <div className="w-12 h-12 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto mb-4" />
-              <p className="text-slate-400">Loading countries...</p>
-            </motion.div>
+            <div className="flex items-center justify-center gap-3 py-12 mt-6">
+              <Loader2 className="w-5 h-5 text-blue-400 animate-spin" />
+              <span className="text-sm text-slate-400">Loading countries...</span>
+            </div>
           )}
         </div>
       </div>
@@ -413,452 +389,263 @@ export default function PredictiveAnalysisSection({ iso3: propIso3, countryName:
   const countryFlagUrl = selectedCountryData?.flags?.png || selectedCountryData?.flags?.svg;
 
   return (
-    <div className="predictive-analysis-section min-h-full p-6 md:p-8">
-      {/* Modern Header Banner */}
-      {selectedCountryName && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative mb-8 rounded-2xl overflow-hidden bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-pink-600/20 border border-blue-500/30 backdrop-blur-sm"
-        >
-          <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
-          <div className="relative p-6 md:p-8">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div className="flex items-center gap-4">
-                {countryFlagUrl && (
-                  <motion.img
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ delay: 0.2, type: "spring" }}
-                    src={countryFlagUrl}
-                    alt={selectedCountryName}
-                    className="w-16 h-16 rounded-xl border-2 border-white/20 shadow-lg object-cover"
-                  />
-                )}
-                <div>
-                  <h2 className="text-3xl md:text-4xl font-bold text-white mb-1 flex items-center gap-3">
-                    <Zap className="w-8 h-8 text-yellow-400" />
-                    {selectedCountryName}
-                  </h2>
-                  <p className="text-slate-300 text-sm md:text-base flex items-center gap-2">
-                    <Target className="w-4 h-4" />
-                    AI-Powered Predictive Analysis
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => {
-                    setSelectedIso3(null);
-                    setSelectedCountryName(null);
-                    setPrediction(null);
-                    setInsights(null);
-                  }}
-                  className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white bg-slate-800/60 hover:bg-slate-700/60 rounded-xl border border-slate-700/50 hover:border-slate-600 transition-all duration-200 flex items-center gap-2 backdrop-blur-sm"
-                >
-                  <X className="w-4 h-4" />
-                  Change Country
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    loadInsights();
-                  }}
-                  disabled={!prediction || loadingInsights}
-                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-xl text-white font-semibold flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl disabled:shadow-none"
-                  title={!prediction ? 'Generate a prediction first' : 'Generate AI-powered insights'}
-                >
-                  {loadingInsights ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      <span>Generating...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-5 h-5" />
-                      <span>Generate AI Insights</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
+    <div className="predictive-analysis-section min-h-full p-5 md:p-6">
+      {/* ── Country Header ──────────────────────────────────── */}
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-3">
+          {countryFlagUrl && (
+            <img
+              src={countryFlagUrl}
+              alt={selectedCountryName || ''}
+              className="w-8 h-6 rounded object-cover"
+              style={{ border: '1px solid rgba(255, 255, 255, 0.08)' }}
+            />
+          )}
+          <div>
+            <h2 className="text-lg font-semibold text-white leading-tight">
+              {selectedCountryName || 'Predictive Analysis'}
+            </h2>
+            <p className="text-[11px] text-slate-500">Predictive Analysis</p>
           </div>
-        </motion.div>
-      )}
-
-      {!selectedCountryName && (
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
-            <BarChart3 className="w-8 h-8 text-blue-400" />
-            Predictive Analysis
-          </h2>
-          <p className="text-slate-400">Select a country to view AI-powered forecasts and insights</p>
         </div>
-      )}
-
-      {/* Modern Category Selector */}
-      <div className="mb-6">
-        <div className="flex gap-3 mb-4 flex-wrap">
-          {(['Economy', 'Society', 'Politics'] as IndicatorCategory[]).map(category => (
-            <motion.button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className={`px-6 py-3 rounded-xl transition-all duration-200 font-semibold flex items-center gap-2 ${
-                selectedCategory === category
-                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/30'
-                  : 'bg-slate-800/60 text-slate-300 hover:bg-slate-700/60 border border-slate-700/50 hover:border-slate-600'
-              }`}
-            >
-              {category === 'Economy' && <DollarSign className="w-5 h-5" />}
-              {category === 'Society' && <Users className="w-5 h-5" />}
-              {category === 'Politics' && <Shield className="w-5 h-5" />}
-              {category}
-            </motion.button>
-          ))}
-        </div>
-
-        {/* Modern Indicator Cards Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-3">
-          <AnimatePresence mode="wait">
-            {INDICATORS_BY_CATEGORY[selectedCategory].map((ind, index) => (
-              <motion.button
-                key={ind.slug}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ delay: index * 0.05 }}
-                whileHover={{ scale: 1.05, y: -2 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setSelectedIndicator(ind.slug)}
-                className={`p-4 rounded-xl transition-all duration-200 text-left border-2 ${
-                  selectedIndicator === ind.slug
-                    ? 'text-white border-transparent shadow-lg'
-                    : 'bg-slate-800/60 text-slate-300 border-slate-700/50 hover:border-slate-600 hover:bg-slate-700/60'
-                }`}
-                style={selectedIndicator === ind.slug ? {
-                  background: `linear-gradient(135deg, ${ind.color} 0%, ${ind.color}dd 100%)`
-                } : {}}
-              >
-                <div className={`flex items-center gap-3 mb-2 ${selectedIndicator === ind.slug ? 'text-white' : 'text-slate-400'}`}>
-                  {getIndicatorIconComponent(ind.slug)}
-                  <span className={`font-semibold text-sm ${selectedIndicator === ind.slug ? 'text-white' : 'text-slate-300'}`}>
-                    {ind.name}
-                  </span>
-                </div>
-                {selectedIndicator === ind.slug && (
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: '100%' }}
-                    className="h-1 bg-white/30 rounded-full mt-2"
-                  />
-                )}
-              </motion.button>
-            ))}
-          </AnimatePresence>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setSelectedIso3(null); setSelectedCountryName(null); setPrediction(null); setInsights(null); }}
+            className="px-2.5 py-1.5 text-[11px] font-medium text-slate-400 hover:text-white rounded-lg transition-all flex items-center gap-1"
+            style={{ background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(71, 85, 105, 0.3)' }}
+          >
+            <X className="w-3 h-3" /> Change
+          </button>
+          <button
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); loadInsights(); }}
+            disabled={!prediction || loadingInsights}
+            className="px-2.5 py-1.5 rounded-lg text-[11px] text-white font-medium flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            style={{ background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.35), rgba(139, 92, 246, 0.25))', border: '1px solid rgba(59, 130, 246, 0.3)' }}
+          >
+            {loadingInsights ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+            {loadingInsights ? 'Analyzing...' : 'AI Insights'}
+          </button>
         </div>
       </div>
 
+      {/* ── Category Tabs ───────────────────────────────────── */}
+      <div className="flex gap-1 mb-4 p-1 rounded-lg" style={{ background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(71, 85, 105, 0.2)' }}>
+        {(['Economy', 'Society', 'Politics'] as IndicatorCategory[]).map(category => (
+          <button
+            key={category}
+            onClick={() => setSelectedCategory(category)}
+            className={`flex-1 px-3 py-2 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
+              selectedCategory === category ? 'text-white' : 'text-slate-500 hover:text-slate-300'
+            }`}
+            style={selectedCategory === category ? {
+              background: 'rgba(59, 130, 246, 0.15)',
+              boxShadow: '0 0 12px rgba(59, 130, 246, 0.1)',
+            } : {}}
+          >
+            {category === 'Economy' && <DollarSign className="w-3.5 h-3.5" />}
+            {category === 'Society' && <Users className="w-3.5 h-3.5" />}
+            {category === 'Politics' && <Shield className="w-3.5 h-3.5" />}
+            {category}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Indicator Picker ────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5">
+        {INDICATORS_BY_CATEGORY[selectedCategory].map((ind) => {
+          const isActive = selectedIndicator === ind.slug;
+          return (
+            <button
+              key={ind.slug}
+              onClick={() => setSelectedIndicator(ind.slug)}
+              className="px-3 py-2 rounded-lg text-left transition-all text-xs font-medium"
+              style={{
+                background: isActive ? `${ind.color}18` : 'rgba(15, 23, 42, 0.8)',
+                border: `1px solid ${isActive ? `${ind.color}40` : 'rgba(71, 85, 105, 0.2)'}`,
+                color: isActive ? '#ffffff' : '#94a3b8',
+              }}
+            >
+              <span className="flex items-center gap-1.5">
+                <span style={{ color: isActive ? ind.color : '#64748b' }} className="flex-shrink-0">
+                  {getIndicatorIconComponent(ind.slug)}
+                </span>
+                {ind.name}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Error State ─────────────────────────────────────── */}
       {error && (
         <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-4 p-4 bg-red-900/20 border border-red-500/50 rounded-lg text-red-400 flex items-start gap-2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="mb-4 px-4 py-3 rounded-lg flex items-center gap-2.5 text-xs"
+          style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)' }}
         >
-          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="font-semibold">Error</p>
-            <p className="text-sm">{error}</p>
-          </div>
+          <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+          <span className="text-red-300">{error}</span>
         </motion.div>
       )}
 
       {loading ? (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center py-16"
-        >
-          <div className="relative inline-block">
-            <div className="w-16 h-16 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto mb-6" />
-            <Sparkles className="w-8 h-8 text-blue-400 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
-          </div>
-          <p className="text-slate-300 text-lg font-medium">Generating prediction...</p>
-          <p className="text-slate-500 text-sm mt-2">Analyzing historical data and trends</p>
-        </motion.div>
+        <div className="flex items-center justify-center gap-3 py-20">
+          <Loader2 className="w-5 h-5 text-blue-400 animate-spin" />
+          <span className="text-sm text-slate-400">Analyzing historical data...</span>
+        </div>
       ) : prediction ? (
         <>
-          {/* Modern Statistics Cards */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"
-          >
-            {/* Trend Card */}
-            <motion.div
-              whileHover={{ y: -4, scale: 1.02 }}
-              className="relative bg-gradient-to-br from-blue-600/20 to-blue-800/20 p-6 rounded-2xl border border-blue-500/30 backdrop-blur-sm overflow-hidden group"
-            >
-              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
-              <div className="relative">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="text-slate-400 text-sm font-medium uppercase tracking-wide">Trend</div>
-                  <div className="p-2 bg-blue-500/20 rounded-lg">
-                    {getTrendIcon()}
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="text-white font-bold text-2xl capitalize">
-                    {prediction.trend.direction}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-blue-300 text-sm">
-                  <TrendingUp className="w-4 h-4" />
-                  <span>{Math.abs(prediction.trend.rate).toFixed(2)}% annual</span>
-                </div>
+          {/* ── Key Metrics Row ────────────────────────────────── */}
+          <div className="grid grid-cols-3 gap-3 mb-5">
+            {/* Trend */}
+            <div className="rounded-lg p-4" style={{ background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(71, 85, 105, 0.2)' }}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium">Trend</span>
+                {getTrendIcon()}
               </div>
-            </motion.div>
-            
-            {/* Model Quality Card */}
-            <motion.div
-              whileHover={{ y: -4, scale: 1.02 }}
-              className="relative bg-gradient-to-br from-purple-600/20 to-purple-800/20 p-6 rounded-2xl border border-purple-500/30 backdrop-blur-sm overflow-hidden group"
-            >
-              <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
-              <div className="relative">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="text-slate-400 text-sm font-medium uppercase tracking-wide">Model Quality</div>
-                  <div className="p-2 bg-purple-500/20 rounded-lg">
-                    <Award className="w-5 h-5 text-purple-300" />
-                  </div>
-                </div>
-                <div className="text-white font-bold text-3xl mb-2">
-                  {(prediction.trend.rSquared * 100).toFixed(1)}%
-                </div>
-                <div className="text-purple-300 text-sm flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4" />
-                  <span>R² score</span>
-                </div>
+              <div className="text-white font-bold text-lg capitalize mb-0.5">{prediction.trend.direction}</div>
+              <div className="text-xs text-slate-400">{Math.abs(prediction.trend.rate).toFixed(2)}% / year</div>
+            </div>
+
+            {/* R² */}
+            <div className="rounded-lg p-4" style={{ background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(71, 85, 105, 0.2)' }}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium">Model Fit</span>
+                <BarChart3 className="w-4 h-4 text-purple-400" />
               </div>
-            </motion.div>
-            
-            {/* Projection Card */}
-            <motion.div
-              whileHover={{ y: -4, scale: 1.02 }}
-              className="relative bg-gradient-to-br from-green-600/20 to-green-800/20 p-6 rounded-2xl border border-green-500/30 backdrop-blur-sm overflow-hidden group"
-            >
-              <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
-              <div className="relative">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="text-slate-400 text-sm font-medium uppercase tracking-wide">Projected (5 years)</div>
-                  <div className="p-2 bg-green-500/20 rounded-lg">
-                    <Target className="w-5 h-5 text-green-300" />
-                  </div>
-                </div>
-                <div className="text-white font-bold text-2xl mb-2">
-                  {formatValue(prediction.statistics.projectedValue)}
-                </div>
-                <div className="text-green-300 text-sm mb-3">
-                  vs {formatValue(prediction.statistics.lastValue)} now
-                </div>
-                {prediction.statistics.optimisticValue !== undefined && prediction.statistics.pessimisticValue !== undefined && (
-                  <div className="pt-3 border-t border-green-500/20">
-                    <div className="text-slate-400 text-xs mb-1">Range</div>
-                    <div className="text-green-200 text-sm font-medium">
-                      {formatValue(prediction.statistics.pessimisticValue)} - {formatValue(prediction.statistics.optimisticValue)}
-                    </div>
-                  </div>
+              <div className="text-white font-bold text-lg mb-0.5">{(prediction.trend.rSquared * 100).toFixed(1)}%</div>
+              <div className="text-xs text-slate-400">R² score</div>
+            </div>
+
+            {/* Projection */}
+            <div className="rounded-lg p-4" style={{ background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(71, 85, 105, 0.2)' }}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium">5-Year</span>
+                <Target className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div className="text-white font-bold text-lg mb-0.5">{formatValue(prediction.statistics.projectedValue)}</div>
+              <div className="text-xs text-slate-400">
+                from {formatValue(prediction.statistics.lastValue)}
+                {prediction.statistics.optimisticValue != null && prediction.statistics.pessimisticValue != null && (
+                  <span className="text-slate-500"> · {formatValue(prediction.statistics.pessimisticValue)}–{formatValue(prediction.statistics.optimisticValue)}</span>
                 )}
               </div>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
 
-          {/* Modern Chart Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+          {/* ── Chart ───────────────────────────────────────── */}
+          <div
             id="predictive-charts-section"
-            className="bg-gradient-to-br from-slate-800/60 to-slate-900/60 p-6 md:p-8 rounded-2xl mb-6 border border-slate-700/50 backdrop-blur-sm shadow-xl"
+            className="rounded-xl mb-5 overflow-hidden"
+            style={{ background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(71, 85, 105, 0.2)' }}
           >
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: '1px solid rgba(71, 85, 105, 0.15)' }}>
               <div>
-                <h3 className="text-xl font-bold text-white mb-1 flex items-center gap-2">
-                  <BarChart3 className="w-6 h-6 text-blue-400" />
-                  Historical Data + 5-Year Projection
+                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-blue-400" />
+                  {INDICATORS_BY_CATEGORY[selectedCategory].find(ind => ind.slug === selectedIndicator)?.name || 'Indicator'} — Forecast
                 </h3>
-                <p className="text-slate-400 text-sm">
-                  {INDICATORS_BY_CATEGORY[selectedCategory].find(ind => ind.slug === selectedIndicator)?.name || 'Indicator'} forecast
-                </p>
+              </div>
+              <div className="flex items-center gap-4 text-[10px] text-slate-500">
+                <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-blue-400 rounded inline-block" /> Historical</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-0.5 rounded inline-block" style={{ borderBottom: '1.5px dashed #60a5fa' }} /> Projection</span>
+                {scenarios.optimistic.length > 0 && (
+                  <span className="flex items-center gap-1"><span className="w-3 h-1.5 rounded inline-block" style={{ background: 'rgba(59, 130, 246, 0.15)' }} /> Range</span>
+                )}
               </div>
             </div>
-            <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700/30">
+            <div className="px-3 py-2">
               <TimeSeriesChart
                 data={combinedData}
                 indicatorName={INDICATORS_BY_CATEGORY[selectedCategory].find(ind => ind.slug === selectedIndicator)?.name || ''}
-                height={400}
+                height={350}
                 color={INDICATORS_BY_CATEGORY[selectedCategory].find(ind => ind.slug === selectedIndicator)?.color || '#3b82f6'}
                 projectionStartYear={currentYear + 1}
                 scenarios={scenarios}
               />
             </div>
-            <div className="mt-6 flex items-center gap-6 text-sm flex-wrap bg-slate-900/30 p-4 rounded-xl border border-slate-700/30">
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-1 bg-blue-400 rounded"></div>
-                <span className="text-slate-300">Historical</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-1 bg-blue-400 border-dashed border-t-2"></div>
-                <span className="text-slate-300">Base Projection</span>
-              </div>
-              {scenarios.optimistic.length > 0 && scenarios.pessimistic.length > 0 && (
-                <>
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-2 bg-green-500/40 rounded"></div>
-                    <span className="text-slate-300">Optimistic</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-2 bg-red-500/40 rounded"></div>
-                    <span className="text-slate-300">Pessimistic</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-2 bg-blue-500/20 rounded"></div>
-                    <span className="text-slate-300">Uncertainty Range</span>
-                  </div>
-                </>
-              )}
-            </div>
-          </motion.div>
+          </div>
 
-          {/* Modern AI Insights Section */}
+          {/* ── AI Insights ──────────────────────────────────── */}
           <AnimatePresence>
             {insights && (
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="bg-gradient-to-br from-yellow-600/10 via-purple-600/10 to-pink-600/10 p-6 md:p-8 rounded-2xl border border-yellow-500/20 backdrop-blur-sm shadow-xl"
+                exit={{ opacity: 0 }}
+                className="rounded-xl overflow-hidden"
+                style={{ background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(71, 85, 105, 0.2)' }}
               >
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="p-3 bg-gradient-to-br from-yellow-500/20 to-purple-500/20 rounded-xl">
-                    <Sparkles className="w-6 h-6 text-yellow-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-bold text-white">AI-Generated Insights</h3>
-                    <p className="text-slate-400 text-sm">Powered by advanced AI analysis</p>
-                  </div>
+                <div className="flex items-center gap-2 px-5 py-3" style={{ borderBottom: '1px solid rgba(71, 85, 105, 0.15)' }}>
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <h3 className="text-sm font-semibold text-white">AI Insights</h3>
+                  <span className="text-[10px] text-slate-500 ml-auto">Powered by AI</span>
                 </div>
-                
-                <div className="space-y-6">
-                  {/* Summary Card */}
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="bg-slate-800/60 p-6 rounded-xl border border-slate-700/50"
-                  >
-                    <h4 className="text-white font-bold text-lg mb-3 flex items-center gap-2">
-                      <FileText className="w-5 h-5 text-blue-400" />
-                      Executive Summary
+
+                <div className="p-5 space-y-4">
+                  {/* Summary */}
+                  <div>
+                    <h4 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-blue-400" /> Summary
                     </h4>
-                    <p className="text-slate-300 leading-relaxed text-base">{insights.summary}</p>
-                  </motion.div>
-                  
-                  {/* Key Findings Card */}
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="bg-slate-800/60 p-6 rounded-xl border border-slate-700/50"
-                  >
-                    <h4 className="text-white font-bold text-lg mb-4 flex items-center gap-2">
-                      <Lightbulb className="w-5 h-5 text-yellow-400" />
-                      Key Findings
-                    </h4>
-                    <div className="space-y-3">
-                      {insights.keyFindings.map((finding, i) => (
-                        <motion.div
-                          key={i}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.3 + i * 0.1 }}
-                          className="flex items-start gap-3 p-3 bg-slate-900/50 rounded-lg border-l-4 border-yellow-500/50"
-                        >
-                          <ChevronRight className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
-                          <p className="text-slate-300 leading-relaxed flex-1">{finding}</p>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </motion.div>
-                  
-                  {/* Risks & Opportunities Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <motion.div
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.4 }}
-                      className="bg-gradient-to-br from-red-900/20 to-red-800/10 p-6 rounded-xl border border-red-500/30"
-                    >
-                      <h4 className="text-red-400 font-bold text-lg mb-4 flex items-center gap-2">
-                        <AlertCircle className="w-5 h-5" />
-                        Potential Risks
-                      </h4>
-                      <div className="space-y-3">
-                        {insights.risks.map((risk, i) => (
-                          <motion.div
-                            key={i}
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: 0.5 + i * 0.1 }}
-                            className="p-3 bg-red-900/20 rounded-lg border border-red-500/20"
-                          >
-                            <p className="text-slate-300 text-sm leading-relaxed">{risk}</p>
-                          </motion.div>
-                        ))}
-                      </div>
-                    </motion.div>
-                    
-                    <motion.div
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.4 }}
-                      className="bg-gradient-to-br from-green-900/20 to-green-800/10 p-6 rounded-xl border border-green-500/30"
-                    >
-                      <h4 className="text-green-400 font-bold text-lg mb-4 flex items-center gap-2">
-                        <TrendingUp className="w-5 h-5" />
-                        Opportunities
-                      </h4>
-                      <div className="space-y-3">
-                        {insights.opportunities.map((opp, i) => (
-                          <motion.div
-                            key={i}
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: 0.5 + i * 0.1 }}
-                            className="p-3 bg-green-900/20 rounded-lg border border-green-500/20"
-                          >
-                            <p className="text-slate-300 text-sm leading-relaxed">{opp}</p>
-                          </motion.div>
-                        ))}
-                      </div>
-                    </motion.div>
+                    <p className="text-slate-300 text-sm leading-relaxed">{insights.summary}</p>
                   </div>
-                  
-                  {/* Contextual Analysis Card */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6 }}
-                    className="bg-slate-800/60 p-6 rounded-xl border border-slate-700/50"
-                  >
-                    <h4 className="text-white font-bold text-lg mb-3 flex items-center gap-2">
-                      <Globe className="w-5 h-5 text-purple-400" />
-                      Contextual Analysis
-                    </h4>
-                    <p className="text-slate-300 leading-relaxed whitespace-pre-line">{insights.contextualAnalysis}</p>
-                  </motion.div>
+
+                  {/* Key Findings */}
+                  {insights.keyFindings.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <Lightbulb className="w-3.5 h-3.5 text-amber-400" /> Key Findings
+                      </h4>
+                      <div className="space-y-2">
+                        {insights.keyFindings.map((finding, i) => (
+                          <div key={i} className="flex items-start gap-2 px-3 py-2 rounded-lg text-sm text-slate-300" style={{ background: 'rgba(15, 23, 42, 0.8)', borderLeft: '2px solid rgba(234, 179, 8, 0.3)' }}>
+                            <ChevronRight className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
+                            <span className="leading-relaxed">{finding}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Risks & Opportunities */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {insights.risks.length > 0 && (
+                      <div className="rounded-lg p-4" style={{ background: 'rgba(239, 68, 68, 0.04)', border: '1px solid rgba(239, 68, 68, 0.1)' }}>
+                        <h4 className="text-xs font-medium text-red-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                          <AlertCircle className="w-3.5 h-3.5" /> Risks
+                        </h4>
+                        <ul className="space-y-1.5">
+                          {insights.risks.map((risk, i) => (
+                            <li key={i} className="text-xs text-slate-400 leading-relaxed pl-3" style={{ borderLeft: '1px solid rgba(239, 68, 68, 0.2)' }}>{risk}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {insights.opportunities.length > 0 && (
+                      <div className="rounded-lg p-4" style={{ background: 'rgba(16, 185, 129, 0.04)', border: '1px solid rgba(16, 185, 129, 0.1)' }}>
+                        <h4 className="text-xs font-medium text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                          <TrendingUp className="w-3.5 h-3.5" /> Opportunities
+                        </h4>
+                        <ul className="space-y-1.5">
+                          {insights.opportunities.map((opp, i) => (
+                            <li key={i} className="text-xs text-slate-400 leading-relaxed pl-3" style={{ borderLeft: '1px solid rgba(16, 185, 129, 0.2)' }}>{opp}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Context */}
+                  {insights.contextualAnalysis && (
+                    <div>
+                      <h4 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <Globe className="w-3.5 h-3.5 text-purple-400" /> Deep Analysis
+                      </h4>
+                      <p className="text-xs text-slate-400 leading-relaxed whitespace-pre-line">{insights.contextualAnalysis}</p>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}

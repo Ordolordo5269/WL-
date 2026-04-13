@@ -1,5 +1,10 @@
+import mapboxgl from 'mapbox-gl';
 import type { Map as MapboxMap, GeoJSONSource } from 'mapbox-gl';
 import type { LiveActivityLayerId } from './types';
+
+// Track registered click handlers to avoid duplicates
+const _registeredClicks = new Set<string>();
+let _volcanoClickPopup: mapboxgl.Popup | null = null;
 
 /**
  * Per-layer paint/layout definitions.
@@ -179,5 +184,28 @@ export function setLiveActivityLayer(
       source: sourceId,
       paint: style.paint,
     });
+  }
+
+  // Register click handler for active-volcanoes (VIEW AREA → NASA Photos)
+  if (id === 'active-volcanoes' && !_registeredClicks.has(layerId)) {
+    _registeredClicks.add(layerId);
+    _volcanoClickPopup = new mapboxgl.Popup({ closeButton: true, closeOnClick: true, offset: 12 });
+    map.on('click', layerId, (e: mapboxgl.MapMouseEvent) => {
+      if (e.features?.length) {
+        const props = e.features[0].properties || {};
+        const coords = (e.features[0].geometry as any).coordinates.slice() as [number, number];
+        const name = props.name || props.volcano_name || 'Unknown';
+        const alert = props.alert_level || 'Normal';
+        const alertColor = alert === 'Warning' ? '#ff0000' : alert === 'Watch' ? '#ff6600' : '#ffcc00';
+        const html = `<div style="font-family:monospace;font-size:12px;line-height:1.5;min-width:150px">
+          <div style="font-size:14px;font-weight:700;color:#ff6600;margin-bottom:4px">${String(name).substring(0, 80)}</div>
+          <span style="font-size:10px;padding:2px 6px;border-radius:3px;background:${alertColor};color:#fff;font-weight:700">${String(alert).toUpperCase()}</span>
+          <div style="margin-top:6px;border-top:1px solid rgba(255,255,255,0.1);padding-top:6px"><button class="eg-view-area-btn" onclick="event.stopPropagation();document.__wl_map_comp?.triggerEarthGallery?.('recon',${coords[1]},${coords[0]})">VIEW AREA</button></div>
+        </div>`;
+        _volcanoClickPopup!.setLngLat(coords).setHTML(html).addTo(map);
+      }
+    });
+    map.on('mouseenter', layerId, () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', layerId, () => { map.getCanvas().style.cursor = ''; });
   }
 }

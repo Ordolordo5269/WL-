@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { Prisma, PrismaClient } from '@prisma/client';
+import { getSourceMetadata } from './lib/source-metadata';
 
 const prisma = new PrismaClient();
 
@@ -175,12 +176,15 @@ async function ingestIndicatorForCountry(
     return { count: 0 };
   }
 
+  const { sourceVersion, sourceReleaseDate } = getSourceMetadata('World Bank');
   const createPayload = series.map((point) => ({
     entityId,
     indicatorCode: spec.code,
     year: point.year,
     value: point.value !== null ? new Prisma.Decimal(point.value) : null,
     source: 'World Bank',
+    sourceVersion,
+    sourceReleaseDate,
   }));
 
   const batches = chunk(createPayload, CREATE_BATCH_SIZE).map((batch) =>

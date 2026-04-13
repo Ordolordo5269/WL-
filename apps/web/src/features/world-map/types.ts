@@ -44,6 +44,7 @@ export interface MapRefType {
   setLedHaloSpeed?: (ms: number) => void;
   setLiveActivityLayer?: (id: string, enabled: boolean, data?: GeoJSON.FeatureCollection | null, extra?: any) => void;
   setConflictLayer?: (enabled: boolean, data: any | null, onEventClick?: (event: any) => void) => void;
+  setTectonicPlatesEnabled?: (enabled: boolean) => void;
   setEarthquakeTrackingLayers?: (enabled: boolean) => void;
   updateEarthquakeData?: (features: any[]) => void;
   setLightningTrackingLayers?: (enabled: boolean) => void;

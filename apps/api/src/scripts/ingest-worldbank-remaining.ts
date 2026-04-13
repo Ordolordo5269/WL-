@@ -4,15 +4,15 @@
  * Uses the same fast bulk SQL INSERT ON CONFLICT pattern.
  */
 import axios from 'axios';
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import { bulkUpsertIndicatorValues } from './lib/bulk-upsert';
 
 const prisma = new PrismaClient();
 
 const WB_BASE = 'https://api.worldbank.org/v2';
 const CURRENT_YEAR = new Date().getUTCFullYear();
 const TARGET_LATEST_YEAR = CURRENT_YEAR - 1;
-const BATCH_SIZE = 500;
 
 const REMAINING_INDICATORS: Array<{ code: string; wb: string; name: string; unit?: string | null; section: string }> = [
   // Demographics
@@ -142,29 +142,6 @@ async function fetchBulkIndicator(wbCode: string): Promise<Array<{ iso3: string;
   return results;
 }
 
-async function bulkUpsert(rows: Array<{ id: string; entityId: string; indicatorCode: string; year: number; value: number; source: string; meta: any }>) {
-  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-    const batch = rows.slice(i, i + BATCH_SIZE);
-
-    const values = batch.map(r => {
-      const metaJson = r.meta ? JSON.stringify(r.meta).replace(/'/g, "''") : null;
-      const valStr = r.value.toString();
-      return `('${r.id}', '${r.entityId}', '${r.indicatorCode}', ${r.year}, ${valStr}, '${r.source}', ${metaJson ? `'${metaJson}'::jsonb` : 'NULL'}, NOW())`;
-    }).join(',\n');
-
-    await prisma.$executeRawUnsafe(`
-      INSERT INTO "IndicatorValue" ("id", "entityId", "indicatorCode", "year", "value", "source", "meta", "revisedAt")
-      VALUES ${values}
-      ON CONFLICT ("entityId", "indicatorCode", "year")
-      DO UPDATE SET
-        "value" = EXCLUDED."value",
-        "source" = EXCLUDED."source",
-        "meta" = COALESCE(EXCLUDED."meta", "IndicatorValue"."meta"),
-        "revisedAt" = NOW()
-    `);
-  }
-}
-
 async function main() {
   console.log('\n=== WorldLore: Remaining Indicators Ingestion (Bulk SQL) ===\n');
   console.log(`Target year: ${TARGET_LATEST_YEAR}`);
@@ -228,7 +205,7 @@ async function main() {
         }
       }
 
-      await bulkUpsert(upsertRows);
+      await bulkUpsertIndicatorValues(prisma, upsertRows);
       totalUpserted += upsertRows.length;
       const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
       console.log(`  Upserted ${upsertRows.length} rows for ${byIso3.size} countries (${elapsed}s)\n`);

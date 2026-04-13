@@ -42,42 +42,42 @@ export default function DefenseSection({ data, isLoading, error }: DefenseSectio
           <div className="metric-item">
             <div className="metric-icon small"><DollarSign className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">Military spend (US$) {data.militaryExpenditureUsd.year ? <span className="ml-2 text-[10px] text-slate-400">{data.militaryExpenditureUsd.year}</span> : null}</div>
+              <div className="metric-label">Military Spending {data.militaryExpenditureUsd.year ? <span className="ml-2 text-[10px] text-slate-400">{data.militaryExpenditureUsd.year}</span> : null}</div>
               <div className="metric-value">{s.formatCurrency(data.militaryExpenditureUsd.value)}</div>
             </div>
           </div>
           <div className="metric-item">
             <div className="metric-icon small"><Shield className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">Military spend (% GDP) {data.militaryExpenditurePctGdp.year ? <span className="ml-2 text-[10px] text-slate-400">{data.militaryExpenditurePctGdp.year}</span> : null}</div>
+              <div className="metric-label">Military (% GDP) {data.militaryExpenditurePctGdp.year ? <span className="ml-2 text-[10px] text-slate-400">{data.militaryExpenditurePctGdp.year}</span> : null}</div>
               <div className="metric-value">{s.formatPercent(data.militaryExpenditurePctGdp.value)}</div>
             </div>
           </div>
           <div className="metric-item">
             <div className="metric-icon small"><Users className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">Armed forces personnel {data.armedForcesPersonnelTotal.year ? <span className="ml-2 text-[10px] text-slate-400">{data.armedForcesPersonnelTotal.year}</span> : null}</div>
+              <div className="metric-label">Active Personnel {data.armedForcesPersonnelTotal.year ? <span className="ml-2 text-[10px] text-slate-400">{data.armedForcesPersonnelTotal.year}</span> : null}</div>
               <div className="metric-value">{s.formatNumber(data.armedForcesPersonnelTotal.value)}</div>
             </div>
           </div>
           <div className="metric-item">
             <div className="metric-icon small"><ArrowDownToLine className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">Arms imports (TIV) {data.armsImportsTiv.year ? <span className="ml-2 text-[10px] text-slate-400">{data.armsImportsTiv.year}</span> : null}</div>
+              <div className="metric-label">Arms Imports {data.armsImportsTiv.year ? <span className="ml-2 text-[10px] text-slate-400">{data.armsImportsTiv.year}</span> : null}</div>
               <div className="metric-value">{s.formatNumber(data.armsImportsTiv.value)}</div>
             </div>
           </div>
           <div className="metric-item">
             <div className="metric-icon small"><ArrowUpFromLine className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">Arms exports (TIV) {data.armsExportsTiv.year ? <span className="ml-2 text-[10px] text-slate-400">{data.armsExportsTiv.year}</span> : null}</div>
+              <div className="metric-label">Arms Exports {data.armsExportsTiv.year ? <span className="ml-2 text-[10px] text-slate-400">{data.armsExportsTiv.year}</span> : null}</div>
               <div className="metric-value">{s.formatNumber(data.armsExportsTiv.value)}</div>
             </div>
           </div>
           <div className="metric-item">
             <div className="metric-icon small"><Skull className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">Battle-related deaths {data.battleRelatedDeaths.year ? <span className="ml-2 text-[10px] text-slate-400">{data.battleRelatedDeaths.year}</span> : null}</div>
+              <div className="metric-label">Combat Deaths {data.battleRelatedDeaths.year ? <span className="ml-2 text-[10px] text-slate-400">{data.battleRelatedDeaths.year}</span> : null}</div>
               <div className="metric-value">{s.formatNumber(data.battleRelatedDeaths.value)}</div>
             </div>
           </div>
@@ -85,7 +85,7 @@ export default function DefenseSection({ data, isLoading, error }: DefenseSectio
             <div className="metric-item">
               <div className="metric-icon small"><Percent className="w-4 h-4" /></div>
               <div className="metric-content">
-                <div className="metric-label">Armed forces (% labor) {data.armedForcesPctLaborForce.year ? <span className="ml-2 text-[10px] text-slate-400">{data.armedForcesPctLaborForce.year}</span> : null}</div>
+                <div className="metric-label">Armed Forces (% of labor force) {data.armedForcesPctLaborForce.year ? <span className="ml-2 text-[10px] text-slate-400">{data.armedForcesPctLaborForce.year}</span> : null}</div>
                 <div className="metric-value">{s.formatPercent(data.armedForcesPctLaborForce.value)}</div>
               </div>
             </div>
@@ -94,7 +94,7 @@ export default function DefenseSection({ data, isLoading, error }: DefenseSectio
             <div className="metric-item">
               <div className="metric-icon small"><Landmark className="w-4 h-4" /></div>
               <div className="metric-content">
-                <div className="metric-label">Military spend (% govt) {data.militaryExpenditurePctGovt.year ? <span className="ml-2 text-[10px] text-slate-400">{data.militaryExpenditurePctGovt.year}</span> : null}</div>
+                <div className="metric-label">Military (% of government budget) {data.militaryExpenditurePctGovt.year ? <span className="ml-2 text-[10px] text-slate-400">{data.militaryExpenditurePctGovt.year}</span> : null}</div>
                 <div className="metric-value">{s.formatPercent(data.militaryExpenditurePctGovt.value)}</div>
               </div>
             </div>

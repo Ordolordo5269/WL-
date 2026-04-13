@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronDown, Globe, Banknote, Landmark, Shield, Users, Globe2, Cpu, Palette, X, Maximize2, Minimize2, TrendingUp, Star, Gem, Leaf, HeartPulse, Network } from 'lucide-react';
+import { ChevronDown, Globe, Banknote, Landmark, Shield, Users, Globe2, Cpu, Palette, X, Maximize2, Minimize2, TrendingUp, Star, Gem, Leaf, HeartPulse, Network, LineChart } from 'lucide-react';
 import { useEconomyData } from './hooks/useEconomyData';
 import { useCountryBasicInfo } from './hooks/useCountryBasicInfo';
 import EconomySection from './sections/EconomySection';
@@ -26,6 +26,7 @@ import HealthSection from './sections/HealthSection';
 import { useInfrastructureData } from './hooks/useInfrastructureData';
 import InfrastructureSection from './sections/InfrastructureSection';
 import HistoricalTrendsSection from './sections/HistoricalTrendsSection';
+import PredictionsSection from './sections/PredictionsSection';
 import CountryHeaderSticky from './sections/CountryHeaderSticky';
 import CountryKPIs from './sections/CountryKPIs';
 import CountryStaticData from './sections/CountryStaticData';
@@ -223,6 +224,7 @@ export default function CountrySidebar({ isOpen, onClose, countryName, onNavigat
   const shouldLoadHealth = expanded || openCategories.has('Health');
   const shouldLoadInfrastructure = expanded || openCategories.has('Infrastructure & Connectivity');
   const shouldLoadCulture = expanded || openCategories.has('Culture');
+  const shouldLoadPredictions = expanded || openCategories.has('Predictions');
   
   // Load data only when needed (lazy loading) - use debounced country name
   const { economyData, isLoading: isEconomyLoading, error: economyError } = useEconomyData(iso3, debouncedCountryName, shouldLoadEconomy);
@@ -267,6 +269,15 @@ export default function CountrySidebar({ isOpen, onClose, countryName, onNavigat
       items: [
         'GDP evolution', 'GDP per capita', 'Inflation trends', 'GINI index',
         'Exports/Imports', 'Unemployment rate', 'External debt'
+      ]
+    },
+    {
+      icon: <LineChart className="text-violet-400" />,
+      title: 'Predictions',
+      items: [
+        'GDP forecast', 'GDP per capita forecast', 'Inflation forecast',
+        'Life expectancy forecast', 'Political stability forecast',
+        'Unemployment forecast', 'Population growth forecast'
       ]
     },
     {
@@ -549,6 +560,16 @@ export default function CountrySidebar({ isOpen, onClose, countryName, onNavigat
                       'Historical Trends',
                       HistoricalTrendsSection,
                       { iso3, countryName: debouncedCountryName || countryName, fetchSocietyIndicatorSeries: fetchSocietyIndicatorSeries },
+                      true
+                    )}
+                  </div>
+
+                  {/* Zone: Predictions (Full Width) */}
+                  <div className="bento-zone-commodities">
+                    {renderCategorySection(
+                      'Predictions',
+                      PredictionsSection,
+                      { iso3, isLoading: false, error: null },
                       true
                     )}
                   </div>
@@ -853,6 +874,15 @@ export default function CountrySidebar({ isOpen, onClose, countryName, onNavigat
                     'Historical Trends',
                     HistoricalTrendsSection,
                     { iso3, countryName: debouncedCountryName || countryName }
+                  );
+                }
+
+                // Predictions section
+                if (category.title === 'Predictions') {
+                  return renderCategorySection(
+                    'Predictions',
+                    PredictionsSection,
+                    { iso3, isLoading: false, error: null }
                   );
                 }
 
