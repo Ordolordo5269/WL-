@@ -2,43 +2,12 @@ import { motion } from 'framer-motion';
 import { AlertCircle, Landmark, UserCircle2, Gavel, Shield, ShieldAlert, AlertTriangle, Swords, Ban, CalendarDays } from 'lucide-react';
 import { politicsService } from '../services/politics-service';
 import type { TPoliticsData } from '../services/politics-service';
+import { Badge, Bar, Detail } from '../components/BadgeDetail';
 
 interface PoliticsSectionProps {
   data: TPoliticsData | null;
   isLoading: boolean;
   error: string | null;
-}
-
-/* ── UI Components ── */
-
-function Badge({ text, level }: { text: string; level: 'good' | 'warning' | 'danger' }) {
-  const c = {
-    good:    { bg: 'rgba(16, 185, 129, 0.12)', color: '#34d399', border: 'rgba(16, 185, 129, 0.25)' },
-    warning: { bg: 'rgba(245, 158, 11, 0.12)', color: '#fbbf24', border: 'rgba(245, 158, 11, 0.25)' },
-    danger:  { bg: 'rgba(239, 68, 68, 0.12)', color: '#f87171', border: 'rgba(239, 68, 68, 0.25)' },
-  }[level];
-  return (
-    <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-semibold" style={{ background: c.bg, color: c.color, border: `1px solid ${c.border}` }}>
-      {text}
-    </span>
-  );
-}
-
-function Bar({ pct, color }: { pct: number; color: string }) {
-  return (
-    <div className="w-full h-1 rounded-full overflow-hidden mt-1" style={{ background: 'rgba(30, 41, 59, 0.5)' }}>
-      <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(pct, 100)}%`, background: color }} />
-    </div>
-  );
-}
-
-function Detail({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-[10px] text-slate-500">{label}</span>
-      <span className="text-[11px] text-slate-400">{value}</span>
-    </div>
-  );
 }
 
 /* ── Interpreters: turn raw numbers into human language ── */

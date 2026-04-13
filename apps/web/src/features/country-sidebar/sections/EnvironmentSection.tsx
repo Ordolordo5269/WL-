@@ -2,30 +2,7 @@ import { motion } from 'framer-motion';
 import { AlertCircle, AlertTriangle, Cloud, TreePine, Zap, Droplets, Shield, Flame, Wind, Globe, Fuel } from 'lucide-react';
 import { environmentService } from '../services/environment-service';
 import type { TEnvironmentData } from '../services/environment-service';
-
-/* ── Badge helpers (consistent with Politics section) ── */
-
-function Badge({ text, level }: { text: string; level: 'good' | 'warning' | 'danger' }) {
-  const c = {
-    good:    { bg: 'rgba(16, 185, 129, 0.12)', color: '#34d399', border: 'rgba(16, 185, 129, 0.25)' },
-    warning: { bg: 'rgba(245, 158, 11, 0.12)', color: '#fbbf24', border: 'rgba(245, 158, 11, 0.25)' },
-    danger:  { bg: 'rgba(239, 68, 68, 0.12)', color: '#f87171', border: 'rgba(239, 68, 68, 0.25)' },
-  }[level];
-  return (
-    <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-semibold" style={{ background: c.bg, color: c.color, border: `1px solid ${c.border}` }}>
-      {text}
-    </span>
-  );
-}
-
-function Detail({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-[10px] text-slate-500">{label}</span>
-      <span className="text-[11px] text-slate-400">{value}</span>
-    </div>
-  );
-}
+import { Badge, Detail } from '../components/BadgeDetail';
 
 function interpretClimateRisk(ndGainIndex: number | null, wriScore: number | null): { badge: string; level: 'good' | 'warning' | 'danger'; desc: string } {
   // Prefer ND-GAIN if available. ND-GAIN 0-100: higher = more prepared
