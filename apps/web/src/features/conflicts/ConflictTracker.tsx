@@ -1,17 +1,18 @@
 import { useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { Conflict, ConflictViewState, SupportLink, FactionProfile, Faction, ConflictFaction } from './types';
 import { SIDE_COLORS, fmt } from './conflict-map-visualization';
-import { ArrowLeft, Crosshair, X, Swords, Shield, DollarSign, MapPin, Users, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Crosshair, X, Swords, Shield, DollarSign, MapPin, Users, ExternalLink, AlertTriangle, Activity } from 'lucide-react';
 import '../../styles/conflict-tracker.css';
 
-// ── Constants ────────────────────────────────────────
+// ── Constants ────────────────────────────────────
 
 const SIDE_BG: Record<string, string> = {
-  A: 'rgba(59, 130, 246, 0.06)',
-  B: 'rgba(239, 68, 68, 0.06)',
-  C: 'rgba(245, 158, 11, 0.06)',
-  D: 'rgba(168, 85, 247, 0.06)',
-  E: 'rgba(20, 184, 166, 0.06)',
+  A: 'rgba(59, 130, 246, 0.05)',
+  B: 'rgba(239, 68, 68, 0.05)',
+  C: 'rgba(245, 158, 11, 0.05)',
+  D: 'rgba(168, 85, 247, 0.05)',
+  E: 'rgba(20, 184, 166, 0.05)',
 };
 const SUPPORT_COLORS: Record<string, string> = { MILITARY: '#ef4444', DIPLOMATIC: '#3b82f6', ECONOMIC: '#22c55e' };
 const SUPPORT_LABELS: Record<string, string> = { MILITARY: 'Military', DIPLOMATIC: 'Diplomatic', ECONOMIC: 'Economic' };
@@ -53,17 +54,13 @@ function isoName(iso: string | null): string {
   return ISO3_NAMES[iso] ?? iso;
 }
 
-/** Auto-generate a human-readable side name from the factions in it */
 function inferSideName(factions: ConflictFaction[]): string {
   if (factions.length === 0) return 'Unknown';
   const types = new Set(factions.map((f) => f.faction.type));
-
-  // If all are state actors, name by first faction's country
   if (types.size === 1 && types.has('STATE')) {
     if (factions.length === 1) return factions[0].faction.name;
     return factions.map((f) => isoName(f.faction.countryIso)).join(' & ');
   }
-  // Mixed: describe by dominant type
   if (types.has('TERRORIST')) return 'Insurgent Alliance';
   if (types.has('REBEL')) return 'Rebel Forces';
   if (types.has('MILITIA') && types.has('STATE')) return 'Government Coalition';
@@ -71,7 +68,6 @@ function inferSideName(factions: ConflictFaction[]): string {
   return factions[0].faction.name;
 }
 
-/** Group factions by side, preserving order */
 function groupBySide(factions: ConflictFaction[]): { side: string; members: ConflictFaction[] }[] {
   const map = new Map<string, ConflictFaction[]>();
   for (const cf of factions) {
@@ -81,7 +77,25 @@ function groupBySide(factions: ConflictFaction[]): { side: string; members: Conf
   return [...map.entries()].map(([side, members]) => ({ side, members }));
 }
 
-// ── Props ────────────────────────────────────────────
+// ── Animation variants ──────────────────────────
+
+const fadeSlide = {
+  initial: { opacity: 0, x: 12 },
+  animate: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: -8 },
+  transition: { duration: 0.2, ease: [0.4, 0, 0.2, 1] },
+};
+
+const staggerContainer = {
+  animate: { transition: { staggerChildren: 0.04 } },
+};
+
+const staggerItem = {
+  initial: { opacity: 0, y: 6 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.2 } },
+};
+
+// ── Props ────────────────────────────────────────
 
 interface ConflictTrackerProps {
   onBack: () => void;
@@ -97,7 +111,7 @@ interface ConflictTrackerProps {
   onGoBack: () => void;
 }
 
-// ── Main Panel ──────────────────────────────────────
+// ── Main Panel ──────────────────────────────────
 
 export default function ConflictTracker({
   onBack, conflicts, selectedConflict, selectedFactionId, factionProfile,
@@ -106,42 +120,53 @@ export default function ConflictTracker({
   return (
     <div className="ct-panel">
       <div className="ct-panel-header">
-        <Crosshair className="h-5 w-5 text-blue-400" />
+        <div className="ct-header-icon">
+          <AlertTriangle className="h-4 w-4" />
+        </div>
         <h2 className="ct-panel-title">Conflict Tracker</h2>
-        <button className="ct-close" onClick={onBack}><X className="h-5 w-5" /></button>
+        <div className="ct-header-pulse" />
+        <button className="ct-close" onClick={onBack}><X className="h-4 w-4" /></button>
       </div>
 
       <div className="ct-panel-body">
-        {viewState === 'global' && (
-          <GlobalView
-            conflicts={conflicts}
-            loading={loading}
-            onSelectConflict={onSelectConflict}
-            onOpenFactionProfile={onOpenFactionProfile}
-          />
-        )}
-        {(viewState === 'conflict' || viewState === 'relationship') && selectedConflict && (
-          <DetailView
-            conflict={selectedConflict}
-            selectedFactionId={selectedFactionId}
-            onSelectFaction={onSelectFaction}
-            onOpenFactionProfile={onOpenFactionProfile}
-            onGoBack={onGoBack}
-          />
-        )}
-        {viewState === 'faction' && factionProfile && (
-          <FactionView
-            profile={factionProfile}
-            onSelectConflict={onSelectConflict}
-            onGoBack={onGoBack}
-          />
-        )}
+        <AnimatePresence mode="wait">
+          {viewState === 'global' && (
+            <motion.div key="global" {...fadeSlide}>
+              <GlobalView
+                conflicts={conflicts}
+                loading={loading}
+                onSelectConflict={onSelectConflict}
+                onOpenFactionProfile={onOpenFactionProfile}
+              />
+            </motion.div>
+          )}
+          {(viewState === 'conflict' || viewState === 'relationship') && selectedConflict && (
+            <motion.div key="detail" {...fadeSlide}>
+              <DetailView
+                conflict={selectedConflict}
+                selectedFactionId={selectedFactionId}
+                onSelectFaction={onSelectFaction}
+                onOpenFactionProfile={onOpenFactionProfile}
+                onGoBack={onGoBack}
+              />
+            </motion.div>
+          )}
+          {viewState === 'faction' && factionProfile && (
+            <motion.div key="faction" {...fadeSlide}>
+              <FactionView
+                profile={factionProfile}
+                onSelectConflict={onSelectConflict}
+                onGoBack={onGoBack}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
 }
 
-// ── State 1: Conflict + Faction list ───────────────
+// ── State 1: Conflict + Faction list ───────────
 
 function GlobalView({ conflicts, loading, onSelectConflict, onOpenFactionProfile }: {
   conflicts: Conflict[];
@@ -149,10 +174,9 @@ function GlobalView({ conflicts, loading, onSelectConflict, onOpenFactionProfile
   onSelectConflict: (id: string) => void;
   onOpenFactionProfile: (factionId: string) => void;
 }) {
-  if (loading) return <div className="ct-loading">Loading conflicts...</div>;
-  if (conflicts.length === 0) return <div className="ct-empty">No active conflicts found.</div>;
+  if (loading) return <div className="ct-loading">Scanning active zones...</div>;
+  if (conflicts.length === 0) return <div className="ct-empty">No active conflicts detected.</div>;
 
-  // Collect unique factions across all conflicts
   const factionMap = new Map<string, { faction: Faction; conflictCount: number }>();
   for (const c of conflicts) {
     for (const cf of c.factions ?? []) {
@@ -167,14 +191,23 @@ function GlobalView({ conflicts, loading, onSelectConflict, onOpenFactionProfile
   const crossConflictFactions = [...factionMap.values()].filter((f) => f.conflictCount >= 2);
 
   return (
-    <div className="ct-list">
-      <div className="ct-section-label">Conflicts</div>
-      {conflicts.map((c) => {
+    <motion.div className="ct-list" variants={staggerContainer} initial="initial" animate="animate">
+      <div className="ct-section-label">
+        <Activity className="h-3 w-3" style={{ color: 'var(--ct-red)', opacity: 0.6 }} />
+        Active Zones ({conflicts.length})
+      </div>
+
+      {conflicts.map((c, i) => {
         const sides = groupBySide(c.factions ?? []);
         return (
-          <button key={c.id} className="ct-conflict-card" onClick={() => onSelectConflict(c.id)}>
+          <motion.button
+            key={c.id}
+            className="ct-conflict-card"
+            onClick={() => onSelectConflict(c.id)}
+            variants={staggerItem}
+          >
             <div className="ct-card-header">
-              <Crosshair className="h-4 w-4 text-blue-400" />
+              <Crosshair className="h-3.5 w-3.5" style={{ color: 'var(--ct-red)', opacity: 0.6 }} />
               <span className="ct-card-name">{c.name}</span>
               <span className={`ct-status ct-status--${c.status.toLowerCase()}`}>{c.status}</span>
             </div>
@@ -182,8 +215,13 @@ function GlobalView({ conflicts, loading, onSelectConflict, onOpenFactionProfile
               <span>{c.type.replace(/_/g, ' ')}</span>
               <span className="ct-sep">|</span>
               <span>Since {fmtDate(c.startDate)}</span>
+              {c.casualtiesEstimate && (
+                <>
+                  <span className="ct-sep">|</span>
+                  <span style={{ color: 'var(--ct-red)', fontWeight: 600 }}>{fmt(c.casualtiesEstimate)}</span>
+                </>
+              )}
             </div>
-            {/* Factions grouped by side */}
             {sides.length > 0 && (
               <div className="ct-card-sides">
                 {sides.map(({ side, members }, si) => (
@@ -205,20 +243,20 @@ function GlobalView({ conflicts, loading, onSelectConflict, onOpenFactionProfile
                 ))}
               </div>
             )}
-          </button>
+          </motion.button>
         );
       })}
 
-      {/* Cross-conflict actors section */}
       {crossConflictFactions.length > 0 && (
         <>
-          <div className="ct-section-label" style={{ marginTop: 16 }}>Key Actors</div>
+          <div className="ct-section-label" style={{ marginTop: 18 }}>Key Actors</div>
           <div className="ct-actor-grid">
             {crossConflictFactions.map(({ faction, conflictCount }) => (
-              <button
+              <motion.button
                 key={faction.id}
                 className="ct-actor-card"
                 onClick={() => onOpenFactionProfile(faction.id)}
+                variants={staggerItem}
               >
                 <div className="ct-actor-flag-wrap">
                   {faction.flagUrl
@@ -234,16 +272,16 @@ function GlobalView({ conflicts, loading, onSelectConflict, onOpenFactionProfile
                   <span className="ct-actor-conflicts">{conflictCount} conflicts</span>
                 </div>
                 <ExternalLink className="h-3 w-3 ct-actor-arrow" />
-              </button>
+              </motion.button>
             ))}
           </div>
         </>
       )}
-    </div>
+    </motion.div>
   );
 }
 
-// ── State 2+3: Detail + casualties + support info ───
+// ── State 2+3: Detail + casualties + support ───
 
 function DetailView({ conflict, selectedFactionId, onSelectFaction, onOpenFactionProfile, onGoBack }: {
   conflict: Conflict;
@@ -256,7 +294,6 @@ function DetailView({ conflict, selectedFactionId, onSelectFaction, onOpenFactio
   const links = conflict.supportLinks ?? [];
   const sides = useMemo(() => groupBySide(factions), [factions]);
 
-  // Selected faction support info
   const selectedFaction = factions.find((f) => f.factionId === selectedFactionId)?.faction
     ?? links.find((l) => l.fromId === selectedFactionId)?.from;
   const supportTo = selectedFactionId ? links.filter((l) => l.toId === selectedFactionId) : [];
@@ -265,7 +302,7 @@ function DetailView({ conflict, selectedFactionId, onSelectFaction, onOpenFactio
   return (
     <div className="ct-detail">
       <button className="ct-back" onClick={onGoBack}>
-        <ArrowLeft className="h-4 w-4" /> All Conflicts
+        <ArrowLeft className="h-3.5 w-3.5" /> All Conflicts
       </button>
 
       <h3 className="ct-detail-title">{conflict.name}</h3>
@@ -277,28 +314,31 @@ function DetailView({ conflict, selectedFactionId, onSelectFaction, onOpenFactio
 
       {conflict.description && <p className="ct-description">{conflict.description}</p>}
 
-      {/* Total casualties */}
       <div className="ct-stat-row">
         <span className="ct-stat-label">Total Est. Casualties</span>
         <span className="ct-stat-value ct-stat-value--red">{fmt(conflict.casualtiesEstimate)}</span>
       </div>
 
-      {/* All sides */}
-      <div className="ct-sides-container">
+      <motion.div
+        className="ct-sides-container"
+        variants={staggerContainer}
+        initial="initial"
+        animate="animate"
+      >
         {sides.map(({ side, members }, si) => {
           const color = SIDE_COLORS[side] ?? '#6b7280';
-          const bg = SIDE_BG[side] ?? 'rgba(107, 114, 128, 0.06)';
+          const bg = SIDE_BG[side] ?? 'rgba(107, 114, 128, 0.05)';
           const sideName = inferSideName(members);
           const totalCas = members.reduce((sum, m) => sum + (m.casualties ?? 0), 0);
 
           return (
-            <div key={side}>
+            <motion.div key={side} variants={staggerItem}>
               {si > 0 && (
                 <div className="ct-vs-divider">
-                  <Swords className="h-3.5 w-3.5" />
+                  <Swords className="h-3 w-3" />
                 </div>
               )}
-              <div className="ct-side-block" style={{ background: bg, borderColor: `${color}20` }}>
+              <div className="ct-side-block" style={{ background: bg, borderColor: `${color}15` }}>
                 <div className="ct-side-header">
                   <span className="ct-side-color-bar" style={{ background: color }} />
                   <div className="ct-side-header-text">
@@ -339,50 +379,56 @@ function DetailView({ conflict, selectedFactionId, onSelectFaction, onOpenFactio
                   </div>
                 ))}
               </div>
-            </div>
+            </motion.div>
           );
         })}
-      </div>
+      </motion.div>
 
-      {/* Legend */}
       <div className="ct-legend">
         <span className="ct-legend-item"><span className="ct-legend-dot" style={{ background: '#ef4444' }} /> Military</span>
         <span className="ct-legend-item"><span className="ct-legend-dot" style={{ background: '#3b82f6' }} /> Diplomatic</span>
         <span className="ct-legend-item"><span className="ct-legend-dot" style={{ background: '#22c55e' }} /> Economic</span>
       </div>
 
-      {/* Selected faction support details */}
-      {selectedFaction && (
-        <div className="ct-support-panel">
-          <div className="ct-support-panel-header">
-            {selectedFaction.flagUrl && <img src={selectedFaction.flagUrl} alt="" className="ct-flag-lg" />}
-            <span className="ct-support-panel-name">{selectedFaction.name}</span>
-            <button
-              className="ct-profile-link"
-              onClick={() => onOpenFactionProfile(selectedFaction.id)}
-              title="View full actor profile"
-            >
-              <Users className="h-3.5 w-3.5" /> Profile
-            </button>
-          </div>
+      <AnimatePresence>
+        {selectedFaction && (
+          <motion.div
+            className="ct-support-panel"
+            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="ct-support-panel-header">
+              {selectedFaction.flagUrl && <img src={selectedFaction.flagUrl} alt="" className="ct-flag-lg" />}
+              <span className="ct-support-panel-name">{selectedFaction.name}</span>
+              <button
+                className="ct-profile-link"
+                onClick={() => onOpenFactionProfile(selectedFaction.id)}
+                title="View full actor profile"
+              >
+                <Users className="h-3 w-3" /> Profile
+              </button>
+            </div>
 
-          {supportTo.length > 0 && (
-            <div className="ct-support-section">
-              <h4 className="ct-support-title">Receiving Support</h4>
-              {supportTo.map((link) => <SupportRow key={link.id} link={link} actor={link.from} />)}
-            </div>
-          )}
-          {supportFrom.length > 0 && (
-            <div className="ct-support-section">
-              <h4 className="ct-support-title">Providing Support</h4>
-              {supportFrom.map((link) => <SupportRow key={link.id} link={link} actor={link.to} />)}
-            </div>
-          )}
-          {supportTo.length === 0 && supportFrom.length === 0 && (
-            <div className="ct-empty-small">No external support links recorded.</div>
-          )}
-        </div>
-      )}
+            {supportTo.length > 0 && (
+              <div className="ct-support-section">
+                <h4 className="ct-support-title">Receiving Support</h4>
+                {supportTo.map((link) => <SupportRow key={link.id} link={link} actor={link.from} />)}
+              </div>
+            )}
+            {supportFrom.length > 0 && (
+              <div className="ct-support-section">
+                <h4 className="ct-support-title">Providing Support</h4>
+                {supportFrom.map((link) => <SupportRow key={link.id} link={link} actor={link.to} />)}
+              </div>
+            )}
+            {supportTo.length === 0 && supportFrom.length === 0 && (
+              <div className="ct-empty-small">No external support links recorded.</div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <p className="ct-hint">
         {selectedFactionId
@@ -393,7 +439,7 @@ function DetailView({ conflict, selectedFactionId, onSelectFaction, onOpenFactio
   );
 }
 
-// ── State 4: Faction Profile ────────────────────────
+// ── State 4: Faction Profile ────────────────────
 
 function FactionView({ profile, onSelectConflict, onGoBack }: {
   profile: FactionProfile;
@@ -402,7 +448,6 @@ function FactionView({ profile, onSelectConflict, onGoBack }: {
 }) {
   const { faction, belligerentIn, supportsFrom, supportsTo } = profile;
 
-  // Collect all countries of operation
   const countries = new Set<string>();
   if (faction.countryIso) countries.add(faction.countryIso);
   for (const b of belligerentIn) {
@@ -412,7 +457,6 @@ function FactionView({ profile, onSelectConflict, onGoBack }: {
     if (s.conflict.countryIso) countries.add(s.conflict.countryIso);
   }
 
-  // Unique conflicts (combine belligerent + supporter roles)
   const conflictRoles = new Map<string, { conflict: { id: string; name: string; status: string; countryIso: string; startDate: string | null }; roles: string[] }>();
 
   for (const b of belligerentIn) {
@@ -446,11 +490,15 @@ function FactionView({ profile, onSelectConflict, onGoBack }: {
   return (
     <div className="ct-detail">
       <button className="ct-back" onClick={onGoBack}>
-        <ArrowLeft className="h-4 w-4" /> Back
+        <ArrowLeft className="h-3.5 w-3.5" /> Back
       </button>
 
-      {/* Actor identity card */}
-      <div className="ct-faction-profile-card">
+      <motion.div
+        className="ct-faction-profile-card"
+        initial={{ opacity: 0, scale: 0.97 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.25 }}
+      >
         <div className="ct-faction-profile-flag-wrap">
           {faction.flagUrl
             ? <img src={faction.flagUrl} alt="" className="ct-faction-profile-flag" />
@@ -465,42 +513,46 @@ function FactionView({ profile, onSelectConflict, onGoBack }: {
             {FACTION_TYPE_LABELS[faction.type]}
           </span>
         </div>
-      </div>
+      </motion.div>
 
-      {/* HQ & operations */}
       <div className="ct-profile-stats">
         {faction.countryIso && (
           <div className="ct-profile-stat">
-            <MapPin className="h-3.5 w-3.5" />
+            <MapPin className="h-3.5 w-3.5" style={{ opacity: 0.5 }} />
             <span className="ct-profile-stat-label">Headquarters</span>
             <span className="ct-profile-stat-value">{isoName(faction.countryIso)}</span>
           </div>
         )}
         <div className="ct-profile-stat">
-          <Crosshair className="h-3.5 w-3.5" />
+          <Crosshair className="h-3.5 w-3.5" style={{ opacity: 0.5 }} />
           <span className="ct-profile-stat-label">Active in</span>
           <span className="ct-profile-stat-value">{conflictRoles.size} conflict{conflictRoles.size !== 1 ? 's' : ''}</span>
         </div>
         {countries.size > 1 && (
           <div className="ct-profile-stat">
-            <Users className="h-3.5 w-3.5" />
+            <Users className="h-3.5 w-3.5" style={{ opacity: 0.5 }} />
             <span className="ct-profile-stat-label">Operating in</span>
             <span className="ct-profile-stat-value">{[...countries].map(isoName).join(', ')}</span>
           </div>
         )}
       </div>
 
-      {/* Conflicts list */}
       <div className="ct-section-label">Conflicts</div>
-      <div className="ct-list">
+      <motion.div
+        className="ct-list"
+        variants={staggerContainer}
+        initial="initial"
+        animate="animate"
+      >
         {[...conflictRoles.values()].map(({ conflict, roles }) => (
-          <button
+          <motion.button
             key={conflict.id}
             className="ct-conflict-card"
             onClick={() => onSelectConflict(conflict.id)}
+            variants={staggerItem}
           >
             <div className="ct-card-header">
-              <Crosshair className="h-4 w-4 text-blue-400" />
+              <Crosshair className="h-3.5 w-3.5" style={{ color: 'var(--ct-red)', opacity: 0.5 }} />
               <span className="ct-card-name">{conflict.name}</span>
               <span className={`ct-status ct-status--${conflict.status.toLowerCase()}`}>{conflict.status}</span>
             </div>
@@ -518,14 +570,13 @@ function FactionView({ profile, onSelectConflict, onGoBack }: {
                 <span key={i} className="ct-role-tag">{role}</span>
               ))}
             </div>
-          </button>
+          </motion.button>
         ))}
-      </div>
+      </motion.div>
 
-      {/* Support relationships summary */}
       {(supportsFrom.length > 0 || supportsTo.length > 0) && (
         <>
-          <div className="ct-section-label" style={{ marginTop: 12 }}>Support Network</div>
+          <div className="ct-section-label" style={{ marginTop: 14 }}>Support Network</div>
           {supportsFrom.length > 0 && (
             <div className="ct-support-section">
               <h4 className="ct-support-title">Providing Support To</h4>

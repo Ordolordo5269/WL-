@@ -8,7 +8,6 @@ import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
 import '../../styles/geocoder.css';
 import { SatelliteVisualization } from './map/satellite-visualization';
-import { AirTrafficVisualization } from './map/air-traffic-visualization';
 import { EarthquakeVisualization } from './map/earthquake-visualization';
 import { LightningVisualization } from './map/lightning-visualization';
 import { VolcanoVisualization } from './map/volcano-visualization';
@@ -73,8 +72,6 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
   const naturalHoverPopupRef = useRef<mapboxgl.Popup | null>(null);
   const satelliteClickRegistered = useRef(false);
   const satelliteTrackingActiveRef = useRef(false);
-  const airTrafficClickRegistered = useRef(false);
-  const airTrafficTrackingActiveRef = useRef(false);
   const earthquakeClickRegistered = useRef(false);
   const earthquakeActiveRef = useRef(false);
   const lightningActiveRef = useRef(false);
@@ -2211,28 +2208,6 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       if (!map) return;
       StormVisualization.updateData(map, features);
     },
-    // Air Traffic live tracking layers
-    setAirTrafficTrackingLayers: (enabled: boolean) => {
-      airTrafficTrackingActiveRef.current = enabled;
-      const map = mapRef.current;
-      if (!map) return;
-      if (enabled) {
-        ensureAirTrafficLayers(map);
-      } else {
-        AirTrafficVisualization.cleanup(map);
-        airTrafficClickRegistered.current = false;
-      }
-    },
-    updateAirTrafficPositions: (features: any[]) => {
-      const map = mapRef.current;
-      if (!map) return;
-      AirTrafficVisualization.updatePositions(map, features);
-    },
-    updateAirTrafficTrails: (trails: any[]) => {
-      const map = mapRef.current;
-      if (!map) return;
-      AirTrafficVisualization.updateTrails(map, trails);
-    },
     // Earth Data overlays (toggleable NASA GIBS layers)
     // Satellite live tracking layers
     setSatelliteTrackingLayers: (enabled: boolean) => {
@@ -2484,15 +2459,6 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
           hoverPopup.remove();
         });
       }
-    }
-  }, []);
-
-  // Helper: (re-)add air traffic layers + hover handler if tracking is active
-  const ensureAirTrafficLayers = useCallback((map: mapboxgl.Map) => {
-    AirTrafficVisualization.addLayers(map);
-    if (!airTrafficClickRegistered.current) {
-      airTrafficClickRegistered.current = true;
-      AirTrafficVisualization.registerInteractions(map);
     }
   }, []);
 
@@ -2846,13 +2812,6 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       ensureSatelliteLayers(map);
     }
 
-    // Re-add air traffic tracking layers if they were active before the style change
-    if (airTrafficTrackingActiveRef.current) {
-      airTrafficClickRegistered.current = false;
-      AirTrafficVisualization.resetIcons();
-      ensureAirTrafficLayers(map);
-    }
-
     // Re-add earthquake layers if they were active before the style change
     if (earthquakeActiveRef.current) {
       earthquakeClickRegistered.current = false;
@@ -2877,7 +2836,7 @@ const WorldMap = forwardRef<{ easeTo: (options: MapEaseToOptions) => void; getMa
       stormClickRegistered.current = false;
       ensureStormLayers(map);
     }
-  }, [handleCountrySelection, applyPhysicalModeTweaks, styleKey, minimalModeOn, setBaseFeaturesVisibility, ensureSatelliteLayers, ensureAirTrafficLayers, ensureEarthquakeLayers, ensureVolcanoLayers, ensureTsunamiLayers, ensureStormLayers]);
+  }, [handleCountrySelection, applyPhysicalModeTweaks, styleKey, minimalModeOn, setBaseFeaturesVisibility, ensureSatelliteLayers, ensureEarthquakeLayers, ensureVolcanoLayers, ensureTsunamiLayers, ensureStormLayers]);
 
   // El toggle inline fue movido a la sidebar (Settings)
 

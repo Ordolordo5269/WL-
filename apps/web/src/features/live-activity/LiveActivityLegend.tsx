@@ -18,8 +18,6 @@ const LAYER_LEGENDS: LegendItem[] = [
     gradientColors: ['#ffcc00', '#ff6600', '#cc0000'],
     gradientLabels: ['Shallow', 'Mid', 'Deep'],
   },
-  { id: 'air-traffic', label: 'Air Traffic', color: '#00bfff', shape: 'circle' },
-  { id: 'marine-traffic', label: 'Marine Traffic', color: '#00cc66', shape: 'circle' },
   { id: 'tsunamis', label: 'Tsunami History', color: '#00ccff', shape: 'circle' },
   { id: 'storms', label: 'Tropical Cyclones', color: '#ff4400', shape: 'circle' },
 ];
@@ -35,8 +33,6 @@ const WEATHER_SUBLAYER_LABELS: Record<string, string> = {
 interface Props {
   earthquakesEnabled: boolean;
   firesEnabled: boolean;
-  airTrafficEnabled: boolean;
-  marineTrafficEnabled: boolean;
   tsunamisEnabled: boolean;
   stormsEnabled: boolean;
   lightningEnabled: boolean;
@@ -48,8 +44,6 @@ export default function LiveActivityLegend(props: Props) {
   const enabledMap: Record<string, boolean> = {
     earthquakes: props.earthquakesEnabled,
     fires: props.firesEnabled,
-    'air-traffic': props.airTrafficEnabled,
-    'marine-traffic': props.marineTrafficEnabled,
     'tsunamis': props.tsunamisEnabled,
     'storms': props.stormsEnabled,
     'lightning': props.lightningEnabled,

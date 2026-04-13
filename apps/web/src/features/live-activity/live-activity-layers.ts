@@ -32,26 +32,6 @@ const LAYER_STYLES: Record<
       'circle-blur': 0.4,
     },
   },
-  'air-traffic': {
-    type: 'circle',
-    paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 1, 2, 4, 3, 8, 5, 12, 7],
-      'circle-color': '#00bfff',
-      'circle-opacity': 0.85,
-      'circle-stroke-width': 0.5,
-      'circle-stroke-color': '#005f8f',
-    },
-  },
-  'marine-traffic': {
-    type: 'circle',
-    paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 1, 3, 6, 5, 10, 8],
-      'circle-color': '#00cc66',
-      'circle-opacity': 0.85,
-      'circle-stroke-width': 0.5,
-      'circle-stroke-color': '#006633',
-    },
-  },
   'active-volcanoes': {
     type: 'circle',
     paint: {

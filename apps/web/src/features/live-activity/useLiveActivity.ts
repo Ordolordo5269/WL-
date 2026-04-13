@@ -2,8 +2,6 @@ import { useState, useCallback } from 'react';
 import {
   useEarthquakesData,
   useFiresData,
-  useAirTrafficData,
-  useMarineTrafficData,
   useActiveVolcanoesData,
   useTsunamisData,
   useStormsData,
@@ -19,8 +17,6 @@ export interface WeatherLayer {
 export function useLiveActivity() {
   const [earthquakesEnabled, setEarthquakesEnabled] = useState(false);
   const [firesEnabled, setFiresEnabled] = useState(false);
-  const [airTrafficEnabled, setAirTrafficEnabled] = useState(false);
-  const [marineTrafficEnabled, setMarineTrafficEnabled] = useState(false);
   const [weatherEnabled, setWeatherEnabled] = useState(false);
   const [activeVolcanoesEnabled, setActiveVolcanoesEnabled] = useState(false);
   const [tsunamisEnabled, setTsunamisEnabled] = useState(false);
@@ -32,8 +28,6 @@ export function useLiveActivity() {
   // Data fetching hooks — only fetch when enabled
   const earthquakesQuery = useEarthquakesData(earthquakesEnabled);
   const firesQuery = useFiresData(firesEnabled);
-  const airTrafficQuery = useAirTrafficData(airTrafficEnabled);
-  const marineTrafficQuery = useMarineTrafficData(marineTrafficEnabled);
   const activeVolcanoesQuery = useActiveVolcanoesData(activeVolcanoesEnabled);
   const tsunamisQuery = useTsunamisData(tsunamisEnabled);
   const stormsQuery = useStormsData(stormsEnabled);
@@ -45,14 +39,6 @@ export function useLiveActivity() {
 
   const handleToggleFires = useCallback((enabled: boolean) => {
     setFiresEnabled(enabled);
-  }, []);
-
-  const handleToggleAirTraffic = useCallback((enabled: boolean) => {
-    setAirTrafficEnabled(enabled);
-  }, []);
-
-  const handleToggleMarineTraffic = useCallback((enabled: boolean) => {
-    setMarineTrafficEnabled(enabled);
   }, []);
 
   const handleToggleActiveVolcanoes = useCallback((enabled: boolean) => {
@@ -89,12 +75,6 @@ export function useLiveActivity() {
     firesEnabled,
     handleToggleFires,
     firesData: firesQuery.data,
-    airTrafficEnabled,
-    handleToggleAirTraffic,
-    airTrafficData: airTrafficQuery.data,
-    marineTrafficEnabled,
-    handleToggleMarineTraffic,
-    marineTrafficData: marineTrafficQuery.data,
     activeVolcanoesEnabled,
     handleToggleActiveVolcanoes,
     activeVolcanoesData: activeVolcanoesQuery.data,

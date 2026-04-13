@@ -3,7 +3,6 @@ import http from 'http';
 import app from './app.js';
 import { env } from './config/env.js';
 import { logger } from './config/logger.js';
-import { startAISStream } from './services/aisstream.js';
 import { initCandidateService } from './modules/ucdp/candidate.service.js';
 
 // ── Global safety nets — prevent the process from dying on stray errors ──
@@ -22,7 +21,6 @@ server.on('error', (err) => {
 
 server.listen(env.PORT, () => {
   logger.info({ port: env.PORT, env: env.NODE_ENV }, 'Server started');
-  startAISStream();
 
   // UCDP Candidate Events v26.0.2 — load into memory, refresh every 24h
   if (env.UCDP_API_TOKEN) {

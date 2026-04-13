@@ -1,8 +1,6 @@
 import { Router } from 'express';
 import { getEarthquakes } from '../services/live-activity/earthquakes.js';
 import { getFires } from '../services/live-activity/fires.js';
-import { getAirTraffic } from '../services/live-activity/air-traffic.js';
-import { getMarineTraffic } from '../services/live-activity/marine-traffic.js';
 import { getTsunamis } from '../services/live-activity/tsunamis.js';
 import { getLightning } from '../services/live-activity/lightning.js';
 import { getGdacsAlerts, getGdacsAlertsByType } from '../services/live-activity/gdacs.js';
@@ -27,22 +25,6 @@ router.get('/fires', async (_req, res, next) => {
   } catch (err) {
     next(err);
   }
-});
-
-router.get('/air-traffic', async (_req, res, next) => {
-  try {
-    const data = await getAirTraffic();
-    res.setHeader('Cache-Control', 'public, max-age=10');
-    res.json(data);
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.get('/marine-traffic', (_req, res) => {
-  const data = getMarineTraffic();
-  res.setHeader('Cache-Control', 'public, max-age=10');
-  res.json(data);
 });
 
 // Active volcanoes — GDACS real-time (type VO)

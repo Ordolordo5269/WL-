@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import InternationalOrganizationsPanel from './InternationalOrganizationsPanel';
 import StatisticsPanel from './StatisticsPanel';
 import { AVAILABLE_HISTORY_YEARS, snapToAvailableYear } from '../../utils/historical-years';
-import { Settings, Info, Globe, Users, Users2, BarChart3, Map, User, GitCompare, Radio, Satellite, Crosshair } from 'lucide-react';
+import { Settings, Info, Globe, Users, Users2, BarChart3, Map, User, GitCompare, Satellite, Crosshair } from 'lucide-react';
 import { type NasaOverlayType, NASA_EARTH_OVERLAYS, NASA_EARTH_OVERLAY_KEYS, prefetchNightLightsTiles, getNasaObservationDate } from './map/mapAppearance';
 import { MILITARY_COUNTRY_COLORS, CLASSIFIED_ORBIT_COLORS, GNSS_CONSTELLATION_COLORS, WEATHER_PROGRAM_COLORS, STATION_PROGRAM_COLORS } from './map/satellite-visualization';
 import { COUNTRY_FLAGS, COUNTRY_NAMES } from './map/satellite-database';
@@ -125,10 +125,6 @@ interface LeftSidebarProps {
   earthquakesEnabled?: boolean;
   onToggleFires?: (enabled: boolean) => void;
   firesEnabled?: boolean;
-  onToggleAirTraffic?: (enabled: boolean) => void;
-  airTrafficEnabled?: boolean;
-  onToggleMarineTraffic?: (enabled: boolean) => void;
-  marineTrafficEnabled?: boolean;
   onToggleActiveVolcanoes?: (enabled: boolean) => void;
   activeVolcanoesEnabled?: boolean;
   activeVolcanoesCount?: number;
@@ -161,7 +157,7 @@ interface MenuItem {
   iconBg?: string;
 }
 
-export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenDemographics, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetGlobeTheme, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, onSetLedHalo, onSetLedHaloSpeed, choropleth, onToggleHistoryMode, onSetHistoryYear, onResetHistoryPresentation, historyEnabled: _historyEnabled = false, historyYear = null, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, onToggleEarthGallery, earthGalleryEnabled = false, onToggleEarthGallerySelectMode, earthGallerySelectMode = false, onSetEarthGalleryZoom, earthGalleryZoom = 2, naturalLod = 'auto', onSetNaturalLod, earthOverlays, onToggleEarthOverlay, onToggleSatelliteIntelMode, onHistoryToSatellite, onSatelliteToHistory, onToggleEarthquakes, earthquakesEnabled = false, onToggleFires, firesEnabled = false, onToggleAirTraffic, airTrafficEnabled = false, onToggleMarineTraffic, marineTrafficEnabled = false, onToggleActiveVolcanoes, activeVolcanoesEnabled = false, activeVolcanoesCount, onToggleTsunamis, tsunamisEnabled = false, onToggleStorms, stormsEnabled = false, onToggleLightning, lightningEnabled = false, onToggleWeather, weatherEnabled = false, weatherLayers = [], onToggleWeatherLayer, onTrackingCategoriesChange, onOpenConflictTracker, onExpandMission, onFlyToMission, onSetMissionMarkers, onRemoveMissionMarkers, onLaunchEvents }: LeftSidebarProps) {
+export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenDemographics, onOpenCompareCountries, onSetBaseMapStyle, onSetPlanetPreset, onSetStarIntensity, onSetSpacePreset, onSetGlobeTheme, onSetTerrain, onSetTerrainExaggeration, onSetBuildings3D, onSetMinimalMode, onSetAutoRotate, onSetRotateSpeed, onSetLedHalo, onSetLedHaloSpeed, choropleth, onToggleHistoryMode, onSetHistoryYear, onResetHistoryPresentation, historyEnabled: _historyEnabled = false, historyYear = null, onSetOrganizationIsoFilter, onToggleRiversLayer, riversEnabled = false, onToggleMountainRangesLayer, mountainRangesEnabled = false, onTogglePeaksLayer, peaksEnabled = false, onToggleLakesLayer, lakesEnabled = false, onToggleVolcanoesLayer, volcanoesEnabled = false, onToggleFaultLinesLayer, faultLinesEnabled = false, onToggleDesertsLayer, desertsEnabled = false, onToggleEarthGallery, earthGalleryEnabled = false, onToggleEarthGallerySelectMode, earthGallerySelectMode = false, onSetEarthGalleryZoom, earthGalleryZoom = 2, naturalLod = 'auto', onSetNaturalLod, earthOverlays, onToggleEarthOverlay, onToggleSatelliteIntelMode, onHistoryToSatellite, onSatelliteToHistory, onToggleEarthquakes, earthquakesEnabled = false, onToggleFires, firesEnabled = false, onToggleActiveVolcanoes, activeVolcanoesEnabled = false, activeVolcanoesCount, onToggleTsunamis, tsunamisEnabled = false, onToggleStorms, stormsEnabled = false, onToggleLightning, lightningEnabled = false, onToggleWeather, weatherEnabled = false, weatherLayers = [], onToggleWeatherLayer, onTrackingCategoriesChange, onOpenConflictTracker, onExpandMission, onFlyToMission, onSetMissionMarkers, onRemoveMissionMarkers, onLaunchEvents }: LeftSidebarProps) {
   const [activeItem, setActiveItem] = useState<string>('home');
   const [physicalSections, setPhysicalSections] = useState({ geo: true, geoFeatures: true, climate: true, terrain: true, gallery: true });
   const navigate = useNavigate();
@@ -457,12 +453,6 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenDemogr
       iconBg: 'rgba(6, 182, 212, 0.12)'
     },
     {
-      icon: <Radio className="h-5 w-5 text-orange-400" />,
-      label: 'Live Activity',
-      href: '#live',
-      iconBg: 'rgba(251, 146, 60, 0.12)'
-    },
-    {
       icon: <Crosshair className="h-5 w-5 text-blue-400" />,
       label: 'Conflict Tracker',
       href: '#conflicts',
@@ -682,24 +672,6 @@ export default function LeftSidebar({ isOpen, onClose: _onCloseRaw, onOpenDemogr
                           <div className="left-sidebar-item-indicator" />
                         )}
                       </a>
-
-                      {item.label === 'Live Activity' && activeItem === 'live activity' && (
-                        <div className="mt-3 ml-12 mr-3 settings-panel" aria-label="Live Activity">
-                          <div className="settings-subtitle" style={{ marginBottom: 8 }}>
-                            Real-time air and marine traffic tracking.
-                          </div>
-                          <div className="layer-row">
-                            <span className={`layer-row-dot ${airTrafficEnabled ? 'on' : ''}`} />
-                            <span className="layer-row-name">Air Traffic</span>
-                            <button className={`toggle-switch ${airTrafficEnabled ? 'on' : ''}`} onClick={() => onToggleAirTraffic?.(!airTrafficEnabled)} aria-label="Toggle air traffic" />
-                          </div>
-                          <div className="layer-row">
-                            <span className={`layer-row-dot ${marineTrafficEnabled ? 'on' : ''}`} />
-                            <span className="layer-row-name">Marine Traffic</span>
-                            <button className={`toggle-switch ${marineTrafficEnabled ? 'on' : ''}`} onClick={() => onToggleMarineTraffic?.(!marineTrafficEnabled)} aria-label="Toggle marine traffic" />
-                          </div>
-                        </div>
-                      )}
 
                       {item.label === 'Physical Layers' && activeItem === 'physical layers' && (
                         <div className="mt-3 ml-12 mr-3 settings-panel" aria-label="Physical Layers">

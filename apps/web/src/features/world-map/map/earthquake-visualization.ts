@@ -10,17 +10,19 @@ const SOURCE_ID = 'earthquake-tracking-points';
 const LAYER_ID = 'earthquake-layer';
 const GLOW_LAYER_ID = 'earthquake-glow';
 const PULSE_LAYER_ID = 'earthquake-pulse';
+const PULSE2_LAYER_ID = 'earthquake-pulse-2';
+const CORE_LAYER_ID = 'earthquake-core';
 
-// ─── Magnitude color expression ─────────────────────────────────────
+// ─── Magnitude color expression (arena → ascua) ─────────────────────
 const magColorExpr = [
   'interpolate', ['linear'], ['coalesce', ['get', 'mag'], 1],
-  0,   '#44cc88',   // micro — green
-  2.5, '#44cc88',   // micro — green
-  3,   '#ffcc00',   // light — yellow
-  4.5, '#ff8800',   // moderate — orange
-  5.5, '#ff3333',   // strong — red
-  7,   '#ff0044',   // major — intense red
-  8,   '#ff0044',
+  0,   '#d4b896',   // micro — arena clara
+  2.5, '#d4b896',
+  3,   '#b8864b',   // ligero — ocre tostado
+  4.5, '#8b4513',   // moderado — siena quemado
+  5.5, '#5c2410',   // fuerte — caoba oscuro
+  7,   '#ff6b1a',   // mayor — ascua incandescente
+  8,   '#ff6b1a',
 ] as any;
 
 // ─── Magnitude radius expression ────────────────────────────────────
@@ -56,43 +58,74 @@ export const EarthquakeVisualization = {
       data: { type: 'FeatureCollection', features: [] },
     });
 
-    // Seismic pulse wave — only recent (< 2h) AND mag >= 4
+    const recentFilter: any = ['all',
+      ['>=', ['get', 'mag'], 4],
+      ['>=', ['get', 'time'], Date.now() - RECENT_MS],
+    ];
+
+    // Shockwave ring A — recent (< 2h) AND mag >= 4
     map.addLayer({
       id: PULSE_LAYER_ID,
       type: 'circle',
       source: SOURCE_ID,
-      filter: ['all',
-        ['>=', ['get', 'mag'], 4],
-        ['>=', ['get', 'time'], Date.now() - RECENT_MS],
-      ],
+      filter: recentFilter,
       paint: {
-        'circle-radius': [
-          '*',
-          magRadiusExpr,
-          2.5,
-        ],
+        'circle-radius': ['*', magRadiusExpr, 1],
         'circle-color': magColorExpr,
-        'circle-opacity': 0.1,
-        'circle-blur': 0.8,
+        'circle-opacity': 0,
+        'circle-blur': 0.6,
+        'circle-stroke-width': 1.5,
+        'circle-stroke-color': magColorExpr,
+        'circle-stroke-opacity': 0,
       },
     });
 
-    // Animate pulse
+    // Shockwave ring B — same, phase-offset for continuous wave train
+    map.addLayer({
+      id: PULSE2_LAYER_ID,
+      type: 'circle',
+      source: SOURCE_ID,
+      filter: recentFilter,
+      paint: {
+        'circle-radius': ['*', magRadiusExpr, 1],
+        'circle-color': magColorExpr,
+        'circle-opacity': 0,
+        'circle-blur': 0.6,
+        'circle-stroke-width': 1.5,
+        'circle-stroke-color': magColorExpr,
+        'circle-stroke-opacity': 0,
+      },
+    });
+
+    // Animate shockwave — expanding ring that fades, resets, repeats
     if (_pulseRafId) cancelAnimationFrame(_pulseRafId);
-    let pulsePhase = 0;
+    let pulseT = 0;
+    const SPEED = 1 / 90; // ~1.5s per cycle at 60fps
+    const MAX_SCALE = 4.0;
     const animatePulse = () => {
       try {
         if (!map.getLayer(PULSE_LAYER_ID)) { _pulseRafId = 0; return; }
       } catch { _pulseRafId = 0; return; }
 
-      pulsePhase = (pulsePhase + 0.02) % (Math.PI * 2);
-      const sin = Math.sin(pulsePhase);
-      const scale = 2.0 + sin * 1.0; // oscillates 1.0 — 3.0
-      const opacity = 0.06 + Math.abs(sin) * 0.09; // 0.06 — 0.15
+      pulseT = (pulseT + SPEED) % 1;
+      const tA = pulseT;
+      const tB = (pulseT + 0.5) % 1;
+
+      const scaleA = 1 + (MAX_SCALE - 1) * tA;
+      const scaleB = 1 + (MAX_SCALE - 1) * tB;
+      // Fill fades out as ring expands; stroke stays brighter for "wave" feel
+      const fillA = 0.12 * (1 - tA);
+      const fillB = 0.12 * (1 - tB);
+      const strokeA = 0.55 * (1 - tA);
+      const strokeB = 0.55 * (1 - tB);
 
       try {
-        map.setPaintProperty(PULSE_LAYER_ID, 'circle-radius', ['*', magRadiusExpr, scale]);
-        map.setPaintProperty(PULSE_LAYER_ID, 'circle-opacity', opacity);
+        map.setPaintProperty(PULSE_LAYER_ID, 'circle-radius', ['*', magRadiusExpr, scaleA]);
+        map.setPaintProperty(PULSE_LAYER_ID, 'circle-opacity', fillA);
+        map.setPaintProperty(PULSE_LAYER_ID, 'circle-stroke-opacity', strokeA);
+        map.setPaintProperty(PULSE2_LAYER_ID, 'circle-radius', ['*', magRadiusExpr, scaleB]);
+        map.setPaintProperty(PULSE2_LAYER_ID, 'circle-opacity', fillB);
+        map.setPaintProperty(PULSE2_LAYER_ID, 'circle-stroke-opacity', strokeB);
       } catch { /* layer removed */ }
 
       _pulseRafId = requestAnimationFrame(animatePulse);
@@ -127,7 +160,21 @@ export const EarthquakeVisualization = {
           5, 1,
           7, 1.5,
         ],
-        'circle-stroke-color': '#ffffff',
+        'circle-stroke-color': '#3d1507',
+      },
+    });
+
+    // Plasma core — bright incandescent center for mag >= 5 (overlays main dot)
+    map.addLayer({
+      id: CORE_LAYER_ID,
+      type: 'circle',
+      source: SOURCE_ID,
+      filter: ['>=', ['get', 'mag'], 5],
+      paint: {
+        'circle-radius': ['*', magRadiusExpr, 0.35],
+        'circle-color': '#ffd9a3',
+        'circle-opacity': 0.95,
+        'circle-blur': 0.3,
       },
     });
 
@@ -145,14 +192,14 @@ export const EarthquakeVisualization = {
     if (!source) return;
     source.setData({ type: 'FeatureCollection', features });
 
-    // Update pulse filter with current time threshold
+    // Update pulse filters with current time threshold
+    const recentFilter: any = ['all',
+      ['>=', ['get', 'mag'], 4],
+      ['>=', ['get', 'time'], Date.now() - RECENT_MS],
+    ];
     try {
-      if (map.getLayer(PULSE_LAYER_ID)) {
-        map.setFilter(PULSE_LAYER_ID, ['all',
-          ['>=', ['get', 'mag'], 4],
-          ['>=', ['get', 'time'], Date.now() - RECENT_MS],
-        ]);
-      }
+      if (map.getLayer(PULSE_LAYER_ID)) map.setFilter(PULSE_LAYER_ID, recentFilter);
+      if (map.getLayer(PULSE2_LAYER_ID)) map.setFilter(PULSE2_LAYER_ID, recentFilter);
     } catch { /* layer may not exist */ }
   },
 
@@ -198,8 +245,10 @@ export const EarthquakeVisualization = {
     if (_pulseRafId) { cancelAnimationFrame(_pulseRafId); _pulseRafId = 0; }
     _hoverPopup?.remove();
     _hoverPopup = null;
+    if (map.getLayer(CORE_LAYER_ID)) map.removeLayer(CORE_LAYER_ID);
     if (map.getLayer(LAYER_ID)) map.removeLayer(LAYER_ID);
     if (map.getLayer(GLOW_LAYER_ID)) map.removeLayer(GLOW_LAYER_ID);
+    if (map.getLayer(PULSE2_LAYER_ID)) map.removeLayer(PULSE2_LAYER_ID);
     if (map.getLayer(PULSE_LAYER_ID)) map.removeLayer(PULSE_LAYER_ID);
     if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
   },
@@ -234,11 +283,11 @@ function magLabel(mag: number): string {
 }
 
 function magColor(mag: number): string {
-  if (mag >= 7) return '#ff0044';
-  if (mag >= 5.5) return '#ff3333';
-  if (mag >= 4.5) return '#ff8800';
-  if (mag >= 3) return '#ffcc00';
-  return '#44cc88';
+  if (mag >= 7) return '#ff6b1a';   // ascua
+  if (mag >= 5.5) return '#8b4513'; // caoba (subido para legibilidad en popup)
+  if (mag >= 4.5) return '#a85a20';
+  if (mag >= 3) return '#b8864b';
+  return '#d4b896';
 }
 
 function buildPopupHtml(props: Record<string, any>): string {

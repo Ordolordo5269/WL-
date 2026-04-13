@@ -21,26 +21,6 @@ export function useFiresData(enabled: boolean) {
   });
 }
 
-export function useAirTrafficData(enabled: boolean) {
-  return useQuery({
-    queryKey: ['live-activity', 'air-traffic'],
-    queryFn: liveActivityApi.getAirTraffic,
-    enabled,
-    refetchInterval: 15 * 1000, // 15 sec
-    staleTime: 10 * 1000,
-  });
-}
-
-export function useMarineTrafficData(enabled: boolean) {
-  return useQuery({
-    queryKey: ['live-activity', 'marine-traffic'],
-    queryFn: liveActivityApi.getMarineTraffic,
-    enabled,
-    refetchInterval: 30 * 1000, // 30 sec
-    staleTime: 20 * 1000,
-  });
-}
-
 export function useActiveVolcanoesData(enabled: boolean) {
   return useQuery({
     queryKey: ['live-activity', 'active-volcanoes'],

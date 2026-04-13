@@ -7,7 +7,6 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().min(1, 'CORS_ORIGIN is required'),
   JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters'),
   NASA_FIRMS_KEY: z.string().optional(),
-  AISSTREAM_KEY: z.string().optional(),
   ACLED_EMAIL: z.string().optional(),
   ACLED_PASSWORD: z.string().optional(),
   UCDP_API_TOKEN: z.string().optional(),

@@ -54,9 +54,6 @@ export interface MapRefType {
   updateTsunamiData?: (features: any[]) => void;
   setStormTrackingLayers?: (enabled: boolean) => void;
   updateStormData?: (features: any[]) => void;
-  setAirTrafficTrackingLayers?: (enabled: boolean) => void;
-  updateAirTrafficPositions?: (features: any[]) => void;
-  updateAirTrafficTrails?: (trails: any[]) => void;
   setSatelliteTrackingLayers?: (enabled: boolean) => void;
   updateSatellitePositions?: (features: any[]) => void;
   showSatelliteGroundTrack?: (coords: [number, number][], category: string, country?: string, constellation?: string) => void;

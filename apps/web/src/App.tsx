@@ -22,7 +22,6 @@ import SpaceBackground from './components/SpaceBackground';
 import { getSatelliteProfileAsync, preloadSatelliteProfiles, COUNTRY_FLAGS, COUNTRY_NAMES, type SatelliteProfile } from './features/world-map/map/satellite-database';
 import { MILITARY_COUNTRY_COLORS, CLASSIFIED_ORBIT_COLORS } from './features/world-map/map/satellite-visualization';
 import type { SatCategory } from './features/world-map/useSatelliteTracking';
-import { useAirTrafficTracking } from './features/world-map/useAirTrafficTracking';
 import { getMissionTimeInfo, countryCodeToFlag, getOrbitColor, getOrbitShortName, type Mission, type LaunchEvent } from './features/world-map/useMissionTracking';
 import LaunchAlert from './components/LaunchAlert';
 import { MuseumLegend, MuseumExpandedCard, PURPLE_SCHEME, EARTHY_SCHEME } from './components/MuseumCard';
@@ -91,7 +90,6 @@ function WorldMapView() {
   const choropleth = useChoropleth(mapRef);
   const mapControls = useMapControls(mapRef);
   const liveActivity = useLiveActivity();
-  const airTrafficTracking = useAirTrafficTracking();
   const conflictTracker = useConflictTracker();
 
   // Mission markers callbacks
@@ -159,40 +157,6 @@ function WorldMapView() {
   useEffect(() => {
     mapRef.current?.setLiveActivityLayer?.('fires', liveActivity.firesEnabled, liveActivity.firesData);
   }, [liveActivity.firesEnabled, liveActivity.firesData]);
-
-  // Air Traffic: worker-based live tracking (replaces static circle layer)
-  useEffect(() => {
-    if (liveActivity.airTrafficEnabled) {
-      // Clean up old static layer if it exists
-      mapRef.current?.setLiveActivityLayer?.('air-traffic', false);
-      mapRef.current?.setAirTrafficTrackingLayers?.(true);
-      airTrafficTracking.start();
-    } else {
-      airTrafficTracking.stop();
-      mapRef.current?.setAirTrafficTrackingLayers?.(false);
-    }
-  }, [liveActivity.airTrafficEnabled]);
-
-  // Feed OpenSky snapshots to the worker
-  useEffect(() => {
-    if (liveActivity.airTrafficEnabled && liveActivity.airTrafficData) {
-      airTrafficTracking.feedSnapshot(liveActivity.airTrafficData);
-    }
-  }, [liveActivity.airTrafficData]);
-
-  // Wire worker position callbacks to the map
-  useEffect(() => {
-    airTrafficTracking.setOnPositions((features) => {
-      mapRef.current?.updateAirTrafficPositions?.(features);
-    });
-    airTrafficTracking.setOnTrails((trails) => {
-      mapRef.current?.updateAirTrafficTrails?.(trails);
-    });
-  }, []);
-
-  useEffect(() => {
-    mapRef.current?.setLiveActivityLayer?.('marine-traffic', liveActivity.marineTrafficEnabled, liveActivity.marineTrafficData);
-  }, [liveActivity.marineTrafficEnabled, liveActivity.marineTrafficData]);
 
   // Tsunamis: concentric wave animation
   useEffect(() => {
@@ -852,10 +816,6 @@ function WorldMapView() {
         earthquakesEnabled={liveActivity.earthquakesEnabled}
         onToggleFires={liveActivity.handleToggleFires}
         firesEnabled={liveActivity.firesEnabled}
-        onToggleAirTraffic={liveActivity.handleToggleAirTraffic}
-        airTrafficEnabled={liveActivity.airTrafficEnabled}
-        onToggleMarineTraffic={liveActivity.handleToggleMarineTraffic}
-        marineTrafficEnabled={liveActivity.marineTrafficEnabled}
         onToggleTsunamis={liveActivity.handleToggleTsunamis}
         tsunamisEnabled={liveActivity.tsunamisEnabled}
         onToggleStorms={liveActivity.handleToggleStorms}
@@ -903,8 +863,6 @@ function WorldMapView() {
       <LiveActivityLegend
         earthquakesEnabled={liveActivity.earthquakesEnabled}
         firesEnabled={liveActivity.firesEnabled}
-        airTrafficEnabled={liveActivity.airTrafficEnabled}
-        marineTrafficEnabled={liveActivity.marineTrafficEnabled}
         tsunamisEnabled={liveActivity.tsunamisEnabled}
         stormsEnabled={liveActivity.stormsEnabled}
         lightningEnabled={liveActivity.lightningEnabled}

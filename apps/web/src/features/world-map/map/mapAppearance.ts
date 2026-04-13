@@ -202,11 +202,11 @@ export const NASA_EARTH_OVERLAYS: Record<NasaOverlayType, NasaEarthOverlay> = {
     dateOffsetDays: 1,
     sources: [
       // Older night first (bottom layer — fills gaps)
-      { sourceId: 'earth-dnb-snpp-2', gibsLayer: 'VIIRS_SNPP_DayNightBand_At_Sensor_Radiance', gibsLevel: 8, tileSize: 256, attribution: 'WorldLore', dateOffsetDays: 2 },
-      { sourceId: 'earth-dnb-noaa20-2', gibsLayer: 'VIIRS_NOAA20_DayNightBand_At_Sensor_Radiance', gibsLevel: 8, tileSize: 256, attribution: 'WorldLore', dateOffsetDays: 2 },
+      { sourceId: 'earth-dnb-snpp-2', gibsLayer: 'VIIRS_SNPP_DayNightBand_At_Sensor_Radiance', gibsLevel: 8, tileSize: 256, attribution: 'WorldLore', dateOffsetDays: 4 },
+      { sourceId: 'earth-dnb-noaa20-2', gibsLayer: 'VIIRS_NOAA20_DayNightBand_At_Sensor_Radiance', gibsLevel: 8, tileSize: 256, attribution: 'WorldLore', dateOffsetDays: 4 },
       // Latest night on top (freshest data)
-      { sourceId: 'earth-dnb-snpp', gibsLayer: 'VIIRS_SNPP_DayNightBand_At_Sensor_Radiance', gibsLevel: 8, tileSize: 256, attribution: 'WorldLore', dateOffsetDays: 1 },
-      { sourceId: 'earth-dnb-noaa20', gibsLayer: 'VIIRS_NOAA20_DayNightBand_At_Sensor_Radiance', gibsLevel: 8, tileSize: 256, attribution: 'WorldLore', dateOffsetDays: 1 },
+      { sourceId: 'earth-dnb-snpp', gibsLayer: 'VIIRS_SNPP_DayNightBand_At_Sensor_Radiance', gibsLevel: 8, tileSize: 256, attribution: 'WorldLore', dateOffsetDays: 3 },
+      { sourceId: 'earth-dnb-noaa20', gibsLayer: 'VIIRS_NOAA20_DayNightBand_At_Sensor_Radiance', gibsLevel: 8, tileSize: 256, attribution: 'WorldLore', dateOffsetDays: 3 },
     ],
   },
 };
@@ -493,8 +493,8 @@ export function getNasaPreviewUrl(type: NasaOverlayType): string {
     return `${base}&LAYERS=VIIRS_SNPP_Thermal_Anomalies_375m_All&TIME=${date}`;
   }
   if (type === 'night-lights') {
-    // Use 2-day offset to avoid partial orbital gaps in the preview thumbnail
-    const date = getGibsDate('daily', 2);
+    // Use 3-day offset — GIBS NRT VIIRS data has ~2-3 day processing lag
+    const date = getGibsDate('daily', 3);
     return `${base}&LAYERS=VIIRS_SNPP_DayNightBand_At_Sensor_Radiance,VIIRS_NOAA20_DayNightBand_At_Sensor_Radiance&TIME=${date}`;
   }
   const source = cfg.sources[0];
@@ -777,7 +777,7 @@ export function warmUpResources(mapboxToken: string): void {
   fetch(darkStyleUrl, { priority: 'low' } as any).catch(() => {});
 
   // Prefetch a few low-zoom Night Lights GIBS tiles (z=1..2)
-  const date = getGibsDate('daily', 1);
+  const date = getGibsDate('daily', 3);
   const gibsBase = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_DayNightBand_At_Sensor_Radiance/default/${date}/GoogleMapsCompatible_Level8`;
   const tilesToWarm = [
     `${gibsBase}/1/0/0.png`, `${gibsBase}/1/0/1.png`,
