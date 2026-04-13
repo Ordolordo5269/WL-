@@ -568,6 +568,8 @@ export async function getCommoditiesData(iso3: string) {
     renewablesSharePct, fossilSharePct,
     // P3 A4: FAO crop-specific production
     wheatProd, maizeProd, riceProd, soybeanProd, barleyProd,
+    // P3 A2: EIA oil
+    oilProdTbpd, oilConsumptionTbpd,
   ] = await Promise.all([
     // Energy
     getLatestIndicatorValueForIso3(countryIso3, 'ENERGY_IMPORTS_PCT'),
@@ -606,6 +608,9 @@ export async function getCommoditiesData(iso3: string) {
     getLatestIndicatorValueForIso3(countryIso3, 'RICE_PROD_T'),
     getLatestIndicatorValueForIso3(countryIso3, 'SOYBEAN_PROD_T'),
     getLatestIndicatorValueForIso3(countryIso3, 'BARLEY_PROD_T'),
+    // P3 A2: EIA oil production + consumption (TBPD, same unit = direct ratio)
+    getLatestIndicatorValueForIso3(countryIso3, 'OIL_PROD_TBPD'),
+    getLatestIndicatorValueForIso3(countryIso3, 'OIL_CONSUMPTION_TBPD'),
   ]);
 
   return {
@@ -652,6 +657,11 @@ export async function getCommoditiesData(iso3: string) {
       rice:    { value: toNumberOrNull(riceProd.value),    year: riceProd.year },
       soybean: { value: toNumberOrNull(soybeanProd.value), year: soybeanProd.year },
       barley:  { value: toNumberOrNull(barleyProd.value),  year: barleyProd.year },
+    },
+    // P3 A2: Oil production vs consumption (TBPD) — source: EIA
+    oilFlow: {
+      productionTbpd:  { value: toNumberOrNull(oilProdTbpd.value),         year: oilProdTbpd.year },
+      consumptionTbpd: { value: toNumberOrNull(oilConsumptionTbpd.value), year: oilConsumptionTbpd.year },
     },
     sources: { worldBank: 'https://api.worldbank.org/v2/' },
   };

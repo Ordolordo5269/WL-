@@ -109,7 +109,11 @@ export default function CommoditiesSection({ data, isLoading, error }: Commoditi
   const hasPrimaryProduction = prod && (
     (prod.oil.value ?? 0) >= 1 || (prod.gas.value ?? 0) >= 1 || (prod.coal.value ?? 0) >= 1
   );
-  const showEnergyMixCard = hasMix || hasPrimaryProduction;
+  // P3 A2: also show if we have at least oil production or consumption data
+  const hasOilFlow = data.oilFlow && (
+    data.oilFlow.productionTbpd.value !== null || data.oilFlow.consumptionTbpd.value !== null
+  );
+  const showEnergyMixCard = hasMix || hasPrimaryProduction || hasOilFlow;
 
   return (
     <motion.div
@@ -156,6 +160,49 @@ export default function CommoditiesSection({ data, isLoading, error }: Commoditi
               )}
             </div>
           )}
+
+          {/* P3 A2: Oil Self-Sufficiency (EIA — directly comparable TBPD units) */}
+          {(() => {
+            const flow = data.oilFlow;
+            const prodV = flow?.productionTbpd?.value ?? null;
+            const consV = flow?.consumptionTbpd?.value ?? null;
+            if (prodV === null && consV === null) return null;
+
+            const ratio = (prodV !== null && consV !== null && consV > 0)
+              ? prodV / consV
+              : null;
+
+            let label: string | null = null;
+            let level: 'good' | 'warning' | 'danger' = 'warning';
+
+            if (ratio !== null) {
+              if (ratio >= 2)       { label = 'Major oil exporter';        level = 'good'; }
+              else if (ratio >= 1)  { label = 'Self-sufficient in oil';    level = 'good'; }
+              else if (ratio >= 0.5){ label = 'Partially oil-dependent';   level = 'warning'; }
+              else if (ratio > 0.05){ label = 'Highly dependent on imports'; level = 'danger'; }
+              else                  { label = 'Almost fully dependent on oil imports'; level = 'danger'; }
+            }
+
+            return (
+              <div className="mt-4 pt-3 border-t border-slate-700/40">
+                <div className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-2">Oil Self-Sufficiency</div>
+                {label && (
+                  <div className="mb-2">
+                    <Badge text={label} level={level} />
+                  </div>
+                )}
+                {prodV !== null && (
+                  <Detail label="Oil Production" value={`${s.formatNumber(Math.round(prodV))} kbbl/day`} />
+                )}
+                {consV !== null && (
+                  <Detail label="Oil Consumption" value={`${s.formatNumber(Math.round(consV))} kbbl/day`} />
+                )}
+                {ratio !== null && (
+                  <Detail label="Self-sufficiency ratio" value={`${ratio.toFixed(2)}×`} />
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
 

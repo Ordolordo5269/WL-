@@ -152,6 +152,146 @@ etc). Decidir cuando haya evidencia del patrón de uso — no ahora.
 
 ---
 
+## 2026-04-14 — Cron jobs de ingesta diferidos a producción
+
+**Estado actual:** Todos los scripts de ingesta corren **manualmente**. Los
+datos en DB solo se actualizan cuando alguien ejecuta
+`npx tsx src/scripts/ingest-XXX.ts` en su máquina local.
+
+**Consecuencia:** Si nadie corre los scripts, los datos en DB quedan
+"congelados" en la fecha del último run. El widget de Dashboard seguirá
+mostrando la última fecha disponible sin indicación explícita de que hay
+datos nuevos upstream.
+
+**Por qué no automatizamos ahora:** Seguimos en fase de desarrollo, no hay
+usuarios reales, y montar crons es infra que se hace una vez al desplegar
+producción (todas las fuentes de golpe, coherente).
+
+**Calendario de refresh manual** (en orden cronológico del año):
+
+| Mes | Fuente | Script |
+|-----|--------|--------|
+| Enero (fines) | Transparency CPI | `ingest-transparency-cpi.ts` |
+| Enero | OWID Energy Data | `ingest-energy-owid.ts` |
+| Enero | ND-GAIN | `ingest-nd-gain.ts` |
+| Febrero | Freedom House | `ingest-freedom-house.ts` |
+| Febrero-Marzo | FAO Crops (via OWID) | `ingest-faostat-crops.ts` |
+| Marzo | V-Dem | `ingest-vdem.ts` |
+| Marzo-Abril | World Bank (trimestral) | scripts worldbank-* |
+| Abril | Global Forest Watch | `ingest-global-forest-watch.ts` |
+| Mayo-Junio | Fragile States Index | `ingest-fragile-states.ts` |
+| Junio | Global Peace Index | `ingest-global-peace-index.ts` |
+| Septiembre | World Risk Index | `ingest-world-risk-index.ts` |
+| Noviembre | Global Carbon Project | `ingest-global-carbon-project.ts` |
+| **Mensual** (día 10) | **FAO Food Price Index** | `ingest-fao-fpi.ts` |
+| Continuo (cuando queramos snapshot) | OpenAQ, OpenSanctions | sus scripts respectivos |
+
+**Plan en 3 niveles (no "todo o nada"):**
+
+### Nivel 1 — Documentación (hoy, zero trabajo técnico)
+- Este documento con la tabla de cadencias. Evita perder la lógica.
+- Estado: ✅ hecho.
+
+### Nivel 2 — Scaffold mínimo (al cerrar P3 Fase A, 30-60 min)
+- Montar 1 GitHub Actions workflow que corra **solo** `ingest-fao-fpi.ts`
+  el día 10 de cada mes a las 2am UTC.
+- FAO es el más urgente porque es **mensual**; todas las otras fuentes
+  son anuales y perdonan más.
+- Validar el pipeline end-to-end: secrets, permisos DB, logs, rollback si
+  falla.
+- Dejar los YAMLs de las otras fuentes comentados pero listos para
+  descomentar. Así el patrón queda probado antes de escalar.
+
+### Nivel 3 — Producción real (cuando WorldLore esté listo para compartir con alguien externo, 2-3 sesiones)
+- Activar crons para todas las fuentes en sus fechas respectivas.
+- Monitoring básico: ¿cuándo fue el último run exitoso por fuente?
+- Alertas: si una fuente lleva >30 días sin actualizar, avisar.
+- "Producción real" = decisión del usuario de mostrar la plataforma a
+  analistas externos, profesores, inversores. No necesariamente despliegue
+  comercial.
+
+**Opciones técnicas (para nivel 2 y 3):**
+- **GitHub Actions** scheduled workflows → recomendado. Gratis, integrado,
+  secrets nativos.
+- Cron en servidor de producción → cuando haya servidor propio
+- Servicio externo tipo Inngest / Quirrel → over-engineering hoy
+
+**Por qué el trade-off importa:**
+Si en 6 meses WorldLore tiene usuarios reales (aunque sean 10 analistas
+ESG) y el Dashboard muestra FAO FPI de marzo 2026 en septiembre, pierde
+credibilidad difícil de recuperar. Para una plataforma posicionada como
+rigurosa, mostrar datos obsoletos es peor que no mostrar el indicador.
+Y "acordarse manualmente" no escala a 15 fuentes con calendarios distintos.
+
+Pero montar crons hoy mientras se añaden fuentes casi a diario (cada
+script de ingesta nuevo requeriría añadir su cron) es fricción duplicada.
+Por eso el plan en niveles: la documentación evita olvido, el scaffold
+valida el patrón, y la activación completa ocurre cuando el coste de
+no tenerla ya es visible.
+
+---
+
+## 2026-04-14 — P3 Paso A2 (EIA) scope reducido: solo petróleo
+
+**Contexto:** El plan original de A2 apuntaba a ingestar, desde la EIA US
+Energy Information Administration, reservas probadas (oil/gas/coal),
+capacidad eléctrica instalada por tipo, y consumo global. Era el paso de
+P3 Fase A con más valor proyectado vs las otras fuentes públicas.
+
+**Hallazgo al registrar la API key y explorar la API v2:**
+
+| Endpoint | Cobertura real | Lo que esperábamos |
+|----------|----------------|--------------------|
+| `/v2/international` | Solo petroleum (18 productIds, todos crude/refined) | Todos los combustibles global |
+| `/v2/natural-gas` | Solo US (filtra por `stateId`) | Gas global |
+| `/v2/coal` | Solo US (`reserves-capacity` es per state) | Coal + reservas global |
+| `/v2/electricity` | Solo US | Capacidad instalada global |
+
+EIA **no expone** reservas, capacidad instalada, ni consumo de
+gas/coal/electric a nivel internacional en su API pública. Esos datasets
+existen como XLSX descargables en eia.gov pero no en la API.
+
+**Decisión:** ingestar **solamente** lo que EIA sí ofrece a nivel global:
+- `OIL_PROD_TBPD` — producción de crudo+NGPL+otros líquidos (kbbl/día)
+- `OIL_CONSUMPTION_TBPD` — consumo de petróleo (kbbl/día)
+
+Total: **2 indicadores** (vs ~13 proyectados), ~17K registros ingestados.
+
+**Por qué NO parseamos XLSX de eia.gov:**
+- Violaría el patrón establecido "script → API pública estructurada → DB"
+- Los XLSX de EIA tienen formato no uniforme entre reportes (BP Statistical
+  Review vía Energy Institute, ya en A1 vía OWID, es más limpio)
+- Over-engineering para datos que ya están mayormente cubiertos por A1
+
+**Por qué el subset aporta valor aunque sea pequeño:**
+Production y consumption en **misma unidad (TBPD)** permite calcular
+directamente el ratio producción/consumo en la UI ("oil self-sufficiency").
+A1 tiene producción en TWh, no comparable con consumo sin conversión.
+La narrativa "Arabia exporta 2.99× lo que consume, Japón depende en 0.00×"
+es un diferencial visible que ninguna otra plataforma muestra tan claro.
+
+**Opciones futuras de expansión (si alguna vez se necesitan):**
+1. **Parser XLSX de EIA STEO / Annual Energy Outlook** — si priorizamos
+   reservas globales, aceptar el coste de mantener parser de XLSX anual.
+2. **BP Statistical Review directo** — ya lo consume OWID, podríamos
+   saltarnos el intermediario.
+3. **USGS Mineral Commodity Summaries (A3)** — para minerales (litio, cobalto,
+   tierras raras) que EIA no cubre, siguiente paso del roadmap.
+
+**Trigger para revisar esta decisión:**
+- Si un feature necesita reservas de gas/coal global y no hay otra fuente
+- Si la EIA abre su endpoint internacional a otros combustibles (verificar
+  anual con `GET /v2` y buscar rutas nuevas)
+
+**Archivos afectados:**
+- `apps/api/src/scripts/ingest-eia-international.ts` (header con razonamiento
+  completo)
+- `apps/api/src/modules/indicators/service.ts` (bloque `oilFlow` en response)
+- `apps/web/src/features/country-sidebar/sections/CommoditiesSection.tsx`
+  (sub-sección "Oil Self-Sufficiency" en la card Energy Mix)
+
+---
+
 ## 2026-04-13 — Rate limiting de sidebar endpoints (pendiente)
 
 **Estado actual:** Solo `/api/countries` y `/api/geo` tienen `dataLimiter` aplicado

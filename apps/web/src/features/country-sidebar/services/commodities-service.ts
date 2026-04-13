@@ -48,6 +48,11 @@ export interface CommoditiesData {
     soybean: IndicatorPoint;
     barley: IndicatorPoint;
   };
+  // P3 A2: Oil production vs consumption (thousand barrels per day)
+  oilFlow?: {
+    productionTbpd: IndicatorPoint;
+    consumptionTbpd: IndicatorPoint;
+  };
   sources: { worldBank: string };
 }
 

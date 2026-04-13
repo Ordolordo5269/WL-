@@ -153,6 +153,15 @@ const SOURCE_VERSIONS: Record<string, SourceMetadata> = {
     sourceVersion: 'FFPI 2026-04',
     sourceReleaseDate: new Date('2026-04-01'),
   },
+
+  // EIA — International oil production & consumption
+  // API v2: api.eia.gov/v2/international/data (requires EIA_API_KEY)
+  // Note: EIA /international endpoint only covers petroleum; gas/coal/electricity
+  // data is US-only in EIA and we rely on OWID A1 for global energy mix
+  'EIA': {
+    sourceVersion: 'EIA API v2 2026-04',
+    sourceReleaseDate: new Date('2026-04-01'),
+  },
 };
 
 export function getSourceMetadata(source: string): SourceMetadata {
