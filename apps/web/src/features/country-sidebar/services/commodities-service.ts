@@ -21,6 +21,25 @@ export interface CommoditiesData {
   foodExportsPct: IndicatorPoint;
   foodImportsPct: IndicatorPoint;
   arableLandPct: IndicatorPoint;
+  // P3 A1: Primary energy production (TWh — what this country extracts)
+  energyProduction?: {
+    oil: IndicatorPoint;
+    gas: IndicatorPoint;
+    coal: IndicatorPoint;
+  };
+  // P3 A1: Electricity mix (TWh generated + shares)
+  energyMix?: {
+    totalTwh: IndicatorPoint;
+    nuclear: IndicatorPoint;
+    solar: IndicatorPoint;
+    wind: IndicatorPoint;
+    hydro: IndicatorPoint;
+    coalElec: IndicatorPoint;
+    gasElec: IndicatorPoint;
+    oilElec: IndicatorPoint;
+    renewablesSharePct: IndicatorPoint;
+    fossilSharePct: IndicatorPoint;
+  };
   sources: { worldBank: string };
 }
 

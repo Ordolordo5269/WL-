@@ -2,11 +2,68 @@ import { motion } from 'framer-motion';
 import { AlertCircle, Fuel, Gem, Wheat, Zap, Droplets, Mountain } from 'lucide-react';
 import { commoditiesService } from '../services/commodities-service';
 import type { TCommoditiesData } from '../services/commodities-service';
+import { Badge, Detail, type BadgeLevel } from '../components/BadgeDetail';
 
 interface CommoditiesSectionProps {
   data: TCommoditiesData | null;
   isLoading: boolean;
   error: string | null;
+}
+
+/**
+ * Given the electricity mix TWh values, return the dominant source badge.
+ * Only uses electricity generation (not primary production) so the badge is
+ * methodologically consistent for all countries.
+ */
+function interpretElectricityMix(mix: NonNullable<TCommoditiesData['energyMix']>) {
+  const total = mix.totalTwh.value;
+  if (!total || total <= 0) return null;
+
+  const sources: Array<{ name: string; twh: number | null; clean: boolean }> = [
+    { name: 'Nuclear',  twh: mix.nuclear.value,  clean: true },
+    { name: 'Hydro',    twh: mix.hydro.value,    clean: true },
+    { name: 'Solar',    twh: mix.solar.value,    clean: true },
+    { name: 'Wind',     twh: mix.wind.value,     clean: true },
+    { name: 'Coal',     twh: mix.coalElec.value, clean: false },
+    { name: 'Gas',      twh: mix.gasElec.value,  clean: false },
+    { name: 'Oil',      twh: mix.oilElec.value,  clean: false },
+  ];
+
+  // Find the single dominant source (>= 50% of grid)
+  const withPct = sources.map((s) => ({ ...s, pct: s.twh != null ? (s.twh / total) * 100 : 0 }));
+  const dominant = withPct.reduce((a, b) => (b.pct > a.pct ? b : a));
+
+  const renewablesPct = mix.renewablesSharePct.value;
+  const fossilPct = mix.fossilSharePct.value;
+
+  let badge: string;
+  let level: BadgeLevel;
+  let desc: string;
+
+  if (dominant.pct >= 50) {
+    badge = `${dominant.name}-heavy grid`;
+    if (dominant.name === 'Nuclear') { level = 'good'; desc = 'Low-carbon baseload grid dominated by nuclear power'; }
+    else if (dominant.name === 'Hydro') { level = 'good'; desc = 'Clean grid dominated by hydroelectric generation'; }
+    else if (dominant.name === 'Solar' || dominant.name === 'Wind') { level = 'good'; desc = `Clean grid dominated by ${dominant.name.toLowerCase()} power`; }
+    else if (dominant.name === 'Gas') { level = 'warning'; desc = 'Natural gas dominates the grid — cleaner than coal but still fossil'; }
+    else if (dominant.name === 'Coal') { level = 'danger'; desc = 'Coal dominates the grid — high emissions and air pollution'; }
+    else if (dominant.name === 'Oil') { level = 'danger'; desc = 'Petroleum dominates the grid — high emissions, typical of oil exporters'; }
+    else { level = 'warning'; desc = 'Grid dominated by one source'; }
+  } else if (renewablesPct != null && renewablesPct >= 50) {
+    badge = 'Renewable-dominant';
+    level = 'good';
+    desc = 'Majority of electricity comes from renewable sources';
+  } else if (fossilPct != null && fossilPct >= 70) {
+    badge = 'Fossil-dominant';
+    level = 'danger';
+    desc = 'Grid heavily dependent on fossil fuels';
+  } else {
+    badge = 'Mixed grid';
+    level = 'warning';
+    desc = 'Balanced mix with no single source above 50%';
+  }
+
+  return { badge, level, desc, sources: withPct.filter((s) => s.twh != null && s.twh > 0).sort((a, b) => b.pct - a.pct) };
 }
 
 export default function CommoditiesSection({ data, isLoading, error }: CommoditiesSectionProps) {
@@ -42,6 +99,18 @@ export default function CommoditiesSection({ data, isLoading, error }: Commoditi
 
   const s = commoditiesService;
 
+  const mix = data.energyMix;
+  const prod = data.energyProduction;
+  const mixInfo = mix ? interpretElectricityMix(mix) : null;
+
+  // Show Energy Mix card only if we have meaningful data
+  const hasMix = mixInfo !== null;
+  // Use >=1 TWh threshold so we don't display rows that round down to "0 TWh"
+  const hasPrimaryProduction = prod && (
+    (prod.oil.value ?? 0) >= 1 || (prod.gas.value ?? 0) >= 1 || (prod.coal.value ?? 0) >= 1
+  );
+  const showEnergyMixCard = hasMix || hasPrimaryProduction;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -49,6 +118,47 @@ export default function CommoditiesSection({ data, isLoading, error }: Commoditi
       transition={{ duration: 0.3 }}
       className="p-4 space-y-4"
     >
+      {/* P3 A1: Energy Mix (electricity grid) + Primary Production (extraction) */}
+      {showEnergyMixCard && (
+        <div className="section-card">
+          <div className="section-header">
+            <Zap className="h-4 w-4" />
+            <h3>Energy Mix</h3>
+          </div>
+
+          {mixInfo && (
+            <>
+              <div className="mb-2">
+                <Badge text={mixInfo.badge} level={mixInfo.level} />
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed mb-3">{mixInfo.desc}</p>
+
+              {mix!.totalTwh.value != null && (
+                <Detail label="Total Electricity Generation" value={`${s.formatNumber(Number(mix!.totalTwh.value.toFixed(0)))} TWh`} />
+              )}
+              {mixInfo.sources.slice(0, 5).map((src) => (
+                <Detail key={src.name} label={src.name} value={`${src.pct.toFixed(1)}%`} />
+              ))}
+            </>
+          )}
+
+          {hasPrimaryProduction && (
+            <div className={mixInfo ? 'mt-4 pt-3 border-t border-slate-700/40' : ''}>
+              <div className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-2">Primary Energy Production</div>
+              {prod!.oil.value != null && prod!.oil.value >= 1 && (
+                <Detail label="Oil Extraction" value={`${s.formatNumber(Number(prod!.oil.value.toFixed(0)))} TWh`} />
+              )}
+              {prod!.gas.value != null && prod!.gas.value >= 1 && (
+                <Detail label="Gas Extraction" value={`${s.formatNumber(Number(prod!.gas.value.toFixed(0)))} TWh`} />
+              )}
+              {prod!.coal.value != null && prod!.coal.value >= 1 && (
+                <Detail label="Coal Extraction" value={`${s.formatNumber(Number(prod!.coal.value.toFixed(0)))} TWh`} />
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Energy */}
       <div className="section-card">
         <div className="section-header">

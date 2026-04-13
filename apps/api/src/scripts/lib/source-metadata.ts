@@ -129,6 +129,14 @@ const SOURCE_VERSIONS: Record<string, SourceMetadata> = {
     sourceVersion: null, // continuous; ingestedAt is the effective version
     sourceReleaseDate: null,
   },
+
+  // OWID Energy Data — consolidated energy production, electricity generation, mix shares
+  // Upstream: Energy Institute Statistical Review + EIA + Ember
+  // Mirror: github.com/owid/energy-data (no auth)
+  'OWID Energy Data': {
+    sourceVersion: 'Energy Institute 2024 + EIA via OWID 2025-01',
+    sourceReleaseDate: new Date('2025-01-01'),
+  },
 };
 
 export function getSourceMetadata(source: string): SourceMetadata {

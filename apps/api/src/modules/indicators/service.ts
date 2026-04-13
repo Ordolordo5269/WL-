@@ -560,7 +560,12 @@ export async function getCommoditiesData(iso3: string) {
   const [
     energyImportsPct, fuelExportsPct, fuelImportsPct, energyUsePerCapita, electricityRenewablesPct,
     mineralRentsPctGdp, oreMetalExportsPct,
-    cerealProductionMt, cerealYieldKgHa, foodExportsPct, foodImportsPct, arableLandPct
+    cerealProductionMt, cerealYieldKgHa, foodExportsPct, foodImportsPct, arableLandPct,
+    // P3 A1: OWID Energy
+    oilProdTwh, gasProdTwh, coalProdTwh,
+    elecGenTotalTwh, nuclearGenTwh, solarGenTwh, windGenTwh, hydroGenTwh,
+    coalGenTwh, gasGenTwh, oilGenTwh,
+    renewablesSharePct, fossilSharePct,
   ] = await Promise.all([
     // Energy
     getLatestIndicatorValueForIso3(countryIso3, 'ENERGY_IMPORTS_PCT'),
@@ -577,6 +582,22 @@ export async function getCommoditiesData(iso3: string) {
     getLatestIndicatorValueForIso3(countryIso3, 'FOOD_EXPORTS_PCT'),
     getLatestIndicatorValueForIso3(countryIso3, 'FOOD_IMPORTS_PCT'),
     getLatestIndicatorValueForIso3(countryIso3, 'ARABLE_LAND_PCT'),
+    // P3 A1: OWID Energy — primary production
+    getLatestIndicatorValueForIso3(countryIso3, 'OIL_PROD_TWH'),
+    getLatestIndicatorValueForIso3(countryIso3, 'GAS_PROD_TWH'),
+    getLatestIndicatorValueForIso3(countryIso3, 'COAL_PROD_TWH'),
+    // P3 A1: OWID Energy — electricity generation by source
+    getLatestIndicatorValueForIso3(countryIso3, 'ELEC_GEN_TOTAL_TWH'),
+    getLatestIndicatorValueForIso3(countryIso3, 'NUCLEAR_GEN_TWH'),
+    getLatestIndicatorValueForIso3(countryIso3, 'SOLAR_GEN_TWH'),
+    getLatestIndicatorValueForIso3(countryIso3, 'WIND_GEN_TWH'),
+    getLatestIndicatorValueForIso3(countryIso3, 'HYDRO_GEN_TWH'),
+    getLatestIndicatorValueForIso3(countryIso3, 'COAL_GEN_TWH'),
+    getLatestIndicatorValueForIso3(countryIso3, 'GAS_GEN_TWH'),
+    getLatestIndicatorValueForIso3(countryIso3, 'OIL_GEN_TWH'),
+    // P3 A1: OWID Energy — mix shares
+    getLatestIndicatorValueForIso3(countryIso3, 'RENEWABLES_SHARE_PCT'),
+    getLatestIndicatorValueForIso3(countryIso3, 'FOSSIL_SHARE_PCT'),
   ]);
 
   return {
@@ -597,6 +618,25 @@ export async function getCommoditiesData(iso3: string) {
     foodExportsPct: { value: toNumberOrNull(foodExportsPct.value), year: foodExportsPct.year },
     foodImportsPct: { value: toNumberOrNull(foodImportsPct.value), year: foodImportsPct.year },
     arableLandPct: { value: toNumberOrNull(arableLandPct.value), year: arableLandPct.year },
+    // P3 A1: Primary energy production (TWh equivalent — country extracts)
+    energyProduction: {
+      oil: { value: toNumberOrNull(oilProdTwh.value), year: oilProdTwh.year },
+      gas: { value: toNumberOrNull(gasProdTwh.value), year: gasProdTwh.year },
+      coal: { value: toNumberOrNull(coalProdTwh.value), year: coalProdTwh.year },
+    },
+    // P3 A1: Electricity generation by source (TWh — what the grid actually produces)
+    energyMix: {
+      totalTwh: { value: toNumberOrNull(elecGenTotalTwh.value), year: elecGenTotalTwh.year },
+      nuclear: { value: toNumberOrNull(nuclearGenTwh.value), year: nuclearGenTwh.year },
+      solar: { value: toNumberOrNull(solarGenTwh.value), year: solarGenTwh.year },
+      wind: { value: toNumberOrNull(windGenTwh.value), year: windGenTwh.year },
+      hydro: { value: toNumberOrNull(hydroGenTwh.value), year: hydroGenTwh.year },
+      coalElec: { value: toNumberOrNull(coalGenTwh.value), year: coalGenTwh.year },
+      gasElec: { value: toNumberOrNull(gasGenTwh.value), year: gasGenTwh.year },
+      oilElec: { value: toNumberOrNull(oilGenTwh.value), year: oilGenTwh.year },
+      renewablesSharePct: { value: toNumberOrNull(renewablesSharePct.value), year: renewablesSharePct.year },
+      fossilSharePct: { value: toNumberOrNull(fossilSharePct.value), year: fossilSharePct.year },
+    },
     sources: { worldBank: 'https://api.worldbank.org/v2/' },
   };
 }
