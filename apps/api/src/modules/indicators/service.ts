@@ -618,6 +618,8 @@ export async function getEnvironmentData(iso3: string) {
     wriScore, wriExposure, wriVulnerability,
     // GCP fuel-specific CO2
     co2Coal, co2Oil, co2Gas, co2Cement, co2Flaring, co2Consumption,
+    // Fase B
+    forestLoss, aqStations,
   ] = await Promise.all([
     getLatestIndicatorValueForIso3(countryIso3, 'CO2_EMISSIONS_PER_CAPITA'),
     getLatestIndicatorValueForIso3(countryIso3, 'CO2_EMISSIONS_TOTAL_KT'),
@@ -648,6 +650,9 @@ export async function getEnvironmentData(iso3: string) {
     getLatestIndicatorValueForIso3(countryIso3, 'CO2_CEMENT_MT'),
     getLatestIndicatorValueForIso3(countryIso3, 'CO2_FLARING_MT'),
     getLatestIndicatorValueForIso3(countryIso3, 'CO2_CONSUMPTION_MT'),
+    // Fase B: Global Forest Watch + OpenAQ
+    getLatestIndicatorValueForIso3(countryIso3, 'FOREST_LOSS_HA'),
+    getLatestIndicatorValueForIso3(countryIso3, 'AQ_STATIONS_COUNT'),
   ]);
 
   return {
@@ -691,6 +696,9 @@ export async function getEnvironmentData(iso3: string) {
       flaring: { value: toNumberOrNull(co2Flaring.value), year: co2Flaring.year },
       consumption: { value: toNumberOrNull(co2Consumption.value), year: co2Consumption.year },
     },
+    // P6 Phase B: Deforestation (GFW) + air quality coverage (OpenAQ)
+    forestLossHa: { value: toNumberOrNull(forestLoss.value), year: forestLoss.year },
+    airQualityStationsCount: { value: toNumberOrNull(aqStations.value), year: aqStations.year },
     sources: { worldBank: 'https://api.worldbank.org/v2/' },
   };
 }

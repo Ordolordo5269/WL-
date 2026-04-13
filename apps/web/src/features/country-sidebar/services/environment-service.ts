@@ -44,6 +44,9 @@ export interface EnvironmentData {
     flaring: IndicatorPoint;
     consumption: IndicatorPoint;
   };
+  // P6 Phase B: Deforestation (GFW) + air quality coverage (OpenAQ)
+  forestLossHa?: IndicatorPoint;
+  airQualityStationsCount?: IndicatorPoint;
   sources: { worldBank: string };
 }
 

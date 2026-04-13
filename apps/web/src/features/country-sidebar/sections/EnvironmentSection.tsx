@@ -163,7 +163,16 @@ export default function EnvironmentSection({ data, isLoading, error }: Environme
           <div className="metric-item">
             <div className="metric-icon small"><Wind className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">Air Pollution (Fine Particles) {data.pm25AirPollution.year ? <span className="ml-2 text-[10px] text-slate-400">{data.pm25AirPollution.year}</span> : null}</div>
+              <div className="metric-label">
+                Air Pollution (Fine Particles)
+                {data.pm25AirPollution.year ? <span className="ml-2 text-[10px] text-slate-400">{data.pm25AirPollution.year}</span> : null}
+                {data.airQualityStationsCount?.value != null && (() => {
+                  const n = data.airQualityStationsCount.value!;
+                  const color = n >= 10 ? '#34d399' : n >= 3 ? '#fbbf24' : '#f87171';
+                  const label = n >= 10 ? `${n} stations` : n >= 3 ? `${n} stations · limited` : n > 0 ? `${n} stations · sparse` : 'modeled only';
+                  return <span className="ml-2 text-[9px] font-medium" style={{ color }}>· {label}</span>;
+                })()}
+              </div>
               <div className="metric-value">{s.formatUgM3(data.pm25AirPollution.value)}</div>
             </div>
           </div>
@@ -243,6 +252,15 @@ export default function EnvironmentSection({ data, isLoading, error }: Environme
               <div className="metric-value">{s.formatPercent(data.forestRentsPctGdp.value)}</div>
             </div>
           </div>
+          {data.forestLossHa?.value != null && (
+            <div className="metric-item">
+              <div className="metric-icon small"><TreePine className="w-4 h-4" /></div>
+              <div className="metric-content">
+                <div className="metric-label">Annual Forest Loss {data.forestLossHa.year ? <span className="ml-2 text-[10px] text-slate-400">{data.forestLossHa.year}</span> : null}</div>
+                <div className="metric-value">{s.formatNumber(Math.round(data.forestLossHa.value))} ha</div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

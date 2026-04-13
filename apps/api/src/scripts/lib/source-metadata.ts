@@ -113,6 +113,22 @@ const SOURCE_VERSIONS: Record<string, SourceMetadata> = {
     sourceVersion: 'GCB 2024',
     sourceReleaseDate: new Date('2024-11-13'),
   },
+
+  // Global Forest Watch / Hansen/UMD — tree cover loss
+  // Upstream: Hansen et al. v1.12 (University of Maryland)
+  // Delivered via: OWID mirror at ourworldindata.org/grapher/tree-cover-loss
+  // If OWID stops updating, fallback is GFW's data-api.globalforestwatch.org (requires key)
+  'Global Forest Watch / UMD': {
+    sourceVersion: 'Hansen v1.12 via OWID 2025-03',
+    sourceReleaseDate: new Date('2025-04-02'),
+  },
+
+  // OpenAQ — air quality monitoring station coverage
+  // Real-time network, we snapshot station count at ingestion time
+  'OpenAQ': {
+    sourceVersion: null, // continuous; ingestedAt is the effective version
+    sourceReleaseDate: null,
+  },
 };
 
 export function getSourceMetadata(source: string): SourceMetadata {
