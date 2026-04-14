@@ -123,24 +123,38 @@ function PredictionRow({ p }: { p: PredictionMarket }) {
   const close = p.closeDate ? new Date(p.closeDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : null;
   const url = p.sourceUrl ?? (p.slug ? `https://polymarket.com/event/${p.slug}` : null);
 
+  // Global CSS styles `a` with underline + link color (purple/blue) which
+  // would bleed into every text node below. We neutralize it at the anchor
+  // level and set an explicit color on every child span so sidebar.css
+  // rules (or other global `a` rules) cannot override.
   return (
     <a
       href={url ?? '#'}
       target="_blank"
       rel="noopener noreferrer"
-      className="block rounded-lg p-3 transition-colors hover:border-slate-500/40"
+      className="block rounded-lg p-3 transition-colors hover:border-slate-500/40 no-underline"
       style={{
         background: 'rgba(15, 23, 42, 0.6)',
         border: '1px solid rgba(71, 85, 105, 0.2)',
+        textDecoration: 'none',
+        color: 'inherit',
       }}
     >
       <div className="flex items-start justify-between gap-3 mb-2">
-        <span className="text-[12px] text-slate-200 leading-tight flex-1 line-clamp-2">{p.question}</span>
-        <span className="text-lg font-bold text-white flex-shrink-0" style={{ color: prob >= 50 ? '#34d399' : prob >= 20 ? '#fbbf24' : '#94a3b8' }}>
+        <span
+          className="text-[12px] leading-tight flex-1 line-clamp-2"
+          style={{ color: '#e2e8f0' }}
+        >
+          {p.question}
+        </span>
+        <span
+          className="text-lg font-bold flex-shrink-0"
+          style={{ color: prob >= 50 ? '#34d399' : prob >= 20 ? '#fbbf24' : '#94a3b8' }}
+        >
           {prob.toFixed(0)}%
         </span>
       </div>
-      <div className="relative h-1.5 rounded-full overflow-hidden bg-slate-700/40 mb-1.5">
+      <div className="relative h-1.5 rounded-full overflow-hidden mb-1.5" style={{ background: 'rgba(51, 65, 85, 0.4)' }}>
         <div
           className="absolute left-0 top-0 h-full rounded-full transition-all"
           style={{
@@ -149,7 +163,7 @@ function PredictionRow({ p }: { p: PredictionMarket }) {
           }}
         />
       </div>
-      <div className="flex items-center justify-between text-[9px] text-slate-500">
+      <div className="flex items-center justify-between text-[9px]" style={{ color: '#64748b' }}>
         <span>Vol ${((p.volume ?? 0) / 1000).toFixed(0)}K</span>
         {close && <span>Closes {close}</span>}
       </div>
