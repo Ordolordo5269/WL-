@@ -6,6 +6,80 @@ contributors) don't have to reverse-engineer it.
 
 ---
 
+## 2026-04-14 — P3 Fase B: World Bank Pink Sheet (commodity prices)
+
+**Decisión:** Ingestar precios mensuales de 15 commodities core (Brent, WTI,
+Henry Hub, TTF, coal, copper, nickel, aluminum, zinc, gold, silver, wheat,
+maize, soybean, palm oil) desde el **World Bank "Pink Sheet"** — archivo XLSX
+publicado mensualmente en `thedocs.worldbank.org`, licencia CC-BY 4.0, sin
+API key. Guardar como medias anuales en la entidad WLD (patrón FAO FPI de A5),
+con el último mes disponible preservado en `meta.latestMonth` / `meta.latestValue`.
+
+**Por qué WB Pink Sheet (no FRED, no IMF):**
+- Autoritativo — lo usan IMF, BIS, bancos centrales
+- Amplitud en un solo archivo (~70 commodities; tomamos 15)
+- Un solo source metadata entry, una sola cadencia mensual
+- FRED habría requerido ~15 series IDs individuales + mapeos uno-a-uno
+- IMF overlaps con WB; añadir ambos era sobre-ingeniería para Fase B
+
+**Scope: 15 commodities core, no los 70 completos.**
+- 70 chips en UI es imposible de digerir; la geopol no necesita phosphate rock DAP
+- Selección cruza con P3 A3 (copper/nickel) y P3 A4 (wheat/maize/soy)
+
+**Lithium / cobalt / grafito / rare earths NO están en Pink Sheet.**
+- WB no publica precios de battery metals
+- Opciones futuras: Fastmarkets / Benchmark Mineral Intelligence (ambos pagos),
+  Trading Economics (free tier limitada)
+- Para la narrativa actual: P3 A3 cubre la producción de esos minerales, y eso
+  es suficiente para "dependencia". Precios de litio quedan explícitamente out
+  of scope hasta que haya presupuesto o caso de uso claro
+
+**Arquitectura `meta.latestValue` + `value = annualAverage`:**
+Reutilizamos el patrón validado en A5 (FAO FPI). Una sola fila por
+(entidad, indicador, año), pero el tick del mes más reciente vive en `meta`
+para que la UI muestre ambos: trend año-a-año + precio actual. Evita crear un
+schema de time-series monthly adicional (YAGNI).
+
+**Nueva dependencia: `xlsx` (SheetJS Community Edition 0.18.5).**
+El npm registry marca este paquete como deprecated. SheetJS movió releases a
+`cdn.sheetjs.com` tras varias CVEs históricas de parseo de archivos maliciosos.
+La más relevante es **CVE-2023-30533** (prototype pollution al procesar workbooks
+con claves `__proto__` inyectadas) — explotable únicamente con XLSX maliciosos
+diseñados para corromper el prototype chain en el proceso que los parsea.
+
+**Por qué lo aceptamos en nuestro caso:**
+1. **Input de fuente conocida** — parseamos el archivo oficial del World Bank
+   (thedocs.worldbank.org, sirvido por CloudFront, TLS), no XLSX arbitrarios
+   subidos por usuarios
+2. **Solo en script manual** — `ingest-worldbank-pink-sheet.ts` no se importa
+   desde ningún route/controller; grep `from 'xlsx'` retorna exactamente 1
+   resultado (el propio script). No hay superficie de ataque per-user
+3. **Proceso efímero** — el script corre, parsea, ingesta, y termina. El
+   prototype pollution no persiste entre ejecuciones
+4. `exceljs` como alternativa es 3× más pesado y tiene su propio historial
+   de CVEs de parseo — el trade-off no vale
+
+**Plan de mitigación futura (cuándo reemplazarlo):**
+- Si alguna vez exponemos parseo XLSX a inputs de usuario (upload, API
+  endpoint) → migrar inmediatamente a `@sheetjs/xlsx` desde cdn.sheetjs.com
+  (versión mantenida) o a `exceljs` con sandbox
+- Si Pink Sheet migra a CSV/JSON en el futuro → quitar la dep directamente
+- Si WB publica una API JSON oficial → preferirla y borrar el parser
+
+**Nomenclatura: P3 Fase B (NO P1 Fase A).**
+Decisión consciente tras evaluar la alternativa. Los precios de commodities
+físicos cierran el stack iniciado en P3 Fase A (extracción/producción) —
+pertenecen semánticamente al mismo bloque. P1 Financieros queda reservado
+para **instrumentos financieros** (equities, FX, crypto, prediction markets),
+que son categorías distintas de activos con fuentes, cadencias y UX diferentes.
+Si dentro de tres meses la pregunta es "¿dónde están los precios de Brent?",
+la respuesta clara es "en P3" (commodities), no "en P1" (finanzas).
+
+**Volumen:** 15 commodities × 36 años (1990-2025) = 540 registros. Pequeño pero
+denso en serie temporal — base sólida para features ML de régimen de precios.
+
+---
+
 ## 2026-04-13 — OpenAQ ingestion is a snapshot, not a time series
 
 **Decision:** `AQ_STATIONS_COUNT` is ingested with `year = current_year`, not as

@@ -171,6 +171,16 @@ const SOURCE_VERSIONS: Record<string, SourceMetadata> = {
     sourceVersion: 'MCS 2025',
     sourceReleaseDate: new Date('2025-01-31'),
   },
+
+  // World Bank Pink Sheet — monthly commodity prices (P3 Fase B)
+  // Landing: worldbank.org/en/research/commodity-markets
+  // XLSX: thedocs.worldbank.org/en/doc/.../CMO-Historical-Data-Monthly.xlsx
+  // License: CC-BY 4.0
+  // Stored as annual averages on WLD entity with latestMonth/latestValue in meta.
+  'World Bank Pink Sheet': {
+    sourceVersion: 'Pink Sheet 2026-01',
+    sourceReleaseDate: new Date('2026-01-14'),
+  },
 };
 
 export function getSourceMetadata(source: string): SourceMetadata {
