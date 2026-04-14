@@ -1,0 +1,261 @@
+import { motion } from 'framer-motion';
+import { Activity, TrendingUp, TrendingDown, Minus, DollarSign, Percent, LineChart, Bitcoin, Dice5 } from 'lucide-react';
+import { useFinancialPulse, type FinEntry, type FinCategory, type PredictionMarket } from './useFinancialPulse';
+
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+const CATEGORY_META: Record<FinCategory, { label: string; color: string; Icon: typeof DollarSign }> = {
+  FX:     { label: 'FX & Currencies',   color: '#60a5fa', Icon: DollarSign },
+  Rates:  { label: 'Rates & Yields',    color: '#a78bfa', Icon: Percent },
+  Vol:    { label: 'Vol / Stress',      color: '#f87171', Icon: Activity },
+  Equity: { label: 'Equity Indices',    color: '#34d399', Icon: LineChart },
+  Crypto: { label: 'Crypto',            color: '#fbbf24', Icon: Bitcoin },
+};
+
+function formatPrice(value: number, unit: string): string {
+  if (unit === '%') return `${value.toFixed(2)}%`;
+  if (Math.abs(value) >= 10000) return value.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  if (Math.abs(value) >= 100)   return value.toFixed(1);
+  if (Math.abs(value) >= 10)    return value.toFixed(2);
+  if (Math.abs(value) >= 1)     return value.toFixed(3);
+  return value.toFixed(4);
+}
+
+function TrendBadge({ pct }: { pct: number | null }) {
+  if (pct === null || !isFinite(pct)) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] text-slate-500">
+        <Minus className="w-3 h-3" />—
+      </span>
+    );
+  }
+  const isUp = pct > 0;
+  const color = isUp ? '#f87171' : pct < 0 ? '#34d399' : '#94a3b8';
+  const Icon = isUp ? TrendingUp : pct < 0 ? TrendingDown : Minus;
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-medium" style={{ color }}>
+      <Icon className="w-3 h-3" />
+      {isUp ? '+' : ''}{pct.toFixed(1)}%
+    </span>
+  );
+}
+
+function PriceChip({ e }: { e: FinEntry }) {
+  return (
+    <div
+      className="rounded-lg p-2.5 flex flex-col gap-0.5"
+      style={{
+        background: 'rgba(15, 23, 42, 0.6)',
+        border: '1px solid rgba(71, 85, 105, 0.2)',
+      }}
+    >
+      <span className="text-[10px] text-slate-400 leading-tight truncate">{e.name}</span>
+      <div className="flex items-baseline gap-1">
+        <span className="text-base font-bold text-white leading-tight">{formatPrice(e.latestValue, e.unit)}</span>
+        {e.unit !== '%' && <span className="text-[9px] text-slate-500">{e.unit}</span>}
+      </div>
+      <TrendBadge pct={e.trendPctYoY} />
+    </div>
+  );
+}
+
+function VolHighlight({ vol }: { vol: FinEntry[] }) {
+  const vix = vol.find((v) => v.code === 'VIX');
+  const hy = vol.find((v) => v.code === 'HY_OAS_SPREAD');
+  if (!vix && !hy) return null;
+
+  function vixLabel(v: number): { text: string; color: string } {
+    if (v < 15) return { text: 'Calm', color: '#34d399' };
+    if (v < 25) return { text: 'Elevated', color: '#fbbf24' };
+    if (v < 35) return { text: 'Stressed', color: '#fb923c' };
+    return { text: 'Crisis', color: '#f87171' };
+  }
+
+  const vixStatus = vix ? vixLabel(vix.latestValue) : null;
+
+  return (
+    <div className="grid grid-cols-2 gap-3 mb-4">
+      {vix && (
+        <div
+          className="rounded-lg p-3"
+          style={{
+            background: 'rgba(15, 23, 42, 0.8)',
+            border: `1px solid ${vixStatus?.color}40`,
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-slate-400 uppercase tracking-wider">VIX · Fear Index</span>
+            {vixStatus && (
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ color: vixStatus.color, background: `${vixStatus.color}15` }}>
+                {vixStatus.text}
+              </span>
+            )}
+          </div>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-white">{vix.latestValue.toFixed(1)}</span>
+            <TrendBadge pct={vix.trendPctYoY} />
+          </div>
+        </div>
+      )}
+      {hy && (
+        <div
+          className="rounded-lg p-3"
+          style={{
+            background: 'rgba(15, 23, 42, 0.8)',
+            border: '1px solid rgba(71, 85, 105, 0.3)',
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-slate-400 uppercase tracking-wider">HY Credit Spread</span>
+          </div>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-white">{hy.latestValue.toFixed(2)}%</span>
+            <TrendBadge pct={hy.trendPctYoY} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PredictionRow({ p }: { p: PredictionMarket }) {
+  const prob = (p.probabilityYes ?? 0) * 100;
+  const close = p.closeDate ? new Date(p.closeDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : null;
+  const url = p.sourceUrl ?? (p.slug ? `https://polymarket.com/event/${p.slug}` : null);
+
+  return (
+    <a
+      href={url ?? '#'}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block rounded-lg p-3 transition-colors hover:border-slate-500/40"
+      style={{
+        background: 'rgba(15, 23, 42, 0.6)',
+        border: '1px solid rgba(71, 85, 105, 0.2)',
+      }}
+    >
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <span className="text-[12px] text-slate-200 leading-tight flex-1 line-clamp-2">{p.question}</span>
+        <span className="text-lg font-bold text-white flex-shrink-0" style={{ color: prob >= 50 ? '#34d399' : prob >= 20 ? '#fbbf24' : '#94a3b8' }}>
+          {prob.toFixed(0)}%
+        </span>
+      </div>
+      <div className="relative h-1.5 rounded-full overflow-hidden bg-slate-700/40 mb-1.5">
+        <div
+          className="absolute left-0 top-0 h-full rounded-full transition-all"
+          style={{
+            width: `${prob}%`,
+            background: prob >= 50 ? '#34d399' : prob >= 20 ? '#fbbf24' : '#64748b',
+          }}
+        />
+      </div>
+      <div className="flex items-center justify-between text-[9px] text-slate-500">
+        <span>Vol ${((p.volume ?? 0) / 1000).toFixed(0)}K</span>
+        {close && <span>Closes {close}</span>}
+      </div>
+    </a>
+  );
+}
+
+export default function FinancialPulse() {
+  const { data, isLoading, error } = useFinancialPulse();
+
+  if (error) return null;
+  if (isLoading) {
+    return (
+      <div
+        className="rounded-xl p-5 animate-pulse"
+        style={{ background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(71, 85, 105, 0.2)' }}
+      >
+        <div className="h-5 w-56 bg-slate-700/40 rounded mb-3" />
+        <div className="h-48 bg-slate-700/30 rounded" />
+      </div>
+    );
+  }
+
+  const d = data;
+  if (!d || (d.fx.length === 0 && d.rates.length === 0 && d.equities.length === 0)) return null;
+
+  const [y, m] = d.lastUpdated ? d.lastUpdated.split('-').map((x) => parseInt(x, 10)) : [null, null];
+  const latestLabel = y && m ? `${MONTH_NAMES[m - 1]} ${y}` : '—';
+
+  const categoryGroups: Array<[FinCategory, FinEntry[]]> = [
+    ['FX', d.fx],
+    ['Rates', d.rates],
+    ['Equity', d.equities],
+    ['Crypto', d.crypto],
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.25 }}
+      className="rounded-xl p-5"
+      style={{
+        background: 'rgba(15, 23, 42, 0.8)',
+        border: '1px solid rgba(71, 85, 105, 0.2)',
+      }}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: 'rgba(167, 139, 250, 0.15)' }}
+          >
+            <Activity className="w-4 h-4" style={{ color: '#a78bfa' }} />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-white leading-tight">Financial Pulse</h3>
+            <p className="text-[10px] text-slate-500">FRED · CoinGecko · Polymarket · Latest {latestLabel}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* VIX + HY highlight row */}
+      <VolHighlight vol={d.vol} />
+
+      {/* Categories */}
+      <div className="space-y-4">
+        {categoryGroups.map(([cat, list]) => {
+          if (list.length === 0) return null;
+          const { label, color, Icon } = CATEGORY_META[cat];
+          return (
+            <div key={cat}>
+              <div className="flex items-center gap-1.5 mb-2">
+                <Icon className="w-3 h-3" style={{ color }} />
+                <span className="text-[10px] uppercase tracking-wider font-medium" style={{ color }}>
+                  {label}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                {list.map((e) => <PriceChip key={e.code} e={e} />)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Prediction markets */}
+      {d.prediction.length > 0 && (
+        <div className="mt-5 pt-4" style={{ borderTop: '1px solid rgba(71, 85, 105, 0.2)' }}>
+          <div className="flex items-center gap-1.5 mb-2">
+            <Dice5 className="w-3 h-3" style={{ color: '#f472b6' }} />
+            <span className="text-[10px] uppercase tracking-wider font-medium" style={{ color: '#f472b6' }}>
+              Prediction Markets · Polymarket
+            </span>
+          </div>
+          <div className="space-y-2">
+            {d.prediction.slice(0, 5).map((p) => <PredictionRow key={p.code} p={p} />)}
+          </div>
+        </div>
+      )}
+
+      <p className="text-[9px] text-slate-600 mt-3">
+        FX, rates and equities are monthly averages (latest tick shown). YoY trend vs prior calendar year.
+        Prediction markets are live probability snapshots — click to view full market on Polymarket.
+      </p>
+    </motion.div>
+  );
+}

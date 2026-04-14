@@ -56,43 +56,43 @@ enum Frequency {
 }
 
 model Entity {
-  id           String     @id @default(uuid()) @db.Uuid
-  type         EntityType
-  name         String
-  slug         String     @unique
-  iso2         String?    @db.VarChar(2)
-  iso3         String?    @db.VarChar(3)
-  isoNumeric   Int?
-  unM49        String?
-  wbCode       String?
-  region       String?
-  subregion    String?
-  country      String?
-  lat          Float?
-  lng          Float?
-  validFrom    DateTime?
-  validTo      DateTime?
-  props        Json?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  id         String     @id @default(uuid()) @db.Uuid
+  type       EntityType
+  name       String
+  slug       String     @unique
+  iso2       String?    @db.VarChar(2)
+  iso3       String?    @db.VarChar(3)
+  isoNumeric Int?
+  unM49      String?
+  wbCode     String?
+  region     String?
+  subregion  String?
+  country    String?
+  lat        Float?
+  lng        Float?
+  validFrom  DateTime?
+  validTo    DateTime?
+  props      Json?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
 
-  fromRelations Relation[] @relation("From")
-  toRelations   Relation[] @relation("To")
-  indicators    IndicatorValue[]
+  fromRelations           Relation[]               @relation("From")
+  toRelations             Relation[]               @relation("To")
+  indicators              IndicatorValue[]
   // Back-relations for typed specs
-  organizationSpec OrganizationSpec?
-  treatySpec       TreatySpec?
-  mineSpec         MineSpec?
-  resourceSpec     ResourceSpec?
-  facilitySpec     FacilitySpec?
-  companyProfile   CompanyProfile?
+  organizationSpec        OrganizationSpec?
+  treatySpec              TreatySpec?
+  mineSpec                MineSpec?
+  resourceSpec            ResourceSpec?
+  facilitySpec            FacilitySpec?
+  companyProfile          CompanyProfile?
   // Back-relations for other models
-  boundaries       Boundary[]
-  tradeFrom        TradeFlow[]     @relation("TradeFrom")
-  tradeTo          TradeFlow[]     @relation("TradeTo")
-  ownerHoldings    Ownership[]     @relation("Owner")
-  ownedTargets     Ownership[]     @relation("Owned")
-  infrastructureNodes InfrastructureNode[]
+  boundaries              Boundary[]
+  tradeFrom               TradeFlow[]              @relation("TradeFrom")
+  tradeTo                 TradeFlow[]              @relation("TradeTo")
+  ownerHoldings           Ownership[]              @relation("Owner")
+  ownedTargets            Ownership[]              @relation("Owned")
+  infrastructureNodes     InfrastructureNode[]
   naturalFeatureCoverages NaturalFeatureCoverage[]
 
   @@index([type, country])
@@ -132,8 +132,8 @@ model OrganizationSpec {
 }
 
 model TreatySpec {
-  entityId       String  @id @unique @db.Uuid
-  entity         Entity  @relation(fields: [entityId], references: [id])
+  entityId       String    @id @unique @db.Uuid
+  entity         Entity    @relation(fields: [entityId], references: [id])
   shortName      String?
   signedDate     DateTime?
   entryIntoForce DateTime?
@@ -144,8 +144,8 @@ model TreatySpec {
 }
 
 model MineSpec {
-  entityId  String @id @unique @db.Uuid
-  entity    Entity @relation(fields: [entityId], references: [id])
+  entityId  String  @id @unique @db.Uuid
+  entity    Entity  @relation(fields: [entityId], references: [id])
   status    String?
   method    String?
   startYear Int?
@@ -161,15 +161,15 @@ model ResourceSpec {
 }
 
 model FacilitySpec {
-  entityId     String @id @unique @db.Uuid
-  entity       Entity @relation(fields: [entityId], references: [id])
+  entityId     String  @id @unique @db.Uuid
+  entity       Entity  @relation(fields: [entityId], references: [id])
   facilityType String
   unitCapacity String?
 }
 
 model CompanyProfile {
-  entityId  String @id @unique @db.Uuid
-  entity    Entity @relation(fields: [entityId], references: [id])
+  entityId  String  @id @unique @db.Uuid
+  entity    Entity  @relation(fields: [entityId], references: [id])
   isin      String?
   ticker    String?
   hqCountry String?
@@ -191,17 +191,17 @@ model Indicator {
 }
 
 model IndicatorValue {
-  id            String   @id @default(uuid())
-  entityId      String   @db.Uuid
-  indicatorCode String
-  year          Int
-  value         Decimal?
-  meta          Json?
-  source        String?
-  revisedAt     DateTime?
-  sourceVersion     String?       // Native version from source: "v14", "CPI 2024", "WDI 2025Q1"
-  sourceReleaseDate DateTime?     // When the source published this version
-  ingestedAt        DateTime @default(now())  // When we put it in our DB
+  id                String    @id @default(uuid())
+  entityId          String    @db.Uuid
+  indicatorCode     String
+  year              Int
+  value             Decimal?
+  meta              Json?
+  source            String?
+  revisedAt         DateTime?
+  sourceVersion     String? // Native version from source: "v14", "CPI 2024", "WDI 2025Q1"
+  sourceReleaseDate DateTime? // When the source published this version
+  ingestedAt        DateTime  @default(now()) // When we put it in our DB
 
   entity    Entity    @relation(fields: [entityId], references: [id])
   indicator Indicator @relation(fields: [indicatorCode], references: [code])
@@ -211,28 +211,59 @@ model IndicatorValue {
   @@index([indicatorCode, year])
 }
 
+/**
+ * Prediction market snapshots (Polymarket and future sources).
+ * Event-based data with lifecycle — does NOT fit (entity, indicator, year)
+ * of IndicatorValue. Each row is a snapshot of a specific market at a
+ * specific moment; re-ingest overwrites by marketSlug. When a market
+ * resolves, `resolved=true` + `resolvedOutcome` lets the UI filter it
+ * out silently without deleting history.
+ */
+model PredictionMarketSnapshot {
+  id              String    @id @default(uuid())
+  marketSlug      String    @unique // e.g. "will-the-us-invade-iran-before-2027"
+  source          String // "Polymarket", future: "Kalshi", "Manifold"
+  question        String
+  category        String? // "Conflict" | "Elections" | "Macro" | "Diplomacy" | "Geopol"
+  outcomes        Json? // ["Yes","No"] typically
+  yesPrice        Decimal? // 0..1
+  noPrice         Decimal? // 0..1
+  probability     Decimal? // canonical "Yes" prob for quick sort (== yesPrice for binary)
+  volume          Decimal? // lifetime traded volume
+  liquidity       Decimal? // current liquidity
+  closeDate       DateTime? // market resolution deadline
+  resolved        Boolean   @default(false)
+  resolvedOutcome String? // "Yes" | "No" | "50-50" once resolved
+  snapshotAt      DateTime  @default(now()) // when we captured this snapshot
+  sourceUrl       String? // deep-link to the market
+  sourceVersion   String? // mirrors IndicatorValue field for traceability
+
+  @@index([source, resolved, closeDate])
+  @@index([category, resolved])
+}
+
 model Boundary {
-  id        String   @id @default(uuid())
-  entityId  String   @db.Uuid
-  name      String
-  versions  BoundaryVersion[]
-  entity    Entity   @relation(fields: [entityId], references: [id])
+  id       String            @id @default(uuid())
+  entityId String            @db.Uuid
+  name     String
+  versions BoundaryVersion[]
+  entity   Entity            @relation(fields: [entityId], references: [id])
 }
 
 model BoundaryVersion {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   boundaryId String
   validFrom  DateTime?
   validTo    DateTime?
   geojson    Json
   source     String?
-  boundary   Boundary @relation(fields: [boundaryId], references: [id])
+  boundary   Boundary  @relation(fields: [boundaryId], references: [id])
 
   @@index([validFrom, validTo])
 }
 
 model TradeFlow {
-  id       String  @id @default(uuid())
+  id       String   @id @default(uuid())
   year     Int
   fromId   String   @db.Uuid
   toId     String   @db.Uuid
@@ -251,9 +282,9 @@ model TradeFlow {
 }
 
 model Ownership {
-  id        String   @id @default(uuid())
-  holderId  String   @db.Uuid
-  targetId  String   @db.Uuid
+  id        String    @id @default(uuid())
+  holderId  String    @db.Uuid
+  targetId  String    @db.Uuid
   percent   Float?
   startDate DateTime?
   endDate   DateTime?
@@ -267,15 +298,15 @@ model Ownership {
 }
 
 model InfrastructureNode {
-  id        String  @id @default(uuid())
-  type      String
-  name      String
-  entityId  String?  @db.Uuid
-  lat       Float?
-  lng       Float?
-  capacity  Decimal?
-  unit      String?
-  props     Json?
+  id       String   @id @default(uuid())
+  type     String
+  name     String
+  entityId String?  @db.Uuid
+  lat      Float?
+  lng      Float?
+  capacity Decimal?
+  unit     String?
+  props    Json?
 
   entity Entity? @relation(fields: [entityId], references: [id])
 
@@ -283,7 +314,7 @@ model InfrastructureNode {
 }
 
 model InfrastructureEdge {
-  id        String  @id @default(uuid())
+  id        String    @id @default(uuid())
   type      String
   fromNode  String
   toNode    String
@@ -322,13 +353,13 @@ enum NaturalLod {
 }
 
 model NaturalFeature {
-  id         String             @id @default(uuid())
-  type       NaturalFeatureType
-  name       String?
-  slug       String             @unique
-  props      Json?
-  createdAt  DateTime           @default(now())
-  updatedAt  DateTime           @updatedAt
+  id        String             @id @default(uuid())
+  type      NaturalFeatureType
+  name      String?
+  slug      String             @unique
+  props     Json?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
 
   geometries NaturalGeometry[]
   coverage   NaturalFeatureCoverage[]
@@ -337,13 +368,13 @@ model NaturalFeature {
 }
 
 model NaturalGeometry {
-  id        String         @id @default(uuid())
+  id        String     @id @default(uuid())
   featureId String
   lod       NaturalLod
   geojson   Json
   source    String?
 
-  feature   NaturalFeature  @relation(fields: [featureId], references: [id])
+  feature NaturalFeature @relation(fields: [featureId], references: [id])
 
   @@unique([featureId, lod])
   @@index([lod])
@@ -351,10 +382,10 @@ model NaturalGeometry {
 
 model NaturalFeatureCoverage {
   featureId String
-  entityId  String         @db.Uuid
+  entityId  String @db.Uuid
 
-  feature   NaturalFeature @relation(fields: [featureId], references: [id])
-  entity    Entity         @relation(fields: [entityId], references: [id])
+  feature NaturalFeature @relation(fields: [featureId], references: [id])
+  entity  Entity         @relation(fields: [entityId], references: [id])
 
   @@id([featureId, entityId])
   @@index([entityId])
@@ -371,19 +402,19 @@ enum HistoryLod {
 }
 
 model HistoricalPolity {
-  id           String   @id @default(uuid())
-  canonicalKey String   @unique
-  displayName  String?
-  colorHex     String?
+  id            String  @id @default(uuid())
+  canonicalKey  String  @unique
+  displayName   String?
+  colorHex      String?
   validFromYear Int?
   validToYear   Int?
-  props        Json?
+  props         Json?
 
-  areas        HistoricalArea[]
+  areas HistoricalArea[]
 }
 
 model HistoricalArea {
-  id              String   @id @default(uuid())
+  id              String  @id @default(uuid())
   year            Int
   name            String?
   canonicalName   String?
@@ -391,8 +422,8 @@ model HistoricalArea {
   props           Json?
   polityId        String?
 
-  polity          HistoricalPolity? @relation(fields: [polityId], references: [id])
-  geometries      HistoricalAreaGeometry[]
+  polity     HistoricalPolity?        @relation(fields: [polityId], references: [id])
+  geometries HistoricalAreaGeometry[]
 
   @@index([year])
 }
@@ -404,7 +435,7 @@ model HistoricalAreaGeometry {
   geojson Json
   source  String?
 
-  area    HistoricalArea @relation(fields: [areaId], references: [id])
+  area HistoricalArea @relation(fields: [areaId], references: [id])
 
   @@unique([areaId, lod])
 }
@@ -470,15 +501,15 @@ model Faction {
   flagUrl    String?
 
   conflicts    ConflictFaction[]
-  supportsFrom SupportLink[]    @relation("SupportFrom")
-  supportsTo   SupportLink[]    @relation("SupportTo")
+  supportsFrom SupportLink[]     @relation("SupportFrom")
+  supportsTo   SupportLink[]     @relation("SupportTo")
 }
 
 model ConflictFaction {
   conflictId String
   factionId  String
-  side       String   @db.VarChar(1) // 'A' | 'B' | 'C'
-  casualties Int?     // estimated casualties for this faction
+  side       String @db.VarChar(1) // 'A' | 'B' | 'C'
+  casualties Int? // estimated casualties for this faction
 
   conflict Conflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
   faction  Faction  @relation(fields: [factionId], references: [id], onDelete: Cascade)
@@ -494,7 +525,7 @@ model SupportLink {
   fromId      String
   toId        String
   type        SupportType
-  intensity   Int?        // 1-3, controls line thickness
+  intensity   Int? // 1-3, controls line thickness
   description String?
   sourceUrl   String?
   startedAt   DateTime?
@@ -514,15 +545,15 @@ model SupportLink {
 // ============================
 
 model User {
-  id          String    @id @default(uuid()) @db.Uuid
-  email       String    @unique
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
   passwordHash String
-  name        String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  
-  favorites   Favorite[]
-  
+  name         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  favorites Favorite[]
+
   @@index([email])
 }
 
@@ -531,9 +562,9 @@ model Favorite {
   userId      String   @db.Uuid
   countryIso3 String   @db.VarChar(3)
   createdAt   DateTime @default(now())
-  
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, countryIso3])
   @@index([userId])
   @@index([countryIso3])
@@ -582,7 +613,7 @@ model OsintEvent {
   hash        String          @unique @db.Text
   createdAt   DateTime        @default(now()) @db.Timestamptz()
 
-  alerts      OsintAlert[]
+  alerts OsintAlert[]
 
   @@index([severity, eventDate])
   @@index([countryIso3, category])
@@ -602,7 +633,7 @@ model OsintAlert {
   createdAt         DateTime      @default(now()) @db.Timestamptz()
   resolvedAt        DateTime?     @db.Timestamptz()
 
-  event             OsintEvent    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event OsintEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@index([severity, isActive])
   @@index([eventId])
@@ -632,7 +663,7 @@ model OsintScrapeLog {
 
 model SatelliteProfile {
   id          Int      @id @default(autoincrement())
-  pattern     String   // regex pattern to match OBJECT_NAME (or country code for fallbacks)
+  pattern     String // regex pattern to match OBJECT_NAME (or country code for fallbacks)
   matchType   String   @default("pattern") @map("match_type") // "pattern" | "country"
   program     String
   operator    String
@@ -654,13 +685,13 @@ model SatelliteProfile {
 
 model GeoCache {
   id        String   @id // format: "cities:{iso2}" or "regions:{iso2}"
-  type      String   // 'cities' | 'regions'
+  type      String // 'cities' | 'regions'
   iso2      String   @db.VarChar(2)
   data      Json
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   expiresAt DateTime
-  
+
   @@index([iso2])
   @@index([type])
   @@index([expiresAt])
@@ -742,20 +773,20 @@ model MigrationCorridor {
 
 // ── Sanctions (OpenSanctions) ──────────────────────────────────────────────
 model Sanction {
-  id              String    @id @default(uuid())
-  entityName      String                          // Person, company, vessel, etc.
-  entityType      String    @db.VarChar(50)       // person, company, vessel, aircraft, organization
-  countryIso3     String?   @db.VarChar(3)        // Country associated (nationality or registration)
-  sanctionProgram String                          // e.g. "OFAC SDN", "EU Consolidated", "UN Security Council"
-  sanctionAuthority String  @db.VarChar(50)       // OFAC, EU, UN, OFSI, CH, CA, AU
-  reason          String?                         // Reason for listing
-  listedAt        DateTime?                       // Date added to sanctions list
-  delistedAt      DateTime?                       // Date removed (null = still active)
-  isActive        Boolean   @default(true)
-  sourceUrl       String?
-  sourceId        String?   @unique               // OpenSanctions entity ID for dedup
-  props           Json?                           // Extra properties (aliases, addresses, etc.)
-  syncedAt        DateTime  @default(now())
+  id                String    @id @default(uuid())
+  entityName        String // Person, company, vessel, etc.
+  entityType        String    @db.VarChar(50) // person, company, vessel, aircraft, organization
+  countryIso3       String?   @db.VarChar(3) // Country associated (nationality or registration)
+  sanctionProgram   String // e.g. "OFAC SDN", "EU Consolidated", "UN Security Council"
+  sanctionAuthority String    @db.VarChar(50) // OFAC, EU, UN, OFSI, CH, CA, AU
+  reason            String? // Reason for listing
+  listedAt          DateTime? // Date added to sanctions list
+  delistedAt        DateTime? // Date removed (null = still active)
+  isActive          Boolean   @default(true)
+  sourceUrl         String?
+  sourceId          String?   @unique // OpenSanctions entity ID for dedup
+  props             Json? // Extra properties (aliases, addresses, etc.)
+  syncedAt          DateTime  @default(now())
 
   @@index([countryIso3])
   @@index([sanctionAuthority])
@@ -765,18 +796,18 @@ model Sanction {
 
 // ── Electoral Calendar ─────────────────────────────────────────────────────
 model ElectionCalendar {
-  id              String    @id @default(uuid())
-  countryIso3     String    @db.VarChar(3)
-  countryName     String
-  electionType    String    @db.VarChar(50)       // presidential, parliamentary, legislative, referendum, local
-  electionDate    DateTime?                       // Scheduled date (null if TBD)
-  year            Int                             // Year of election
-  status          String    @db.VarChar(30)       // scheduled, completed, postponed, cancelled
-  description     String?                         // e.g. "General election", "Senate runoff"
-  turnoutPercent  Float?                          // Voter turnout if completed (IDEA data)
-  sourceUrl       String?
-  props           Json?                           // Extra metadata
-  syncedAt        DateTime  @default(now())
+  id             String    @id @default(uuid())
+  countryIso3    String    @db.VarChar(3)
+  countryName    String
+  electionType   String    @db.VarChar(50) // presidential, parliamentary, legislative, referendum, local
+  electionDate   DateTime? // Scheduled date (null if TBD)
+  year           Int // Year of election
+  status         String    @db.VarChar(30) // scheduled, completed, postponed, cancelled
+  description    String? // e.g. "General election", "Senate runoff"
+  turnoutPercent Float? // Voter turnout if completed (IDEA data)
+  sourceUrl      String?
+  props          Json? // Extra metadata
+  syncedAt       DateTime  @default(now())
 
   @@unique([countryIso3, electionType, year])
   @@index([countryIso3])
@@ -784,4 +815,3 @@ model ElectionCalendar {
   @@index([status])
   @@index([electionDate])
 }
-

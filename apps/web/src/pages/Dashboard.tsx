@@ -10,6 +10,7 @@ import PredictiveAnalysisSection from '../features/dashboard/PredictiveAnalysisS
 import DashboardStats from '../features/dashboard/DashboardStats';
 import GlobalFoodPriceIndex from '../features/dashboard/GlobalFoodPriceIndex';
 import GlobalCommodityPrices from '../features/dashboard/GlobalCommodityPrices';
+import FinancialPulse from '../features/dashboard/FinancialPulse';
 import RecentConflicts from '../features/dashboard/RecentConflicts';
 import WorldActivityFeed from '../features/dashboard/WorldActivityFeed';
 
@@ -81,6 +82,7 @@ function Dashboard() {
             <DashboardStats />
             <GlobalFoodPriceIndex />
             <GlobalCommodityPrices />
+            <FinancialPulse />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <RecentConflicts />
               <WorldActivityFeed />

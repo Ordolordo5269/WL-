@@ -181,6 +181,29 @@ const SOURCE_VERSIONS: Record<string, SourceMetadata> = {
     sourceVersion: 'Pink Sheet 2026-01',
     sourceReleaseDate: new Date('2026-01-14'),
   },
+
+  // FRED — Federal Reserve Economic Data (P1 Fase A: FX, Rates, Vol, Equities)
+  // API v3: api.stlouisfed.org/fred/series/observations
+  // Requires FRED_API_KEY in .env (free at fred.stlouisfed.org)
+  'FRED': {
+    sourceVersion: 'FRED API v3 2026-04',
+    sourceReleaseDate: new Date('2026-04-14'),
+  },
+
+  // CoinGecko — crypto prices (P1 Fase A)
+  // API v3 free tier, no key required
+  'CoinGecko': {
+    sourceVersion: 'CoinGecko API v3 2026-04',
+    sourceReleaseDate: new Date('2026-04-14'),
+  },
+
+  // Polymarket — prediction markets (P1 Fase A, curated)
+  // Gamma API (gamma-api.polymarket.com), no key
+  // Continuous snapshot — ingestedAt is the effective version
+  'Polymarket': {
+    sourceVersion: null,
+    sourceReleaseDate: null,
+  },
 };
 
 export function getSourceMetadata(source: string): SourceMetadata {

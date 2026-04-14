@@ -6,6 +6,101 @@ contributors) don't have to reverse-engineer it.
 
 ---
 
+## 2026-04-15 — P1 Fase A: capa financiera (FRED + CoinGecko + Polymarket)
+
+**Decisión:** Ingestar simultáneamente 3 capas financieras en una release
+cohesiva, todas ancladas a entidad WLD, visibles en un nuevo panel
+"Financial Pulse" del Dashboard.
+
+| Sub-capa | Fuente | Cobertura | Ventana |
+|---|---|---|---|
+| FX + Rates + Vol + Equities | FRED (API key free) | 19 series macro | 1990-2026 |
+| Crypto | CoinGecko API v3 (sin key) | 5 coins major | 2025-2026 |
+| Prediction markets curados | Polymarket Gamma API (sin key) | 8 markets | snapshot live |
+
+**Scope original era 4 fuentes (+ Stooq para equities internacionales).
+Se redujo a 3**: Stooq añadió captcha/API key en 2024 rompiendo el acceso
+libre al CSV. Decisión consciente: **usar FRED también para equities** (cubre
+SP500, NASDAQ, DJIA, NIKKEI225 nativamente). Perdemos EuroStoxx, Bovespa,
+KOSPI, FTSE, Sensex — quedan para P1 Fase B futura si agregamos Twelve Data
+o volvemos a Stooq con su nueva API. Para Fase A actual, US + Japón cubre
+~60% del market cap mundial, suficiente para pulso risk-on/off.
+
+**Por qué curar Polymarket en lugar de ingestar todos los mercados:**
+Polymarket tiene miles de mercados activos, la mayoría de entretenimiento
+(sports, memes, celebrities) que diluyen valor intelligence. Mantenemos
+**lista hardcoded de 8 slugs geopolíticos con liquidez >$100K** en
+`ingest-polymarket-events.ts`. Lista requiere **revisión editorial
+trimestral** porque mercados expiran y nuevos aparecen. Alternativa
+descartada: filtrar auto-mágicamente por keywords — frágil, produce
+false positives.
+
+**Polymarket usa tabla PROPIA `PredictionMarketSnapshot`, NO IndicatorValue.**
+La primera versión de este trabajo metió Polymarket en `IndicatorValue` con
+`indicatorCode='POLYMARKET_<slot>'` y el evento completo en `meta` JSONB.
+Esto se identificó como hack semántico antes del push y se refactorizó:
+
+- Los eventos tienen **ciclo de vida** (closeDate, resolved, outcome). No
+  encajan en (entity, indicator, year) — son snapshots, no series.
+- Mezclar `POLYMARKET_*` codes con `VIX`, `RATE_10Y_UST` en la tabla
+  `Indicator` contaminaba queries agregados ("dame todos los indicadores
+  del topic Financial Markets" devolvía mezcla de series y eventos).
+- Lifecycle (expirados, resueltos) se resuelve con columnas `resolved` +
+  `resolvedOutcome` en lugar de filtros JSON runtime.
+
+**Schema de `PredictionMarketSnapshot`:**
+`id, marketSlug (unique), source, question, category, outcomes, yesPrice,
+noPrice, probability, volume, liquidity, closeDate, resolved,
+resolvedOutcome, snapshotAt, sourceUrl, sourceVersion`.
+Upsert idempotente por `marketSlug`: re-correr el script actualiza precios
++ volumen + `snapshotAt`. Markets ya cerrados quedan con `resolved=true`
+como archivo histórico; el endpoint los filtra out silenciosamente.
+
+**Deuda técnica aceptada conscientemente — FRED y CoinGecko solo anual:**
+Ambas series se guardan como **media anual** en `IndicatorValue` con el
+último punto mensual en `meta.latestValue`. Para el dashboard actual
+(trend YoY + tick del mes) es suficiente. **No es ML-grade** — la media
+anual oculta la volatilidad intra-año que es justamente la señal en
+series como VIX, FX, o bond yields.
+
+**Cómo se pagará esta deuda cuando haga falta para ML:**
+- Crear tabla `FinancialMarketMonthly(entityId, indicatorCode, year, month, value, source)`
+  con 12 puntos/año/indicador.
+- Re-ingestar FRED/CoinGecko sin tocar la tabla actual (coexisten).
+- Features ML leen de la nueva tabla; dashboard sigue leyendo de la anterior.
+- Estimación de esfuerzo: ~3-4 horas. **No bloquea primer modelo ML** porque
+  los features de bajo-frecuencia (V-Dem, FSI, commodity annual avg) ya
+  dan suficiente base para el primer clasificador. Cuando el target sea
+  "régimen de crisis monthly" sí se necesita el refactor.
+
+**Por qué CoinGecko solo 1 año de historia:**
+CoinGecko free tier capó `market_chart?days=max` con 401 desde 2024.
+Free tier permite hasta `days=365`. Para dashboard es suficiente (pulso
+actual + YoY). Si necesitamos backfill para ML, pagar Pro ($129/mes)
+o usar CryptoCompare free como fallback.
+
+**Rate limits encontrados en desarrollo:**
+- FRED: 120 req/min — generoso, no tocamos el límite
+- CoinGecko free: 30 req/min pero devuelve 429 bajo burst; añadimos
+  retry con backoff exponencial (30s/60s/90s) + delay 2.1s entre
+  requests. Ingesta toma ~15 segundos total.
+- Polymarket Gamma: sin rate limit documentado; usamos 300ms entre
+  slugs por cortesía.
+
+**xlsx dep no se usa aquí** — FRED/CoinGecko/Polymarket devuelven JSON
+directamente, cero parsing binario adicional.
+
+**ML value:**
+- `VIX`, `HY_OAS_SPREAD` → features de régimen stress/calm directamente
+- `DXY_BROAD`, `RATE_10Y_UST` - `RATE_10Y_BUND` → señal global risk
+  appetite + diferencial soberano
+- `FX_*` contra fragile states (BRA, MEX, IND, THA) → proxy de crisis
+  cambiaria cruzable con P2 FSI
+- Polymarket probs → sentiment/consensus externo para validar modelos
+  internos (calibración bayesiana)
+
+---
+
 ## 2026-04-14 — P3 Fase B: World Bank Pink Sheet (commodity prices)
 
 **Decisión:** Ingestar precios mensuales de 15 commodities core (Brent, WTI,
