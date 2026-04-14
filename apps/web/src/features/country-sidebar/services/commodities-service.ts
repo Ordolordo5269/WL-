@@ -53,7 +53,18 @@ export interface CommoditiesData {
     productionTbpd: IndicatorPoint;
     consumptionTbpd: IndicatorPoint;
   };
+  // P3 A3: USGS critical minerals (mine production + reserves + global rank)
+  criticalMinerals?: Record<MineralKey, MineralEntry>;
   sources: { worldBank: string };
+}
+
+export type MineralKey = 'copper' | 'nickel' | 'lithium' | 'cobalt' | 'graphite' | 'rareEarths';
+
+export interface MineralEntry {
+  production: { value: number | null; year: number | null; unit: 'kt' | 't' };
+  reserves:   { value: number | null; year: number | null; unit: 'kt' | 't' };
+  globalRank: number | null;
+  rankTier:   'top1' | 'top3' | 'top10' | null;
 }
 
 class CommoditiesService {

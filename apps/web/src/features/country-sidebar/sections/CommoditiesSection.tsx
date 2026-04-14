@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { AlertCircle, Fuel, Gem, Wheat, Zap, Droplets, Mountain } from 'lucide-react';
 import { commoditiesService } from '../services/commodities-service';
-import type { TCommoditiesData } from '../services/commodities-service';
+import type { TCommoditiesData, MineralEntry, MineralKey } from '../services/commodities-service';
 import { Badge, Detail, type BadgeLevel } from '../components/BadgeDetail';
 
 interface CommoditiesSectionProps {
@@ -251,7 +251,7 @@ export default function CommoditiesSection({ data, isLoading, error }: Commoditi
         </div>
       </div>
 
-      {/* Strategic Minerals */}
+      {/* Strategic Minerals — World Bank macro proxies + USGS critical minerals (P3 A3) */}
       <div className="section-card">
         <div className="section-header">
           <Gem className="h-4 w-4" />
@@ -261,18 +261,55 @@ export default function CommoditiesSection({ data, isLoading, error }: Commoditi
           <div className="metric-item">
             <div className="metric-icon small"><Mountain className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">Mineral rents (% GDP) {data.mineralRentsPctGdp.year ? <span className="ml-2 text-[10px] text-slate-400">{data.mineralRentsPctGdp.year}</span> : null}</div>
+              <div className="metric-label">Mineral rents (% GDP)</div>
               <div className="metric-value">{s.formatPercent(data.mineralRentsPctGdp.value)}</div>
             </div>
           </div>
           <div className="metric-item">
             <div className="metric-icon small"><Gem className="w-4 h-4" /></div>
             <div className="metric-content">
-              <div className="metric-label">Ores & metals exports (% merch.) {data.oreMetalExportsPct.year ? <span className="ml-2 text-[10px] text-slate-400">{data.oreMetalExportsPct.year}</span> : null}</div>
+              <div className="metric-label">Ores & metals exports (% merch.)</div>
               <div className="metric-value">{s.formatPercent(data.oreMetalExportsPct.value)}</div>
             </div>
           </div>
         </div>
+
+        {/* P3 A3: USGS Critical Minerals — only render minerals with production >0 */}
+        {(() => {
+          const cm = data.criticalMinerals;
+          if (!cm) return null;
+          const labels: Array<{ key: MineralKey; label: string }> = [
+            { key: 'copper',     label: 'Copper' },
+            { key: 'nickel',     label: 'Nickel' },
+            { key: 'lithium',    label: 'Lithium' },
+            { key: 'cobalt',     label: 'Cobalt' },
+            { key: 'graphite',   label: 'Graphite' },
+            { key: 'rareEarths', label: 'Rare Earths' },
+          ];
+          const present = labels.filter(({ key }) => {
+            const e = cm[key];
+            return e && e.production.value !== null && e.production.value > 0;
+          });
+          if (present.length === 0) return null;
+
+          return (
+            <div className="mt-4 pt-3 border-t border-slate-700/40">
+              <div className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-3">
+                Critical Minerals
+              </div>
+              <div className="space-y-3">
+                {present.map(({ key, label }) => (
+                  <CriticalMineralRow key={key} label={label} entry={cm[key]} />
+                ))}
+              </div>
+              <div className="text-[9px] text-slate-600 mt-3 leading-snug">
+                Years of supply = proven reserves ÷ current annual production. USGS "proven reserves" means
+                economically extractable today. Reserves grow when prices rise or new deposits are found,
+                so years-of-supply is not a "depletion deadline".
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Agriculture */}
@@ -336,5 +373,51 @@ export default function CommoditiesSection({ data, isLoading, error }: Commoditi
         })()}
       </div>
     </motion.div>
+  );
+}
+
+/* ── P3 A3: Critical Mineral row helper ── */
+
+function rankBadge(tier: MineralEntry['rankTier'], rank: number | null): { text: string; level: BadgeLevel } | null {
+  if (!tier || rank === null) return null;
+  if (tier === 'top1')  return { text: '#1 global producer',          level: 'good' };
+  if (tier === 'top3')  return { text: `#${rank} global producer`,    level: 'good' };
+  return { text: `Top ${rank} global producer`,                       level: 'warning' };
+}
+
+function formatMineralVolume(value: number, unit: 'kt' | 't'): string {
+  // Values come in kilotonnes (Cu) or tonnes (everything else)
+  if (unit === 'kt') {
+    if (value >= 1000) return `${(value / 1000).toFixed(1)} Mt`;
+    return `${value.toLocaleString()} kt`;
+  }
+  // tonnes
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(2)} Mt`;
+  if (value >= 1_000)     return `${(value / 1_000).toFixed(1)} kt`;
+  return `${value.toLocaleString()} t`;
+}
+
+function CriticalMineralRow({ label, entry }: { label: string; entry: MineralEntry }) {
+  const prod = entry.production.value;
+  const reserves = entry.reserves.value;
+  if (prod === null || prod <= 0) return null;
+
+  const badge = rankBadge(entry.rankTier, entry.globalRank);
+  const yearsOfSupply = (reserves !== null && reserves > 0 && prod > 0) ? reserves / prod : null;
+
+  return (
+    <div className="rounded-lg p-2.5" style={{ background: 'rgba(15, 23, 42, 0.4)', border: '1px solid rgba(71, 85, 105, 0.15)' }}>
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[12px] font-semibold text-slate-200">{label}</span>
+        {badge && <Badge text={badge.text} level={badge.level} />}
+      </div>
+      <Detail label="Mine production" value={`${formatMineralVolume(prod, entry.production.unit)} / yr`} />
+      {reserves !== null && reserves > 0 && (
+        <Detail label="Proven reserves" value={formatMineralVolume(reserves, entry.reserves.unit)} />
+      )}
+      {yearsOfSupply !== null && yearsOfSupply > 0 && yearsOfSupply < 1000 && (
+        <Detail label="Years of supply" value={`~${Math.round(yearsOfSupply)} years`} />
+      )}
+    </div>
   );
 }

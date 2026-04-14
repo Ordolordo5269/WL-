@@ -570,6 +570,13 @@ export async function getCommoditiesData(iso3: string) {
     wheatProd, maizeProd, riceProd, soybeanProd, barleyProd,
     // P3 A2: EIA oil
     oilProdTbpd, oilConsumptionTbpd,
+    // P3 A3: USGS critical minerals
+    copperProd, copperReserves,
+    nickelProd, nickelReserves,
+    lithiumProd, lithiumReserves,
+    cobaltProd, cobaltReserves,
+    graphiteProd, graphiteReserves,
+    rareEarthsProd, rareEarthsReserves,
   ] = await Promise.all([
     // Energy
     getLatestIndicatorValueForIso3(countryIso3, 'ENERGY_IMPORTS_PCT'),
@@ -611,6 +618,19 @@ export async function getCommoditiesData(iso3: string) {
     // P3 A2: EIA oil production + consumption (TBPD, same unit = direct ratio)
     getLatestIndicatorValueForIso3(countryIso3, 'OIL_PROD_TBPD'),
     getLatestIndicatorValueForIso3(countryIso3, 'OIL_CONSUMPTION_TBPD'),
+    // P3 A3: USGS critical minerals (production + reserves, source: USGS MCS 2025)
+    getLatestIndicatorValueForIso3(countryIso3, 'COPPER_PROD_KT'),
+    getLatestIndicatorValueForIso3(countryIso3, 'COPPER_RESERVES_KT'),
+    getLatestIndicatorValueForIso3(countryIso3, 'NICKEL_PROD_T'),
+    getLatestIndicatorValueForIso3(countryIso3, 'NICKEL_RESERVES_T'),
+    getLatestIndicatorValueForIso3(countryIso3, 'LITHIUM_PROD_T'),
+    getLatestIndicatorValueForIso3(countryIso3, 'LITHIUM_RESERVES_T'),
+    getLatestIndicatorValueForIso3(countryIso3, 'COBALT_PROD_T'),
+    getLatestIndicatorValueForIso3(countryIso3, 'COBALT_RESERVES_T'),
+    getLatestIndicatorValueForIso3(countryIso3, 'GRAPHITE_PROD_T'),
+    getLatestIndicatorValueForIso3(countryIso3, 'GRAPHITE_RESERVES_T'),
+    getLatestIndicatorValueForIso3(countryIso3, 'RARE_EARTHS_PROD_T'),
+    getLatestIndicatorValueForIso3(countryIso3, 'RARE_EARTHS_RESERVES_T'),
   ]);
 
   return {
@@ -663,8 +683,95 @@ export async function getCommoditiesData(iso3: string) {
       productionTbpd:  { value: toNumberOrNull(oilProdTbpd.value),         year: oilProdTbpd.year },
       consumptionTbpd: { value: toNumberOrNull(oilConsumptionTbpd.value), year: oilConsumptionTbpd.year },
     },
+    // P3 A3: USGS critical minerals (production + reserves + global rank computed on the fly)
+    criticalMinerals: await buildCriticalMineralsBlock(countryIso3, {
+      copper:     { prod: copperProd,     reserves: copperReserves,     code: 'COPPER_PROD_KT',       prodUnit: 'kt' },
+      nickel:     { prod: nickelProd,     reserves: nickelReserves,     code: 'NICKEL_PROD_T',        prodUnit: 't'  },
+      lithium:    { prod: lithiumProd,    reserves: lithiumReserves,    code: 'LITHIUM_PROD_T',       prodUnit: 't'  },
+      cobalt:     { prod: cobaltProd,     reserves: cobaltReserves,     code: 'COBALT_PROD_T',        prodUnit: 't'  },
+      graphite:   { prod: graphiteProd,   reserves: graphiteReserves,   code: 'GRAPHITE_PROD_T',      prodUnit: 't'  },
+      rareEarths: { prod: rareEarthsProd, reserves: rareEarthsReserves, code: 'RARE_EARTHS_PROD_T',   prodUnit: 't'  },
+    }),
     sources: { worldBank: 'https://api.worldbank.org/v2/' },
   };
+}
+
+// ── P3 A3 helper: global rank computation (on the fly, NOT stored as indicator) ──
+//
+// Rationale (2026-04-14 decision): storing ranks as IndicatorValue rows is an
+// antipattern (see DECISIONS.md entry on WRI_RANK removal). We compute rank at
+// query time. Cost per /api/commodities/:iso3 request: 6 extra DB queries.
+// Acceptable for current traffic; if we scale, migrate to materialized view.
+
+type MineralInput = {
+  prod: { value: unknown; year: number | null };
+  reserves: { value: unknown; year: number | null };
+  code: string;           // indicator code used to query the top-10
+  prodUnit: 'kt' | 't';   // production unit — used by the UI for formatting
+};
+
+type MineralOutput = {
+  production: { value: number | null; year: number | null; unit: 'kt' | 't' };
+  reserves:   { value: number | null; year: number | null; unit: 'kt' | 't' };
+  globalRank: number | null;  // 1-based rank among producers, null if not in top 10 or no production
+  rankTier:   'top1' | 'top3' | 'top10' | null;  // convenience for UI badges
+};
+
+async function buildCriticalMineralsBlock(
+  iso3: string,
+  minerals: Record<string, MineralInput>
+): Promise<Record<string, MineralOutput>> {
+  const result: Record<string, MineralOutput> = {};
+
+  for (const [name, m] of Object.entries(minerals)) {
+    const prodValue = toNumberOrNull(m.prod.value);
+    const reservesValue = toNumberOrNull(m.reserves.value);
+
+    // Default: no rank information
+    let globalRank: number | null = null;
+    let rankTier: MineralOutput['rankTier'] = null;
+
+    // Compute rank only if this country has production data for this mineral
+    if (prodValue !== null && prodValue > 0) {
+      // Latest-year top-10 of this mineral's production
+      const latestYearRow = await prisma.$queryRaw<Array<{ max_year: number }>>`
+        SELECT MAX(year)::int AS max_year
+        FROM "IndicatorValue"
+        WHERE "indicatorCode" = ${m.code} AND value IS NOT NULL
+      `;
+      const latestYear = latestYearRow[0]?.max_year;
+
+      if (latestYear) {
+        const top = await prisma.$queryRaw<Array<{ iso3: string; value: number }>>`
+          SELECT e.iso3, iv.value::float AS value
+          FROM "IndicatorValue" iv
+          JOIN "Entity" e ON e.id = iv."entityId"
+          WHERE iv."indicatorCode" = ${m.code}
+            AND iv.year = ${latestYear}
+            AND iv.value IS NOT NULL
+            AND iv.value > 0
+          ORDER BY iv.value DESC NULLS LAST
+          LIMIT 10
+        `;
+        const rankIdx = top.findIndex((r) => r.iso3 === iso3);
+        if (rankIdx >= 0) {
+          globalRank = rankIdx + 1;
+          if (globalRank === 1) rankTier = 'top1';
+          else if (globalRank <= 3) rankTier = 'top3';
+          else rankTier = 'top10';
+        }
+      }
+    }
+
+    result[name] = {
+      production: { value: prodValue, year: m.prod.year, unit: m.prodUnit },
+      reserves:   { value: reservesValue, year: m.reserves.year, unit: m.prodUnit },
+      globalRank,
+      rankTier,
+    };
+  }
+
+  return result;
 }
 
 // ── Environment ──

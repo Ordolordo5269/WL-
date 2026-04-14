@@ -231,6 +231,84 @@ no tenerla ya es visible.
 
 ---
 
+## 2026-04-14 — P3 Paso A3 (USGS Critical Minerals) — fuente unificada + decisiones de diseño
+
+**Contexto:** Último paso de P3 Fase A — minerales críticos. El plan original
+del mentor decía "el más difícil, parser XLSX no uniforme entre minerales,
+60-90 min realistas". Al explorar antes de codear, descubrimos que USGS
+publica un **único CSV unificado** (Data Release 2025, DOI 10.5066/P13XCP3R)
+con 77 commodities × ~30 países productores cada uno, formato consistente.
+Eso convierte A3 en uno de los pasos más rápidos de Fase A en lugar del más
+difícil.
+
+**Decisión de fuente:** ingestar via USGS único, no híbrido OWID+USGS. Razones:
+- USGS cubre los 6 minerales críticos en el mismo formato
+- USGS aporta **proven reserves**, que OWID no tiene
+- Mantener un script en lugar de dos reduce mantenimiento
+
+**Indicadores ingestados (12):**
+- 6 minerales × 2 métricas (production + reserves)
+- Topic: `Raw Materials` · Source: `USGS` · sourceVersion: `MCS 2025`
+- Volumen: 219 registros realistas (concentración natural de productores)
+
+**Filtro TYPE = "mine production" (NO refinery): dos dimensiones distintas de poder.**
+
+USGS incluye también "Refinery production" para algunos minerales (Cu, Co, Ni, rare earths). Son dos tipos de poder geopolítico diferentes:
+
+- **Mine production** → quién **extrae** el mineral del suelo. Poder de recurso natural: DR Congo con cobalto (~70% extracción), Indonesia con níquel, Australia con litio, China con rare earths (extracción).
+- **Refinery production** → quién **procesa** el mineral (puede importar materia prima). Poder industrial: China domina aún más extremo — refina ~70% del cobalto mundial aunque extrae ~1%.
+
+Capturar solo **mine production** es la elección correcta para la narrativa actual "dependencia de países productores". Si aparece China arriba en cobalto y se pregunta "¿por qué no es #1?", la respuesta es: China domina el procesamiento, no la extracción. Filtramos por `TYPE.startsWith("mine production")` antes de ingestar.
+
+**Queda abierto como extensión futura:** capa separada de *refinery dependency* (quién depende de quién para procesar) merece su propio tratamiento con indicadores dedicados (`COBALT_REFINERY_T`, etc.) para no mezclar semánticas. No hacerlo en A3 para mantener scope limpio.
+
+**Uranium intencionalmente fuera de scope:**
+USGS MCS 2025 no incluye uranium en el Data Release. Opciones futuras si se
+necesita:
+- World Nuclear Association (datos estructurados, licencia más restrictiva)
+- OECD NEA Red Book (PDF cada 2 años con tablas parseables)
+Ninguna urgente. Documentado para no preguntar "¿por qué falta uranium?".
+
+**Rankings globales: cálculo al vuelo, NO almacenado (decisión arquitectónica):**
+Rankings son cálculos derivados, no datos en sí. Almacenarlos como
+indicadores en `IndicatorValue` causa inconsistencia cuando los datos
+upstream se actualizan (lección aprendida de WRI_RANK y FSI_RANK eliminados
+en sesiones anteriores).
+
+Implementación: `buildCriticalMineralsBlock()` en `apps/api/src/modules/indicators/service.ts`.
+Para cada mineral con producción del país, query SQL al endpoint:
+```sql
+SELECT e.iso3, iv.value FROM "IndicatorValue" iv
+JOIN "Entity" e ON e.id = iv."entityId"
+WHERE iv."indicatorCode" = $1 AND iv.year = $latestYear
+ORDER BY iv.value DESC LIMIT 10
+```
+Se busca el iso3 del país en esa lista y se determina rank tier:
+`top1` (#1), `top3` (#2-3), `top10` (#4-10), o `null` (fuera).
+
+Costo: hasta 6 queries adicionales por request (una por mineral con producción).
+Despreciable para tráfico actual. Si WorldLore escala, migrar a vista
+materializada `mineral_rankings` refrescada al correr el script de ingesta.
+
+**Badges escalonados (no solo "#1"):**
+La UI muestra `#1 global producer` (verde), `#N global producer` para top-3
+(verde), `Top N global producer` para 4-10 (amber), o sin badge si fuera
+del top 10. Da matices sin ruido — Argentina y Chile en litio merecen badge
+aunque no sean #1.
+
+**Years of supply:** mostrado pero con nota a pie explicando que "proven
+reserves" según USGS son las económicamente extraíbles HOY con tecnología
+y precios actuales. Crece con descubrimientos y subidas de precio. NO es
+"fecha de fin del recurso" — es un ratio de proporción. Sin esta nota un
+usuario puede leer "10 años de cobalto en Congo" como "el mineral se acaba
+en 10 años", lo cual es empíricamente falso.
+
+**Defensive `.trim()`:** USGS es famoso por inconsistencias con espacios
+finales en COMMODITY ("Copper " vs "Copper") y COUNTRY. Aplicado .trim()
+en parsing antes de matchear contra los lookups.
+
+---
+
 ## 2026-04-14 — P3 Paso A2 (EIA) scope reducido: solo petróleo
 
 **Contexto:** El plan original de A2 apuntaba a ingestar, desde la EIA US

@@ -162,6 +162,15 @@ const SOURCE_VERSIONS: Record<string, SourceMetadata> = {
     sourceVersion: 'EIA API v2 2026-04',
     sourceReleaseDate: new Date('2026-04-01'),
   },
+
+  // USGS — Mineral Commodity Summaries (critical minerals)
+  // Data Release DOI: 10.5066/P13XCP3R
+  // URL: sciencebase.gov/catalog/file/get/677eaf95d34e760b392c4970
+  // License: CC0 (public domain)
+  'USGS': {
+    sourceVersion: 'MCS 2025',
+    sourceReleaseDate: new Date('2025-01-31'),
+  },
 };
 
 export function getSourceMetadata(source: string): SourceMetadata {
