@@ -30,11 +30,11 @@ function IndexCell({ label, entry }: { label: string; entry: FpiEntry | null }) 
     <div
       className="rounded-lg p-3 flex flex-col gap-1"
       style={{
-        background: 'rgba(15, 23, 42, 0.6)',
-        border: '1px solid rgba(71, 85, 105, 0.2)',
+        background: 'rgba(15, 23, 42, 0.7)',
+        border: '1px solid rgba(100, 116, 139, 0.4)',
       }}
     >
-      <span className="text-[10px] text-slate-500 uppercase tracking-wider">{label}</span>
+      <span className="text-[10px] font-medium text-slate-400 uppercase tracking-[0.08em]">{label}</span>
       <span className="text-lg font-bold text-white leading-tight">
         {entry.annualAverage.toFixed(1)}
       </span>
@@ -49,7 +49,7 @@ export default function GlobalFoodPriceIndex() {
   if (error) return null; // fail silently, dashboard still useful without this
   if (isLoading) {
     return (
-      <div className="rounded-xl p-5 animate-pulse" style={{ background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(71, 85, 105, 0.2)' }}>
+      <div className="rounded-xl p-5 animate-pulse" style={{ background: 'rgba(2, 8, 23, 0.75)', border: '1px solid rgba(148, 163, 184, 0.55)' }}>
         <div className="h-5 w-48 bg-slate-700/40 rounded mb-3" />
         <div className="h-24 bg-slate-700/30 rounded" />
       </div>
@@ -82,27 +82,28 @@ export default function GlobalFoodPriceIndex() {
       transition={{ delay: 0.15 }}
       className="rounded-xl p-5"
       style={{
-        background: 'rgba(15, 23, 42, 0.8)',
-        border: '1px solid rgba(71, 85, 105, 0.2)',
+        background: 'rgba(2, 8, 23, 0.75)',
+        border: '1px solid rgba(148, 163, 184, 0.55)',
+        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.5), 0 0 1px rgba(148, 163, 184, 0.2) inset',
       }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between mb-4 pb-3" style={{ borderBottom: '1px solid rgba(100, 116, 139, 0.4)' }}>
+        <div className="flex items-center gap-2.5">
           <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+            className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
             style={{ backgroundColor: 'rgba(245, 158, 11, 0.15)' }}
           >
             <Wheat className="w-4 h-4" style={{ color: '#f59e0b' }} />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-white leading-tight">Global Food Prices</h3>
-            <p className="text-[10px] text-slate-500">FAO · Latest {latestMonthLabel}</p>
+            <h3 className="text-base font-bold text-white leading-tight tracking-tight">Global Food Prices</h3>
+            <p className="text-[11px] text-slate-400 mt-0.5">FAO · Latest {latestMonthLabel}</p>
           </div>
         </div>
         <div className="text-right">
-          <div className="text-2xl font-bold text-white">{composite.annualAverage.toFixed(1)}</div>
-          <TrendBadge pct={composite.trendPct} />
+          <div className="text-2xl font-bold text-white leading-none">{composite.annualAverage.toFixed(1)}</div>
+          <div className="mt-1"><TrendBadge pct={composite.trendPct} /></div>
         </div>
       </div>
 
@@ -118,7 +119,7 @@ export default function GlobalFoodPriceIndex() {
         <IndexCell label="Sugar"   entry={fpi.sugar} />
       </div>
 
-      <p className="text-[9px] text-slate-600 mt-3">{fpi.baseNote}</p>
+      <p className="text-[9px] text-slate-500 mt-4 pt-3" style={{ borderTop: '1px solid rgba(71, 85, 105, 0.2)' }}>{fpi.baseNote}</p>
     </motion.div>
   );
 }

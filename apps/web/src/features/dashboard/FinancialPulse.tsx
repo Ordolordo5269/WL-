@@ -45,8 +45,8 @@ function PriceChip({ e }: { e: FinEntry }) {
     <div
       className="rounded-lg p-2.5 flex flex-col gap-0.5"
       style={{
-        background: 'rgba(15, 23, 42, 0.6)',
-        border: '1px solid rgba(71, 85, 105, 0.2)',
+        background: 'rgba(15, 23, 42, 0.7)',
+        border: '1px solid rgba(100, 116, 139, 0.4)',
       }}
     >
       <span className="text-[10px] text-slate-400 leading-tight truncate">{e.name}</span>
@@ -77,39 +77,43 @@ function VolHighlight({ vol }: { vol: FinEntry[] }) {
     <div className="grid grid-cols-2 gap-3 mb-4">
       {vix && (
         <div
-          className="rounded-lg p-3"
+          className="rounded-lg p-3.5 relative overflow-hidden"
           style={{
-            background: 'rgba(15, 23, 42, 0.8)',
-            border: `1px solid ${vixStatus?.color}40`,
+            background: `linear-gradient(135deg, ${vixStatus?.color}10 0%, rgba(2, 8, 23, 0.75) 60%)`,
+            border: `1px solid ${vixStatus?.color}50`,
+            boxShadow: `0 0 24px ${vixStatus?.color}10 inset`,
           }}
         >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider">VIX · Fear Index</span>
+          {/* Left accent bar */}
+          <div className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: vixStatus?.color }} />
+          <div className="flex items-center justify-between pl-1">
+            <span className="text-[10px] font-semibold text-slate-300 uppercase tracking-[0.1em]">VIX · Fear Index</span>
             {vixStatus && (
-              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ color: vixStatus.color, background: `${vixStatus.color}15` }}>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ color: vixStatus.color, background: `${vixStatus.color}20`, border: `1px solid ${vixStatus.color}40` }}>
                 {vixStatus.text}
               </span>
             )}
           </div>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-white">{vix.latestValue.toFixed(1)}</span>
+          <div className="mt-1.5 flex items-baseline gap-2 pl-1">
+            <span className="text-3xl font-bold text-white leading-none">{vix.latestValue.toFixed(1)}</span>
             <TrendBadge pct={vix.trendPctYoY} />
           </div>
         </div>
       )}
       {hy && (
         <div
-          className="rounded-lg p-3"
+          className="rounded-lg p-3.5 relative overflow-hidden"
           style={{
-            background: 'rgba(15, 23, 42, 0.8)',
-            border: '1px solid rgba(71, 85, 105, 0.3)',
+            background: 'rgba(2, 8, 23, 0.75)',
+            border: '1px solid rgba(100, 116, 139, 0.4)',
           }}
         >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider">HY Credit Spread</span>
+          <div className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: '#94a3b8' }} />
+          <div className="flex items-center justify-between pl-1">
+            <span className="text-[10px] font-semibold text-slate-300 uppercase tracking-[0.1em]">HY Credit Spread</span>
           </div>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-white">{hy.latestValue.toFixed(2)}%</span>
+          <div className="mt-1.5 flex items-baseline gap-2 pl-1">
+            <span className="text-3xl font-bold text-white leading-none">{hy.latestValue.toFixed(2)}%</span>
             <TrendBadge pct={hy.trendPctYoY} />
           </div>
         </div>
@@ -132,10 +136,10 @@ function PredictionRow({ p }: { p: PredictionMarket }) {
       href={url ?? '#'}
       target="_blank"
       rel="noopener noreferrer"
-      className="block rounded-lg p-3 transition-colors hover:border-slate-500/40 no-underline"
+      className="block rounded-lg p-3 transition-all hover:border-slate-500/50 no-underline"
       style={{
-        background: 'rgba(15, 23, 42, 0.6)',
-        border: '1px solid rgba(71, 85, 105, 0.2)',
+        background: 'rgba(15, 23, 42, 0.7)',
+        border: '1px solid rgba(100, 116, 139, 0.4)',
         textDecoration: 'none',
         color: 'inherit',
       }}
@@ -179,7 +183,7 @@ export default function FinancialPulse() {
     return (
       <div
         className="rounded-xl p-5 animate-pulse"
-        style={{ background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(71, 85, 105, 0.2)' }}
+        style={{ background: 'rgba(2, 8, 23, 0.75)', border: '1px solid rgba(148, 163, 184, 0.55)' }}
       >
         <div className="h-5 w-56 bg-slate-700/40 rounded mb-3" />
         <div className="h-48 bg-slate-700/30 rounded" />
@@ -207,22 +211,23 @@ export default function FinancialPulse() {
       transition={{ delay: 0.25 }}
       className="rounded-xl p-5"
       style={{
-        background: 'rgba(15, 23, 42, 0.8)',
-        border: '1px solid rgba(71, 85, 105, 0.2)',
+        background: 'rgba(2, 8, 23, 0.75)',
+        border: '1px solid rgba(148, 163, 184, 0.55)',
+        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.5), 0 0 1px rgba(148, 163, 184, 0.2) inset',
       }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between mb-4 pb-3" style={{ borderBottom: '1px solid rgba(100, 116, 139, 0.4)' }}>
+        <div className="flex items-center gap-2.5">
           <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+            className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
             style={{ backgroundColor: 'rgba(167, 139, 250, 0.15)' }}
           >
             <Activity className="w-4 h-4" style={{ color: '#a78bfa' }} />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-white leading-tight">Financial Pulse</h3>
-            <p className="text-[10px] text-slate-500">FRED · CoinGecko · Polymarket · Latest {latestLabel}</p>
+            <h3 className="text-base font-bold text-white leading-tight tracking-tight">Financial Pulse</h3>
+            <p className="text-[11px] text-slate-400 mt-0.5">FRED · CoinGecko · Polymarket · Latest {latestLabel}</p>
           </div>
         </div>
       </div>
@@ -237,11 +242,12 @@ export default function FinancialPulse() {
           const { label, color, Icon } = CATEGORY_META[cat];
           return (
             <div key={cat}>
-              <div className="flex items-center gap-1.5 mb-2">
-                <Icon className="w-3 h-3" style={{ color }} />
-                <span className="text-[10px] uppercase tracking-wider font-medium" style={{ color }}>
+              <div className="flex items-center gap-2 mb-2.5">
+                <Icon className="w-3.5 h-3.5" style={{ color }} />
+                <span className="text-[10px] uppercase tracking-[0.12em] font-bold" style={{ color }}>
                   {label}
                 </span>
+                <div className="flex-1 h-px" style={{ background: `linear-gradient(to right, ${color}40, transparent)` }} />
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                 {list.map((e) => <PriceChip key={e.code} e={e} />)}
@@ -253,12 +259,13 @@ export default function FinancialPulse() {
 
       {/* Prediction markets */}
       {d.prediction.length > 0 && (
-        <div className="mt-5 pt-4" style={{ borderTop: '1px solid rgba(71, 85, 105, 0.2)' }}>
-          <div className="flex items-center gap-1.5 mb-2">
-            <Dice5 className="w-3 h-3" style={{ color: '#f472b6' }} />
-            <span className="text-[10px] uppercase tracking-wider font-medium" style={{ color: '#f472b6' }}>
+        <div className="mt-5 pt-4" style={{ borderTop: '1px solid rgba(71, 85, 105, 0.3)' }}>
+          <div className="flex items-center gap-2 mb-2.5">
+            <Dice5 className="w-3.5 h-3.5" style={{ color: '#f472b6' }} />
+            <span className="text-[10px] uppercase tracking-[0.12em] font-bold" style={{ color: '#f472b6' }}>
               Prediction Markets · Polymarket
             </span>
+            <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, rgba(244, 114, 182, 0.4), transparent)' }} />
           </div>
           <div className="space-y-2">
             {d.prediction.slice(0, 5).map((p) => <PredictionRow key={p.code} p={p} />)}
@@ -266,7 +273,7 @@ export default function FinancialPulse() {
         </div>
       )}
 
-      <p className="text-[9px] text-slate-600 mt-3">
+      <p className="text-[9px] text-slate-500 mt-4 pt-3" style={{ borderTop: '1px solid rgba(71, 85, 105, 0.2)' }}>
         FX, rates and equities are monthly averages (latest tick shown). YoY trend vs prior calendar year.
         Prediction markets are live probability snapshots — click to view full market on Polymarket.
       </p>

@@ -53,26 +53,32 @@ export default function DashboardStats() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.05 }}
-          className="rounded-lg p-4"
+          className="rounded-xl p-4"
           style={{
-            background: 'rgba(15, 23, 42, 0.8)',
-            border: '1px solid rgba(71, 85, 105, 0.2)',
+            background: 'rgba(2, 8, 23, 0.75)',
+            border: '1px solid rgba(148, 163, 184, 0.55)',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.5), 0 0 1px rgba(148, 163, 184, 0.2) inset',
           }}
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">{label}</span>
-            <Icon className="w-4 h-4" style={{ color }} />
+            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.08em]">{label}</span>
+            <div
+              className="w-6 h-6 rounded-md flex items-center justify-center"
+              style={{ backgroundColor: `${color}18` }}
+            >
+              <Icon className="w-3.5 h-3.5" style={{ color }} />
+            </div>
           </div>
-          <div className="text-xl font-bold text-white mb-0.5">
+          <div className="text-2xl font-bold text-white mb-0.5 leading-none">
             {isLoading ? (
-              <div className="h-6 w-14 rounded bg-slate-700/50 animate-pulse" />
+              <div className="h-7 w-14 rounded bg-slate-700/50 animate-pulse" />
             ) : (
               key === 'avgSeverity'
                 ? data?.[key]?.toFixed(2) ?? '—'
                 : data?.[key]?.toLocaleString() ?? '—'
             )}
           </div>
-          <div className="text-[10px] text-slate-500">{context}</div>
+          <div className="text-[10px] text-slate-500 mt-1">{context}</div>
 
           {/* Severity distribution bar on first card */}
           {key === 'totalConflicts' && !isLoading && data && (

@@ -186,12 +186,13 @@ export default function WorldActivityFeed() {
       transition={{ delay: 0.4 }}
       className="rounded-xl"
       style={{
-        background: 'rgba(15, 23, 42, 0.8)',
-        border: '1px solid rgba(71, 85, 105, 0.3)',
+        background: 'rgba(2, 8, 23, 0.75)',
+        border: '1px solid rgba(148, 163, 184, 0.55)',
+        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.5), 0 0 1px rgba(148, 163, 184, 0.2) inset',
       }}
     >
-      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700/50">
-        <h3 className="text-base font-semibold text-white flex items-center gap-2">
+      <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(100, 116, 139, 0.4)' }}>
+        <h3 className="text-base font-bold text-white flex items-center gap-2 tracking-tight">
           <Zap className="w-4 h-4 text-cyan-400" />
           Live World Activity
         </h3>

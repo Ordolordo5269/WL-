@@ -49,8 +49,8 @@ function PriceChip({ c }: { c: CommodityPrice }) {
     <div
       className="rounded-lg p-2.5 flex flex-col gap-0.5"
       style={{
-        background: 'rgba(15, 23, 42, 0.6)',
-        border: '1px solid rgba(71, 85, 105, 0.2)',
+        background: 'rgba(15, 23, 42, 0.7)',
+        border: '1px solid rgba(100, 116, 139, 0.4)',
       }}
     >
       <span className="text-[10px] text-slate-400 leading-tight truncate">{c.name}</span>
@@ -71,7 +71,7 @@ export default function GlobalCommodityPrices() {
     return (
       <div
         className="rounded-xl p-5 animate-pulse"
-        style={{ background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(71, 85, 105, 0.2)' }}
+        style={{ background: 'rgba(2, 8, 23, 0.75)', border: '1px solid rgba(148, 163, 184, 0.55)' }}
       >
         <div className="h-5 w-56 bg-slate-700/40 rounded mb-3" />
         <div className="h-32 bg-slate-700/30 rounded" />
@@ -97,22 +97,23 @@ export default function GlobalCommodityPrices() {
       transition={{ delay: 0.2 }}
       className="rounded-xl p-5"
       style={{
-        background: 'rgba(15, 23, 42, 0.8)',
-        border: '1px solid rgba(71, 85, 105, 0.2)',
+        background: 'rgba(2, 8, 23, 0.75)',
+        border: '1px solid rgba(148, 163, 184, 0.55)',
+        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.5), 0 0 1px rgba(148, 163, 184, 0.2) inset',
       }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between mb-4 pb-3" style={{ borderBottom: '1px solid rgba(100, 116, 139, 0.4)' }}>
+        <div className="flex items-center gap-2.5">
           <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+            className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
             style={{ backgroundColor: 'rgba(96, 165, 250, 0.15)' }}
           >
             <Coins className="w-4 h-4" style={{ color: '#60a5fa' }} />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-white leading-tight">Global Commodity Prices</h3>
-            <p className="text-[10px] text-slate-500">World Bank Pink Sheet · Latest {latestLabel}</p>
+            <h3 className="text-base font-bold text-white leading-tight tracking-tight">Global Commodity Prices</h3>
+            <p className="text-[11px] text-slate-400 mt-0.5">World Bank Pink Sheet · Latest {latestLabel}</p>
           </div>
         </div>
       </div>
@@ -125,11 +126,12 @@ export default function GlobalCommodityPrices() {
           const { label, color, Icon } = CATEGORY_META[cat];
           return (
             <div key={cat}>
-              <div className="flex items-center gap-1.5 mb-2">
-                <Icon className="w-3 h-3" style={{ color }} />
-                <span className="text-[10px] uppercase tracking-wider font-medium" style={{ color }}>
+              <div className="flex items-center gap-2 mb-2.5">
+                <Icon className="w-3.5 h-3.5" style={{ color }} />
+                <span className="text-[10px] uppercase tracking-[0.12em] font-bold" style={{ color }}>
                   {label}
                 </span>
+                <div className="flex-1 h-px" style={{ background: `linear-gradient(to right, ${color}40, transparent)` }} />
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
                 {list.map((c) => <PriceChip key={c.code} c={c} />)}
@@ -139,7 +141,7 @@ export default function GlobalCommodityPrices() {
         })}
       </div>
 
-      <p className="text-[9px] text-slate-600 mt-3">
+      <p className="text-[9px] text-slate-500 mt-4 pt-3" style={{ borderTop: '1px solid rgba(71, 85, 105, 0.2)' }}>
         Monthly spot prices, nominal USD. Trend shown is year-on-year change in annual average.
       </p>
     </motion.div>

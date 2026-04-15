@@ -74,9 +74,9 @@ function Dashboard() {
       >
         {activeSection === 'overview' ? (
           <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-1">Global Overview</h2>
-              <p className="text-sm text-slate-400">Real-time geopolitical intelligence</p>
+            <div className="pb-2" style={{ borderBottom: '1px solid rgba(71, 85, 105, 0.25)' }}>
+              <h2 className="text-[28px] font-bold text-white mb-1 tracking-tight leading-none">Global Overview</h2>
+              <p className="text-[13px] text-slate-400">Real-time geopolitical intelligence</p>
             </div>
             <QuickActions onSectionChange={setActiveSection} />
             <DashboardStats />
