@@ -301,6 +301,7 @@ model TradeFlow {
   from Entity @relation("TradeFrom", fields: [fromId], references: [id])
   to   Entity @relation("TradeTo", fields: [toId], references: [id])
 
+  @@unique([fromId, toId, hsCode, year])
   @@index([fromId, year])
   @@index([toId, year])
   @@index([hsCode, year])

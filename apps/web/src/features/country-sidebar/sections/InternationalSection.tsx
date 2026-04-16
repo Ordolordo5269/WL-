@@ -1,7 +1,59 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { AlertCircle, Globe2, DollarSign, Percent, ArrowDownUp, Landmark, Users, Truck, HandCoins, Package, Gem, Wheat } from 'lucide-react';
+import { AlertCircle, Globe2, DollarSign, Percent, ArrowDownUp, Landmark, Users, Truck, HandCoins, Package, Gem, Wheat, ArrowRightLeft } from 'lucide-react';
 import { internationalService } from '../services/international-service';
 import type { TInternationalData } from '../services/international-service';
+
+interface TradePartner {
+  iso3: string;
+  name: string;
+  valueUsd: number;
+  percentOfTotal: number;
+}
+
+interface TradePartnersData {
+  reporter: { iso3: string; name: string } | null;
+  year: number;
+  flow: 'export' | 'import';
+  partners: TradePartner[];
+  totalValueUsd: number;
+}
+
+function useTradePartners(iso3: string | null) {
+  const [exportData, setExportData] = useState<TradePartnersData | null>(null);
+  const [importData, setImportData] = useState<TradePartnersData | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!iso3) return;
+    let cancelled = false;
+    setLoading(true);
+
+    const baseUrl = ((import.meta as any).env?.VITE_API_URL as string) || 'http://localhost:3001';
+    Promise.all([
+      fetch(`${baseUrl}/api/trade/${iso3}/partners?year=2024&flow=export`).then((r) => r.json()),
+      fetch(`${baseUrl}/api/trade/${iso3}/partners?year=2024&flow=import`).then((r) => r.json()),
+    ])
+      .then(([expRes, impRes]) => {
+        if (cancelled) return;
+        setExportData(expRes.data ?? null);
+        setImportData(impRes.data ?? null);
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [iso3]);
+
+  return { exportData, importData, loading };
+}
+
+function formatTradeValue(v: number): string {
+  if (v >= 1e12) return `$${(v / 1e12).toFixed(1)}T`;
+  if (v >= 1e9) return `$${(v / 1e9).toFixed(1)}B`;
+  if (v >= 1e6) return `$${(v / 1e6).toFixed(0)}M`;
+  return `$${v.toLocaleString()}`;
+}
 
 interface InternationalSectionProps {
   data: TInternationalData | null;
@@ -11,6 +63,9 @@ interface InternationalSectionProps {
 
 
 export default function InternationalSection({ data, isLoading, error }: InternationalSectionProps) {
+  const [tradeFlow, setTradeFlow] = useState<'export' | 'import'>('export');
+  const { exportData, importData, loading: tradeLoading } = useTradePartners(data?.countryCode3 ?? null);
+
   if (isLoading) return <div className="p-4 text-slate-400">Loading international data...</div>;
   if (error) {
     return (
@@ -25,6 +80,8 @@ export default function InternationalSection({ data, isLoading, error }: Interna
   if (!data) return <div className="p-4 text-slate-400">No international data available</div>;
 
   const s = internationalService;
+  const activeTradeData = tradeFlow === 'export' ? exportData : importData;
+  const hasTradeData = (exportData?.partners?.length ?? 0) > 0 || (importData?.partners?.length ?? 0) > 0;
   const odaDisplay = (data.odaReceivedUsd.value === null || data.odaReceivedUsd.value === 0)
     ? 'Non-recipient'
     : s.formatCurrency(data.odaReceivedUsd.value);
@@ -158,8 +215,78 @@ export default function InternationalSection({ data, isLoading, error }: Interna
           )}
         </div>
       </div>
+
+      {/* P4 Fase A: Top Trade Partners (UN Comtrade bilateral TOTAL) */}
+      {!tradeLoading && hasTradeData && (
+        <div className="section-card">
+          <div className="section-header">
+            <ArrowRightLeft className="h-4 w-4" />
+            <h3>Top Trade Partners</h3>
+          </div>
+
+          <div className="flex gap-1 mb-3">
+            <button
+              onClick={() => setTradeFlow('export')}
+              className="px-3 py-1 rounded-full text-[11px] font-medium transition-colors"
+              style={{
+                background: tradeFlow === 'export' ? 'rgba(52, 211, 153, 0.2)' : 'rgba(71, 85, 105, 0.2)',
+                color: tradeFlow === 'export' ? '#34d399' : '#94a3b8',
+                border: `1px solid ${tradeFlow === 'export' ? 'rgba(52, 211, 153, 0.4)' : 'rgba(71, 85, 105, 0.3)'}`,
+              }}
+            >
+              Exports
+            </button>
+            <button
+              onClick={() => setTradeFlow('import')}
+              className="px-3 py-1 rounded-full text-[11px] font-medium transition-colors"
+              style={{
+                background: tradeFlow === 'import' ? 'rgba(96, 165, 250, 0.2)' : 'rgba(71, 85, 105, 0.2)',
+                color: tradeFlow === 'import' ? '#60a5fa' : '#94a3b8',
+                border: `1px solid ${tradeFlow === 'import' ? 'rgba(96, 165, 250, 0.4)' : 'rgba(71, 85, 105, 0.3)'}`,
+              }}
+            >
+              Imports
+            </button>
+          </div>
+
+          {activeTradeData && activeTradeData.partners.length > 0 ? (
+            <div className="space-y-1.5">
+              {activeTradeData.partners.slice(0, 10).map((p, i) => {
+                const maxPct = activeTradeData.partners[0]?.percentOfTotal ?? 1;
+                const barWidth = maxPct > 0 ? (p.percentOfTotal / maxPct) * 100 : 0;
+                return (
+                  <div key={p.iso3} className="flex items-center gap-2">
+                    <span className="text-[10px] text-slate-500 w-4 text-right">{i + 1}</span>
+                    <span className="text-[11px] text-slate-300 w-16 truncate">{p.name}</span>
+                    <div className="flex-1 relative h-4 rounded-sm overflow-hidden" style={{ background: 'rgba(71, 85, 105, 0.15)' }}>
+                      <div
+                        className="absolute left-0 top-0 h-full rounded-sm transition-all"
+                        style={{
+                          width: `${barWidth}%`,
+                          background: tradeFlow === 'export'
+                            ? 'linear-gradient(90deg, rgba(52, 211, 153, 0.5), rgba(52, 211, 153, 0.2))'
+                            : 'linear-gradient(90deg, rgba(96, 165, 250, 0.5), rgba(96, 165, 250, 0.2))',
+                        }}
+                      />
+                      <span className="absolute right-1.5 top-0 h-full flex items-center text-[10px] text-slate-300">
+                        {formatTradeValue(p.valueUsd)}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 w-10 text-right">{p.percentOfTotal.toFixed(1)}%</span>
+                  </div>
+                );
+              })}
+              {activeTradeData.totalValueUsd > 0 && (
+                <div className="text-[9px] text-slate-500 mt-2 pt-2" style={{ borderTop: '1px solid rgba(71, 85, 105, 0.2)' }}>
+                  Total {tradeFlow}s: {formatTradeValue(activeTradeData.totalValueUsd)} · Source: UN Comtrade · {activeTradeData.year}
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-[11px] text-slate-500">No bilateral trade data available for this country.</p>
+          )}
+        </div>
+      )}
     </motion.div>
   );
 }
-
-

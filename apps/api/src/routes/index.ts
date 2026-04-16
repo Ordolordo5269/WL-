@@ -39,6 +39,7 @@ import conflictRoutes from '../modules/conflicts/routes';
 import earthGalleryRoutes from './earth-gallery.routes';
 import sanctionsRoutes from './sanctions.routes';
 import electionsRoutes from './elections.routes';
+import tradeRoutes from './trade.routes';
 
 const router = Router();
 
@@ -80,5 +81,6 @@ router.use('/conflicts', conflictRoutes);
 router.use('/earth-gallery', earthGalleryRoutes);
 router.use('/sanctions', sanctionsRoutes);
 router.use('/elections', electionsRoutes);
+router.use('/trade', tradeRoutes);
 
 export default router;

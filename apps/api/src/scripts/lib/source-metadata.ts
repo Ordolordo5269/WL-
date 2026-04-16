@@ -204,6 +204,14 @@ const SOURCE_VERSIONS: Record<string, SourceMetadata> = {
     sourceVersion: null,
     sourceReleaseDate: null,
   },
+
+  // UN Comtrade — bilateral trade flows (P4 Fase A)
+  // Preview API: comtradeapi.un.org/public/v1/preview/C/A/HS (no key)
+  // TOTAL aggregate bilateral flows; HS-level deferred to Fase B
+  'UN Comtrade': {
+    sourceVersion: 'Comtrade 2024',
+    sourceReleaseDate: new Date('2024-12-01'),
+  },
 };
 
 export function getSourceMetadata(source: string): SourceMetadata {
