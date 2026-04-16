@@ -94,6 +94,7 @@ model Entity {
   ownedTargets            Ownership[]              @relation("Owned")
   infrastructureNodes     InfrastructureNode[]
   naturalFeatureCoverages NaturalFeatureCoverage[]
+  financialMonthly        FinancialMarketMonthly[]
 
   @@index([type, country])
   @@index([name])
@@ -240,6 +241,30 @@ model PredictionMarketSnapshot {
 
   @@index([source, resolved, closeDate])
   @@index([category, resolved])
+}
+
+/**
+ * Monthly financial time series — ML-grade granularity.
+ * Coexists with IndicatorValue (annual). Dashboard reads annual,
+ * ML models read monthly. Same indicator codes, different table.
+ */
+model FinancialMarketMonthly {
+  id                String    @id @default(uuid())
+  entityId          String    @db.Uuid
+  indicatorCode     String
+  year              Int
+  month             Int // 1-12
+  value             Decimal
+  source            String
+  sourceVersion     String?
+  sourceReleaseDate DateTime?
+  ingestedAt        DateTime  @default(now())
+
+  entity Entity @relation(fields: [entityId], references: [id])
+
+  @@unique([entityId, indicatorCode, year, month])
+  @@index([indicatorCode, year, month])
+  @@index([entityId, indicatorCode])
 }
 
 model Boundary {

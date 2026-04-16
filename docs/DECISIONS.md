@@ -6,6 +6,38 @@ contributors) don't have to reverse-engineer it.
 
 ---
 
+## 2026-04-16 — P1 Fase B: deuda técnica pagada (granularidad mensual)
+
+**Nueva tabla `FinancialMarketMonthly`** coexistente con `IndicatorValue`.
+6,889 registros (FRED 6,824 + CoinGecko 65). IndicatorValue queda intacto —
+dashboard sigue consumiendo la media anual sin cambios.
+
+**Shape**: `(entityId, indicatorCode, year, month, value)` con unique key
+`(entityId, indicatorCode, year, month)`. Hoy solo entidad WLD; permite
+expansión a per-country (yields soberanos, FX locales) sin schema change.
+
+**Por qué tabla separada y no columna `month` en IndicatorValue**:
+IndicatorValue tiene ~2.58M rows con unique key `(entity, indicator, year)`.
+Añadir `month` rompería el unique key existente y contaminaría queries
+agregados de V-Dem, FSI, etc. que son inherentemente anuales. Tabla
+separada mantiene ambas granularidades puras sin conflicto.
+
+**Helper genérico `bulkUpsertMonthly(prisma, tableName, rows)`**:
+Recibe nombre de tabla como parámetro para reusar en futuras tablas monthly
+sin duplicar código. `tableName` siempre viene de constante interna hardcoded,
+nunca de input de usuario.
+
+**Sin endpoint REST**: la tabla es ML-only. Se consumirá vía Prisma client o
+SQL directo cuando se construya el primer modelo ML. Si el dashboard futuro
+quiere tooltips históricos, se añade endpoint entonces (YAGNI).
+
+**Validación de consistencia**: 5 spot-checks cruzando media de meses en
+FinancialMarketMonthly contra valor anual en IndicatorValue. Tolerancia
+relativa <0.1%. 4/5 PASS exacto, 1 WARN (BTC 0.73% — drift esperado por
+ventana CoinGecko `days=365`).
+
+---
+
 ## 2026-04-15 — P1 Fase A: capa financiera (FRED + CoinGecko + Polymarket)
 
 **Decisión:** Ingestar simultáneamente 3 capas financieras en una release
