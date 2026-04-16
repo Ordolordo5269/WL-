@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { AlertCircle, Globe2, DollarSign, Percent, ArrowDownUp, Landmark, Users, Truck, HandCoins, Package, Gem, Wheat, ArrowRightLeft } from 'lucide-react';
 import { internationalService } from '../services/international-service';
 import type { TInternationalData } from '../services/international-service';
+import TradeCommoditiesCard from './TradeCommoditiesCard';
 
 interface TradePartner {
   iso3: string;
@@ -48,6 +49,49 @@ function useTradePartners(iso3: string | null) {
   return { exportData, importData, loading };
 }
 
+interface CommoditiesData {
+  reporter: { iso3: string; name: string } | null;
+  year: number;
+  flow: 'export' | 'import';
+  commodities: Array<{
+    hsCode: string;
+    hsName: string;
+    valueUsd: number;
+    percentOfTotal: number;
+    topPartners: Array<{ iso3: string; name: string; valueUsd: number }>;
+  }>;
+  totalValueUsd: number;
+}
+
+function useTradeCommodities(iso3: string | null) {
+  const [exportData, setExportData] = useState<CommoditiesData | null>(null);
+  const [importData, setImportData] = useState<CommoditiesData | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!iso3) return;
+    let cancelled = false;
+    setLoading(true);
+
+    const baseUrl = ((import.meta as any).env?.VITE_API_URL as string) || 'http://localhost:3001';
+    Promise.all([
+      fetch(`${baseUrl}/api/trade/${iso3}/commodities?year=2024&flow=export`).then((r) => r.json()),
+      fetch(`${baseUrl}/api/trade/${iso3}/commodities?year=2024&flow=import`).then((r) => r.json()),
+    ])
+      .then(([expRes, impRes]) => {
+        if (cancelled) return;
+        setExportData(expRes.data ?? null);
+        setImportData(impRes.data ?? null);
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [iso3]);
+
+  return { exportData, importData, loading };
+}
+
 function formatTradeValue(v: number): string {
   if (v >= 1e12) return `$${(v / 1e12).toFixed(1)}T`;
   if (v >= 1e9) return `$${(v / 1e9).toFixed(1)}B`;
@@ -65,6 +109,7 @@ interface InternationalSectionProps {
 export default function InternationalSection({ data, isLoading, error }: InternationalSectionProps) {
   const [tradeFlow, setTradeFlow] = useState<'export' | 'import'>('export');
   const { exportData, importData, loading: tradeLoading } = useTradePartners(data?.countryCode3 ?? null);
+  const { exportData: commExport, importData: commImport, loading: commLoading } = useTradeCommodities(data?.countryCode3 ?? null);
 
   if (isLoading) return <div className="p-4 text-slate-400">Loading international data...</div>;
   if (error) {
@@ -287,6 +332,9 @@ export default function InternationalSection({ data, isLoading, error }: Interna
           )}
         </div>
       )}
+
+      {/* P4 Fase B: Trade by Commodity (HS2 breakdown) */}
+      <TradeCommoditiesCard exportData={commExport} importData={commImport} loading={commLoading} />
     </motion.div>
   );
 }
